@@ -13,8 +13,11 @@
 Open source, one Docker container, on your own computer.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+[![Website](https://img.shields.io/badge/website-marcopatzelt.github.io%2Fcrewcut-0F6E5C?style=flat-square)](https://marcopatzelt.github.io/crewcut/)
 [![CI](https://img.shields.io/github/actions/workflow/status/marcopatzelt/crewcut/ci.yml?branch=main&style=flat-square&label=ci)](https://github.com/marcopatzelt/crewcut/actions/workflows/ci.yml)
 ![Status](https://img.shields.io/badge/status-v0.1%20pre--release-orange?style=flat-square)
+
+**[Website](https://marcopatzelt.github.io/crewcut/)** · [Quick start](#quick-start) · [How it works](#how-it-works) · [Shorts](docs/shorts.md)
 
 <br>
 
@@ -40,6 +43,13 @@ published, rented or paid for without your yes.
 <img alt="A card asks whether to render nine 3D scenes on this machine or on a rented GPU; the choice switches, one press, the card folds away and the Editor starts in the crew column" src="docs/readme/crewcut-demo.webp" width="100%">
 
 <p align="center"><sub>One card, one choice, one press. Demo data, rendered in CI from the current app.</sub></p>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/crewcut-episodes-dark.png">
+  <img alt="All episodes as large cards with their covers, filter pills on top: long videos and Shorts, what needs your yes" src="docs/readme/crewcut-episodes-light.png" width="100%">
+</picture>
+
+<p align="center"><sub>All your videos and Shorts at a glance, filtered with one tap.</sub></p>
 
 ## Quick start
 
