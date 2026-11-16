@@ -95,7 +95,7 @@ function PhoneCheck({ pick, others }: { pick: MediaThumb; others: string[] }) {
         <div className="phone-screen">
           {[pick.url, ...others].slice(0, 3).map((url, i) => (
             <span className="feed-item" key={`${i}-${url}`}>
-              <img src={url} alt="" loading="lazy" />
+              <img src={url} alt="" decoding="async" />
               <i />
               <i />
             </span>
@@ -235,7 +235,10 @@ export function CutPanel({ cut }: { cut: MediaCut }) {
   const span = cut.seconds / Math.max(1, frames.length);
   const notes = cut.markers.filter((m) => m.level !== "error");
   const errors = cut.markers.filter((m) => m.level === "error");
-  const markedAt = (t: number) => cut.markers.filter((m) => m.t >= t - span / 2 && m.t < t + span / 2);
+  // Each note marks the one frame nearest to it.
+  const nearest = (t: number) =>
+    frames.reduce((best, f) => (Math.abs(f.t - t) < Math.abs(best.t - t) ? f : best), frames[0] ?? { t: 0, url: "" });
+  const markedAt = (t: number) => cut.markers.filter((m) => frames.length && nearest(m.t).t === t && Math.abs(m.t - t) <= span * 1.5);
   const sub = cut.pending
     ? "The strip and the waveform are on their way."
     : [

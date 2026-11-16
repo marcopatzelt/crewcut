@@ -139,6 +139,8 @@ function CrewChat({ id }: { id: string }) {
       </header>
       <div className="chat-work">
         <WorkingList shape="chat" episode={id} />
+      </div>
+      <div className="chat-money">
         <MoneyLine episode={id} />
       </div>
       <ChatPane id={id} empty="Say an idea below, or ask the Scout for three." />

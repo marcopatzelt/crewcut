@@ -158,7 +158,7 @@ export function Composer() {
     setListening(true);
   }
 
-  const placeholder = onboarding ? "Paste your links." : "Say what you want…";
+  const placeholder = onboarding ? "Paste your links." : "Tell the crew what you want";
   const hasText = text.trim().length > 0;
 
   return (

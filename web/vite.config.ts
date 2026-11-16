@@ -1,6 +1,6 @@
 /// <reference types="vitest" />
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
 // The app talks to the Crewcut server. In development, Vite forwards /api to the main port
@@ -8,8 +8,25 @@ import react from "@vitejs/plugin-react";
 const api = process.env.CREWCUT_API ?? "http://127.0.0.1:4747";
 const prompter = process.env.CREWCUT_PROMPTER ?? "http://127.0.0.1:4748";
 
+/**
+ * Astryx's prebuilt CSS holds a few rules that remove the focus outline on :focus (for components Crewcut does not
+ * use, such as AppShell). Crewcut draws its own ring on :focus-visible (DESIGN.md rule 15), so these rules are left
+ * out of the build: no style sheet of the app may hide focus.
+ */
+function noFocusRemoval(): Plugin {
+  return {
+    name: "crewcut-no-focus-removal",
+    enforce: "pre",
+    transform(code, id) {
+      if (!/@astryxdesign[\\/]core[\\/].*\.css($|\?)/.test(id)) return null;
+      const out = code.replace(/\.[\w-]+:focus(?::not\(#\\#\))*\{outline:none\}/g, "");
+      return out === code ? null : { code: out, map: null };
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), noFocusRemoval()],
   base: "/",
   build: {
     outDir: "dist",

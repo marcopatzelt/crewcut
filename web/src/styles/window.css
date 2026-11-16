@@ -212,8 +212,14 @@
 /* ---------- Astryx controls in Crewcut's shape (rule 6): pill buttons, mint primary ---------- */
 
 .astryx-button {
+  min-width: max-content;
+  padding-inline: 14px;
   border-radius: var(--r-full);
   font-weight: 600;
+}
+
+.astryx-button[data-size="sm"] {
+  padding-inline: 11px;
 }
 
 .astryx-button[data-variant="primary"] {
@@ -550,6 +556,26 @@
   color: var(--ink-3);
 }
 
+.pill:focus-visible,
+.more-link:focus-visible {
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.more-link {
+  margin-top: 12px;
+  min-height: 32px;
+  padding: 0 4px;
+  border-radius: var(--r-row);
+  color: var(--accent);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+}
+
+.more-link:hover {
+  text-decoration: underline;
+}
+
 .pill[aria-pressed="true"] .pill-count {
   color: var(--chip-on-ink);
 }
@@ -642,6 +668,25 @@
   object-fit: cover;
 }
 
+/* A thumbnail question: the variants side by side over the softened cover, so no title sits on another. */
+.need-media.pick .need-ground {
+  filter: blur(16px) brightness(0.62) saturate(1.2);
+  transform: scale(1.1);
+}
+
+.need-media.pick .need-minis {
+  left: 12px;
+  right: 12px;
+  bottom: 14px;
+  justify-content: center;
+  gap: 10px;
+}
+
+.need-media.pick .mini {
+  width: calc((100% - 10px) / 2);
+  max-width: 240px;
+}
+
 .need-top {
   position: absolute;
   left: 12px;
@@ -671,9 +716,7 @@
     var(--shadow-media);
 }
 
-.need-minis.ab .mini {
-  width: 150px;
-}
+
 
 .mini img {
   display: block;
@@ -826,18 +869,25 @@
 
 .thumb-work {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 22px 10px 9px;
-  background: linear-gradient(180deg, transparent, var(--media-fade));
-  color: var(--on-media);
+  gap: 6px;
+  width: fit-content;
+  max-width: calc(100% - 16px);
+  height: 26px;
+  padding: 0 10px 0 3px;
+  border-radius: var(--r-full);
+  background: var(--tag-solid);
+  color: var(--tag-ink);
   font-size: 12px;
   line-height: 16px;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cover-blank {
@@ -869,12 +919,8 @@
 /* Shorts in 9:16, one row that scrolls sideways; the app writes the title over the frame. */
 .shorts {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: calc((100% - 72px) / 7);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 12px;
-  overflow-x: auto;
-  padding-bottom: 6px;
-  scrollbar-width: thin;
 }
 
 .short-card {
@@ -950,8 +996,7 @@
   min-width: 0;
   min-height: 0;
   padding: 4px 16px 16px 4px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: hidden;
   transition: opacity var(--t-fast) linear;
 }
 
@@ -969,19 +1014,31 @@
   box-shadow: inset 0 0 0 1px var(--line);
 }
 
-.rail-title {
+.rail-head {
   display: flex;
   align-items: baseline;
   gap: 8px;
+}
+
+.rail-title {
   font: 700 15px/20px var(--font-display);
   letter-spacing: -0.01em;
 }
 
 .rail-note {
   margin-left: auto;
-  font: 500 12px/16px var(--font);
-  letter-spacing: 0;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
   color: var(--ink-3);
+}
+
+/* Working now scrolls inside its card; Spend stays whole at the foot (rule 14). */
+.rail-card.working {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .rail .hint,
@@ -1397,9 +1454,9 @@
 /* Thumbnail: the variants large, the selected one with a mint ring, and the phone check. */
 .thumb-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.21fr);
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.2fr);
   gap: 14px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .variants {
@@ -1505,10 +1562,14 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  /* The phone takes the height of the variants beside it; the feed is cut at its foot, as on a real screen. */
+  contain: size;
 }
 
 .phone {
+  flex: 1;
+  min-height: 0;
   padding: 7px;
   border-radius: var(--r-composer);
   background: var(--phone);
@@ -1521,7 +1582,7 @@
   display: flex;
   flex-direction: column;
   gap: 9px;
-  aspect-ratio: 9 / 15.2;
+  height: 100%;
   padding: 10px 7px;
   border-radius: var(--r-panel);
   background: var(--phone-screen);
@@ -1672,7 +1733,7 @@
   grid-template-columns: 1.7fr 1fr 1fr;
   grid-template-rows: 1fr 1fr;
   gap: 10px;
-  height: 236px;
+  height: 220px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1863,9 +1924,16 @@
 }
 
 .chat-work {
-  flex: none;
-  max-height: 42%;
+  flex: 0 1 auto;
+  max-height: 40%;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 14px;
+}
+
+.chat-money {
+  flex: none;
   padding: 0 14px 10px;
   box-shadow: inset 0 -1px 0 var(--line);
 }
@@ -1879,7 +1947,7 @@
 }
 
 .job-chat {
-  padding: 8px 10px;
+  padding: 7px 10px;
   background: var(--tile);
   box-shadow: inset 0 0 0 1px var(--line);
   align-items: center;
@@ -2060,6 +2128,10 @@
   background: var(--hover);
 }
 
+.render-row:focus-visible {
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
 .render-pic {
   width: 96px;
   aspect-ratio: 16 / 9;
@@ -2217,11 +2289,7 @@
   }
 
   .shorts {
-    grid-auto-columns: calc((100% - 48px) / 5);
-  }
-
-  .need-minis.ab .mini {
-    width: 110px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .mini {
@@ -2239,7 +2307,15 @@
   }
 
   .shorts {
-    grid-auto-columns: calc((100% - 24px) / 2.6);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .need-minis {
+    display: none;
+  }
+
+  .need-media.pick .need-ground {
+    filter: none;
   }
 
   .home-head {
@@ -2257,6 +2333,14 @@
     flex-wrap: wrap;
   }
 
+  .ep-title {
+    flex-basis: 100%;
+  }
+
+  .stages {
+    align-items: flex-start;
+  }
+
   .media-row {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -2271,6 +2355,13 @@
 }
 
 @container media (max-width: 560px) {
+  .ep-title h1 {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
   .variants {
     grid-auto-flow: row;
   }

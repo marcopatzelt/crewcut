@@ -439,7 +439,7 @@ svg.lucide {
 
 /* ---------- identity marks (rule 13): a rounded square like a small app icon ---------- */
 
-/* Slate avatars (DESIGN.md rule 19): a crew member is Slate with its prop on a round tile. Decorative: the name always
+/* Slate avatars (DESIGN.md rule 13): a crew member is Slate with its prop on a round tile. Decorative: the name always
    stands next to it. */
 .avatar {
   position: relative;
@@ -1120,7 +1120,7 @@ svg.lucide {
   padding: 0 18px;
 }
 
-/* ---------- notices: a slim line under the toolbar ---------- */
+/* ---------- notices: a slim line under the title bar ---------- */
 
 .notice {
   position: absolute;

@@ -105,7 +105,7 @@ function JobRow({
           {shape === "rail" ? <span className="job-meta one-line">{meta}</span> : null}
           {live ? (
             <span className="job-live">
-              <img src={a.preview ?? ""} alt="" loading="lazy" />
+              <img src={a.preview ?? ""} alt="" decoding="async" />
               <span className="glass-tag">
                 {progress !== null ? `${Math.round(progress * 100)} %` : a.status === "waiting" ? "Waits for you" : "Draft"}
               </span>
@@ -264,10 +264,12 @@ export function SpendCard({ episode }: { episode: string | null }) {
   const plan = engine === "claude" ? "your Claude Code plan" : `your ${engine} plan`;
   return (
     <section className="rail-card spend" aria-labelledby="spend-heading">
-      <h2 className="rail-title">
-        <span id="spend-heading">Spend</span>
+      <div className="rail-head">
+        <h2 className="rail-title" id="spend-heading">
+          Spend
+        </h2>
         <span className="rail-note">{MONTHS[new Date().getMonth()]}</span>
-      </h2>
+      </div>
       <div className={zero ? "money zero" : "money"} aria-label="Money spent" data-testid="money">
         <span>
           Today<b key={usd(money.today_usd)}>{usd(money.today_usd)}</b>
@@ -341,11 +343,13 @@ export function CrewRail() {
   const n = activity.filter((a) => ACTIVE.has(a.status)).length;
   return (
     <aside className="rail" aria-labelledby="crew-heading">
-      <section className="rail-card">
-        <h2 className="rail-title">
-          <span id="crew-heading">Working now</span>
-          {n ? <span className="rail-note">{n}</span> : null}
-        </h2>
+      <section className="rail-card working">
+        <div className="rail-head">
+          <h2 className="rail-title" id="crew-heading">
+            Working now
+          </h2>
+          {n ? <span className="rail-note">{n === 1 ? "1 job" : `${n} jobs`}</span> : null}
+        </div>
         <WorkingHint episode={null} />
         <WorkingList shape="rail" episode={null} />
       </section>

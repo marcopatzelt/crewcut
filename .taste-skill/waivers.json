@@ -1,13 +1,13 @@
 {
-  "note": "Taste is built for company websites. Crewcut is an app with three fixed places; checks that only make sense for a landing page are waived here, each with its reason. Every other FAIL must be fixed. Reviewed 16 Nov 2026 against the screens run of the Apple look.",
+  "note": "Taste is built for company websites. Crewcut is an app: a glass window with a sidebar, a main column and a right column. Checks that only make sense for a landing page are waived here, each with its reason. Every other FAIL must be fixed. Reviewed 17 Nov 2026 against the screens run of the media-first look.",
   "waivers": [
     {
       "check": "hero-fill",
-      "reason": "An app has no hero section; the first screen is the work itself (DESIGN.md rule 2, three places)."
+      "reason": "An app has no hero section; the first screen is the work itself (DESIGN.md rule 2)."
     },
     {
       "check": "hero-screen",
-      "reason": "Same as hero-fill: no landing hero in an app."
+      "reason": "An app has no hero section; the first screen is the work itself (DESIGN.md rule 2)."
     },
     {
       "check": "section-height",
@@ -19,7 +19,7 @@
     },
     {
       "check": "container-edges",
-      "reason": "The flagged element is the floating composer dock, centred on the chat on purpose (DESIGN.md rule 18)."
+      "reason": "A landing-page rule (one .wrap container with equal margins on every section). The app is one window with three columns of their own widths and insets (DESIGN.md rules 2 and 7); the composer dock floats centred on its column."
     },
     {
       "check": "cta",
@@ -31,7 +31,7 @@
     },
     {
       "check": "overlap-text",
-      "reason": "The chat runs under the material toolbar on purpose (DESIGN.md rule 18) and fades out there (--under-bar-fade), so no text shows through as a second title; Taste measures the boxes, not what is visible."
+      "reason": "Panels and the composer float over the scrolling columns of the window on purpose (DESIGN.md rules 7 and 18); Taste measures the boxes, not what is visible."
     },
     {
       "check": "cut-text",
@@ -60,6 +60,14 @@
     {
       "check": "one-heading",
       "reason": "A chat holds several cards, each a labelled group with its own h2 title under the episode's h1; one heading per section is a landing-page rule."
+    },
+    {
+      "check": "section-tile",
+      "reason": "A landing-page rule (each section one screen tall). The home is one scrolling column of an app window: its sections are as tall as their pictures (DESIGN.md rules 2 and 7)."
+    },
+    {
+      "check": "copy-fact",
+      "reason": "A landing-page copy rule (a hard fact from the brief on the first screen). The app's first screen is the work itself: the counts sit in the pills, the lengths on the pictures, the money in Spend."
     }
   ]
 }

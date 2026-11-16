@@ -102,8 +102,8 @@ function NeedCard({ e }: { e: Episode }) {
       onClick={() => navigate({ kind: "episode", id: e.id })}
       aria-label={`${e.title}. ${metaOf(e)}. Needs your yes.`}
     >
-      <span className="need-media" aria-hidden="true">
-        {e.cover ? <img src={e.cover} alt="" loading="lazy" /> : <Blank needs />}
+      <span className={ab && images.length > 1 ? "need-media pick" : "need-media"} aria-hidden="true">
+        {e.cover ? <img src={e.cover} alt="" decoding="async" className="need-ground" /> : <Blank needs />}
         <span className="need-top">
           <span className="glass-tag">
             <span className="dot amber" />
@@ -115,7 +115,7 @@ function NeedCard({ e }: { e: Episode }) {
           <span className={ab ? "need-minis ab" : "need-minis"}>
             {images.map((url, i) => (
               <span className="mini" key={`${i}-${url}`}>
-                <img src={url} alt="" loading="lazy" />
+                <img src={url} alt="" decoding="async" />
                 {ab ? <span className="mini-letter">{String.fromCharCode(65 + i)}</span> : null}
               </span>
             ))}
@@ -144,7 +144,7 @@ function EpisodeCard({ e, worker }: { e: Episode; worker: { who: Identity; text:
       aria-label={`${e.title}. ${metaOf(e)}.`}
     >
       <span className="thumb" aria-hidden="true">
-        {e.cover ? <img src={e.cover} alt="" loading="lazy" /> : <Blank />}
+        {e.cover ? <img src={e.cover} alt="" decoding="async" /> : <Blank />}
         {worker ? (
           <span className="thumb-work">
             <Avatar who={worker.who} size="small" state="working" still />
@@ -172,7 +172,7 @@ function ShortCard({ e }: { e: Episode }) {
       aria-label={`${e.title}. ${metaOf(e)}.`}
     >
       <span className="short-pic" aria-hidden="true">
-        {e.cover ? <img src={e.cover} alt="" loading="lazy" /> : <Blank />}
+        {e.cover ? <img src={e.cover} alt="" decoding="async" /> : <Blank />}
         {done ? null : <span className="glass-tag">In work</span>}
         {/* The app writes the title over the frame: the frames carry no words of their own. */}
         <span className="short-title">{e.title}</span>
@@ -232,7 +232,9 @@ export function Home() {
   }, [episodes, filter]);
   const needs = shown.filter((e) => e.open_cards > 0);
   const long = shown.filter((e) => e.open_cards === 0 && e.kind !== "short");
-  const shorts = shown.filter((e) => e.open_cards === 0 && e.kind === "short");
+  const allShown = shown.filter((e) => e.open_cards === 0 && e.kind === "short");
+  const SHORTS_ROW = 7;
+  const shorts = filter === "shorts" ? allShown : allShown.slice(0, SHORTS_ROW);
   const allShorts = episodes.filter((e) => e.kind === "short");
   const from = new Set(allShorts.map((e) => e.source_episode).filter(Boolean)).size;
   const target = footageTarget(episodes);
@@ -269,7 +271,7 @@ export function Home() {
                 onClick={() => navigate(f.id === "all" ? { kind: "episodes" } : { kind: "episodes", filter: f.id }, { replace: true })}
               >
                 {f.id === "needs" ? <span className="dot amber" aria-hidden="true" /> : null}
-                {f.label}
+                {f.label}{" "}
                 <span className="pill-count">{count}</span>
               </button>
             );
@@ -327,6 +329,15 @@ export function Home() {
                 <ShortCard key={e.id} e={e} />
               ))}
             </div>
+            {allShown.length > shorts.length ? (
+              <button
+                type="button"
+                className="more-link"
+                onClick={() => navigate({ kind: "episodes", filter: "shorts" })}
+              >
+                Show all {allShown.length} Shorts
+              </button>
+            ) : null}
           </section>
         ) : null}
       </div>

@@ -129,7 +129,7 @@ export function Sidebar({ compact }: { compact: boolean }) {
               onClick={() => navigate(p.to)}
             >
               {p.icon}
-              <span className="place-label">{p.label}</span>
+              <span className="place-label">{p.label}</span>{" "}
               {count !== null ? <span className="place-count">{count}</span> : null}
             </button>
           );
