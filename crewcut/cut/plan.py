@@ -101,7 +101,7 @@ def make_plan(cfg: dict, silences: dict[str, list[tuple[float, float]]], project
             end = pad_end(sil, y, bool(sel.get("hard_end", False)), float(s["pad_out"])) if last else y
             c = {"id": sel["id"] if len(parts) == 1 else f"{sel['id']}_{k + 1}", "source": t["source"],
                  "start": round(start, 3), "end": round(end, 3), "speed": speed, "expected_text": sel.get("text", ""),
-                 "zoom": z, "zoom_center": centre(face, z, float(s["face_y"]))}
+                 "zoom": z, "zoom_center": centre(face, z, float(s["face_y"])), "face": face}
             if last and sel.get("tail"):
                 c["tail"] = float(sel["tail"])
             if t.get("audio"):

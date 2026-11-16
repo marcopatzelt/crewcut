@@ -1,0 +1,52 @@
+# Phrases that sound written, salesy or like filler in a Short's script (English).
+# Read by: python3 skills/script/scripts/script_check.py SCRIPT.md --short
+# Format: one phrase per line, case does not matter. A trailing * matches any word ending.
+# A line starting with re: is a regular expression (Python syntax, case-insensitive).
+# Source: the reel rules in Crewcut's Shorts plan ("not X. not Y. but Z.", "imagine", "game changer", dashes).
+
+# "Not X. Not Y. But Z." and its relatives
+re:\bnot\s+[^.!?]{1,60}?[.,;]\s*not\s+[^.!?]{1,60}?[.,;]\s*(?:but|just)\b
+re:\bnot\s+(?:just|only|merely)\s+[^.!?]{1,60}?,?\s+but\b
+re:\b(?:it'?s|it is|this is|that'?s|that is)\s+not\s+[^.!?]{1,40}?[,.;]\s*(?:it'?s|it is|this is|that'?s)\b
+re:\bnot\s+(?:\w+\s+){0,3}\w+,\s+but\s+
+
+# Openers and filler
+imagine
+picture this
+here's the thing
+here is the thing
+let that sink in
+let me explain
+buckle up
+in today's video
+in this video
+without further ado
+stop scrolling
+wait for it
+you won't believe
+what if I told you
+ever wondered
+and the best part
+the best part?
+spoiler alert
+plot twist
+it's no secret
+in a world where
+at the end of the day
+trust me
+
+# Hype words
+re:\bgame[\s-]?changers?\b
+mind-blowing
+mind blowing
+revolutionary
+next level
+unlock*
+supercharge*
+deep dive
+dive in
+secret sauce
+crushing it
+
+# Dashes sound written, not spoken
+re:[–—]|\s-{1,2}\s

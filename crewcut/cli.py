@@ -19,8 +19,8 @@ DELEGATED = {
     "transcribe": ("crewcut.cut.cli", True),
     "cut": ("crewcut.cut.cli", True),
 }
-HEAVY = {"render": {"2d", "3d", "probe", "cut", "all"}, "transcribe": None,
-         "cut": {"build", "grade", "islands", "probe", "verify", "doubles", "takes"}}
+HEAVY = {"render": {"2d", "3d", "probe", "cut", "all", "capture", "music-bed"}, "transcribe": None,
+         "cut": {"build", "grade", "islands", "probe", "verify", "doubles", "takes", "short", "short-check"}}
 
 
 def _env_episode(a) -> str | None:

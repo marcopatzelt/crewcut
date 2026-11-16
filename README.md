@@ -92,6 +92,11 @@ flowchart TB
 | 9 Upload | The Publisher uploads through the API: video, thumbnail, captions, schedule, YouTube's altered-or-synthetic-content answer | publish, every time |
 | 10 Results | *planned*: the 48-hour check | |
 
+**Shorts, two ways.** A *clip* comes from a finished episode: the Scout finds passages that stand on their own, the
+Editor cuts them from your original recording in 9:16 around your face. An *original* is recorded for itself: three
+ideas with a proof from your real work, you talk for two minutes, the Writer shortens your own words, you record only
+yourself. One card per Short, or your own standing approval for Shorts. See [docs/shorts.md](docs/shorts.md).
+
 Every correction is one sentence, typed or spoken ("keep the part where I laugh", "no captions"). A correction that should
 last becomes a proposed rule with the date and your words; one yes adds it to your style pack.
 
@@ -279,8 +284,8 @@ straight to the Editor, with hard limits. See [docs/crew-talk.md](docs/crew-talk
 | Stage | Content | Status |
 |---|---|---|
 | 0, foundation | studio extracted from the author's own setup, taste moved into style packs, Docker image for amd64 and arm64, CI | done |
-| 1, v0.1 | one command, ten steps, cards, teleprompter, speaker cut, 2D, 3D local and rented, checks, thumbnail, API upload, learned rules, onboarding, live crew column | built; first full episode next |
-| 2, whole chain | Shorts, music on rented GPUs, analytics and the 48-hour check, A/B variants, approval from the phone, style measured from your own videos | *planned* |
+| 1, v0.1 | one command, ten steps, cards, teleprompter, speaker cut, 2D, 3D local and rented, checks, thumbnail, API upload, learned rules, onboarding, live crew column, Humanizer pass, YouTube setup through Chrome, Shorts (clip and original) | built; first full episode next |
+| 2, whole chain | music on rented GPUs, the 48-hour check for long videos, A/B variants, approval from the phone, style measured from your own videos, a crop that follows a moving speaker | *planned* |
 | 3, for everyone | shareable style packs, your own 3D stage and models, more GPU providers, Codex out of beta | *planned* |
 | 4, breadth | blog, Instagram output, a small Mac app that starts Docker for you | *planned* |
 
@@ -296,6 +301,7 @@ straight to the Editor, with hard limits. See [docs/crew-talk.md](docs/crew-talk
 [YouTube](docs/youtube.md) ·
 [Web UI](docs/ui.md) ·
 [Crew talk](docs/crew-talk.md) ·
+[Shorts](docs/shorts.md) ·
 [HTTP API](docs/api.md) ·
 [First real episode](docs/first-real-episode.md) ·
 [Integration tests](docs/integration-test.md)

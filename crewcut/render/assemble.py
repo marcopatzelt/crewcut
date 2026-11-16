@@ -10,6 +10,11 @@ Three stages, each its own ffmpeg run (one run with every piece as an input ran 
 
 After someone has seen an output, `shown` locks it: `<output>.shown` holds the time and sha256, and `cut` refuses to
 overwrite it. Every change is a new plan version with a new output.
+
+Layout "proof-top" (portrait Shorts, see plan.py): while an insert with place "top" runs, its piece stacks two
+pictures (vstack): the insert scaled onto the stage (cover: fill and crop; contain: the whole picture as a card on the
+stage colour) and below it the speaker, cropped around the face. Without an insert the speaker fills the frame, and the
+last `end_face` seconds of the speaker cut always do: a stage insert that reaches into them stops there.
 """
 
 from __future__ import annotations
@@ -26,6 +31,8 @@ from pathlib import Path
 
 from . import html, media
 from .plan import Insert, Plan, PlanError
+
+CARD_MARGIN = 48                 # proof-top, fit contain: space around the card on the stage (px)
 
 SFX = (  # name, plan list key, default dB, default length (s), pre-roll (ms)
     ("hit", "hits", -9.0, 1.2, 40),
@@ -51,6 +58,8 @@ class Piece:
     vf: str = ""                 # filters before fps/format, ending with ","
     overlays: list[tuple[Path, float]] = field(default_factory=list)
     color: str | None = None
+    low: Piece | None = None     # proof-top: the speaker part stacked under this (stage) picture
+    size: tuple[int, int] | None = None     # picture size of this part when it is not the full frame
 
     @property
     def frames(self) -> int:
@@ -115,14 +124,41 @@ def end_frame(plan: Plan, base_end: int) -> int:
     return base_end + round(float(plan.p.get("tail") or 0) * plan.fps)
 
 
+def face_from(plan: Plan, base_end: int) -> int:
+    """proof-top: first frame of the face-alone end (the stage stops here). Other layouts: no limit."""
+    if plan.layout != "proof-top":
+        return base_end + 10 ** 9
+    return max(0, base_end - round(plan.end_face_s * plan.fps))
+
+
+def visible(plan: Plan, base_end: int) -> list[tuple[Insert, int, int]]:
+    """Full-frame inserts with the frames they are shown: stage inserts end where the face-alone end begins."""
+    limit = face_from(plan, base_end)
+    out = []
+    for x in plan.inserts:
+        if x.transparent:
+            continue
+        a, b = x.start, (min(x.end, limit) if x.place == "top" else x.end)
+        if b > a:
+            out.append((x, a, b))
+    return out
+
+
+def stage_notes(plan: Plan, base_end: int) -> list[str]:
+    """What the face-alone end took away from stage inserts."""
+    limit = face_from(plan, base_end)
+    return [f"{x.id}: the stage stops at {limit / plan.fps:.2f} s, the last {plan.end_face_s:g} s show the face alone"
+            for x in plan.inserts if not x.transparent and x.place == "top" and x.end > limit]
+
+
 def pieces(plan: Plan, base_end: int, end: int) -> list[Piece]:
     """Split the video at every visible cut and every overlay edge. Pure: no files are read."""
     W, H = plan.size
     fps = plan.fps
-    full = [x for x in plan.inserts if not x.transparent]
+    full = visible(plan, base_end)
     over = [x for x in plan.inserts if x.transparent]
     marks = plan.speaker_marks()
-    cuts = {0, end} | {x.start for x in full} | {x.end for x in full} | {f for f, _ in marks}
+    cuts = {0, end} | {a for _, a, _ in full} | {b for _, _, b in full} | {f for f, _ in marks}
     if base_end < end:
         cuts.add(base_end)                      # the tail starts here; it must be covered by an insert
     edges = cuts | {x.start for x in over} | {x.end for x in over}
@@ -131,6 +167,8 @@ def pieces(plan: Plan, base_end: int, end: int) -> list[Piece]:
     base = None if color else plan.local(plan.p["base"])
     norm = f"scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{H},"
     fx, fy = plan.face
+    SW, SH = plan.stage_size
+    LH = H - SH                                 # height of the speaker part under the stage
 
     def zoom_at(f: int) -> float:
         z = 1.0
@@ -139,12 +177,39 @@ def pieces(plan: Plan, base_end: int, end: int) -> list[Piece]:
                 z = zz
         return z
 
+    def speed_vf(e: Insert) -> str:
+        return f"setpts=(PTS-STARTPTS)/{e.speed:g}," if e.kind == "clip" and e.speed != 1 else ""
+
+    def stage_vf(e: Insert) -> str:
+        if e.fit == "contain":
+            m = CARD_MARGIN
+            return (speed_vf(e) + f"scale={SW - 2 * m}:{SH - 2 * m}:force_original_aspect_ratio=decrease:"
+                    f"force_divisible_by=2:flags=lanczos,pad={SW}:{SH}:(ow-iw)/2:(oh-ih)/2:"
+                    f"color=0x{plan.stage_color().lstrip('#')},")
+        y = "0" if e.anchor == "top" else f"(ih-{SH})/2"
+        return (speed_vf(e) + f"scale={SW}:{SH}:force_original_aspect_ratio=increase:flags=lanczos,"
+                f"crop={SW}:{SH}:(iw-{SW})/2:{y},")
+
+    def speaker_low(i: int, a: int, b: int) -> Piece:
+        """The speaker under the stage: the full frame zoomed like elsewhere, then the part around the face."""
+        if color:
+            return Piece(i, a, b, "background", "color", None, a / fps, "", color=color, size=(W, LH))
+        z = zoom_at(a)
+        y = int(min(max(fy * H * z - LH / 2, 0), H * z - LH))
+        vf = norm + (f"scale=iw*{z:g}:-2:flags=lanczos," if z != 1.0 else "") + f"crop={W}:{LH}:(iw-{W})*{fx:g}:{y},"
+        return Piece(i, a, b, f"speaker x{z:g} (below the stage)", "base", base, a / fps, vf, size=(W, LH))
+
     out = []
     for i, (a, b) in enumerate(pairwise(bounds)):
-        e: Insert | None = next((x for x in full if x.start <= a < x.end), None)
+        hit = next(((x, s, t) for x, s, t in full if s <= a < t), None)
+        e: Insert | None = hit[0] if hit else None
         ov = [(u.clip, (a - u.start) / fps) for u in over if u.start <= a < u.end]
-        if e is not None and e.kind == "clip":
-            vf = norm + (f"setpts=(PTS-STARTPTS)/{e.speed:g}," if e.speed != 1 else "")
+        if e is not None and e.place == "top":
+            seek = (e.at + (a - e.start) / fps * e.speed) if e.kind == "clip" else (a - e.start) / fps
+            p = Piece(i, a, b, f"{e.id} (stage)", "insert", e.clip, seek, stage_vf(e), ov,
+                      low=speaker_low(i, a, b), size=(SW, SH))
+        elif e is not None and e.kind == "clip":
+            vf = norm + speed_vf(e)
             p = Piece(i, a, b, e.id, "insert", e.clip, e.at + (a - e.start) / fps * e.speed, vf, ov)
         elif e is not None:
             p = Piece(i, a, b, e.id, "insert", e.clip, (a - e.start) / fps, "", ov)
@@ -166,29 +231,40 @@ def pieces(plan: Plan, base_end: int, end: int) -> list[Piece]:
 
 def shots(plan: Plan, base_end: int, end: int) -> list[dict]:
     """The visible cuts (overlay edges are not cuts): frame, seconds, what is shown."""
-    full = [x for x in plan.inserts if not x.transparent]
-    cuts = sorted({0} | {x.start for x in full} | {x.end for x in full if x.end < end} | {f for f, _ in plan.speaker_marks()})
+    full = visible(plan, base_end)
+    cuts = sorted({0} | {a for _, a, _ in full} | {b for _, _, b in full if b < end} | {f for f, _ in plan.speaker_marks()})
     rows = []
     for c in cuts:
         if not 0 <= c < end:
             continue
-        e = next((x for x in full if x.start <= c < x.end), None)
+        e = next((x for x, a, b in full if a <= c < b), None)
         rows.append({"frame": c, "s": round(c / plan.fps, 2), "what": e.id if e else "speaker"})
     return rows
 
 
-def piece_cmd(plan: Plan, piece: Piece, out: Path) -> list[str]:
-    W, H = plan.size
-    fps = plan.fps
-    cmd = [media.ffmpeg(), "-y", "-loglevel", "error"]
+def _input(plan: Plan, piece: Piece) -> list[str]:
+    """ffmpeg input arguments of one picture part: a generated colour or a file at its seek point."""
     if piece.source == "color":
-        cmd += ["-f", "lavfi", "-i", f"color=c=0x{piece.color.lstrip('#')}:s={W}x{H}:r={fps}:d={piece.frames / fps + 0.2:.3f}"]
-    else:
-        cmd += ["-ss", f"{max(0.0, piece.seek - 0.004):.3f}", "-i", str(piece.path)]
-    chain = f"[0:v]{piece.vf}fps={fps},format=yuv420p,setsar=1,tpad=stop_mode=clone:stop_duration=1[b0]"
+        W, H = piece.size or plan.size
+        return ["-f", "lavfi", "-i",
+                f"color=c=0x{piece.color.lstrip('#')}:s={W}x{H}:r={plan.fps}:d={piece.frames / plan.fps + 0.2:.3f}"]
+    return ["-ss", f"{max(0.0, piece.seek - 0.004):.3f}", "-i", str(piece.path)]
+
+
+def piece_cmd(plan: Plan, piece: Piece, out: Path) -> list[str]:
+    fps = plan.fps
+    cmd = [media.ffmpeg(), "-y", "-loglevel", "error", *_input(plan, piece)]
+    tail = f"fps={fps},format=yuv420p,setsar=1,tpad=stop_mode=clone:stop_duration=1"
+    first = 1
+    if piece.low is None:
+        chain = f"[0:v]{piece.vf}{tail}[b0]"
+    else:                                       # proof-top: the stage above, the speaker below
+        cmd += _input(plan, piece.low)
+        chain = f"[0:v]{piece.vf}{tail}[st];[1:v]{piece.low.vf}{tail}[lo];[st][lo]vstack=inputs=2[b0]"
+        first = 2
     for j, (clip, seek) in enumerate(piece.overlays):
         cmd += ["-ss", f"{max(0.0, seek - 0.004):.3f}", "-i", str(clip)]
-        chain += (f";[{j + 1}:v]fps={fps},tpad=stop_mode=clone:stop_duration=1[u{j}]"
+        chain += (f";[{j + first}:v]fps={fps},tpad=stop_mode=clone:stop_duration=1[u{j}]"
                   f";[b{j}][u{j}]overlay=format=auto[b{j + 1}]")
     chain += f";[b{len(piece.overlays)}]format=yuv420p[v]"
     cmd += ["-an", "-filter_complex", chain, "-map", "[v]", "-frames:v", str(piece.frames), "-c:v", "libx264",
@@ -197,7 +273,7 @@ def piece_cmd(plan: Plan, piece: Piece, out: Path) -> list[str]:
 
 
 def piece_key(piece: Piece) -> str:
-    """Cache key of a piece: sources with their mtimes, seek, length, filters, overlays."""
+    """Cache key of a piece: sources with their mtimes, seek, length, filters, overlays (and the part below)."""
     def stamp(p: Path | None) -> str:
         try:
             return f"{p}:{os.stat(p).st_mtime_ns}" if p else ""
@@ -205,6 +281,9 @@ def piece_key(piece: Piece) -> str:
             return f"{p}:missing"
     parts = [piece.source, stamp(piece.path), piece.color or "", f"{piece.seek:.4f}", str(piece.frames), piece.vf]
     parts += [f"{stamp(c)}@{s:.4f}" for c, s in piece.overlays]
+    if piece.low is not None:
+        lo = piece.low
+        parts += ["low", lo.source, stamp(lo.path), lo.color or "", f"{lo.seek:.4f}", lo.vf]
     return hashlib.sha1("|".join(parts).encode()).hexdigest()[:10]
 
 
@@ -427,7 +506,7 @@ def cut(plan: Plan, runner: media.Runner = media.run, log: Callable = print,
     if gain == 0.0 and (before is None or before < -60):
         notes.append("the sound is silent; loudness was not adjusted")
     tp, more = encode_audio(raw_audio, m4a, gain, tp_target, runner)
-    notes += more
+    notes += more + stage_notes(plan, base_end)
     final_tmp = out.with_name(out.stem + ".tmp" + out.suffix)
     rc, o = runner(final_cmd(raw_video, m4a, int(plan.p.get("crf") or 17), fps, final_tmp), timeout=3600)
     if rc:
@@ -438,7 +517,7 @@ def cut(plan: Plan, runner: media.Runner = media.run, log: Callable = print,
         f.unlink(missing_ok=True)
     after = media.measure_loudness(out, runner)
     info = {"plan": plan.path.name, "output": str(out), "frames": end, "seconds": round(end / fps, 2),
-            "shots": shots(plan, base_end, end), "lufs_before": before, "lufs": after["lufs"],
+            "layout": plan.layout, "shots": shots(plan, base_end, end), "lufs_before": before, "lufs": after["lufs"],
             "true_peak": after["true_peak"], "target_lufs": target,
             "music_source": (plan.p.get("sound") or {}).get("music_source"), "notes": notes}
     Path(f"{stem}.cut.json").write_text(json.dumps(info, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")

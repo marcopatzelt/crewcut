@@ -5,7 +5,7 @@ mark: DE
 avatar: brush
 role: "Makes the thumbnail and its test variants."
 model: work
-skills: [thumbnail]
+skills: [thumbnail, shorts]
 steps: [thumbnail]
 may_spend: true
 may_publish: false

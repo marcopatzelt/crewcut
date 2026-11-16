@@ -9,6 +9,10 @@
     crewcut render all     <plan.json> [--local | --rented] [--gpus N]
     crewcut render measure <image.png> [--pack DIR]
     crewcut render samples [--out DIR] [--formats landscape,portrait] [--frame -1] [--pack DIR]
+    crewcut render capture <episode> --url URL | --html FILE | --terminal FILE [--seconds S] [--scroll KEYS]
+                           [--size full|stage] [--zoom 2.5] [--name NAME]
+    crewcut render music-bed <voice.wav> --music TRACK [--start S] [--punch T,T] [--source INFO.json] [--licence L]
+                           [--out FILE]
 
 Plain text by default, --json for machine output. Exit codes: 0 ok, 1 error, 2 usage, 3 waiting for or refused by the
 user (a card is open, the cap is reached), 4 missing login or key.
@@ -22,14 +26,21 @@ import sys
 from pathlib import Path
 
 from .. import brand
-from . import assemble, measure, workbench
+from . import assemble, capture, measure, music, workbench
 from .plan import Plan, PlanError
 
-COMMANDS = ("plan", "2d", "3d", "probe", "cut", "shown", "all", "measure", "samples")
+COMMANDS = ("plan", "2d", "3d", "probe", "cut", "shown", "all", "measure", "samples", "capture", "music-bed")
 
 
 def _ids(s: str | None) -> list[str] | None:
     return [x.strip() for x in s.split(",") if x.strip()] if s else None
+
+
+def _floats(s: str | None, what: str) -> list[float]:
+    try:
+        return [float(x) for x in (s or "").split(",") if x.strip()]
+    except ValueError as e:
+        raise PlanError(f"{what} takes seconds separated by commas, got {s!r}") from e
 
 
 def _ints(s: str | None) -> list[int] | None:
@@ -85,6 +96,44 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--frame", type=int, default=-1, help="frame to render; -1 is the last (default)")
     p.add_argument("--pack", help="a style pack folder (default: the active pack)")
     p.add_argument("--json", action="store_true")
+    p = sub.add_parser("capture", help="record a web page or a terminal transcript upright (Shorts), into broll/")
+    p.add_argument("episode", help="episode id or folder; the video goes to its broll/ as <name>-vNNN.mp4")
+    src = p.add_mutually_exclusive_group(required=True)
+    src.add_argument("--url", help="an http(s) address")
+    src.add_argument("--html", help="a local HTML file")
+    src.add_argument("--terminal", help="a terminal transcript: '$ cmd' lines are typed, '[+1.5]' waits 1.5 s")
+    p.add_argument("--seconds", type=float, help="length (required for pages; terminal: until the last line + 2 s)")
+    p.add_argument("--scroll", help="scroll keys second:position, e.g. 0:0,1.5:0,8:end (position: px, end, 40%%)")
+    p.add_argument("--size", choices=sorted(capture.SIZES), default="full",
+                   help="full 1080x1920 (default) or stage 1080x960 (the proof-top layout's stage)")
+    p.add_argument("--zoom", type=float, default=capture.ZOOM, help="device scale; the page is 1080/zoom CSS px wide "
+                   "(default 2.5: a 432 px phone layout)")
+    p.add_argument("--fps", type=int, help="frames per second (default: the episode's)")
+    p.add_argument("--wait", type=float, default=capture.WAIT_S, help="seconds after loading before the first frame")
+    p.add_argument("--hide-overlays", action="store_true", help="hide dialogs and big fixed layers (cookie banners)")
+    p.add_argument("--name", help="file name (default from the address or file)")
+    p.add_argument("--keep-frames", action="store_true", help="keep the PNG frames in render/capture/")
+    p.add_argument("--line-delay", type=float, default=capture.LINE_DELAY_S, help="terminal: seconds between lines")
+    p.add_argument("--type-speed", type=float, default=capture.TYPE_CPS, help="terminal: typed characters per second")
+    p.add_argument("--font-px", type=int, default=capture.FONT_PX, help="terminal: font size")
+    p.add_argument("--pack", help="a style pack folder (default: the active pack)")
+    p.add_argument("--json", action="store_true")
+    p = sub.add_parser("music-bed", help="a licensed music track under a Short's voice, with a music source file")
+    p.add_argument("voice", help="the Short's voice (WAV)")
+    p.add_argument("--music", required=True, help="the music track")
+    p.add_argument("--start", type=float, default=0.0, help="seconds into the track (default 0)")
+    p.add_argument("--punch", help="punchline times in seconds, comma separated: a music hole before each")
+    p.add_argument("--source", help="the track's source info (JSON); default <track stem>.source.json next to it")
+    p.add_argument("--licence", help="the track's licence (wins over the source info)")
+    p.add_argument("--credit", help="credit text for the video description")
+    p.add_argument("--made", help="how the track was made (author, model, recording)")
+    p.add_argument("--out", help="result WAV (default <voice stem>-bed-vNNN.wav next to the voice)")
+    p.add_argument("--music-db", type=float, help="music level below the voice (default: pack shorts.music_db)")
+    p.add_argument("--hole", type=float, help="music hole before a punchline, seconds (default: pack shorts.music_hole_s)")
+    p.add_argument("--tail", type=float, help="seconds after the voice (default: pack shorts.end_tail_s)")
+    p.add_argument("--lufs", type=float, help="loudness target (default: pack shorts.loudness_lufs)")
+    p.add_argument("--pack", help="a style pack folder (default: the active pack)")
+    p.add_argument("--json", action="store_true")
     return ap
 
 
@@ -122,6 +171,33 @@ def run(a: argparse.Namespace, out: dict) -> int:
                                  brand.load(a.pack) if a.pack else None, log=log)
         out["samples"] = rows
         return 0 if all(r["ok"] for r in rows) else 1
+    if a.cmd == "capture":
+        r = capture.capture(a.episode, url=a.url, html_file=a.html, terminal=a.terminal, seconds=a.seconds,
+                            size=a.size, zoom=a.zoom, fps=a.fps, scroll=a.scroll, wait=a.wait,
+                            hide_overlays=a.hide_overlays, name=a.name, keep_frames=a.keep_frames,
+                            line_delay=a.line_delay, type_cps=a.type_speed, font_px=a.font_px,
+                            pack=brand.load(a.pack) if a.pack else None, log=log)
+        out.update(r)
+        if not a.json:
+            print(f"Captured: {r['output']}  {r['size']}  {r['seconds']} s  ({r['frames']} frames)")
+        return 0
+    if a.cmd == "music-bed":
+        pack = brand.load(a.pack) if a.pack else brand.load()
+        track = Path(a.music).expanduser().resolve()
+        if not track.is_file():
+            raise PlanError(f"music track not found: {a.music}")
+        src = music.source_info(track, Path(a.source).expanduser().resolve() if a.source else None,
+                                licence=a.licence, credit=a.credit, made=a.made)
+        bed = music.Bed.from_pack(pack, music_db=a.music_db, hole_s=a.hole, tail_s=a.tail, lufs=a.lufs)
+        r = music.music_bed(Path(a.voice).expanduser(), track, Path(a.out).expanduser() if a.out else None,
+                            punches=_floats(a.punch, "--punch"), start=a.start, bed=bed, source=src, log=log)
+        out.update(r)
+        if not a.json:
+            print(f"Music bed: {r['output']}  {r['seconds']} s  {r['lufs']} LUFS, true peak {r['true_peak']} dBTP")
+            print(f"Source: {r['music_source']}  licence {r['licence']}" + (f"  credit: {r['credit']}" if r['credit'] else ""))
+            for line in r["listen"]:
+                print(f"  listen: {line}")
+        return 0
     plan = Plan(a.plan)
     mode = "local" if getattr(a, "local", False) else ("rented" if getattr(a, "rented", False) else None)
     if a.cmd == "plan":

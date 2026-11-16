@@ -1,6 +1,6 @@
 ---
 name: script
-description: "Writes the spoken script of an episode in the user's own voice (voice.md), in teleprompter form, after title and proof are fixed: opening that delivers the title's promise, small stories with rising stakes, the critical side, a verdict in its own form, the channel's closing line. skills/script/scripts/script_check.py checks form, sentences, opening, ending, numbers against the proof, and length. Delivered through the web teleprompter (crewcut prompter). Use when: \"write the script\", \"teleprompter text\", \"rewrite the script\", \"shorten the script\", \"make it sound natural\", \"script for the episode\". Not for titles, thumbnails or Shorts under 60 seconds."
+description: "Writes the spoken script of an episode in the user's own voice (voice.md), in teleprompter form, after title and proof are fixed: opening that delivers the title's promise, small stories with rising stakes, the critical side, a verdict in its own form, the channel's closing line. skills/script/scripts/script_check.py checks form, sentences, opening, ending, numbers against the proof, and length. Delivered through the web teleprompter (crewcut prompter). Use when: \"write the script\", \"teleprompter text\", \"rewrite the script\", \"shorten the script\", \"make it sound natural\", \"script for the episode\". Not for titles or thumbnails. Short scripts: the `--short` mode of the check and skills/shorts."
 ---
 
 # Script

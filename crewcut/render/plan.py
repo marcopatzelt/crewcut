@@ -2,6 +2,14 @@
 
 Pure Python: nothing here runs ffmpeg, Chromium or Blender. The schema is in docs/architecture.md ("Edit plan").
 Values the plan leaves out or sets to null come from the active style pack.
+
+Layouts (portrait only, `layout` in the plan, else the pack's `edit_style.shorts.layout`, else "full"):
+- "full": a full-frame insert covers the whole picture (the only layout of landscape plans).
+- "proof-top": a full-frame insert is the proof on a stage at the top (STAGE_HEIGHT px), the speaker is cropped
+  around the face into the part below; an insert with `"place": "full"` still covers everything. The last
+  `end_face` seconds of the speaker cut show the face alone (the stage stops there).
+In portrait plans keyword chips default to the left of the pack's `shorts.right_free_frac`: the platform's buttons sit
+on the right edge of a Short.
 """
 
 from __future__ import annotations
@@ -26,6 +34,14 @@ LIST_PATH_KEYS = {"cards": ("image", "folder")}
 SHARED = {"2d": ("base.css", "motion.js", "scene.js"), "3d": ("stage.py",)}
 EXT = {"2d": ".html", "3d": ".py"}
 TEXT_SCENES = ("headline", "post")                  # inserts the viewer has to read
+LAYOUTS = ("full", "proof-top")
+STAGE_HEIGHT = 960                                  # proof-top: height of the proof's stage at the top (portrait)
+PLACES = ("top", "full")                            # where a full-frame insert goes in proof-top
+FITS = ("cover", "contain")                         # stage: fill and crop, or the whole picture as a card
+ANCHORS = ("center", "top")                         # fit cover: which part of a taller picture stays
+END_FACE_S = 2.0                                    # proof-top: seconds at the end with the face alone
+RIGHT_FREE_FRAC = 0.18                              # portrait: right share kept free of text (platform buttons)
+KEYWORD_MARGIN = 0.04                               # keyword chips keep this share of the width to the left edge
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,40}$")
 _SCENE = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
 _COLORS = re.compile(r"^#?[0-9A-Fa-f]{6}$")
@@ -113,6 +129,9 @@ class Insert:
     clip: Path | None = None         # encoded insert (or the clip file for kind "clip")
     at: float = 0.0                  # kind clip: seconds into the file
     speed: float = 1.0               # kind clip
+    place: str = "full"              # proof-top: "top" (on the stage) or "full"; overlays are always "full"
+    fit: str = "cover"               # on the stage: "cover" (fill, crop) or "contain" (whole, as a card)
+    anchor: str = "center"           # fit cover: "center" or "top" (keeps the top of a tall capture)
 
     @property
     def frames(self) -> int:
@@ -152,6 +171,10 @@ class Plan:
         self.format = fmt
         self.size = FORMATS[fmt]
         self.fps = int(self.p.get("fps") or self.project.get("fps") or self.pack.value("edit_style.fps", 25))
+        self.layout = self._layout()
+        self.end_face_s = max(0.0, float(self.value("end_face", "edit_style.shorts.end_face_s", END_FACE_S)))
+        self.right_free = min(0.5, max(0.0, float(self.value("right_free", "edit_style.shorts.right_free_frac",
+                                                              RIGHT_FREE_FRAC))))
         self.words = load_words(self.local(self.p["words"])) if self.p.get("words") else []
         self.tokens = render_tokens(self.pack)
         self.inserts: list[Insert] = []
@@ -161,6 +184,22 @@ class Plan:
                 raise PlanError(f"insert id {ins.id} is used twice")
             self.inserts.append(ins)
         self.warnings = self._check()
+
+    def _layout(self) -> str:
+        """The plan's layout; a portrait plan without one takes the pack's Shorts layout. Landscape is always full."""
+        v = self.p.get("layout")
+        if v is None and self.format == "portrait":
+            v = self.pack.value("edit_style.shorts.layout", "full")
+        v = v or "full"
+        if v not in LAYOUTS:
+            raise PlanError(f"layout must be one of {', '.join(LAYOUTS)}, got {v!r}")
+        if v != "full" and self.format != "portrait":
+            raise PlanError(f"layout {v} is for portrait plans (Shorts); this plan is {self.format}")
+        return v
+
+    @property
+    def stage_size(self) -> tuple[int, int]:
+        return self.size[0], STAGE_HEIGHT
 
     # ---- paths ------------------------------------------------------------------------------------------------
     def local(self, rel: str | os.PathLike) -> Path:
@@ -309,8 +348,8 @@ class Plan:
             if speed <= 0:
                 raise PlanError(f"insert {iid}: speed must be above 0")
             f = self.local(e["file"])
-            return Insert(iid, kind, None, start_s, end_s, start, end, transparent, {}, {}, e, clip=f,
-                          at=float(e.get("at") or 0.0), speed=speed)
+            return self._placed(Insert(iid, kind, None, start_s, end_s, start, end, transparent, {}, {}, e, clip=f,
+                                       at=float(e.get("at") or 0.0), speed=speed))
         scene = str(e.get("scene") or "")
         if not _SCENE.match(scene):
             raise PlanError(f"insert {iid}: scene name {scene!r} is not valid")
@@ -321,13 +360,42 @@ class Plan:
         if not isinstance(data, dict):
             raise PlanError(f"insert {iid}: data must be an object")
         data.update(format=self.format, frames=end - start + EXTRA_FRAMES, fps=self.fps, cues=cues)
+        if scene == "keyword" and self.format == "portrait":
+            self._keyword_defaults(data)
         stats = self._resolve_paths(data)
         template, shared = self.template_for(kind, scene)
         h = insert_hash(data, [template, *shared], tokens_for_hash(self.tokens, kind), stats)
         out_dir = self.episode_dir / "render" / "inserts" / f"{iid}-{h}"
         clip = Path(str(out_dir) + (".mov" if transparent else ".mp4"))
-        return Insert(iid, kind, scene, start_s, end_s, start, end, transparent, cues, data, e, template=template,
-                      shared=shared, hash=h, out_dir=out_dir, clip=clip)
+        return self._placed(Insert(iid, kind, scene, start_s, end_s, start, end, transparent, cues, data, e,
+                                   template=template, shared=shared, hash=h, out_dir=out_dir, clip=clip))
+
+    def _placed(self, ins: Insert) -> Insert:
+        """Where a full-frame insert goes (place, fit, anchor). Overlays always lie over the whole picture."""
+        e = ins.raw
+        place = e.get("place") or ("top" if self.layout == "proof-top" and not ins.transparent else "full")
+        if place not in PLACES:
+            raise PlanError(f"insert {ins.id}: place must be one of {', '.join(PLACES)}")
+        if place == "top" and (self.layout != "proof-top" or ins.transparent):
+            raise PlanError(f"insert {ins.id}: place 'top' needs layout proof-top and a full-frame insert")
+        fit, anchor = e.get("fit") or "cover", e.get("anchor") or "center"
+        if fit not in FITS:
+            raise PlanError(f"insert {ins.id}: fit must be one of {', '.join(FITS)}")
+        if anchor not in ANCHORS:
+            raise PlanError(f"insert {ins.id}: anchor must be one of {', '.join(ANCHORS)}")
+        ins.place, ins.fit, ins.anchor = place, fit, anchor
+        return ins
+
+    def _keyword_defaults(self, data: dict) -> None:
+        """Portrait: keyword chips stay left of the free right strip; in proof-top they sit on the seam by default."""
+        free = 1.0 - self.right_free
+        data.setdefault("x", round(free / 2, 4))
+        data.setdefault("max_width", round(max(0.3, free - 2 * KEYWORD_MARGIN), 4))
+        if self.layout == "proof-top":
+            data.setdefault("y", round(STAGE_HEIGHT / self.size[1], 4))
+        for w in data.get("words") or []:
+            if isinstance(w, dict):
+                w.setdefault("x", data["x"])
 
     def done(self, ins: Insert) -> set[int]:
         """Frame numbers already rendered for this insert."""
@@ -375,17 +443,25 @@ class Plan:
             out.append((round(float(m["at"]) * self.fps), z))
         return sorted(out)
 
+    def color(self, name: str, what: str) -> str:
+        """A pack colour name (paper, soft, ...) or #RRGGBB as #RRGGBB."""
+        c = str(name)
+        if not _COLORS.match(c):
+            c = str(self.pack.value(f"brand.colors.{c}", "") or "")
+        if not _COLORS.match(c):
+            raise PlanError(f"{what} must be a pack colour name (paper, soft, ...) or #RRGGBB")
+        return "#" + c.lstrip("#").upper()
+
     def base_color(self) -> str | None:
         """A generated base ({"color": "soft", "seconds": 12}) as #RRGGBB, or None when the base is a file."""
         b = self.p.get("base")
         if not isinstance(b, dict):
             return None
-        c = str(b.get("color") or "soft")
-        if not _COLORS.match(c):
-            c = str(self.pack.value(f"brand.colors.{c}", "") or "")
-        if not _COLORS.match(c):
-            raise PlanError("base.color must be a pack colour name (paper, soft, ...) or #RRGGBB")
-        return "#" + c.lstrip("#").upper()
+        return self.color(b.get("color") or "soft", "base.color")
+
+    def stage_color(self) -> str:
+        """proof-top: the colour around a card (fit contain) on the stage. Plan `stage_color`, default the pack's soft."""
+        return self.color(self.p.get("stage_color") or "soft", "stage_color")
 
     # ---- checks ---------------------------------------------------------------------------------------------------
     def _check(self) -> list[str]:
@@ -402,14 +478,24 @@ class Plan:
         limit = self.pack.value("edit_style.text_cards_max")
         if isinstance(limit, (int, float)) and texts > limit:
             out.append(f"{texts} text cards (headline, post); the style pack allows {int(limit)}")
+        if self.format == "portrait":
+            edge = 1.0 - self.right_free
+            for x in self.inserts:
+                if x.scene != "keyword":
+                    continue
+                xs = [x.data.get("x")] + [w.get("x") for w in x.data.get("words") or [] if isinstance(w, dict)]
+                if any(isinstance(v, (int, float)) and v > edge for v in xs):
+                    out.append(f"{x.id}: a keyword centre lies in the right {self.right_free:.0%} of the frame, "
+                               "where the platform's buttons are")
         return out
 
     def summary(self) -> dict:
         return {
             "plan": self.path.name, "episode": self.episode, "format": self.format, "fps": self.fps,
+            "layout": self.layout,
             "output": str(self.output), "shown": self.shown_path.is_file(), "warnings": self.warnings,
             "inserts": [{"id": x.id, "kind": x.kind, "scene": x.scene or (x.clip.name if x.clip else None),
                          "start": x.start_s, "end": x.end_s, "frames": x.frames, "cues": x.cues,
-                         "transparent": x.transparent, "missing": len(self.missing(x)),
+                         "transparent": x.transparent, "place": x.place, "missing": len(self.missing(x)),
                          "clip": str(x.clip) if x.clip else None} for x in self.inserts],
         }

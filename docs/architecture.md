@@ -75,6 +75,7 @@ crewcut doctor [--json] [--ci]
 crewcut serve [--host 0.0.0.0 --port 4747]
 
 crewcut episode new "<working title>" [--source URL]      prints the episode id, e.g. 003-local-llms
+crewcut episode new "<title>" --short clip --from <episode> | --short original      a Short (docs/shorts.md)
 crewcut episode import <folder> --title "…" [--format portrait] [--script F] [--broll F …] [--plan F] [--skip upload]
 crewcut episode status [<id>] [--json]
 crewcut episode step <id> <step> <status>                 status: open | working | waiting | done | skipped
@@ -103,6 +104,12 @@ crewcut render measure <image.png> | samples [--out DIR]
 crewcut ingest <episode> <file> [<file> …]
 crewcut transcribe <file> [--model small] [--device auto|cpu|cuda] [--language xx]
 crewcut cut islands|dips|probe|takes|plan|build|verify|doubles|grade|srt|audio|loudness …   (docs/recording.md)
+crewcut cut candidates <episode> [--retention CSV|JSON] [--min 20 --max 55 --sentences 12]   Short candidates
+crewcut cut short <edit/pieces-vNNN.json> [--words new|carry] [--accept-soft] [--dry-run]   9:16 rough cut of a clip
+crewcut cut short-check <video> [--cut …] [--plan …]       the Critic's Short rules, contact sheet, listening list
+crewcut render capture <episode> --url URL | --html FILE | --terminal FILE [--seconds N] [--scroll …] [--size full|stage]
+crewcut render music-bed <voice.wav> --music TRACK --licence "…" [--start S] [--punch T,…] [--credit "…"]
+crewcut shorts standing on|off|status | slot --episode ID | results --episode ID | table
 
 crewcut compute estimate --kind blender --frames N [--local-sec-per-frame S] [--gpu-sec-per-frame S] [--gpus N]
                          [--scene NAME] [--episode ID] [--job ID] [--local-fine] [--json]
@@ -115,7 +122,10 @@ crewcut compute guard [--once] [--every S]
 crewcut compute ledger [--episode ID]
 
 crewcut thumbnail make --episode ID --prompt FILE [--ref IMG …] [--way codex|api] [--variants 3]
-crewcut youtube auth | upload --episode ID [--schedule ISO] | status
+crewcut youtube connect [--episode ID] | auth | upload --episode ID [--schedule ISO] | status
+crewcut humanize record --draft FILE --final FILE [--why "…"]       the Humanizer pass of a script, for its card
+crewcut brand voice add <video link | recording> | list          the user's own spoken words (brand/voice/)
+crewcut skills status | update [<name>]                           skills from other projects (Humanizer), newest
 crewcut prompter <episode>                               prints the phone URL and a QR code
 ```
 
@@ -173,6 +183,11 @@ One plan builds one version of the video. Times are seconds; frames are at `fps`
   "crf": 17
 }
 ```
+
+Portrait plans (Shorts) may set `"layout": "proof-top"` (else the pack's `shorts.layout`, default `full`): the proof
+on a top stage, the speaker below, the end on the face alone. Inserts then take `place` (`stage` or `full`), `fit`
+(`cover` or `contain`, a card on `stage_color`) and `anchor`; the plan takes `end_face` (seconds, default 2.0) and
+`right_free` (the right share kept free of text for YouTube's buttons). Details: [rendering.md](rendering.md).
 
 `base` may also be `{"color": "soft", "seconds": 20}`: a generated background instead of a recording (the demo and
 the onboarding preview use it). Values left `null` come from the style pack (`edit-style.json`). A cue is a frame number inside the insert, or

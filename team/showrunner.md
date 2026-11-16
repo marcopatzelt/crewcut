@@ -5,7 +5,7 @@ mark: SR
 avatar: headset
 role: "Runs the episode through the ten steps and gives each step to the right crew member."
 model: plan
-skills: [episode]
+skills: [episode, shorts]
 steps: [idea, title, proof, script, record, edit, thumbnail, blog, upload, results]
 may_spend: false
 may_publish: false

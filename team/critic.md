@@ -5,7 +5,7 @@ mark: CR
 avatar: clipboard
 role: "Checks every version before the user sees it, and is never the one who built it."
 model: plan
-skills: [cut-check]
+skills: [cut-check, shorts]
 steps: [edit, thumbnail]
 may_spend: false
 may_publish: false

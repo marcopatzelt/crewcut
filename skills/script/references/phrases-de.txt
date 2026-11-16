@@ -1,0 +1,46 @@
+# Phrases that sound written, salesy or like filler in a Short's script (German).
+# Read by: python3 skills/script/scripts/script_check.py SCRIPT.md --short --language de
+# Format: one phrase per line, case does not matter. A trailing * matches any word ending.
+# A line starting with re: is a regular expression (Python syntax, case-insensitive).
+# Source: the reel rules in Crewcut's Shorts plan ("Nicht X. Nicht Y. Sondern Z.", "Stell dir vor", "Game-Changer",
+# dashes).
+
+# "Nicht X. Nicht Y. Sondern Z." and its relatives
+re:\bnicht\s+[^.!?]{1,60}?[.,;]\s*nicht\s+[^.!?]{1,60}?[.,;]\s*(?:sondern|nur)\b
+re:\bnicht\s+(?:nur|bloß|einfach)\s+[^.!?]{1,60}?,?\s+sondern\b
+re:\b(?:das ist|es ist|dies ist)\s+(?:nicht|kein|keine)\b[^.!?]{1,40}?[,.;]\s*(?:sondern|das ist|es ist)\b
+re:\bnicht\s+(?:\w+\s+){0,3}\w+,\s+sondern\s+
+
+# Openers and filler
+stell dir vor
+stellt euch vor
+stellen sie sich vor
+weißt du was
+hier ist der clou
+lass das mal sacken
+lass mich erklären
+lass mich dir erklären
+und jetzt das beste
+und jetzt kommt das beste
+das beste daran
+hier kommt
+in diesem video
+im heutigen video
+in der heutigen
+ohne lange umschweife
+spoiler
+plot twist
+du wirst nicht glauben
+am ende des tages
+
+# Hype words
+re:\bgame[\s-]?changers?\b
+bahnbrechend*
+revolutionär*
+next level
+nächste level
+krass gut
+deep dive
+
+# Dashes sound written, not spoken
+re:[–—]|\s-{1,2}\s

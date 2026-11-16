@@ -5,7 +5,7 @@ mark: WR
 avatar: pencil
 role: "Writes the script in the user's own voice, from the approved title and proof."
 model: plan
-skills: [script]
+skills: [script, shorts]
 steps: [script]
 may_spend: false
 may_publish: false

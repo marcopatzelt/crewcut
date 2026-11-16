@@ -14,6 +14,8 @@ crewcut render shown <plan.json>            lock the output right after someone 
 crewcut render all   <plan.json>            2d, 3d, cut
 crewcut render measure <still.png>          a 3D still against the style pack
 crewcut render samples [--out DIR]          one frame of every 2D scene, both formats (screenshots, docs)
+crewcut render capture <episode> --url URL  a web page or terminal recorded upright, for a Short (broll/)
+crewcut render music-bed <voice.wav> --music TRACK   a licensed music bed under a Short's voice
 crewcut brand preview [--out f.mp4]         10-second sample in the style pack
 ```
 
@@ -174,6 +176,73 @@ After the user has seen an output, `crewcut render shown <plan>` writes `<output
 `{"at": "2026-11-16T10:00:00Z", "sha256": "<64 hex>"}`. From then on `cut` refuses to overwrite it. Every change is a
 new plan version with a new output.
 
+## Shorts: capture, music, proof-top layout
+
+A Short is a portrait plan (`"format": "portrait"`, 1080 x 1920). Three tools exist only for it. Their values come from
+the `shorts` block of `edit-style.json`.
+
+### Capture: proof material recorded upright
+
+```
+crewcut render capture <episode> --url https://example.com/ --seconds 8 --scroll 0:0,1.5:0,7:end [--hide-overlays]
+crewcut render capture <episode> --html results.html --seconds 5 --size stage
+crewcut render capture <episode> --terminal session.txt [--type-speed 20] [--line-delay 0.35]
+```
+
+- Writes `broll/<name>-vNNN.mp4` in the episode (the next free version, never overwritten) and `broll/<name>-vNNN.json`:
+  source address or file, seconds, size, scroll keys, the time of the capture, the page title and its warnings. Name
+  it in the Short's sources; the Critic can check it.
+- Page: `tools/capture_page.js` opens it in Chromium with a phone-sized viewport (`--zoom 2.5`: 432 x 768 CSS pixels
+  at device scale 2.5), so the page lays out like on a phone and every text is 2.5 times bigger. One screenshot per
+  video frame: the scroll is exactly even, eased in and out, in whole device pixels. The page's JavaScript clock is
+  paused and advanced one frame per screenshot; CSS animations are slowed to the measured capture speed; videos on the
+  page are set to each frame's time. Scroll keys are `second:position`, position in CSS pixels, `end` or `40%`.
+- Terminal: a plain text transcript. `$ ` starts a command, which is typed; other lines are output and appear at
+  once; `[+1.5]` before a line waits 1.5 s. The page uses the pack's colours and mono font (at least `min_text_px`)
+  and keeps text out of the right `right_free_frac` (the platform's buttons) and, at full size, out of the top 8 % and
+  bottom 20 %.
+- `--size stage` records 1080 x 960, the stage of the proof-top layout, so nothing is cut away there.
+- Colour range: the screenshots (RGB, white 255) are converted once, explicitly, to limited-range BT.709 yuv420p,
+  the range of every other piece of the cut, and the stream is tagged so. Decoded, white stays 255. (A full-range
+  browser recording joined with limited-range pieces turned white into 232 in an earlier studio.)
+
+### Music bed: licensed music under the voice
+
+```
+crewcut render music-bed audio/voice-v001.wav --music audio/music/track.wav --start 12 --punch 8.4,21.0
+```
+
+- Refuses a track without a licence. The licence comes from `<track stem>.source.json` next to the track,
+  `--source info.json` or `--licence`: `{"licence": "CC0 1.0", "credit": "Music: ...", "made": "how it was made"}`.
+  The music of a long video is no exception: it is used only when its licence is stated.
+- The music sits `music_db` (neutral -15 dB) below the voice's measured loudness, ducks under speech (sidechain
+  compression keyed by the voice), has a hole of `music_hole_s` (0.5 s) before each `--punch` time and comes back on
+  the punchline, fades in and out, and runs `end_tail_s` (1 s) past the voice. A track shorter than the Short loops.
+- Loudness: the first pass aims `limiter_headroom_db` (1.4 dB) above `loudness_lufs` (-14), because the limiter takes
+  about that much back; then measure, correct and repeat until the result is within 0.5 LU and the true peak is under
+  `true_peak_db`.
+- Writes `<voice stem>-bed-vNNN.wav` (24 bit, 48 kHz) and `<same>.music.json`: track and its sha256, start second,
+  licence, credit line for the description, how the track was made, how the bed was made (levels, holes, passes), and
+  a list of places for a person to listen to (holes, loop point, fade). Use the bed as the plan's `voice` without a
+  `sound.music`, and put the `.music.json` path into `sound.music_source`.
+
+### Layout "proof-top"
+
+`"layout": "proof-top"` in a portrait plan (or `shorts.layout` in the pack; landscape plans are always `full`):
+
+- A full-frame insert (2D scene, clip, 3D) is the proof on a stage at the top, 1080 x 960; the speaker is cropped
+  around `face` into the 960 px below. Without an insert the speaker fills the frame.
+- Per insert: `"fit": "cover"` (default: fill the stage, crop the rest; `"anchor": "top"` keeps the top of a tall
+  capture) or `"contain"` (the whole picture as a card on `stage_color`, default the pack's `soft`; for the episode's
+  landscape 3D render). `"place": "full"` lets one insert cover the whole frame, e.g. an end card in the tail.
+- The last `end_face` seconds of the speaker cut (plan, else `shorts.end_face_s`, else 2 s) show the face alone: a
+  stage insert that reaches into them stops there, and `<output>.cut.json` says so in its notes.
+- Keyword chips in portrait plans default to the left of the free right strip (`right_free_frac`, 0.18): centre at
+  0.41 of the width, at most 0.74 wide; in proof-top they sit on the seam between stage and face. `plan` warns about a
+  keyword whose centre lies in the strip.
+- 2D scenes render at 1080 x 1920 and are cropped to the stage (`cover`) or shown whole as a card (`contain`); a
+  stage-sized 2D format does not exist yet.
+
 ## The brand preview
 
 `crewcut brand preview [--out file.mp4] [--pack DIR]` builds 10 seconds in the active style pack: a headline card,
@@ -204,7 +273,14 @@ npm: `playwright-core` 1.50.1 in `tools/` (`npm ci` there). Python: Pillow and N
 Tested: plan parsing, cues, sound references, cache keys, the shown lock, every ffmpeg and Blender argument list, the
 batch queue and a rented run against a fake compute session, the rent-or-local card, the preview and the samples
 command with fake programs; every 2D scene's script runs through every frame in a DOM without layout; every 3D scene
-runs through every frame against a stand-in for Blender.
+runs through every frame against a stand-in for Blender. Shorts: the capture's argument lists with a fake browser,
+the terminal page through every frame in a DOM, the colour range (white stays 255) and the stacked proof-top pieces
+with the real ffmpeg on tiny generated clips, and one real music bed of sine waves (level under the voice, ducking,
+hole, loudness).
+
+Not tested here: the capture's browser part (`tools/capture_page.js` with Chromium, its clock, CSS-speed and video
+handling) runs only in CI or on a real machine; how a real voice and real music sound together needs a person to
+listen.
 
 Untested here (by rule, nothing renders on the author's laptop): real Chromium renders, real Blender renders, real
 ffmpeg runs, real rented machines. The CI image renders the 2D samples and the preview; the first real 3D probe

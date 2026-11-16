@@ -1,5 +1,8 @@
 """Command line for `crewcut ingest`, `crewcut transcribe` and `crewcut cut ...` (see docs/recording.md).
 
+Shorts (Clip mode): `cut candidates` lists passages of a finished episode, `cut short` cuts the pieces again from the
+originals in 9:16, `cut short-check` is the Critic's rule set for Shorts.
+
 Exit codes: 0 ok, 1 error, 2 usage or a check that found something to fix (plan problems, doubled starts, a failed
 cut check, loudness off target), 3 waiting for or refused by the user, 4 missing key (rented path).
 """
@@ -7,11 +10,28 @@ cut check, loudness off target), 3 waiting for or refused by the user, 4 missing
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import sys
 from pathlib import Path
 
-from . import audio, build, doubles, grade, ingest, islands, media, plan, srt, takes, transcribe, verify
+from . import (
+    audio,
+    build,
+    candidates,
+    doubles,
+    grade,
+    ingest,
+    islands,
+    media,
+    plan,
+    short,
+    shortcheck,
+    srt,
+    takes,
+    transcribe,
+    verify,
+)
 from .common import (
     CutError,
     Waiting,
@@ -333,6 +353,52 @@ def cmd_loudness(args) -> int:
     return 2 if problems else 0
 
 
+# ---- shorts ------------------------------------------------------------------------------------------------------
+def cmd_short(args) -> int:
+    path = resolve_input(args.spec)
+    _, ep = episode_of_file(path)
+    log = (lambda m: print(m, file=sys.stderr)) if args.json else print
+    p = short.prepare(path, ep)
+    if args.dry_run:
+        _out(args, {k: v for k, v in p.items() if k not in ("words", "source_dir", "spec")}, short.describe_plan(p))
+        return 2 if p["soft"] and not args.accept_soft else 0
+    for m in p["soft"]:
+        print(f"SOFT: {m}", file=sys.stderr)
+    if p["soft"] and not args.accept_soft:
+        print("Nothing built. Tell the user before building; build anyway with --accept-soft.", file=sys.stderr)
+        return 2
+    if args.words == "new" and importlib.util.find_spec("faster_whisper") is None:
+        raise CutError("new word times need faster-whisper (in the image it is; elsewhere pip install "
+                       "'crewcut[speech]'), or use --words carry")
+    r = short.build_short(p, ep, args.words, lambda: _engine(args), log=log)
+    _out(args, r, short.describe(r))
+    return 0
+
+
+def cmd_candidates(args) -> int:
+    if not (args.episode or args.episode_opt):
+        print("name the finished episode: crewcut cut candidates <episode>", file=sys.stderr)
+        return 2
+    ep = episode_dir(args.episode or args.episode_opt)
+    r = candidates.find(ep, resolve_input(args.words, ep) if args.words else None,
+                        resolve_input(args.plan, ep) if args.plan else None,
+                        resolve_input(args.retention, ep) if args.retention else None,
+                        args.min, args.max, args.sentences, args.limit)
+    out = candidates.write(ep, r)
+    r["report"] = rel(ep, out)
+    _out(args, r, candidates.describe(r) + f"\nreport: {r['report']}")
+    return 0
+
+
+def cmd_short_check(args) -> int:
+    path = resolve_input(args.video)
+    _, ep = episode_of_file(path)
+    r = shortcheck.check(ep, path, resolve_input(args.cut, ep) if args.cut else None,
+                         resolve_input(args.plan, ep) if args.plan else None)
+    _out(args, r, shortcheck.describe(r))
+    return 0 if r["ok"] else 2
+
+
 # ---- parser ------------------------------------------------------------------------------------------------------
 def build_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
@@ -434,6 +500,35 @@ def build_parser() -> argparse.ArgumentParser:
     p = cut.add_parser("audio", parents=[common], help="sound check of one file: channels and sound to the end")
     p.add_argument("file")
     p.set_defaults(fn=cmd_audio)
+
+    p = cut.add_parser("short", parents=[common, speech],
+                       help="Short (Clip mode): cut pieces of a finished episode again from the originals in 9:16")
+    p.add_argument("spec", help="the pieces spec in the short's episode, e.g. edit/pieces-v001.json")
+    p.add_argument("--words", choices=["new", "carry"], default="new",
+                   help="new: recognize the Short's voice again (default); carry: take the episode's word times "
+                        "and check them against the level")
+    p.add_argument("--accept-soft", action="store_true", help="build although the crop is smaller than the output")
+    p.add_argument("--dry-run", action="store_true", help="resolve and check the pieces, build nothing")
+    p.set_defaults(fn=cmd_short)
+
+    p = cut.add_parser("candidates", parents=[common], help="stand-alone passages of a finished episode for Shorts")
+    p.add_argument("episode", nargs="?", help="the finished episode")
+    p.add_argument("--episode", dest="episode_opt", help="the same, as an option")
+    p.add_argument("--words", help="word record of the final cut (default: the edit plan's, else the newest)")
+    p.add_argument("--plan", help="edit plan with the graphics (default: the newest edit/plan-vNNN.json)")
+    p.add_argument("--retention", help="retention curve, CSV or JSON (default: review/retention.json or .csv)")
+    p.add_argument("--min", type=float, default=20.0, help="shortest passage in seconds")
+    p.add_argument("--max", type=float, default=55.0, help="longest passage in seconds")
+    p.add_argument("--sentences", type=int, default=12, help="most whole sentences in one passage")
+    p.add_argument("--limit", type=int, default=30, help="how many passages to list")
+    p.set_defaults(fn=cmd_candidates)
+
+    p = cut.add_parser("short-check", parents=[common], help="the Critic's rule set for Shorts, contact sheet and "
+                                                             "listening list")
+    p.add_argument("video", help="the rendered Short or the rough cut (work/speaker-vNNN.mov)")
+    p.add_argument("--cut", help="report of crewcut cut short (default: found from the plan or the version)")
+    p.add_argument("--plan", help="edit plan of the video (default: the plan whose output is the video)")
+    p.set_defaults(fn=cmd_short_check)
 
     p = cut.add_parser("loudness", parents=[common], help="integrated loudness and true peak (EBU R128)")
     p.add_argument("file")

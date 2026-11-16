@@ -10,6 +10,12 @@ edit-style.json "length_minutes", and voice.md ("## Words to avoid", "## Words t
   python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --title "The title" --name ToolName
   python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --proof brief/PROOF-v001.md --json
   python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --text-only     (the spoken part only)
+  python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --short [--language de] [--proof F]
+
+--short checks a Short's script with the reel rules instead (see check_short): word range from edit-style.json
+"shorts.words", more I-sentences than you-sentences, a turn (expectation, then the break), an uneven real number or a
+visible proof, a time anchor or a number in a series, and the phrase list of the language
+(references/phrases-<language>.txt: phrases that sound written or like filler, "not X but Y" patterns, dashes).
 
 Levels: error (must go before the user sees the script), warn and hint (read and decide; a hint you keep gets one
 sentence of reason below the "---" line).
@@ -126,24 +132,14 @@ def level(pack, key: str, default: str = "off") -> str:
 
 
 # ---------- the check ----------
-def check_script(text: str, pack, title: str | None = None, names: list[str] | tuple = (),
-                 proof: str | None = None) -> dict:
-    raw = spoken_part(text)
-    found: list[dict] = []
-    passed: list[str] = []
-
-    def add(lv: str, area: str, msg: str):
-        if lv in LEVELS:
-            found.append({"level": lv, "area": area, "text": msg})
-
-    # 1. Teleprompter form: only words the user says. Line by line, collected per kind.
+def form_check(raw: str, dash_lv: str, add, passed: list[str]) -> list[str]:
+    """Teleprompter form, line by line, collected per kind. Returns the lines without stage notes (headings empty)."""
     per_kind: dict[tuple[str, str], list[str]] = {}
 
     def hit(lv, kind, nr, s):
         per_kind.setdefault((lv, kind), []).append(f'line {nr}: "{s[:50]}"')
 
     clean = []
-    dash_lv = level(pack, "dash")
     for nr, line in enumerate(raw.split("\n"), 1):
         s = line.strip()
         if not s:
@@ -175,6 +171,21 @@ def check_script(text: str, pack, title: str | None = None, names: list[str] | t
         add(lv, "form", f"{kind}: {len(where)} times, e.g. " + "; ".join(where[:2]))
     if not any(lv == "error" for (lv, _k) in per_kind):
         passed.append("form: spoken text only")
+    return clean
+
+
+def check_script(text: str, pack, title: str | None = None, names: list[str] | tuple = (),
+                 proof: str | None = None) -> dict:
+    raw = spoken_part(text)
+    found: list[dict] = []
+    passed: list[str] = []
+
+    def add(lv: str, area: str, msg: str):
+        if lv in LEVELS:
+            found.append({"level": lv, "area": area, "text": msg})
+
+    # 1. Teleprompter form: only words the user says.
+    clean = form_check(raw, level(pack, "dash"), add, passed)
 
     bl = blocks("\n".join(clean))
     if not bl:
@@ -323,6 +334,203 @@ def check_script(text: str, pack, title: str | None = None, names: list[str] | t
             "hints": sum(1 for f in found if f["level"] == "hint"), "ready": errors == 0}
 
 
+# ---------- Shorts (reel rules) ----------
+REFERENCES = Path(__file__).resolve().parents[1] / "references"
+# Word lists per language. First person counts "we" too: the story is the speaker's own.
+FIRST_PERSON = {
+    "en": {"i", "i'm", "i've", "i'd", "i'll", "me", "my", "mine", "myself", "we", "we're", "we've", "us", "our"},
+    "de": {"ich", "mich", "mir", "mein", "meine", "meinen", "meinem", "meiner", "meines", "hab", "wir", "uns",
+           "unser", "unsere", "unseren", "unserem", "unserer"},
+}
+SECOND_PERSON = {
+    "en": {"you", "you're", "you've", "you'd", "you'll", "your", "yours", "yourself", "yourselves", "ya"},
+    "de": {"du", "dich", "dir", "dein", "deine", "deinen", "deinem", "deiner", "deines", "euch", "euer", "eure"},
+}
+EXPECT = {
+    "en": [r"\bthought\b", r"\bexpected\b", r"\bassumed\b", r"\bwas (?:sure|convinced|certain)\b", r"\bbelieved\b",
+           r"\bfigured\b", r"\bhoped\b", r"\bthe plan was\b", r"\bsupposed to\b", r"\bshould (?:have|be|work)\b",
+           r"\bon paper\b", r"\bmy guess\b"],
+    "de": [r"\bdachte\b", r"\bgedacht\b", r"\berwartet\b", r"\bwar (?:sicher|überzeugt)\b", r"\bgehofft\b",
+           r"\bangenommen\b", r"\bder plan war\b", r"\bsollte\b", r"\beigentlich\b", r"\bauf dem papier\b"],
+}
+BREAK = {
+    "en": [r"\bbut\b", r"\bturn(?:s|ed) out\b", r"\binstead\b", r"\buntil\b", r"\bexcept\b", r"\bactually\b",
+           r"\bin fact\b", r"\bnope\b", r"\bwrong\b", r"\bthe opposite\b", r"\bdid(?:n't| not)\b", r"\bfailed\b",
+           r"\bsuddenly\b"],
+    "de": [r"\baber\b", r"\bdoch\b", r"stellte? sich (?:he)?raus", r"\btrotzdem\b", r"\bplötzlich\b", r"\bnur dass\b",
+           r"\bwar'?s nicht\b", r"\bwar es nicht\b", r"\bpustekuchen\b", r"\bfalsch gedacht\b", r"\bstattdessen\b",
+           r"\bin wahrheit\b", r"\bbis\b"],
+}
+_N = r"(?:\d+|a|an|one|a few|a couple of|two|three|four|five|six|seven|eight|nine|ten|several|some)"
+_NDE = r"(?:\d+|ein paar|einigen|einer|einem|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn)"
+_MONTHS = {"en": "january|february|march|april|may|june|july|august|september|october|november|december",
+           "de": "januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember"}
+_DAYS = {"en": "monday|tuesday|wednesday|thursday|friday|saturday|sunday",
+         "de": "montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag"}
+ANCHOR = {
+    "en": [rf"\b{_N} (?:second|minute|hour|day|week|month|year)s? (?:ago|later)\b",
+           r"\b(?:last|this|next) (?:night|morning|week|month|year|" + _DAYS["en"] + r")\b",
+           r"\b(?:yesterday|today|tonight|recently)\b", rf"\b(?:on )?(?:{_DAYS['en']})\b", rf"\b(?:{_MONTHS['en']})\b",
+           rf"\b(?:for|after|in) {_N} (?:second|minute|hour|day|week|month|year|tr(?:y|ie)|attempt)s?\b",
+           r"\bsince\b", r"\b(?:day|week|part|episode|mistake|number|step|round|no\.?|#)\s?\d+",
+           r"\b\d+ (?:of|out of) \d+\b", r"\b(?:first|second|third|fourth|fifth|tenth|last) (?:time|day|week|try)\b"],
+    "de": [rf"\bvor {_NDE} (?:sekunden|minuten|stunden|tagen|wochen|monaten|jahren)\b",
+           r"\bletzte[nrs]? (?:nacht|woche|monat|jahr)\b", r"\b(?:gestern|heute|neulich|vorhin)\b", r"\bseit\b",
+           rf"\b(?:am )?(?:{_DAYS['de']})\b", rf"\b(?:{_MONTHS['de']})\b",
+           rf"\bnach {_NDE} (?:sekunden|minuten|stunden|tagen|wochen|monaten|jahren|versuchen)\b",
+           r"\b(?:folge|teil|tag|woche|fehler|nummer|schritt|runde|platz|nr\.?|#)\s?\d+", r"\b\d+ von \d+\b",
+           r"\bzum (?:ersten|zweiten|dritten|\d+\.) mal\b"],
+}
+PROOF_NOTE = re.compile(r"\b(?:proof|beweis|beleg|demo|screen ?recording|bildschirm|screenshot)\b", re.I)
+
+
+def load_phrases(lang: str, path: Path | None = None) -> list[tuple[str, re.Pattern]]:
+    """(label, pattern) from references/phrases-<lang>.txt: one phrase per line, # comments, a trailing * matches
+    any word ending, a line starting with re: is a regular expression (case-insensitive)."""
+    p = path or REFERENCES / f"phrases-{lang}.txt"
+    if not p.is_file():
+        return []
+    out = []
+    for line in p.read_text(encoding="utf-8").splitlines():
+        t = line.strip()
+        if not t or t.startswith("#"):
+            continue
+        if t.startswith("re:"):
+            out.append((t[3:].strip(), re.compile(t[3:].strip(), re.I)))
+        else:
+            out.append((t, phrase_regex(t)))
+    return out
+
+
+def crooked(token: str) -> bool:
+    """A number that sounds measured, not made up: 37, 4.3, 1,247. Round (40, 1,000), single digits and years are
+    not. A separator followed by exactly three digits groups thousands; any other separator is a decimal mark."""
+    t = token.strip().rstrip("%").strip()
+    m = re.fullmatch(r"(\d+(?:[.,]\d{3})*)(?:[.,](\d{1,2}|\d{4,}))?", t)
+    if not m:
+        return False
+    whole, dec = re.sub(r"[.,]", "", m.group(1)), m.group(2)
+    if dec and dec.strip("0"):
+        return True
+    if len(whole) == 4 and 1900 <= int(whole) <= 2099 and "," not in t and "." not in t:
+        return False
+    return len(whole) >= 2 and not whole.endswith("0")
+
+
+def short_level(pack, key: str, default: str) -> str:
+    v = pack.value(f"channel.script.short_checks.{key}", default)
+    return v if v in LEVELS else "off"
+
+
+def check_short(text: str, pack, lang: str | None = None, proof: str | None = None,
+                phrases_file: Path | None = None) -> dict:
+    """The reel rules for a Short's script (plan section "Script" for Shorts; built on 243 short videos of 7
+    creators). Levels can be changed in channel.json script.short_checks.<rule> (error, warn, hint, off)."""
+    raw = spoken_part(text)
+    rule = re.search(r"^---[ \t]*$", text, re.M)
+    notes = text[rule.end():] if rule else ""
+    found: list[dict] = []
+    passed: list[str] = []
+
+    def add(lv: str, area: str, msg: str):
+        if lv in LEVELS:
+            found.append({"level": lv, "area": area, "text": msg})
+
+    clean = form_check(raw, "off", add, passed)          # dashes are in the phrase list
+    bl = blocks("\n".join(clean))
+    if not bl:
+        raise ValueError("no spoken text above the --- line")
+    all_s = [x for b in bl for x in sentences(b["text"])]
+    body = " ".join(b["text"] for b in bl)
+    n_words = len(words(body))
+    lens = [len(words(x)) for x in all_s]
+    lang = (lang or str(pack.value("channel.language", "en") or "en")).lower()[:2]
+    lists = lang if lang in FIRST_PERSON else "en"
+    if lists != lang:
+        add("hint", "language", f"no word lists for '{lang}': English lists are used. Add them to script_check.py.")
+    wpm = float(pack.value("channel.script.words_per_minute", 150))
+    stats = {"words": n_words, "sentences": len(all_s), "words_per_sentence": round(n_words / max(1, len(all_s)), 1),
+             "longest_sentence": max(lens) if lens else 0, "paragraphs": len(bl), "parts": 1,
+             "minutes": round(n_words / wpm, 1), "seconds": round(n_words / wpm * 60), "language": lang}
+
+    # Length from the style pack.
+    lo, hi = (pack.value("edit_style.shorts.words", [110, 170]) or [110, 170])[:2]
+    msg = f"{n_words} words (about {stats['seconds']} s). Target {lo} to {hi}."
+    if n_words > hi * 1.25 or n_words < lo * 0.75:
+        add(short_level(pack, "length", "error"), "length", msg)
+    elif not lo <= n_words <= hi:
+        add("warn", "length", msg)
+    else:
+        passed.append(f"length: {n_words} words, about {stats['seconds']} s")
+    max_w = int(pack.value("channel.script.sentence_max_words", 25))
+    long_s = [x for n, x in zip(lens, all_s, strict=True) if n > max_w]
+    if long_s:
+        add("error", "sentences", f"{len(long_s)} sentence(s) over {max_w} words, e.g. \"{long_s[0][:70]}\"")
+
+    # I-sentences against you-sentences.
+    def has(sentence: str, group: set[str]) -> bool:
+        return any(w.lower().replace("’", "'") in group for w in words(sentence))
+    i_n = sum(1 for x in all_s if has(x, FIRST_PERSON[lists]))
+    you_n = sum(1 for x in all_s if has(x, SECOND_PERSON[lists]))
+    stats["i_sentences"], stats["you_sentences"] = i_n, you_n
+    if i_n > you_n:
+        passed.append(f"I-form: {i_n} I-sentences, {you_n} you-sentences")
+    else:
+        add(short_level(pack, "i_form", "error"), "i-form",
+            f"{i_n} I-sentences, {you_n} you-sentences. Tell what you did, not what the viewer should do.")
+
+    # The turn: an expectation, then the break (same or a later sentence).
+    def first_hit(pats: list[str]) -> int | None:
+        return next((k for k, x in enumerate(all_s) if any(re.search(p, x.lower()) for p in pats)), None)
+    e_at = first_hit(EXPECT[lists])
+    b_at = None if e_at is None else next((k for k in range(e_at, len(all_s))
+                                           if any(re.search(p, all_s[k].lower()) for p in BREAK[lists])), None)
+    if e_at is not None and b_at is not None:
+        passed.append(f"turn: expectation in sentence {e_at + 1}, break in sentence {b_at + 1}")
+    else:
+        missing = "an expectation (what you thought)" if e_at is None else "the break after the expectation"
+        add(short_level(pack, "turn", "warn"), "turn", f"no turn: {missing} is missing.")
+
+    # An uneven real number, or a visible proof.
+    nums = [x for x in dict.fromkeys(NUMBER.findall(body)) if crooked(x)]
+    shown = bool(proof and proof.strip()) or bool(PROOF_NOTE.search(notes))
+    if nums:
+        passed.append(f"number: {', '.join(nums[:3])}")
+    elif shown:
+        passed.append("proof: a visible proof is noted")
+    else:
+        add(short_level(pack, "proof_number", "warn"), "proof",
+            "no uneven real number (like 37 or 4.3) and no visible proof noted below ---. Round numbers sound made up.")
+
+    # A time anchor or a number in a series.
+    anchors = [m.group(0) for p_ in ANCHOR[lists] for m in re.finditer(p_, body.lower())]
+    if anchors:
+        passed.append(f"time anchor: {', '.join(list(dict.fromkeys(anchors))[:3])}")
+    else:
+        add(short_level(pack, "time_anchor", "warn"), "anchor",
+            "no time anchor (\"three weeks ago\") and no number in a series (\"mistake 3 of 10\").")
+
+    # Phrases that sound written or like filler.
+    hits = []
+    for label, rx in load_phrases(lists, phrases_file):
+        for m in rx.finditer(body):
+            hits.append(m.group(0).strip()[:40] or label)
+    hits = list(dict.fromkeys(hits))
+    if hits:
+        add(short_level(pack, "phrases", "error"), "phrases",
+            f"phrases from the list (references/phrases-{lists}.txt): " + "; ".join(f"«{h}»" for h in hits[:8]))
+    else:
+        passed.append("phrases: none from the list")
+
+    order = {"error": 0, "warn": 1, "hint": 2}
+    found.sort(key=lambda f: order[f["level"]])
+    errors = sum(1 for f in found if f["level"] == "error")
+    return {"mode": "short", "stats": stats, "findings": found, "passed": passed, "errors": errors,
+            "warnings": sum(1 for f in found if f["level"] == "warn"),
+            "hints": sum(1 for f in found if f["level"] == "hint"), "ready": errors == 0,
+            "manual": ["The user confirms the story really happened (\"This really happened\")."]}
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Check a spoken script against the method and the style pack.")
     ap.add_argument("file", help="script file, e.g. brief/SCRIPT-v001.md")
@@ -331,6 +539,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--proof", help="proof file (brief/PROOF-vNNN.md); every number in the script must be in it")
     ap.add_argument("--pack", help="style pack folder (default: the active pack)")
     ap.add_argument("--text-only", action="store_true", help="print only the spoken part")
+    ap.add_argument("--short", action="store_true", help="a Short's script: the reel rules instead of the long rules")
+    ap.add_argument("--language", help="with --short: language of the word and phrase lists (default: the pack's)")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
     p = Path(a.file)
@@ -345,7 +555,7 @@ def main(argv: list[str] | None = None) -> int:
     pack = load_pack(a.pack)
     proof = Path(a.proof).read_text(encoding="utf-8") if a.proof else None
     try:
-        r = check_script(text, pack, a.title, a.name, proof)
+        r = check_short(text, pack, a.language, proof) if a.short else check_script(text, pack, a.title, a.name, proof)
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
@@ -355,14 +565,20 @@ def main(argv: list[str] | None = None) -> int:
     else:
         s = r["stats"]
         print(f"Script check: {p}")
-        print(f"{s['words']} words, {s['sentences']} sentences, {s['words_per_sentence']} words per sentence, "
-              f"longest {s['longest_sentence']}, about {s['minutes']} min, {s['parts']} parts\n")
+        if a.short:
+            print(f"{s['words']} words, {s['sentences']} sentences, about {s['seconds']} s, "
+                  f"{s['i_sentences']} I-sentences, {s['you_sentences']} you-sentences ({s['language']})\n")
+        else:
+            print(f"{s['words']} words, {s['sentences']} sentences, {s['words_per_sentence']} words per sentence, "
+                  f"longest {s['longest_sentence']}, about {s['minutes']} min, {s['parts']} parts\n")
         for f in r["findings"]:
             print(f"  {f['level']:<5} [{f['area']}] {f['text']}")
         if r["passed"]:
             print("\nPassed:")
             for x in r["passed"]:
                 print(f"  ok    {x}")
+        for x in r.get("manual", []):
+            print(f"  by hand {x}")
         print(f"\nResult: {r['errors']} errors, {r['warnings']} warnings, {r['hints']} hints. "
               f"Ready for the user: {'yes' if r['ready'] else 'no'}")
     return 0 if r["ready"] else 1

@@ -5,7 +5,7 @@ mark: PU
 avatar: plane
 role: "Uploads the finished episode and reads its results after 48 hours."
 model: work
-skills: [upload]
+skills: [upload, shorts]
 steps: [upload, results]
 may_spend: false
 may_publish: true
