@@ -1,0 +1,4 @@
+# the built page (site/build.sh) and what the Taste gate writes next to it in CI
+_site/
+.taste-skill/*
+!.taste-skill/waivers.json

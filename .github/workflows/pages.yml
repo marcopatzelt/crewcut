@@ -1,0 +1,115 @@
+name: pages
+
+# The landing page in site/.
+# On every push that touches it: build it (site/build.sh), render it at 1440 and 390 px in light and dark, run the
+# Taste skill's finish gate over it, and keep the shots and the reports as the artifact "site-screens". The PNGs in
+# site/screens/ are copied from that artifact; no browser renders on a developer laptop.
+# Deploying to GitHub Pages runs only when started by hand (workflow_dispatch) AND only while the repository is
+# public: a page published from the private repository would show the project before its launch.
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", "docs/brand/**", "docs/readme/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TASTE_COMMIT: f6b76575f949707b4e3c37cd86cb44b0b98643e8
+  CATEGORY: "YouTube crew of AI agents"
+  PRIMARY: "Get Crewcut on GitHub"
+
+jobs:
+  site:
+    name: Landing page, screens and Taste gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    concurrency:
+      group: site-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tools (WebP encoder, Playwright with Chromium)
+        run: |
+          sudo apt-get install -y -qq webp > /dev/null
+          mkdir -p /tmp/shots-tool && cd /tmp/shots-tool && npm init -y > /dev/null && npm i -s playwright@1.50.1
+          npx -y playwright@1.50.1 install --with-deps chromium
+      - name: Taste skill at the pinned commit (MIT)
+        run: git clone -q https://github.com/Leonxlnx/taste-skill.git /tmp/taste && git -C /tmp/taste checkout -q "$TASTE_COMMIT"
+      - name: Build the page
+        run: sh site/build.sh /tmp/taste
+      - name: Screenshots, 1440 and 390 px, light and dark
+        run: |
+          (cd site/_site && python3 -m http.server 8098 > /dev/null 2>&1 &)
+          sleep 2
+          cp site/tools/screens.mjs /tmp/shots-tool/
+          node /tmp/shots-tool/screens.mjs http://localhost:8098/index.html "$GITHUB_WORKSPACE/shots/site"
+      - name: Taste finish gate (fails on any FAIL without a written waiver)
+        run: |
+          # Ubuntu 24.04 runners restrict user namespaces, which Chrome's sandbox needs (Taste starts its own Chrome)
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 > /dev/null
+          export CHROME_PATH=$(cd /tmp/shots-tool && node -e "console.log(require('playwright').chromium.executablePath())")
+          S=/tmp/taste/skills/taste-skill/scripts
+          R="$GITHUB_WORKSPACE/shots/site/taste"
+          mkdir -p "$R"
+          cd site/_site
+          mkdir -p .taste-skill
+          if [ -f ../.taste-skill/waivers.json ]; then cp ../.taste-skill/waivers.json .taste-skill/; fi
+          node "$S/copy-lint.mjs" index.html --kind software | tee "$R/copy-lint.txt" || true
+          node "$S/gate.mjs" --start index.html --kind software --category "$CATEGORY" --primary "$PRIMARY"
+          node "$S/gate.mjs" index.html 2>&1 | tee "$R/gate.txt" || true
+          cp -r .taste-skill/gate "$R/" 2>/dev/null || true
+          { echo '### Taste gate, landing page'; echo '```'; tail -60 "$R/gate.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          tail -1 "$R/gate.txt" | grep -q '^GATE: PASS'
+      - name: Taste checker at every width, layout check and speed (reports only)
+        if: always()
+        run: |
+          export CHROME_PATH=$(cd /tmp/shots-tool && node -e "console.log(require('playwright').chromium.executablePath())")
+          T=/tmp/taste/skills/taste-skill
+          R="$GITHUB_WORKSPACE/shots/site/taste"
+          mkdir -p "$R/full" "$R/layout"
+          cd site/_site
+          timeout 900 node "$T/scripts/consistency.mjs" index.html --widths 1440,1024,820,768,390 --rhythm-widths 1440,820,768,390 \
+            --profile /tmp/taste-full --page software --category "$CATEGORY" --primary "$PRIMARY" --out "$R/full" > "$R/consistency.txt" 2>&1 || true
+          timeout 600 node "$T/assets/layout/check.mjs" --url index.html --profile /tmp/taste-layout \
+            --sizes 1440x900,1024x768,820x1180,768x1024,390x844 --shots "$R/layout" > "$R/layout.txt" 2>&1 || true
+          timeout 300 node "$T/scripts/perf.mjs" index.html --profile /tmp/taste-perf > "$R/perf.txt" 2>&1 || true
+          grep -E '^\s*(FAIL|WARN)' "$R/consistency.txt" | sort | uniq -c | sort -rn | head -40 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: site-screens
+          path: shots/site/
+
+  deploy:
+    name: Deploy to GitHub Pages (by hand, public repository only)
+    needs: site
+    if: github.event_name == 'workflow_dispatch' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the page
+        run: |
+          sudo apt-get install -y -qq webp > /dev/null
+          sh site/build.sh
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/_site
+      - id: deployment
+        uses: actions/deploy-pages@v4
