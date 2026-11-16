@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "layouts": ["face-result", "result-vs-result", "before-after"],
+  "face": true,
+  "face_position": "left",
+  "max_words": 4,
+  "colors": ["accent", "ink", "paper"],
+  "reference_photo": null,
+  "variants": 3,
+  "sources": {}
+}

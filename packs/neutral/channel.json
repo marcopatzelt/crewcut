@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "name": null,
+  "url": null,
+  "niche": null,
+  "audience": null,
+  "language": "en",
+  "country": null,
+  "tone": "plain, friendly, specific",
+  "reference_channels": [],
+  "topics_to_avoid": [],
+  "closing_line": null,
+  "category_id": 28,
+  "default_privacy": "private",
+  "links": {},
+  "sources": {}
+}

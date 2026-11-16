@@ -1,0 +1,35 @@
+# secrets
+.env
+*.key
+*.pem
+client_secret*.json
+token*.json
+
+# the user's studio folder (brand, episodes, state) never goes into the app repo
+/studio/
+/brand/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# node
+node_modules/
+web/dist/
+web/.vite/
+
+# media and renders
+*.mp4
+*.mov
+*.mkv
+*.wav
+*.m4a
+*.mp3
+!examples/demo/**/*.json
+render-out/

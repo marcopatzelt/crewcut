@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "name": "Neutral",
+  "colors": {
+    "ink": "#111111",
+    "paper": "#FFFFFF",
+    "accent": "#E4572E",
+    "accent_ink": "#FFFFFF",
+    "muted": "#6B6B6B",
+    "soft": "#F1F1EF",
+    "highlight": "#FBD5C8"
+  },
+  "fonts": {
+    "display": {"family": "Inter", "weight": 800, "files": []},
+    "body": {"family": "Inter", "weight": 500, "files": []},
+    "mono": {"family": "DejaVu Sans Mono", "weight": 400, "files": []}
+  },
+  "logo": {"file": null, "mark": null, "placement": "none", "size": 54, "text": null},
+  "shape": {"radius": 20, "shadow": "soft", "shadow_css": "0 16px 36px rgba(17,17,17,.14)", "line": 3},
+  "motion": {"entrance_frames": 10, "entrance_from": 0.94, "stagger_frames": 6, "drift_per_s": 0.0, "decor": "none"},
+  "stage3d": {"background": "#EFEFEC", "material": "matte", "base": "#F7F7F5", "accent": "#E4572E", "font": null,
+              "samples": 128, "light": "soft"},
+  "sources": {}
+}

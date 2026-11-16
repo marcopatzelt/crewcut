@@ -1,0 +1,33 @@
+name: screens
+
+# Renders screenshots on GitHub's runner, never on a developer laptop:
+# the static mockup now, the built web app in demo mode once web/ exists.
+on:
+  push:
+    branches: [main]
+    paths: ["docs/mockup.html", "web/**", ".github/workflows/screens.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  screens:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Chromium for Playwright
+        run: npx -y playwright@1.50.1 install --with-deps chromium
+      - name: Mockup, light and dark
+        run: |
+          mkdir -p shots
+          npx -y playwright@1.50.1 screenshot --viewport-size "1440, 900" --wait-for-timeout 2000 "file://$PWD/docs/mockup.html" shots/mockup.png
+          npx -y playwright@1.50.1 screenshot --viewport-size "1440, 900" --color-scheme dark --wait-for-timeout 2000 "file://$PWD/docs/mockup.html" shots/mockup-dark.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screens
+          path: shots/*.png
