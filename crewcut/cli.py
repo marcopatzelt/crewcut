@@ -188,6 +188,27 @@ def build_parser() -> argparse.ArgumentParser:
     bi.add_argument("--font", action="append", default=[], help="ROLE=FILE, e.g. display=/import/fonts/X.otf")
     bi.add_argument("--logo", help="a logo file (SVG or PNG) from your own files")
     bi.add_argument("--accept", action="store_true", help="the user chose this pack: onboarding is done")
+    bv = bsub.add_parser("voice", help="the user's own spoken words: the voice sample of the Humanizer pass")
+    bvsub = bv.add_subparsers(dest="vcmd", required=True)
+    bva = bvsub.add_parser("add", help="a link to one of the user's own videos (captions) or a recording of them")
+    bva.add_argument("source")
+    bvsub.add_parser("list")
+
+    hz = sub.add_parser("humanize", help="the Humanizer pass over a script draft (blader/humanizer)")
+    hzsub = hz.add_subparsers(dest="hcmd", required=True)
+    hzr = hzsub.add_parser("record", help="record what the pass changed, for the script card")
+    hzr.add_argument("--episode")
+    hzr.add_argument("--draft", required=True, help="the draft before the pass, e.g. work/script-draft-v003.md")
+    hzr.add_argument("--final", required=True, help="the script after the pass, e.g. brief/SCRIPT-v003.md")
+    hzr.add_argument("--why", default="", help="the sections that applied, e.g. '§1 not X but Y; §6 lists of three'")
+    hzr.add_argument("--json", action="store_true")
+
+    sk = sub.add_parser("skills", help="skills from other projects (Humanizer), always the newest version")
+    sksub = sk.add_subparsers(dest="skcmd", required=True)
+    sks = sksub.add_parser("status")
+    sks.add_argument("--json", action="store_true")
+    sku = sksub.add_parser("update")
+    sku.add_argument("name", nargs="?")
 
     o = sub.add_parser("onboard", help="fetch brand facts from links (Brand identity)")
     o.add_argument("links", nargs="+")
@@ -367,8 +388,13 @@ def _run(a) -> int:
                 print("Spend cards come from the tool that spends (crewcut compute rent, render 3d --rented).",
                       file=sys.stderr)
                 return 2
-            card = approvals.propose(_env_episode(a), a.step, a.kind, a.title, body=a.body, file=a.file,
-                                     options=a.option or None, data=data, identity=_identity(), preview=a.preview)
+            from . import humanize
+            try:
+                card = approvals.propose(_env_episode(a), a.step, a.kind, a.title, body=a.body, file=a.file,
+                                         options=a.option or None, data=data, identity=_identity(), preview=a.preview)
+            except humanize.Missing as e:
+                print(str(e), file=sys.stderr)
+                return 4
             _print(card if a.json else f"card #{card['id']} is open: {card['title']}", a.json)
             return 0
         if a.ccmd == "wait":
@@ -440,6 +466,50 @@ def _run(a) -> int:
                                    logo=Path(a.logo) if a.logo else None, accept=a.accept)
             print(f"style pack: {d}" + (" (accepted)" if a.accept else ""))
             return 0
+        if a.bcmd == "voice":
+            from . import voice
+            if a.vcmd == "list":
+                for s in voice.samples():
+                    print(s.relative_to(paths.studio_root()))
+                return 0
+            try:
+                out = voice.add(a.source)
+            except voice.VoiceError as e:
+                print(f"crewcut brand voice: {e}", file=sys.stderr)
+                return 1
+            print(f"voice sample: {out.relative_to(paths.studio_root())}")
+            return 0
+    if a.cmd == "humanize":
+        from . import humanize
+        eid = _env_episode(a)
+        if not eid:
+            print("crewcut humanize: which episode? (--episode)", file=sys.stderr)
+            return 2
+        try:
+            rec = humanize.record(paths.episode_dir(eid), a.draft, a.final, a.why)
+        except (FileNotFoundError, ValueError) as e:
+            print(f"crewcut humanize: {e}", file=sys.stderr)
+            return 1
+        _print(rec if a.json else f"humanized {a.final}: {rec['count']} change(s), mode {rec['mode']}", a.json)
+        return 0
+    if a.cmd == "skills":
+        from . import extskills
+        if a.skcmd == "update":
+            for r in extskills.update(a.name):
+                print(f"{r['name']}: {r['current'] or 'not installed'}" + (" (new)" if r["changed"] else "")
+                      + "".join(f"\n  {n}" for n in r["notes"]))
+            return 0
+        rows = []
+        for s in extskills.configured():
+            cur = extskills.current(s["name"])
+            rows.append({"name": s["name"], "repo": s["repo"], "license": s.get("license"),
+                         "version": cur["version"] if cur else None, "steps": s.get("steps") or []})
+        if a.json:
+            _print(rows, True)
+        else:
+            for r in rows:
+                print(f"{r['name']:<12} {r['version'] or 'not installed':<10} github.com/{r['repo']} ({r['license']})")
+        return 0
     if a.cmd == "onboard":
         from .onboarding import fetch
         facts = fetch.gather(a.links)

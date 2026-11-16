@@ -69,14 +69,35 @@ The user reads from a phone next to the camera.
 1. Fill the structure with the proven numbers.
 2. Cut: every sentence carries or proves the promise.
 3. Bring it into the user's voice. Read every sentence in your head: would the user say this into the camera?
-4. Write `brief/SCRIPT-vNNN.md` with the next free number; never overwrite a version.
-5. Check until 0 errors:
+4. Write the draft to `work/script-draft-vNNN.md` with the next free number; never overwrite a version.
+5. **Humanizer pass** (see below). Write the result to `brief/SCRIPT-vNNN.md` (same number), then record it:
+   `crewcut humanize record --draft work/script-draft-vNNN.md --final brief/SCRIPT-vNNN.md --why "<the patterns that
+   applied>"`.
+6. Check until 0 errors:
    `python3 skills/script/scripts/script_check.py brief/SCRIPT-vNNN.md --title "<title>" --name "<tool>"
    --proof brief/PROOF-vNNN.md`. Read every warning and hint; a hint you keep gets one sentence of reason below `---`.
-6. Card: `crewcut card propose --episode <id> --step script --kind script --title "Script, version N" --file
-   brief/SCRIPT-vNNN.md --body "<words>, about <min> min, check: 0 errors"`, then `crewcut card wait`.
-7. After the yes: `crewcut prompter <id>` prints the phone link and a QR code. Tell the user in one message: the link,
+   If you change the script to pass the check, record the pass again: the card needs the record of the exact file.
+7. Card: `crewcut card propose --episode <id> --step script --kind script --title "Script, version N" --file
+   brief/SCRIPT-vNNN.md --body "<words>, about <min> min, check: 0 errors"`, then `crewcut card wait`. The card shows
+   "Humanized" with what changed; without the record it is refused and says what to run.
+8. After the yes: `crewcut prompter <id>` prints the phone link and a QR code. Tell the user in one message: the link,
    how many parts, about how long. The teleprompter shows only the text above `---`.
+
+## Humanizer pass
+
+Every script draft goes through **Humanizer** ([blader/humanizer](https://github.com/blader/humanizer), MIT) before
+the user sees it: long videos and Shorts alike. Crewcut downloads its newest version at start; in Claude Code it is
+the skill `humanizer:humanizer` (run it like any skill), with Codex its text is in your prompt. `crewcut skills status`
+shows the version.
+
+- **Mode "Embedded", with the user's voice.** Read every file in `brand/voice/` first: the user's own spoken words from
+  their videos. Give them to Humanizer as the voice sample. No samples: plain mode; the card says so.
+- **What to look for most:** "not X but Y" contrasts; closing lines that add nothing new; sayings that sound deep; a
+  staged run-up before the point ("here's the thing"); lists of three; inflated meaning and advertising language.
+- **What stays:** the user's own words and turns of phrase (those in `brand/voice/` and `voice.md`) even when Humanizer
+  would smooth them; every number, name, claim and the promise of the title. The pass changes how it sounds, never
+  what it says.
+- **What is out of scope:** making text pass AI detectors. Humanizer edits for people, and so do we.
 
 ## What the check cannot see
 
@@ -87,10 +108,14 @@ sounds like the user. That is reading work in steps 2 and 3.
 
 - Cue sheet and two takes per part (first free from a cue sheet, then from the script; the edit takes the better take):
   format in `references/forms.md`; the checker and the take mix (`zettel.py` in the studio) are not ported yet.
-- Script against recording: compare the approved script with the transcript to learn the user's real words.
+- Script against recording: compare the approved script with the transcript to learn the user's real words (these
+  transcripts can become new voice samples).
 - A check list of phrases per language (filler words, sales phrases) as data in `voice.md`.
 
 ## Sources
+
+- Humanizer by blader, https://github.com/blader/humanizer (MIT), built on Wikipedia's "Signs of AI writing". Used as a
+  skill, downloaded at start; its text is not part of this repository.
 
 - Vexian in Grant Owen's podcast, "The Crazy Genius Who Solved The Youtube Algorithm":
   https://www.youtube.com/watch?v=41HMFGbENj4. Taken: the hook is the first seconds, every block is a small story, the

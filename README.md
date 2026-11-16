@@ -84,7 +84,7 @@ flowchart TB
 | 1 Idea | The Scout looks at what works in your niche and ranks topics, title and thumbnail first | the topic |
 | 2 Title | Writes title and thumbnail text before a word of script exists | the title |
 | 3 Proof | Runs the test the title promises and collects the numbers that go into the video | what goes in |
-| 4 Script | The Writer writes in your voice, from your style pack | the script |
+| 4 Script | The Writer writes in your voice, then runs [Humanizer](https://github.com/blader/humanizer) over the draft with your own spoken words as the sample | the script; the card shows what Humanizer changed |
 | 5 Record | Puts the script on your phone as a teleprompter (QR code, with a remote) | you record |
 | 6 Edit | The Editor transcribes, cuts to the last full take of each sentence, builds 2D and 3D, mixes the sound; the Critic checks every version against your best video before you see it | the preview |
 | 7 Thumbnail | The Designer makes the thumbnail and test variants | the thumbnail |
@@ -305,4 +305,6 @@ Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md), [
 [MIT](LICENSE), copyright Marco Patzelt. The mascot Slate was made by the author with ChatGPT image generation and
 redrawn by hand as SVG ([`docs/brand/`](docs/brand/)); it is part of the MIT-licensed repository. Third-party tools keep their own licences: ffmpeg (LGPL/GPL build from Debian),
 Blender (GPL, called as a program, not linked), Chromium (BSD), Inter (SIL Open Font License), Claude Code and Codex
-(installed from their official packages at first start, not shipped).
+(installed from their official packages at first start, not shipped), [Humanizer](https://github.com/blader/humanizer)
+by blader (MIT; the newest release is downloaded at start and loaded as a skill, its text is not part of this
+repository), yt-dlp (Unlicense, reads the captions of your own videos for the voice sample).

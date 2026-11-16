@@ -46,6 +46,10 @@ measures it after 48 hours. Before this step: the final cut is approved (`skills
 ## Steps
 
 1. Build the package and run `python3 skills/upload/scripts/package_check.py <id>` until 0 errors. Read every warning.
+   The description goes through the Humanizer pass first (skills/script, "Humanizer pass"): draft in
+   `work/description-draft-vNNN.md`, result in `export/description-vNNN.md` and in the package, then
+   `crewcut humanize record --draft work/description-draft-vNNN.md --final export/description-vNNN.md`. Chapters, links
+   and the AI disclosure stay word for word.
 2. Card: `crewcut card propose --episode <id> --step upload --kind publish --title "Publish <day> <time>" --file
    export/upload.json --body "<title> · <visibility> · AI question: <answer>, <why>"`, then `crewcut card wait`.
    Declined: change what the user says, check again, new card.

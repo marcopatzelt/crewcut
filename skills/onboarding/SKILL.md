@@ -47,6 +47,16 @@ All messages of this step go to the pseudo-episode `_onboarding`:
   if the channel features some. Write them to `channel.json`.
 - The user's own videos and pages come first. Other creators' videos only when the user pasted their links.
 
+## 3b. Voice sample (for the Humanizer pass)
+
+- Take one to three of the user's **own** recent videos in which they talk to the camera (long videos first, the
+  longest talking parts; no Shorts, no videos of others): `crewcut brand voice add <video link>` for each. It reads the
+  video's captions and writes the plain spoken text to `brand/voice/`. At most three are kept.
+- A video without captions: say so on the profile card and offer to transcribe a recording of it
+  (`crewcut brand voice add /import/<file>`, on this machine).
+- The profile card names them in one row: "Voice sample: 2 of your videos". The Writer gives these words to Humanizer
+  so a script sounds like the user, not like a model.
+
 ## 4. Fonts and licences
 
 - Download only free fonts: fonts from Google Fonts or Fontsource, or fonts whose licence is the SIL Open Font License

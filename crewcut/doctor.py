@@ -91,6 +91,18 @@ def checks(ci: bool = False, probe: bool = False) -> list[dict]:
     add(OK if vs["current"] else NOTE, "engine version",
         f"{vs['current'] or 'none yet'} (channel {vs['channel']}, last good {vs['last_good'] or '-'}"
         + (f", skipped as broken: {', '.join(vs['bad'])}" if vs["bad"] else "") + ")")
+    from . import extskills, voice
+    for s in extskills.configured():
+        cur = extskills.current(s["name"])
+        add(OK if cur else NOTE, f"skill {s['name']}",
+            f"{cur['version']} from github.com/{s['repo']} ({s.get('license')})" if cur else
+            f"not installed yet (github.com/{s['repo']}); the container fetches the newest version at start",
+            "" if cur else "Run `crewcut skills update` when the machine is online.")
+    if extskills.humanizer_enabled():
+        n = len(voice.samples())
+        add(OK if n else NOTE, "voice sample", f"{n} of your own videos in brand/voice/" if n else
+            "none yet: the Humanizer pass runs without your spoken words",
+            "" if n else "Say \"use my video <link> as voice sample\" or run `crewcut brand voice add <link>`.")
     if not eng.installed():
         add(NOTE if ci else ERROR, f"engine {eng.label}{tag}", "not installed yet",
             "The container installs Claude Code at the first start; Codex when you say \"use Codex\". "

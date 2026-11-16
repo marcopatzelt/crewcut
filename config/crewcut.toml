@@ -36,6 +36,20 @@ max_per_episode = 20       # crew messages per episode
 [queue]
 heavy_parallel = 1         # heavy jobs (render, transcription, assembly) at the same time
 
+[humanizer]
+# Every script draft goes through Humanizer (blader/humanizer, MIT) before its card, in the "Embedded" mode with your
+# own spoken words from brand/voice/ as the sample. Say "no humanizer" to switch it off.
+enabled = true
+
+# Skills from other projects: downloaded at start, newest release (channel "latest") or a fixed tag; never copied into
+# this repository. `steps` says where the crew uses them (Codex gets the text in the prompt for these steps).
+[[skills.external]]
+name = "humanizer"
+repo = "blader/humanizer"
+channel = "latest"
+license = "MIT"
+steps = ["script", "title", "upload"]
+
 [money]
 cap_month_usd = 20.0       # real money per month (rented GPUs, paid APIs); renting stops at the cap
 default_episode_budget_usd = 5.0

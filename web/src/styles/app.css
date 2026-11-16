@@ -876,6 +876,33 @@ svg.lucide {
   box-shadow: inset 1px 0 0 var(--line-strong);
 }
 
+/* The Humanizer note on a script or title card: same quiet disclosure as a crew exchange. */
+.humanized {
+  margin-top: 8px;
+}
+
+.humanized.quiet-line {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-3);
+}
+
+.humanized-list .was {
+  color: var(--ink-3);
+  text-decoration: line-through;
+  text-decoration-color: var(--line-strong);
+}
+
+.humanized-list .now {
+  color: var(--ink);
+}
+
+.humanized-why {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-3);
+}
+
 .exchange-list li + li {
   margin-top: 12px;
 }

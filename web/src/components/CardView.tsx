@@ -8,6 +8,7 @@ import { reducedMotion } from "../lib/platform";
 import { accept, decline, messageOf } from "../store/actions";
 import { ErrorLine, Facts, identityOf, Keys, Media } from "./bits";
 import { Avatar } from "../slate/Slate";
+import { Humanized } from "./Humanized";
 
 const NOUN: Record<CardKind, string> = {
   topic: "Topic",
@@ -345,6 +346,7 @@ export function OpenCard({
       <h2 className="card-title">{card.title}</h2>
       {card.body && card.kind !== "rule" ? <p className="card-body">{card.body}</p> : null}
       <CardPreview card={card} chosen={chosen} onChoose={setChosen} way={way} onWay={setWay} />
+      <Humanized card={card} folding={Boolean(folding)} />
       <div className="card-actions">
         <button
           type="button"

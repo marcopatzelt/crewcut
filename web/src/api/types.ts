@@ -157,9 +157,23 @@ export interface CardData extends Estimate {
   profile?: Profile;
   // publish
   schedule?: string | null;
+  // script and title cards: the Humanizer pass
+  humanizer?: HumanizerNote;
   // any card
   facts?: Fact[];
   [key: string]: unknown;
+}
+
+export interface HumanizerNote {
+  version?: string | null;
+  repo?: string | null;
+  mode?: "embedded" | "plain";
+  voice?: string[];
+  why?: string;
+  count?: number;
+  changes?: { before: string; after: string }[];
+  /** set when the pass did not run, with the reason */
+  skipped?: string;
 }
 
 export interface Fact {

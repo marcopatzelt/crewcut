@@ -53,6 +53,11 @@ def propose(episode: str | None, step: str | None, kind: str, title: str, body: 
         if not p.is_file():
             raise FileNotFoundError(f"card file not found: {file}")
         digest = sha256(p)
+    if episode and episode != "_onboarding":
+        from . import humanize
+        hz = humanize.for_card(paths.episode_dir(episode), kind, file)  # raises humanize.Missing for a script card
+        if hz:
+            data = {**(data or {}), "humanizer": hz}
     cid = db.insert("cards", episode=episode, step=step, kind=kind, identity=identity, title=title, body=body,
                     file=file, sha256=digest, preview=preview, options=options or [], data=data or {},
                     status="open", created=db.now(), job=job)

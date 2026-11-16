@@ -32,6 +32,13 @@ if [ "${CREWCUT_INSTALL_ENGINE:-1}" = "1" ]; then
   fi
 fi
 
+# Skills from other projects (Humanizer, MIT): the newest release from GitHub at every start, next to the last one,
+# switched only when it is a valid skill (crewcut/extskills.py). Never part of the image or the repository.
+mkdir -p /opt/engine/skills && chown "$uid:$gid" /opt/engine/skills 2>/dev/null || true
+if [ "${CREWCUT_INSTALL_SKILLS:-1}" = "1" ]; then
+  ( as_user crewcut skills update > "$STUDIO/.crewcut/logs/skills-update.log" 2>&1 || true ) &
+fi
+
 # The user's Claude Code settings: <studio>/.claude/ is Claude Code's own folder inside the container (settings.json,
 # CLAUDE.md, skills/, agents/, commands/, MCP). Optional: your host's ~/.claude mounted read only at /host-claude is
 # copied in once (never the login file). Crewcut itself comes as a plugin (--plugin-dir) and never edits these files.

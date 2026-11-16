@@ -182,9 +182,9 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     id: "004-subscription-website",
     title: "Does a $20 subscription build a whole website?",
     step: "script",
-    steps: steps(["done", "done", "done", "working", "open", "open", "open", "skipped", "open", "open"]),
+    steps: steps(["done", "done", "done", "waiting", "open", "open", "open", "skipped", "open", "open"]),
     updated: ago(3 * H),
-    open_cards: 0,
+    open_cards: 1,
   };
   const ep2 = {
     id: "002-agent-memory",
@@ -420,6 +420,42 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
       created: ago(1 * D),
       choice: 0,
       decided_at: ago(23 * H),
+    },
+    {
+      id: 11,
+      episode: ep4.id,
+      step: "script",
+      kind: "script",
+      identity: "writer",
+      title: "Script, version 1",
+      body: "540 words, about 3 min 40 s spoken. Check: 0 errors.",
+      options: null,
+      file: "brief/SCRIPT-v001.md",
+      preview: null,
+      sha256: "51e0a7c3d29b",
+      status: "open",
+      created: ago(40 * MIN),
+      data: {
+        humanizer: {
+          version: "v4.0.0",
+          repo: "blader/humanizer",
+          mode: "embedded",
+          voice: ["brand/voice/2026-11-02-local-models.md", "brand/voice/2026-11-09-agent-memory.md"],
+          why: "Not X but Y, a closing line without news, a list of three.",
+          count: 3,
+          changes: [
+            {
+              before: "This is not just a hosting bill, it is a whole new way to build websites.",
+              after: "The hosting bill was $4.20.",
+            },
+            {
+              before: "Fast, cheap and surprisingly good.",
+              after: "It was fast and cheap. The design was the surprise.",
+            },
+            { before: "And that changes everything.", after: "" },
+          ],
+        },
+      },
     },
   ];
 

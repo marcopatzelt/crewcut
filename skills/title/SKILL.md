@@ -36,12 +36,17 @@ Not here: the thumbnail image (`skills/thumbnail/`), the first sentence of the v
    variant, or for an old video its current title as control. Check all three.
 6. **Write `brief/TITLE-vNNN.md`:** chosen title, characters, the promise, the hook, the number and where it comes from,
    the thumbnail text, the three test variants, rejected candidates with the reason. Never overwrite a version.
-7. **Card.** `crewcut card propose --episode <id> --step title --kind title --title "Pick a title" --file
+7. **Humanizer pass on the words.** Before the card, run the Humanizer skill over the five titles and the thumbnail
+   text (write them first to `work/titles-draft-vNNN.md`), the same way as the script (skills/script, "Humanizer
+   pass"): look for advertising language, inflated meaning and staged run-ups; the click words of `voice.md`
+   (`## Title hooks`) and every number stay. Record it: `crewcut humanize record --draft work/titles-draft-vNNN.md
+   --final brief/TITLE-vNNN.md`. The card then shows what changed.
+8. **Card.** `crewcut card propose --episode <id> --step title --kind title --title "Pick a title" --file
    brief/TITLE-vNNN.md --body "Recommendation: option 1. <one sentence why>" --option "<1>" … --option "<5>"`, then
    `crewcut card wait`.
-8. **Hand over.** To the proof step: the promise and the number to measure. To the script: promise, tool, number. To the
+9. **Hand over.** To the proof step: the promise and the number to measure. To the script: promise, tool, number. To the
    Designer: title, thumbnail text, verdict, the three variants.
-9. **After the proof, check again.** Do the number and the hook still hold? If not, write a new version and a new card
+10. **After the proof, check again.** Do the number and the hook still hold? If not, write a new version and a new card
    before the script starts.
 
 A title change after the upload needs a card and goes through `skills/upload/`.

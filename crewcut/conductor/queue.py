@@ -115,8 +115,11 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
     if eng.name == "claude":
         pdir = plugin_dir()
         mode = ecfg.get("crew", "runs")
+        from .. import extskills
+        # skills from other projects (Humanizer) load the Claude Code way: as plugins, newest version
+        opts["plugin_dirs"] = extskills.plugin_dirs()
         if pdir:
-            opts["plugin_dirs"] = [pdir]
+            opts["plugin_dirs"].insert(0, pdir)
             with_identity = False
             if mode == "subagents" and j["identity"] != "showrunner":
                 # the Showrunner runs and hands the work to the crew member as its subagent
@@ -132,6 +135,13 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
     else:
         opts["soul"] = ""  # the identity is part of the system text below
         opts["config"] = [str(x) for x in (ecfg.get("config") or [])]
+        # Codex has no plugins in exec: the skills of other projects that belong to this step go into the prompt
+        from .. import extskills
+        for s in extskills.for_step(j["step"]):
+            text = extskills.skill_text(s["name"])
+            if text:
+                prompt += (f"\n\n---\nSkill `{s['name']}` {s['version']} (github.com/{s['repo']}, {s.get('license')}), "
+                           f"use it where your step says so:\n\n{text}")
     task = engines.Task(
         prompt=prompt, system=prompts.system_prompt(ident_for_prompt, j["episode"], j["step"], with_identity),
         cwd=cwd, env=env, model=model or None, effort=ident.get("effort") or None, agent=agent, extra_args=extra,
@@ -247,6 +257,8 @@ class Worker:
 
         def go() -> None:
             try:
+                from .. import extskills
+                extskills.update()
                 res = versions.update(name)
                 st = versions.read_state()
                 st.setdefault(name, {})["checked_at"] = time.time()

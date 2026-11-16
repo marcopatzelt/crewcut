@@ -177,6 +177,13 @@ lists, so these checks then fall back to judgement by hand.
 | `## Title hooks` | `- label: word, word` | `title_check.py` | each label found counts as a hook (+6 points) |
 | `## Title words to avoid` | `- label: word, word` | `title_check.py` | ERROR |
 
+## voice/: your own spoken words
+
+One to three Markdown files with the plain spoken text of your own videos: `crewcut brand voice add <video link>`
+(the video's captions, through yt-dlp) or `crewcut brand voice add <recording>` (transcribed on this machine). Each
+file names its source and method; the oldest goes when a fourth comes. The Writer gives them to the Humanizer pass as
+the voice sample, so a script keeps your words and rhythm. Updates never touch them; delete a file to drop it.
+
 ## rules/idea.md, rules/title.md, rules/proof.md, rules/script.md, rules/upload.md
 
 Learned rules of the first steps, in the same format as the other rule files. The agents read them before each step;
