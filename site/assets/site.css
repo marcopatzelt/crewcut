@@ -272,7 +272,7 @@ main > section > .wrap, footer.closing > .wrap { flex: 1 0 auto; display: flex; 
 .hero__lead { margin-top: 24px; max-width: 40em; font-size: var(--t-lead); line-height: 1.45; color: var(--ink-2); text-wrap: pretty; }
 .hero .btn-row { margin-top: 36px; justify-content: center; }
 .hero__art { margin-top: 48px; }
-.hero__art img { width: auto; height: clamp(170px, 28svh, 330px); }
+.hero__art img { width: auto; height: clamp(170px, 28svh, 300px); max-width: 42vw; object-fit: contain; }
 
 @media (max-width: 639px) {
   .hero__notice { margin-bottom: 12px; }
@@ -400,7 +400,7 @@ footer.closing > .wrap { justify-content: space-between; gap: 64px; }
 .cmds li::before { content: counter(cmd); grid-row: 1 / span 2; font-size: var(--t-small); line-height: 1.6; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .cmds code { font-size: 14px; line-height: 1.6; color: var(--ink); overflow-wrap: anywhere; }
 .cmds li span { font-size: var(--t-small); line-height: 1.45; color: var(--ink-3); }
-.cmds__done { display: flex; align-items: center; gap: 14px; padding-top: 16px; border-top: 0.5px solid var(--line); font-size: 15px; line-height: 1.45; color: var(--ink-2); }
+.cmds__done { display: flex; align-items: center; gap: 14px; padding-top: 4px; font-size: 15px; line-height: 1.45; color: var(--ink-2); }
 .cmds__done img { flex: none; width: 48px; height: 48px; }
 
 .foot { display: flex; flex-direction: column; gap: 24px; }
@@ -416,6 +416,7 @@ footer.closing > .wrap { justify-content: space-between; gap: 64px; }
   .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (min-width: 640px) and (max-width: 1023px) {
+  #crew { --h: 2; }
   .flow { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 32px; }
   .flow li:nth-child(4)::before { display: none; }
   .states__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
