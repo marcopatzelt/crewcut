@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>headline</title>
+<link rel="stylesheet" href="base.css">
+<script src="motion.js"></script>
+<script src="scene.js"></script>
+</head><body><div id="stage"></div>
+<script>
+// Scene "headline": a source as a card. One or two chips above, the title in lines, a highlight runs over one phrase
+// on the spoken word, a source line at the bottom. Data keys and cues: BLOCKS.md
+const EXAMPLE={format:'landscape',frames:84,chips:['Example source','Report, 2026'],
+  title:'A small team shipped the same feature in a third of the time',mark:'a third of the time',
+  source:'Example data, written for this template.',cues:{mark:20}};
+SCENE(EXAMPLE,S=>{const{M,D,W,H}=S;
+const F=S.fine({width:S.portrait?Math.round(W*0.86):Math.round(W*0.62),size:S.portrait?72:76,source_size:40,
+  max_lines:S.portrait?6:4,chip_size:44,chip2_size:40,mark_frames:M.MARK,drift:M.DRIFT,y:0.5,source_label:'Source:'});
+const decor=S.decor({avoid:[[W/2-F.width/2-40,H*0.15,W/2+F.width/2+40,H*0.85]]});
+const CUE=S.cue('mark',15);
+const E=S.layer(W/2,H*F.y);
+const chips=(Array.isArray(D.chips)?D.chips:(D.chips?[D.chips]:[])).slice(0,2);
+const chipA=chips[0]?M.chip(E,chips[0]):null,chipB=chips[1]?M.chip(E,chips[1],'paper'):null;
+const styleA={height:Math.round(F.chip_size*2.1),size:F.chip_size,pad:Math.round(F.chip_size*0.8)},
+      styleB={height:Math.round(F.chip_size*2.1),size:F.chip2_size,pad:Math.round(F.chip2_size*0.8)};
+if(chipA)S.chipStyle(chipA,styleA);if(chipB)S.chipStyle(chipB,styleB);
+const R=M.at(M.el('div','card-frame',E),W/2,H*F.y);
+const K=M.el('div','card',R,'');K.style.width=F.width+'px';
+const PAD=56;
+// Break the title into lines: "\n" is a hard break, otherwise word by word; the marked phrase stays on one line.
+const title=String(D.title||''),mk=D.mark&&title.includes(D.mark)?String(D.mark):null;
+function parts(par){if(!mk||!par.includes(mk))return par.split(/ +/).filter(Boolean).map(t=>({t}));
+  const i=par.indexOf(mk),before=par.slice(0,i),after=par.slice(i+mk.length);let m=mk;
+  const b=before.split(/ +/).filter(Boolean).map(t=>({t})),a=after.split(/ +/).filter(Boolean).map(t=>({t}));
+  const out=b.slice();if(before&&!/ $/.test(before)&&out.length)m=out.pop().t+m;          // "(" right before stays attached
+  const marked={t:m,m:true,pre:m.slice(0,m.length-mk.length)};
+  if(after&&!/^ /.test(after)&&a.length)marked.post=a.shift().t;                          // "," right after stays attached
+  return out.concat([marked],a);}
+const html=line=>line.map(w=>w.m?M.esc(w.pre)+'<span class="mark"><span>'+M.esc(mk)+'</span></span>'+M.esc(w.post||''):M.esc(w.t)).join(' ');
+function breakLines(size){const probe=M.el('span','hl-line',K,'');probe.style.cssText='position:absolute;visibility:hidden;font-size:'+size+'px';
+  const inner=F.width-2*PAD,lines=[];
+  title.split('\n').forEach(par=>{let l=[];parts(par).forEach(w=>{probe.innerHTML=html(l.concat([w]));
+    if(l.length&&probe.offsetWidth>inner){lines.push(l);l=[w];}else l.push(w);});if(l.length)lines.push(l);});
+  let widest=0;lines.forEach(l=>{probe.innerHTML=html(l);widest=Math.max(widest,probe.offsetWidth);});probe.remove();return{lines,widest,inner};}
+let size=F.size,br=breakLines(size),guard=0;
+while((br.lines.length>F.max_lines||br.widest>br.inner)&&size>M.MIN_TEXT&&guard++<60){size=Math.floor(size*0.94);br=breakLines(size);}
+const src=D.source?String(D.source).replace(/^\s*source:\s*/i,''):'';
+K.innerHTML=br.lines.map(l=>'<span class="hl-line" style="font-size:'+size+'px">'+html(l)+'</span>').join('')+
+  (src?'<div class="hl-source" style="font-size:'+F.source_size+'px"><b>'+M.esc(F.source_label)+'</b> '+M.esc(src)+'</div>':'');
+const lines=[...K.querySelectorAll('.hl-line')],mark=K.querySelector('.mark'),source=K.querySelector('.hl-source');
+// chips together at most as wide as the card
+(function(){if(!chipA)return;const gap=16,max=F.width;let n=0;
+  while((chipA.offsetWidth+(chipB?chipB.offsetWidth+gap:0))>max&&n++<30){for(const[c,s]of[[chipA,styleA],[chipB,styleB]]){if(!c)continue;s.size=Math.max(M.MIN_TEXT,Math.floor(s.size*0.95));s.pad=Math.floor(s.pad*0.95);S.chipStyle(c,s);}}})();
+S.info.lines=br.lines.map(l=>l.map(w=>w.t).join(' '));S.info.size=size;
+function layout(){const h=R.offsetHeight,ha=chipA?chipA.offsetHeight:0,cy=H*F.y+(chipA?(ha+22)/2:0);   // card and chips centred as a group
+  M.at(R,W/2,cy);const top=cy-h/2,left=W/2-F.width/2;
+  const y=top-ha/2-22,wa=chipA?chipA.offsetWidth:0,wb=chipB?chipB.offsetWidth:0;
+  if(chipA)M.at(chipA,left+wa/2,y);if(chipB)M.at(chipB,left+wa+16+wb/2,y);}
+S.start(f=>{
+  layout();decor.update(f);
+  M.scaleLayer(E,M.drift(Math.max(0,f-M.ENTER),F.drift));
+  const k=M.enter(f,-4);M.set(R,{s:k.s,o:k.o,y:(1-k.o)*16});
+  const a=M.enter(f,-2),b=M.enter(f,-2+M.STAGGER*0.5);
+  if(chipA)M.set(chipA,{s:a.s,o:a.o,y:(1-a.o)*12});if(chipB)M.set(chipB,{s:b.s,o:b.o,y:(1-b.o)*12});
+  lines.forEach((l,i)=>{const p=M.ease(M.prog(f,-3+i*M.STAGGER*0.3,8));l.style.opacity=p.toFixed(3);l.style.transform=`translateY(${((1-p)*16).toFixed(2)}px)`;});
+  if(source)source.style.opacity=M.ease(M.prog(f,2,9)).toFixed(3);
+  if(mark)M.marker(mark,M.prog(f,CUE,F.mark_frames));
+});
+});
+</script></body></html>

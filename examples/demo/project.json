@@ -1,0 +1,11 @@
+{
+ "id": "demo",
+ "title": "Crewcut render demo",
+ "created": "2026-11-16T10:00:00Z",
+ "format": "landscape",
+ "fps": 25,
+ "step": "edit",
+ "steps": {},
+ "next_action": "crewcut render all edit/plan-v001.json --local",
+ "open_items": []
+}

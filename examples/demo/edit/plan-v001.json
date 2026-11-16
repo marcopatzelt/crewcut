@@ -1,0 +1,171 @@
+{
+ "format": "landscape",
+ "fps": 25,
+ "words": "work/words-v001.json",
+ "base": {
+  "color": "soft",
+  "seconds": 20
+ },
+ "base_until": null,
+ "voice": null,
+ "voice_db": 0.0,
+ "tail": 0,
+ "face": [
+  0.5,
+  0.38
+ ],
+ "speaker": [],
+ "inserts": [
+  {
+   "id": "k1",
+   "kind": "2d",
+   "scene": "keyword",
+   "start": 0.9,
+   "end": 2.9,
+   "transparent": true,
+   "data": {
+    "text": "Runs offline"
+   }
+  },
+  {
+   "id": "h1",
+   "kind": "2d",
+   "scene": "headline",
+   "start": 3.0,
+   "end": 6.4,
+   "cues": {
+    "mark": {
+     "word": "third",
+     "offset": -2
+    }
+   },
+   "data": {
+    "chips": [
+     "Example source",
+     "Report, 2026"
+    ],
+    "title": "A small team shipped the same feature in a third of the time",
+    "mark": "a third of the time",
+    "source": "Example data, written for this demo."
+   }
+  },
+  {
+   "id": "c1",
+   "kind": "2d",
+   "scene": "counter",
+   "start": 6.4,
+   "end": 9.6,
+   "cues": {
+    "label": 4,
+    "value": {
+     "word": "thirty"
+    },
+    "unit": {
+     "word": "cents"
+    }
+   },
+   "data": {
+    "label": "1 million tokens",
+    "value": "30",
+    "unit": "cents"
+   }
+  },
+  {
+   "id": "b1",
+   "kind": "2d",
+   "scene": "bars",
+   "start": 11.0,
+   "end": 14.4,
+   "cues": {
+    "value": {
+     "time": 13.7
+    }
+   },
+   "data": {
+    "values": [
+     3,
+     9,
+     12,
+     9,
+     0,
+     0,
+     0,
+     0,
+     0,
+     1,
+     6,
+     8,
+     14,
+     12,
+     10,
+     17,
+     15,
+     9,
+     6
+    ],
+    "start_label": "20:00",
+    "end_label": "15:00",
+    "value": "131",
+    "unit": "commits",
+    "chip": "One night"
+   }
+  },
+  {
+   "id": "g1",
+   "kind": "2d",
+   "scene": "grid",
+   "start": 14.4,
+   "end": 17.6,
+   "cues": {
+    "grid": 0,
+    "end": {
+     "word": "people"
+    }
+   },
+   "data": {
+    "chip_top": "One GPU",
+    "columns": 14,
+    "rows": 8,
+    "symbol": "person",
+    "chip_bottom": "serves 112 people"
+   }
+  },
+  {
+   "id": "p1",
+   "kind": "2d",
+   "scene": "post",
+   "start": 17.6,
+   "end": 20.0,
+   "cues": {
+    "m0": {
+     "word": "eight"
+    }
+   },
+   "data": {
+    "name": "Sam Example",
+    "handle": "@sam.example",
+    "text": "Rendered the whole thing overnight on one rented GPU. Took 8 hours and cost less than lunch.",
+    "marks": [
+     "8 hours"
+    ],
+    "date": "23:50, 9 Nov 2026"
+   }
+  }
+ ],
+ "sound": {
+  "music": null,
+  "music_source": null,
+  "music_db": null,
+  "duck": true,
+  "gaps": [],
+  "hits": [
+   "c1@value",
+   "g1@end"
+  ],
+  "typing": [],
+  "whooshes": [],
+  "lufs": null
+ },
+ "output": "export/demo-v001-preview.mp4",
+ "crf": 17
+}

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>bars</title>
+<link rel="stylesheet" href="base.css">
+<script src="motion.js"></script>
+<script src="scene.js"></script>
+</head><body><div id="stage"></div>
+<script>
+// Scene "bars": a bar chart from real values grows from the left; a large number rolls and locks in on the spoken word.
+// Data keys and cues: BLOCKS.md
+const EXAMPLE={format:'landscape',frames:90,values:[3,9,12,9,0,0,0,0,0,1,6,8,14,12,10,17,15,9,6],start_label:'20:00',end_label:'15:00',
+  value:'131',unit:'commits',chip:'One night',cues:{value:44}};
+SCENE(EXAMPLE,S=>{const{M,D,W,H}=S;
+const F=S.fine({width:S.portrait?0.84:0.6,height:S.portrait?340:330,y:S.portrait?0.6:0.66,size:S.portrait?200:220,
+  axis_size:40,chip_size:42,drift:M.DRIFT});
+const decor=S.decor({avoid:[[W*0.1,H*0.08,W*0.9,H*0.92]]});
+const E=S.layer(W/2,H/2);
+const V=(Array.isArray(D.values)?D.values:[]).map(Number).filter(v=>isFinite(v)),n=Math.max(1,V.length),mx=Math.max(1,...V);
+const bw=W*F.width,dx=bw/n,x0=W/2-bw/2+dx/2,base=H*F.y+F.height/2,CUE=S.cue('value',40);
+const axis=M.at(M.el('div','axis',E,''),W/2-(bw+48)/2,base+12);
+axis.style.width=(bw+48)+'px';axis.style.height=Math.max(3,parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--line'))||3)+'px';
+axis.style.transform='translate(0,-50%)';axis.style.borderRadius='999px';
+const R=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--radius'))||20;
+const B=V.map((v,i)=>{const b=M.el('div','bar '+(v>0?'on':'off'),E,'');const h=Math.max(v>0?14:6,F.height*v/mx),r=Math.min(R*0.5,dx*0.2);
+  b.style.cssText+=';left:'+(x0+i*dx-dx*0.33)+'px;top:'+(base-h)+'px;width:'+(dx*0.66)+'px;height:'+h+'px;border-radius:'+r+'px '+r+'px 3px 3px';return b;});
+const lab=t=>{const c=M.chip(E,t,'paper');S.chipStyle(c,{height:Math.round(F.axis_size*2),size:F.axis_size,pad:Math.round(F.axis_size*0.7)});return c;};
+const c0=D.start_label?M.at(lab(D.start_label),x0,base+12+F.axis_size*1.9):null,c1=D.end_label?M.at(lab(D.end_label),x0+(n-1)*dx,base+12+F.axis_size*1.9):null;
+const numY=base-F.height-F.size*0.62;
+const num=M.at(M.el('div','number center',E,'<span class="digits"></span>'+(D.unit?'<span class="unit-word">'+M.esc(D.unit)+'</span>':'')),W/2,numY);
+const dEl=num.querySelector('.digits'),uEl=num.querySelector('.unit-word');dEl.style.fontSize=F.size+'px';
+if(uEl){uEl.style.fontSize=M.text(F.size*0.36)+'px';uEl.style.marginLeft=Math.round(F.size*0.1)+'px';uEl.style.paddingBottom=Math.round(F.size*0.2)+'px';}
+const Z=M.counter(dEl,String(D.value??'0'),{stagger:Math.min(M.DIGIT,4),frames:Math.max(8,Math.min(M.COUNTER,CUE-6)),turns:6});
+const chip=D.chip?M.at(M.chip(E,D.chip),W/2,numY-F.size*0.55-F.chip_size*1.6):null;
+if(chip)S.chipFit(chip,{height:Math.round(F.chip_size*2.1),size:F.chip_size,pad:Math.round(F.chip_size*0.8)},W*0.86);
+S.start(f=>{
+  decor.update(f);M.scaleLayer(E,M.drift(Math.max(0,f-M.ENTER),F.drift));
+  const lp=M.ease(M.prog(f,-2,10));axis.style.transform=`translate(0,-50%) scaleX(${lp.toFixed(4)})`;
+  const grow=Math.max(10,CUE-4);                                         // the last bar stands shortly before the number
+  B.forEach((b,i)=>{const st=1+i*(grow-9)/Math.max(1,n-1),p=M.prog(f,st,9),e=p<=0?0:M.ease(p)+Math.sin(p*Math.PI)*0.06*(1-p);
+    b.style.transform=`scaleY(${Math.max(0,e).toFixed(4)})`;b.style.opacity=p>0?'1':'0';});
+  [c0,c1].forEach((c,i)=>{if(!c)return;const a=M.enter(f,i?grow-6:0);M.set(c,{s:a.s,o:a.o,y:(1-a.o)*10});});
+  const st=Z.update(f,CUE-1).start,pop=f>=CUE-1?1+0.06*(1-M.ease(M.prog(f,CUE-1,9))):1;M.set(num,{s:pop,o:M.prog(f,Math.max(0,st),6)});
+  if(chip){const c=M.enter(f,-M.ENTER);M.set(chip,{s:c.s,o:c.o});}
+});
+});
+</script></body></html>

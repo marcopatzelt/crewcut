@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>counter</title>
+<link rel="stylesheet" href="base.css">
+<script src="motion.js"></script>
+<script src="scene.js"></script>
+</head><body><div id="stage"></div>
+<script>
+// Scene "counter": a number rolls and locks in on the spoken word, with a label chip, a unit and an optional line below.
+// Data keys and cues: BLOCKS.md
+const EXAMPLE={format:'landscape',frames:86,label:'1 million tokens',value:'30',unit:'cents',sub:null,cues:{label:8,value:60,unit:70}};
+SCENE(EXAMPLE,S=>{const{M,D,W,H}=S;
+const text=String(D.value??'0'),unit=D.unit!=null&&D.unit!==''?String(D.unit):'',sub=D.sub?String(D.sub):'';
+const symbol=unit.length>0&&unit.length<=2;          // "%" or "$" stands as large as the number; a word is smaller
+const F=S.fine({size:null,size_max:S.portrait?330:290,max_width:S.portrait?0.84:0.72,y:S.portrait?0.47:0.5,
+  roll_frames:M.COUNTER,digit_stagger:M.DIGIT,turns:null,pop:0.06,drift:M.DRIFT,label_size:44,gap:40});
+const decor=S.decor({avoid:[[W*0.12,H*0.25,W*0.88,H*0.75]]});
+const E=S.layer(W/2,H*F.y);
+const chip=D.label?M.chip(E,D.label):null;
+if(chip)S.chipFit(chip,{height:Math.round(F.label_size*2),size:F.label_size,pad:Math.round(F.label_size*0.8)},W*0.86);
+const num=M.at(M.el('div','number center',E,'<span class="digits"></span>'+(unit?'<span class="'+(symbol?'unit-symbol':'unit-word')+'">'+M.esc(unit)+'</span>':'')),W/2,H*F.y);
+const dEl=num.querySelector('.digits'),uEl=num.querySelector('.unit-symbol,.unit-word');
+const nDigits=(text.match(/\d/g)||[]).length||1;
+const CUE_V=S.cue('value',Math.min(S.frames-12,nDigits>3?20:50)),end=CUE_V-1;
+// Not enough time before the cue for the calm roll: roll short and fast from frame 0.
+let st=F.digit_stagger,rd=F.roll_frames,turns=F.turns,short=false;
+if(end-(nDigits-1)*st-rd<-2&&!(D.fine&&(D.fine.roll_frames||D.fine.digit_stagger))){
+  short=true;st=Math.max(1,Math.min(F.digit_stagger,Math.floor(end/(2*nDigits))));rd=Math.max(4,end-(nDigits-1)*st);turns=turns??4;}
+const R=M.counter(dEl,text,Object.assign({stagger:st,frames:rd},turns?{turns}:{}));
+function size(fs){dEl.style.fontSize=fs+'px';if(!uEl)return;
+  if(symbol){uEl.style.fontSize=fs+'px';uEl.style.marginLeft=Math.round(fs*0.05)+'px';}
+  else{uEl.style.fontSize=M.text(fs*0.36)+'px';uEl.style.marginLeft=Math.round(fs*0.1)+'px';uEl.style.paddingBottom=Math.round(fs*0.2)+'px';}}
+const maxW=F.max_width*W;let fs=F.size||F.size_max;size(fs);
+if(!F.size){let n=0;while(fs>M.MIN_TEXT*2&&num.offsetWidth>maxW&&n++<200){fs=Math.max(M.MIN_TEXT*2,Math.floor(fs*Math.min(0.97,maxW/num.offsetWidth)));size(fs);}}
+const top=H*F.y-0.55*fs;
+const chipH=chip?chip.offsetHeight:0;
+if(chip)M.at(chip,W/2,Math.round(top-F.gap-chipH/2));
+const subEl=sub?M.at(M.el('div','subline center',E,M.esc(sub)),W/2,Math.round(H*F.y+0.55*fs+F.gap+fs*0.18)):null;
+if(subEl){let ss=M.text(fs*0.36);subEl.style.fontSize=ss+'px';if(subEl.offsetWidth>W*0.86){ss=M.text(ss*W*0.86/subEl.offsetWidth);subEl.style.fontSize=ss+'px';}}
+const CUE_L=S.cue('label'),CUE_U=S.cue('unit'),CUE_S=S.cue('sub',sub?Math.min(S.frames-12,CUE_V+25):null);
+S.info.counter={size:fs,width:num.offsetWidth,roll:[st,rd,turns],short};
+S.start(f=>{
+  decor.update(f);
+  M.scaleLayer(E,M.drift(Math.max(0,f-M.ENTER),F.drift));
+  if(chip){const c=CUE_L!=null&&CUE_L>2?M.enter(f,CUE_L-2-M.ENTER):M.enter(f,-M.ENTER);M.set(chip,{y:(1-c.o)*14,s:c.s,o:c.o});}
+  const r=R.update(f,end);
+  const pop=f>=end?1+F.pop*(1-M.ease(M.prog(f,end,9))):1;             // small pop when the number locks in
+  M.set(num,{s:pop,o:short?M.prog(f,r.start-2,4):M.prog(f,r.start,8)});
+  if(uEl&&CUE_U!=null){const u=M.enter(f,CUE_U-2-M.ENTER);uEl.style.opacity=u.o.toFixed(3);uEl.style.transform=`translateX(${((1-u.o)*-20).toFixed(2)}px)`;}
+  if(subEl){const m=M.enter(f,CUE_S-2-M.ENTER);M.set(subEl,{y:(1-m.o)*14,s:m.s,o:m.o});}
+});
+});
+</script></body></html>

@@ -33,3 +33,7 @@ web/.vite/
 *.mp3
 !examples/demo/**/*.json
 render-out/
+
+# the demo renders into the studio copy; never into the repo
+examples/demo/render/
+examples/demo/export/

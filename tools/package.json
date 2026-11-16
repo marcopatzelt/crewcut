@@ -1,0 +1,12 @@
+{
+  "name": "crewcut-tools",
+  "private": true,
+  "description": "Node tools of Crewcut: the deterministic 2D frame renderer (render_html.js).",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "playwright-core": "1.50.1"
+  }
+}

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>grid</title>
+<link rel="stylesheet" href="base.css">
+<script src="motion.js"></script>
+<script src="scene.js"></script>
+</head><body><div id="stage"></div>
+<script>
+// Scene "grid": a grid of symbols builds row by row; the last one (bottom right) fills with the accent and pulses.
+// A chip above, a large chip below on the end cue. Data keys and cues: BLOCKS.md
+const EXAMPLE={format:'landscape',frames:96,chip_top:'One GPU',columns:14,rows:8,symbol:'person',chip_bottom:'serves 112 people',cues:{grid:0,end:46}};
+SCENE(EXAMPLE,S=>{const{M,D,W,H}=S;
+const COLS=Math.max(1,Math.min(40,parseInt(D.columns||14,10))),ROWS=Math.max(1,Math.min(30,parseInt(D.rows||8,10)));
+const F=S.fine({cell:null,max_width:S.portrait?0.86:0.7,max_height:S.portrait?0.5:0.52,chip_size:44,bottom_size:58,drift:M.DRIFT});
+const decor=S.decor({avoid:[[W*0.1,H*0.06,W*0.9,H*0.94]]});
+// Cell: as large as fits (at most 72 px); the symbol is 90 % of the cell.
+const CELL=F.cell||Math.min(72,Math.floor(W*F.max_width/COLS),Math.floor(H*F.max_height/ROWS)),G=Math.round(CELL*0.9);
+const gw=(COLS-1)*CELL,gh=(ROWS-1)*CELL;
+const topChip=D.chip_top?F.chip_size*2.1+40:0,bottomChip=D.chip_bottom?F.bottom_size*2.1+44:0;
+const cy=H/2+(topChip-bottomChip)/2;                          // grid and chips centred as a group
+const X0=W/2-gw/2,Y0=cy-gh/2;
+const CUE_G=S.cue('grid',0),CUE=S.cue('end',CUE_G+46);
+const draw=D.symbol==='dot'?M.dot:(D.symbol==='square'?M.square:M.person);
+const E=S.layer(W/2,H/2);
+const lx=X0+gw,ly=Y0+gh,top=[Y0-G/2-44,Y0-G/2-8],bottom=[ly+G/2+8,ly+G/2+44];
+E.insertAdjacentHTML('beforeend',`<svg class="guide" width="${W}" height="${H}"><path id="g1" d="M${W/2} ${top[0]}V${top[1]}" stroke-width="4" stroke-dasharray="8 8" fill="none"/><path id="g2" d="M${lx} ${bottom[0]}V${bottom[1]}" stroke-width="4" stroke-dasharray="8 8" fill="none"/></svg>`);
+const g1=E.querySelector('#g1'),g2=E.querySelector('#g2');if(!D.chip_top)g1.style.display='none';if(!D.chip_bottom)g2.style.display='none';
+const chipTop=D.chip_top?M.at(M.chip(E,D.chip_top),W/2,top[0]-F.chip_size*1.05):null;
+if(chipTop)S.chipFit(chipTop,{height:Math.round(F.chip_size*2.1),size:F.chip_size,pad:Math.round(F.chip_size*0.8)},W*0.86);
+const cells=[];const holder=M.el('div','',E);
+for(let rr=0;rr<ROWS;rr++)for(let c=0;c<COLS;c++)cells.push({e:M.at(M.el('div','cell',holder,draw(G)),X0+c*CELL,Y0+rr*CELL),rr,c});
+const pulse=M.at(M.el('div','pulse',E),lx,ly);
+const last=M.at(M.el('div','cell',E,draw(G,true)),lx,ly);
+const chipBottom=D.chip_bottom?M.el('div','chip',E,M.esc(D.chip_bottom)):null;
+if(chipBottom){S.chipFit(chipBottom,{height:Math.round(F.bottom_size*2.1),size:F.bottom_size,pad:Math.round(F.bottom_size*0.75)},W*0.9);
+  const half=chipBottom.offsetWidth/2;M.at(chipBottom,Math.max(half+40,Math.min(W-half-40,lx)),bottom[1]+F.bottom_size*1.05);}
+const clipV=(el,p,y0,y1)=>{el.style.clipPath=`inset(${y0}px 0 ${H-(y0+(y1-y0)*p)}px 0)`;};
+// Build row by row; faster when the end cue comes soon.
+const tempo=Math.min(1,Math.max(0.1,(CUE-CUE_G-9)/32)),dRow=(ROWS>1?24/(ROWS-1):0)*tempo,dCol=(COLS>1?8/(COLS-1):0)*tempo;
+S.info.grid={cell:CELL,symbol:G,tempo};
+S.start(f=>{
+  decor.update(f);M.scaleLayer(E,M.drift(Math.max(0,f-M.ENTER),F.drift));
+  if(chipTop){const a=M.enter(f,-M.ENTER);M.set(chipTop,{s:a.s,o:a.o});}
+  clipV(g1,M.ease(M.prog(f,-2,6)),top[0],top[1]);
+  cells.forEach(p=>{const st=CUE_G-2+p.rr*dRow+p.c*dCol,a=M.enter(f,st,8,0.6),isLast=p.rr===ROWS-1&&p.c===COLS-1;
+    M.set(p.e,{s:a.s,o:isLast?a.o*(1-M.prog(f,CUE-8,3)):a.o});});
+  const t=M.prog(f,CUE-9,9),pop=1+0.4*Math.sin(Math.PI*M.ease(t))+0.15*M.ease(t);   // the last symbol fills and pops
+  M.set(last,{s:f<CUE-9?0.6:pop,o:M.prog(f,CUE-9,3)});
+  const pp=((f-CUE)%30+30)%30/30;pulse.style.width=pulse.style.height=(G+pp*130)+'px';pulse.style.opacity=f<CUE?'0':((1-pp)*0.6).toFixed(3);pulse.style.borderWidth=(4*(1-pp)+1)+'px';
+  clipV(g2,M.ease(M.prog(f,CUE-8,6)),bottom[0],bottom[1]);
+  if(chipBottom){const c=M.enter(f,CUE-10);M.set(chipBottom,{s:c.s,o:c.o,y:(1-c.o)*16});}
+});
+});
+</script></body></html>

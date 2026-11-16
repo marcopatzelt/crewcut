@@ -92,7 +92,8 @@ crewcut brand show [--json] | check | init | preview [--out file.mp4]
 crewcut engine status | use <claude|codex> | install <name> | login <name> [--episode ID]
 crewcut onboard <link> [<link> …]
 
-crewcut render plan|2d|3d|probe|cut|shown|all <plan.json> [--local | --rented] [--gpus N]
+crewcut render plan|2d|3d|probe|cut|shown|all <plan.json> [--local | --rented] [--gpus N]   (docs/rendering.md)
+crewcut render measure <image.png> | samples [--out DIR]
 crewcut ingest <episode> <file> [<file> …]
 crewcut transcribe <file> [--model small] [--device auto|cpu|cuda] [--language xx]
 crewcut cut islands|dips|probe|takes|plan|build|verify|doubles|grade|srt|audio|loudness …   (docs/recording.md)
@@ -167,7 +168,8 @@ One plan builds one version of the video. Times are seconds; frames are at `fps`
 }
 ```
 
-Values left `null` come from the style pack (`edit-style.json`). A cue is a frame number inside the insert, or
+`base` may also be `{"color": "soft", "seconds": 20}`: a generated background instead of a recording (the demo and
+the onboarding preview use it). Values left `null` come from the style pack (`edit-style.json`). A cue is a frame number inside the insert, or
 `{"word": "…", "after": seconds, "offset": frames}`, or `{"time": seconds}`. A sound reference `"s1@value"` is the frame of
 cue `value` in insert `s1`. After the user has seen an output, `crewcut render shown` writes `<output>.shown` (time and
 sha256) and the workbench refuses to overwrite it: every change is a new plan version.

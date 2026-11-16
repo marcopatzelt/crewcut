@@ -7,10 +7,11 @@ Please do not open a public issue for security problems. Use GitHub's private vu
 
 ## What Crewcut protects, and how
 
-- **Your engine login** (`CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`) lives only in `.env` and in the environment of
-  the container. It is never written into the image, the studio folder, logs or the database, never passed as a
-  command-line argument, and never sent to a rented machine. Logs are scrubbed for known secret patterns before they are
-  written or shown.
+- **Your engine login.** Claude Code: `CLAUDE_CODE_OAUTH_TOKEN` lives only in `.env` and in the environment of the
+  container; it is never written into the image, the studio folder, logs or the database, and never passed as a
+  command-line argument. Codex (beta): the device-code login is stored by Codex itself in `CODEX_HOME` inside the engine
+  volume (`/opt/engine/codex-home`, owner-only), never in the studio folder; Crewcut never reads that file. No login
+  is ever sent to a rented machine. Logs are scrubbed for known secret patterns before they are written or shown.
 - **The web UI** listens on `127.0.0.1` only. The server refuses requests with a foreign `Host` header (DNS rebinding)
   and cross-site writes (an `Origin` that is not this machine).
 - **The teleprompter** port is reachable from your network so a phone can open it. It only serves the script of one

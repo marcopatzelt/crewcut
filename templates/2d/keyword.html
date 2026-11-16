@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>keyword</title>
+<link rel="stylesheet" href="base.css">
+<script src="motion.js"></script>
+<script src="scene.js"></script>
+</head><body><div id="stage"></div>
+<script>
+// Scene "keyword": key words as a chip over the speaker. Always rendered with --transparent and laid over the video.
+// Only key words, never full captions. Data: {"text": "..."} for one word, or "words": [{text, from, to, x, y, style}].
+// Data keys and cues: BLOCKS.md
+const EXAMPLE={format:'landscape',frames:60,words:[{text:'Runs offline',from:10,to:52}]};
+SCENE(EXAMPLE,S=>{const{M,D,W,H}=S;
+if(!window.DATA&&!window.TRANSPARENT)S.B.style.setProperty('background','var(--c-muted)','important');   // only for a look in a browser
+else document.documentElement.classList.add('transparent');
+// Fine values in real pixels of the format. Safe zones keep the chip out of the platform's buttons and captions.
+const F=S.fine({size:S.portrait?82:74,height:null,pad:null,radius:null,max_width:S.portrait?0.86:0.6,min_size:Math.max(M.MIN_TEXT,S.portrait?54:50),
+  y:S.portrait?0.68:0.8,bottom_free:S.portrait?0.2:0.08,top_free:0.1,enter:M.ENTER,exit:M.EXIT,drift:M.DRIFT});
+const L=M.el('div','',S.B);L.style.cssText='position:absolute;left:0;top:0;width:'+W+'px;height:'+H+'px';
+const list=Array.isArray(D.words)?D.words:(D.text?[{text:D.text,from:S.cue('in',0),to:S.cue('out',S.frames),style:D.style,x:D.x,y:D.y}]:[]);
+const radius=F.radius??null;
+const WORDS=list.map(w=>{
+  const el=M.el('div','keyword'+(w.style==='paper'?' paper':''),L,M.esc(w.text));
+  let size=F.size,t=1;
+  const apply=()=>{el.style.fontSize=size+'px';el.style.height=Math.round((F.height||F.size*1.75)*t)+'px';
+    el.style.padding='0 '+Math.round((F.pad||F.size*0.55)*t)+'px';if(radius!=null)el.style.borderRadius=Math.round(radius*t)+'px';else el.style.borderRadius='var(--radius)';};
+  apply();const max=F.max_width*W;
+  if(el.offsetWidth>max){t=Math.max(F.min_size/F.size,max/el.offsetWidth);size=Math.floor(F.size*t);apply();}
+  const h=el.offsetHeight,b=el.offsetWidth;
+  let y=(typeof w.y==='number'?w.y:F.y)*H;y=Math.max(F.top_free*H+h/2,Math.min((1-F.bottom_free)*H-h/2-2,y));
+  const x=(typeof w.x==='number'?w.x:0.5)*W;M.at(el,Math.max(b/2+30,Math.min(W-b/2-30,x)),y);
+  const from=Math.round(w.from??0),to=Math.round(w.to??S.frames);
+  return{el,from,to,text:w.text,size,width:b,height:h,y:Math.round(y),too_wide:b>max+1};
+});
+S.info.words=WORDS.map(w=>({text:w.text,size:w.size,width:w.width,height:w.height,y:w.y,too_wide:w.too_wide}));
+S.start(f=>{
+  WORDS.forEach(w=>{
+    if(f<w.from||f>=w.to){w.el.style.opacity='0';w.el.style.visibility='hidden';return;}
+    w.el.style.visibility='visible';
+    const a=M.enter(f,w.from,F.enter),out=M.leave(f,w.to,F.exit);
+    const drift=1+F.drift*Math.max(0,f-w.from-F.enter)/M.FPS;
+    M.set(w.el,{s:a.s*drift*(1-0.05*out),o:a.o*(1-out)});
+  });
+});
+});
+</script></body></html>

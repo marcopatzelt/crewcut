@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>post</title>
+<link rel="stylesheet" href="base.css">
+<script src="motion.js"></script>
+<script src="scene.js"></script>
+</head><body><div id="stage"></div>
+<script>
+// Scene "post": a social post as a card (name, handle, text word for word, date). The user gives the data; no platform
+// logos, the network is plain text if given. Up to three phrases get a highlight on the spoken word (cues m0, m1, m2).
+// Data keys and cues: BLOCKS.md
+const EXAMPLE={format:'landscape',frames:90,name:'Sam Example',handle:'@sam.example',initials:'SE',network:null,
+  text:'Rendered the whole thing overnight on one rented GPU. Took 8 hours and cost less than lunch.',marks:['8 hours'],date:'23:50, 9 Nov 2026',cues:{m0:30}};
+SCENE(EXAMPLE,S=>{const{M,D,W,H}=S;
+const F=S.fine({width:S.portrait?Math.round(W*0.88):Math.round(W*0.62),size:S.portrait?50:48,mark_frames:M.MARK,drift:M.DRIFT,max_height:0.8});
+const decor=S.decor({avoid:[[W/2-F.width/2-40,H*0.1,W/2+F.width/2+40,H*0.9]]});
+const E=S.layer(W/2,H/2);
+const R=M.at(M.el('div','card-frame',E),W/2,H/2);
+const K=M.el('div','card',R,'');K.style.width=F.width+'px';
+const marks=(Array.isArray(D.marks)?D.marks:(D.marks?[D.marks]:[])).slice(0,3);let txt=M.esc(String(D.text||''));
+marks.forEach((m,i)=>{const e=M.esc(m);if(e&&txt.includes(e))txt=txt.replace(e,'<span class="mark" data-i="'+i+'"><span>'+e+'</span></span>');});
+const avatar=D.avatar?'<img alt="" src="'+M.esc(D.avatar)+'">':M.esc(D.initials||String(D.name||'').split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase());
+K.innerHTML='<div class="post-head"><div class="post-avatar">'+avatar+'</div><div><div class="post-name">'+M.esc(D.name||'')+'</div>'+
+  (D.handle?'<div class="post-handle">'+M.esc(D.handle)+'</div>':'')+'</div>'+(D.network?'<div class="post-network">'+M.esc(D.network)+'</div>':'')+'</div>'+
+  '<div class="post-text" style="font-size:'+F.size+'px">'+txt.replace(/\n/g,'<br>')+'</div>'+(D.date?'<div class="post-date">'+M.esc(D.date)+'</div>':'');
+const textEl=K.querySelector('.post-text');
+// a long post gets a smaller font instead of leaving the frame
+let size=F.size,guard=0;while(R.offsetHeight>H*F.max_height&&size>M.MIN_TEXT&&guard++<40){size=Math.floor(size*0.94);textEl.style.fontSize=size+'px';}
+const mk=[...K.querySelectorAll('.mark')].map(el=>({el,cue:S.cue('m'+el.dataset.i)}));
+const parts=[K.querySelector('.post-head'),textEl,K.querySelector('.post-date')];
+S.info.size=size;
+S.start(f=>{
+  decor.update(f);M.scaleLayer(E,M.drift(Math.max(0,f-M.ENTER),F.drift));
+  const k=M.enter(f,-4);M.set(R,{s:k.s,o:k.o,y:(1-k.o)*16});
+  parts.forEach((e,i)=>{if(!e)return;const p=M.ease(M.prog(f,-3+i*M.STAGGER*0.4,8));e.style.opacity=p.toFixed(3);e.style.transform=`translateY(${((1-p)*14).toFixed(2)}px)`;});
+  mk.forEach(m=>M.marker(m.el,m.cue==null?0:M.prog(f,m.cue,F.mark_frames)));
+});
+});
+</script></body></html>

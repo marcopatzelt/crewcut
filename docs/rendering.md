@@ -1,0 +1,211 @@
+# Rendering
+
+One edit plan builds one version of a video: `episodes/<id>/edit/plan-vNNN.json` (schema in
+[architecture.md](architecture.md#edit-plan-episodesideditplan-vnnnjson)). The workbench turns it into inserts and the
+finished cut:
+
+```
+crewcut render plan  <plan.json>            show inserts, frames, cues and what is already rendered
+crewcut render 2d    <plan.json>            2D inserts with Chromium
+crewcut render probe <plan.json> <id>,<id>  still frames at half size, to look at before the big render
+crewcut render 3d    <plan.json>            3D inserts with Blender: here, or on rented GPUs after a yes
+crewcut render cut   <plan.json>            the finished video with sound
+crewcut render shown <plan.json>            lock the output right after someone has seen it
+crewcut render all   <plan.json>            2d, 3d, cut
+crewcut render measure <still.png>          a 3D still against the style pack
+crewcut render samples [--out DIR]          one frame of every 2D scene, both formats (screenshots, docs)
+crewcut brand preview [--out f.mp4]         10-second sample in the style pack
+```
+
+Plain text by default, `--json` for machines. Exit codes: 0 ok, 1 error, 2 usage, 3 waiting for the user (a card is
+open) or refused (cap reached), 4 missing key.
+
+Nothing is rendered twice: every insert lives in `render/inserts/<id>-<hash>/` (PNG frames) plus `<id>-<hash>.mp4`
+(or `.mov` for overlays). The hash covers the insert's data, the scene file and its shared files, and the look tokens
+of the style pack. Change a number in the plan and only that insert renders again. Change the accent colour and
+every insert renders again. Loudness and other edit-style values do not touch the hash.
+
+## The plan in short
+
+```json
+{
+  "format": "landscape",
+  "words": "work/words-v001.json",
+  "base": "work/speaker-v001.mp4",
+  "voice": "audio/voice-v001.wav",
+  "face": [0.5, 0.38],
+  "speaker": [{"at": 12.4, "zoom": 1.12}],
+  "inserts": [
+    {"id": "s1", "kind": "2d", "scene": "counter", "start": 10.0, "end": 14.2,
+     "cues": {"value": {"word": "thirty"}, "label": 8}, "data": {"label": "1 million tokens", "value": "30", "unit": "cents"}},
+    {"id": "k1", "kind": "2d", "scene": "keyword", "start": 20.0, "end": 22.0, "transparent": true, "data": {"text": "LOCAL"}},
+    {"id": "d1", "kind": "3d", "scene": "stack", "start": 30.0, "end": 33.0, "cues": {"word": {"word": "rules"}}, "data": {"word": "Rules"}},
+    {"id": "c1", "kind": "clip", "file": "broll/screen.mp4", "at": 3.0, "speed": 1.0, "start": 40.0, "end": 44.0}
+  ],
+  "sound": {"music": "audio/music.wav", "music_source": "made for this episode, licence CC0", "music_db": null,
+            "duck": true, "gaps": [{"before": "s1@value", "frames": 15}], "hits": ["s1@value"], "hit_file": "audio/hit.wav",
+            "typing": [], "whooshes": [], "lufs": null},
+  "output": "export/003-local-llms-v001-preview.mp4",
+  "crf": 17
+}
+```
+
+- Times are seconds, frames are at the episode's fps (25 by default). `null` takes the style pack's value
+  (`edit-style.json`).
+- A cue is a frame inside the insert, `{"word": "thirty", "after": 9.5, "offset": -2}` (the first time the word, or a
+  phrase of several words, is spoken at or after `after` seconds; punctuation and case are ignored) or
+  `{"time": 12.4}`. Always anchor on words: when the speaker cut changes, the plan follows.
+- A sound reference is `"s1"` (start of insert `s1`), `"s1@value"` (its cue `value`) or a number of seconds.
+- `base` may also be a generated background: `{"color": "soft", "seconds": 20}` (a pack colour name or `#RRGGBB`).
+- `tail` (seconds after the base) needs a full-frame insert up to the end, such as an end card.
+- `sound.music_source` says where the music comes from and its rights; the workbench passes it into
+  `<output>.cut.json` and the style check requires it whenever there is music.
+- `plan` warns about overlapping full-frame inserts, cues outside their insert and more text cards than the pack
+  allows (`text_cards_max`).
+
+## 2D: Chromium, one frame after the other
+
+Every 2D scene is an HTML page in `templates/2d/` that exposes `window.setFrame(n)`: a pure function of the frame
+number, no clock, no CSS animation. `tools/render_html.js` opens the page in Chromium (Playwright), sets the data and
+the brand tokens before any script runs, waits for fonts and images, checks that nothing failed, and takes one PNG per
+frame. A missing font, an image that did not load or a page error fails the run instead of rendering a wrong picture.
+
+Scenes: `counter`, `headline`, `keyword` (transparent, over the speaker), `cards`, `bars`, `post`, `clip-card`, `grid`.
+Their data keys, cues and limits are in [templates/2d/BLOCKS.md](../templates/2d/BLOCKS.md). Planned: `area`, `flow`,
+`wave`, `swap`, `untangle`.
+
+How the style pack changes the look:
+
+| In `brand.json` | Changes |
+|---|---|
+| `colors` | every colour; each key becomes a CSS variable `--c-<key>` (`colors.stage` and `colors.card` are optional extras) |
+| `fonts.display`, `fonts.body` | family and weight; font files in the pack (`files`) are loaded into the page, otherwise the system font (Inter in the image) |
+| `shape` | corner radius, line width, shadow |
+| `motion` | entrance length and scale, stagger, counter roll, highlight speed, drift, decor (`none`, `shapes`, `float`) |
+| `logo` | only when the pack has a logo file and a placement; never on transparent overlays |
+
+From `edit-style.json` the scenes read `min_text_px` (no visible text is smaller; neutral 40 px). A pack can go
+further and hold its own copy of the scene folder in `brand/templates/2d/`; the workbench then uses it. The app's
+templates are never edited for one brand.
+
+Encoding: full-frame inserts become H.264 MP4 (CRF 14), overlays QuickTime Animation MOV with alpha.
+
+Speed: Chromium needs no GPU. Time per insert is not measured yet; by the way it works it is seconds to a few minutes.
+
+## 3D: Blender, here or rented
+
+3D scenes are Blender scripts in `templates/3d/` on a shared stage (`stage.py`): `box`, `stack`, `scale` (keys in
+[templates/3d/README.md](../templates/3d/README.md); planned: `object-word`, `row`, `grid3d`, `slide`). The stage,
+materials, accent, light, text font and samples come from `brand.json` `stage3d`. The neutral style needs no 3D at
+all: 2D carries the numbers, 3D is the exception.
+
+3D in Cycles is the only really slow step. The honest numbers from the author's studio, with its scenes at full size:
+
+| Where | Seconds per frame | A 3-second insert (75 frames) | 840 frames (one long video) |
+|---|---|---|---|
+| Laptop CPU | about 144 | about 3 h | about 34 h |
+| RTX 4090 (rented or own), 128 samples | about 20 to 70 | about 0.5 to 1.5 h on one card | 27 minutes on 8 cards |
+
+A rented card cost about $0.35 to $0.50 per hour in the studio. Nothing else here is measured.
+
+### Three ways
+
+1. **CPU, any machine** (`--local`): Cycles in the container. Always works; slow (see above). Fine over night.
+2. **Own NVIDIA card** (`--local`): pass the card into the container (`docker run --gpus all ...` on Linux or
+   Windows). Blender then renders as fast as a rented card of the same class. The workbench notices the card
+   (`nvidia-smi`) and renders here without asking. `CREWCUT_GPU=1` or `0` decides without asking `nvidia-smi`.
+3. **Rented GPUs** (`--rented [--gpus N]`), through `crewcut.compute` ([compute.md](compute.md)).
+
+Mac (planned): Blender directly on the Mac with Apple graphics, started through a small host bridge, because the
+container cannot start a Mac program. Not built.
+
+### Who chooses
+
+`crewcut render 3d <plan>` without `--local` or `--rented`:
+
+- a GPU here: render here;
+- else it asks `compute.estimate` for both numbers. If renting does not save a lot, it renders here;
+- if renting saves a lot, it posts a card with both numbers ("840 frames: about 34 h here, or about 25 min on 4 GPUs
+  for about $0.90") and exits with code 3. It never chooses money silently;
+- after a yes, the next run rents; after "local is fine" it renders here and does not ask again in this episode.
+
+`--local` always works. `--rented` still goes through the compute module's approval, money cap and session cap.
+
+### How a rented run works
+
+- Only scene code (`templates/3d/*.py`), the insert data, the tokens and font files go up. Never recordings or keys.
+- The frames are split into batches of 6. Each machine takes the next batch, so a fast machine takes more. A batch
+  that runs longer than 1.5 x the median goes to a second machine. Each batch has a time limit of 3 x the median (at
+  the start 150 s per frame + 240 s). A machine stops after three failed batches.
+- Every finished batch is fetched right away. When every frame is there, the session ends and destroys every machine,
+  also after an error. When the cap is reached mid-run, every machine stops at once and the command exits with code 3.
+
+### Probe first, then the batch
+
+`crewcut render probe <plan> <id>,<id> [--frame N,N] [--local | --rented]` renders still frames at half size (64
+samples) into `render/probe/`. Look at them before the big render. A 3D still is measured against the pack
+(background colour and brightness, accent share, dark share); `crewcut render measure <png>` does the same for any
+still. A check without a target in the pack is reported, not judged.
+
+Draft quality: `--draft` renders with 32 samples and denoising. It is fast but not the final look: soft shadows and
+depth of field suffer. Eevee as a draft renderer is planned.
+
+## The cut
+
+`crewcut render cut <plan>`:
+
+1. Picture pieces: the video is split at every cut and every overlay edge. Each piece is one ffmpeg run into
+   `<output stem>.pieces/` (speaker with zoom held on `face`, a full-frame insert, a clip, or the generated
+   background; overlays laid on top already here). Unchanged pieces are reused next time.
+2. Sound in its own run: the voice (or the base's sound), the music bed looped, ducked under the voice and with gaps
+   before strong moments, hits, typing and whooshes, then a limiter.
+3. Loudness in two passes to the pack's target (`loudness_lufs`, neutral -14 LUFS). AAC raises the true peak by 0.5 to
+   2 dB, so the sound is encoded, the true peak measured, and the limiter lowered until it stays under the pack's
+   `true_peak_db`.
+4. Picture and sound together (H.264, CRF from the plan, fast start). `<output stem>.cut.json` lists the shots,
+   loudness before and after, the true peak, the music source and every note.
+
+Sound effect files do not ship with Crewcut (no licensed audio in the repo). The plan names them (`hit_file`,
+`typing_file`, `whoosh_file`, relative to the episode) or the pack does (`edit-style.json`
+`"sounds": {"hit": "...", "typing": "...", "whoosh": "..."}`, relative to the pack). A sound without a file is
+skipped with a note.
+
+After the user has seen an output, `crewcut render shown <plan>` writes `<output>.shown`:
+`{"at": "2026-11-16T10:00:00Z", "sha256": "<64 hex>"}`. From then on `cut` refuses to overwrite it. Every change is a
+new plan version with a new output.
+
+## The brand preview
+
+`crewcut brand preview [--out file.mp4] [--pack DIR]` builds 10 seconds in the active style pack: a headline card,
+a counter and a keyword over a plain background in the pack's colours (no stock footage), cut by the same workbench.
+Onboarding shows it on the profile card. It is cached per pack look: the same pack gives the same file without
+rendering again. Default output: `studio/.crewcut/preview/preview.mp4`.
+
+## Try it: the demo
+
+`examples/demo/` is a small episode in the neutral style with a generated background, a words file and six 2D
+inserts (no media files, no 3D). Copy it into the studio and render it there (renders never go into the repository):
+
+```
+cp -r examples/demo studio/episodes/000-demo
+crewcut render plan studio/episodes/000-demo/edit/plan-v001.json
+crewcut render all  studio/episodes/000-demo/edit/plan-v001.json --local
+```
+
+## What the container needs
+
+System: `ffmpeg` (with libx264, AAC, qtrle and the ebur128, loudnorm, sidechaincompress, alimiter filters), Node.js 20
+or newer, Chromium through `npx playwright@1.50.1 install --with-deps chromium` (or a system Chromium in
+`CHROMIUM_PATH`), the Inter font (`fonts-inter`), Blender 5.0.1 on amd64 (`blender` on `PATH`, or `CREWCUT_BLENDER`).
+npm: `playwright-core` 1.50.1 in `tools/` (`npm ci` there). Python: Pillow and NumPy (already in `pyproject.toml`).
+
+## Status
+
+Tested: plan parsing, cues, sound references, cache keys, the shown lock, every ffmpeg and Blender argument list, the
+batch queue and a rented run against a fake compute session, the rent-or-local card, the preview and the samples
+command with fake programs; every 2D scene's script runs through every frame in a DOM without layout; every 3D scene
+runs through every frame against a stand-in for Blender.
+
+Untested here (by rule, nothing renders on the author's laptop): real Chromium renders, real Blender renders, real
+ffmpeg runs, real rented machines. The CI image renders the 2D samples and the preview; the first real 3D probe
+decides whether the 3D scripts need fixes for the Blender 5.0 API.

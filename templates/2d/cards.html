@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>cards</title>
+<link rel="stylesheet" href="base.css">
+<script src="motion.js"></script>
+<script src="scene.js"></script>
+</head><body><div id="stage"></div>
+<script>
+// Scene "cards": 1 to 4 real images (or a running clip as frames) as cards in a row, a label under each, optional arrows
+// between them (a chain: A becomes B). Data keys and cues: BLOCKS.md
+const EXAMPLE={format:'landscape',frames:110,chip:null,arrows:true,aspect:1.5,
+  cards:[{image:'',label:'Sketch'},{image:'',label:'Model'},{image:'',label:'Result'}],cues:{c0:4,c1:30,c2:56}};
+SCENE(EXAMPLE,S=>{const{M,D,W,H}=S;
+const K=(Array.isArray(D.cards)?D.cards:[]).slice(0,4),n=Math.max(1,K.length),aspect=Number(D.aspect)||1.5;
+const F=S.fine({width:S.portrait?0.88:0.88,max_height:S.portrait?0.3:0.56,gap:S.portrait?36:(D.arrows?96:48),y:S.portrait?0.46:0.5,
+  label_size:40,label_height:null,zoom:0.02,enter:16,drift:M.DRIFT});
+const decor=S.decor({avoid:[[W*0.04,H*0.15,W*0.96,H*0.85]]});
+const E=S.layer(W/2,H/2);
+// Sizes: cards as wide as possible, but not taller than max_height
+const BORDER=24;let kw=(W*F.width-(n-1)*F.gap)/n-BORDER,kh=kw/aspect;if(kh>H*F.max_height){kh=H*F.max_height;kw=kh*aspect;}
+const slot=kw+BORDER,total=n*slot+(n-1)*F.gap,x0=W/2-total/2+slot/2,y0=H*F.y-(K.some(k=>k.label)?F.label_size*0.8:0);
+const chip=D.chip?M.at(M.chip(E,D.chip),W/2,y0-kh/2-96):null;
+if(chip)S.chipFit(chip,{height:88,size:42,pad:34},W*0.9);
+const T=K.map((k,i)=>{const x=x0+i*(slot+F.gap);
+  const r=M.at(M.el('div','frame',E),x,y0);r.style.width=slot+'px';
+  const inner=M.el('div','frame-inner',r);
+  const has=!!(k.image||k.folder);
+  const box=M.el('div','frame-img',inner,has?'<img alt="">':'<div class="frame-empty">'+M.esc(k.label||'')+'</div>');box.style.height=kh+'px';
+  const img=box.querySelector('img');if(img&&k.image)img.src=k.image;if(img&&k.pos)img.style.objectPosition=k.pos;
+  const label=k.label&&has?M.at(M.chip(E,k.label,i===n-1&&D.arrows?'':'paper'),x,y0+kh/2+BORDER/2+F.label_size*1.2):null;
+  if(label)S.chipFit(label,{height:F.label_height||Math.round(F.label_size*2.1),size:F.label_size,pad:Math.round(F.label_size*0.75)},kw+12);
+  const arrow=D.arrows&&i>0?M.at(M.el('div','arrow',E,'<svg width="64" height="48" viewBox="0 0 84 64" style="display:block;overflow:visible"><path d="M6 32H68M46 10L72 32L46 54" fill="none" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/></svg>'),x-slot/2-F.gap/2,y0):null;
+  return{r,inner,img,label,arrow,cue:S.cue('c'+i,4+i*12),k};});
+const frameFile=(k,f)=>k.folder+'/'+String(k.pattern||'%04d.jpg').replace('%04d',String(Math.max(0,f)).padStart(4,'0'));
+let pending=[];
+S.info.card=[Math.round(kw),Math.round(kh)];
+S.start(f=>{pending=[];
+  decor.update(f);M.scaleLayer(E,M.drift(Math.max(0,f-M.ENTER),F.drift));
+  if(chip){const c=M.enter(f,-M.ENTER);M.set(chip,{s:c.s,o:c.o});}
+  T.forEach(t=>{const st=t.cue-2-F.enter*0.6;                          // the card stands shortly before its word
+    const p=M.ease(M.prog(f,st,F.enter)),o=M.prog(f,st,5);
+    M.set(t.r,{s:0.92+0.08*p,o,y:(1-p)*24});
+    t.inner.style.transform=`rotateY(${((1-p)*-18).toFixed(3)}deg)`;
+    if(t.k.folder&&t.img){t.img.src=frameFile(t.k,(t.k.start||0)+f);pending.push(t.img.decode().catch(()=>{}));}   // running clip
+    else if(t.img)t.img.style.transform=`scale(${(1.02+F.zoom*Math.max(0,f-st)/M.FPS).toFixed(5)})`;
+    if(t.label){const a=M.enter(f,st+6);M.set(t.label,{s:a.s,o:a.o,y:(1-a.o)*12});}
+    if(t.arrow){const a=M.ease(M.prog(f,st-4,8));M.set(t.arrow,{x:(1-a)*-20,o:a});}
+  });
+});
+const plain=window.setFrame;window.setFrame=async n=>{plain(n);await Promise.all(pending);return true;};   // the renderer waits for clip frames
+});
+</script></body></html>

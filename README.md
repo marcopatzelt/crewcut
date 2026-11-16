@@ -202,6 +202,22 @@ Agents use your Claude login; uploads go to your YouTube channel only after your
 **Which engines?** Exactly two, both on your own subscription: Claude Code (default) and Codex (beta). Say "use Codex"
 in the chat to switch. No API keys needed. Details: [docs/engine.md](docs/engine.md).
 
+## Documentation
+
+| Page | What |
+|---|---|
+| [Getting started](docs/getting-started.md) | install, first run, where your files are |
+| [Architecture](docs/architecture.md) | the two roots, commands, the ten steps, the edit plan, the database |
+| [Engines](docs/engine.md) | Claude Code and Codex: login, events, resume, known problems |
+| [Style packs](docs/style-packs.md) | every key of `brand/` and its neutral default |
+| [Recording and cut](docs/recording.md) | before you record, ingest, transcription, speaker cut |
+| [Rendering](docs/rendering.md) | 2D scenes, 3D local and rented, the preview |
+| [Compute](docs/compute.md) | rented GPUs: estimate, money rules, delete safeguards, privacy, the referral link |
+| [YouTube](docs/youtube.md) | connecting your channel, what the upload does, honest limits |
+| [Web UI](docs/ui.md) and [DESIGN.md](DESIGN.md) | the three places, demo mode, the design rules and their checks |
+| [HTTP API](docs/api.md) | what the UI talks to |
+| [Integration tests](docs/integration-test.md) | the tests that need real machines and a real login |
+
 ## Contributing
 
 Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md), [DESIGN.md](DESIGN.md) for UI work and
