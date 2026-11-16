@@ -39,9 +39,9 @@ jobs:
         run: |
           cd /tmp
           ffmpeg -v error -y -f lavfi -i "aevalsrc=0.4*sin(2*PI*330*t)*between(mod(t\,1)\,0.2\,0.7):s=48000:d=3" -c:a pcm_s24le t.wav
-          ffmpeg -hide_banner -nostats -i t.wav -af ebur128=peak=true:framelog=quiet -f null - 2>&1 | tail -14
+          ffmpeg -hide_banner -nostats -i t.wav -af ebur128=peak=true:framelog=verbose -f null - 2>&1 | tail -14
           ffmpeg -v error -y -i t.wav -af "volume=-6dB,alimiter=limit=0.79:attack=5:release=50:level=false" -c:a pcm_s24le l.wav
-          ffmpeg -hide_banner -nostats -i l.wav -af ebur128=peak=true:framelog=quiet -f null - 2>&1 | tail -14
+          ffmpeg -hide_banner -nostats -i l.wav -af ebur128=peak=true:framelog=verbose -f null - 2>&1 | tail -14
 
   web:
     name: Web UI checks, tests and build

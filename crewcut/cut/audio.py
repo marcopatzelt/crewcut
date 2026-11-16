@@ -171,7 +171,7 @@ def read_silences(text: str) -> list[tuple[float, float]]:
 # ---- loudness (EBU R128) -----------------------------------------------------------------------------------------
 def ebur128_cmd(src: Path) -> list:
     return ["ffmpeg", "-nostdin", "-hide_banner", "-nostats", "-i", str(src), "-vn",
-            "-af", "ebur128=peak=true:framelog=quiet", "-f", "null", "-"]
+            "-af", "ebur128=peak=true:framelog=verbose", "-f", "null", "-"]
 
 
 def parse_ebur128(text: str) -> dict:
@@ -195,7 +195,12 @@ def parse_ebur128(text: str) -> dict:
 
 def measure_loudness(src: Path) -> dict:
     """Integrated loudness (LUFS) and true peak (dBTP) of a file's sound."""
-    m = parse_ebur128(media.run(ebur128_cmd(src), check=False).stderr)
+    r = media.run(ebur128_cmd(src), check=False)
+    if r.returncode != 0:
+        # an ffmpeg that rejects an option still prints an empty Summary (all zeros): never read that as a value
+        tail = " ".join((r.stderr or "").strip().splitlines()[-3:])
+        raise CutError(f"ffmpeg could not measure the loudness of {Path(src).name}: {tail}")
+    m = parse_ebur128(r.stderr)
     if m["integrated_lufs"] is None:
         raise CutError(f"no loudness measured for {Path(src).name} (no sound track?)")
     return m

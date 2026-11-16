@@ -151,7 +151,7 @@ def test_command_lines():
     af = cmd[cmd.index("-af") + 1]
     assert af.startswith("pan=mono|c0=c1,aresample=48000,asetnsamples=480000,astats")
     assert "silencedetect=noise=-38dB:d=0.12" in audio.silencedetect_cmd("x.wav", -38, 0.12)
-    assert "ebur128=peak=true:framelog=quiet" in audio.ebur128_cmd("x.mp4")
+    assert "ebur128=peak=true:framelog=verbose" in audio.ebur128_cmd("x.mp4")
 
 
 def test_mic_check_runs_the_measurement_from_30_s(monkeypatch):
