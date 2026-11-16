@@ -159,6 +159,9 @@ def summary(episode: str, project: dict | None = None) -> dict:
     if out["kind"] == "short":
         out.update(mode=p.get("mode"), source_episode=p.get("source_episode"))
     out["cover"] = cover(p["id"])
+    from . import media  # late import: media reads episodes for the cut's style facts
+    out["needs"] = media.needs(p["id"])        # the first open card with small pictures, for "Needs you"
+    out["seconds"] = media.seconds(p["id"])    # length of the newest export or cut (ffprobe once per file version)
     return out
 
 

@@ -62,6 +62,7 @@ A skill never hard-codes a colour, font, logo, loudness or mix limit. It reads t
 | `youtube/` | OAuth, upload, thumbnail, captions, schedule (YouTube Data API v3) | core |
 | `compute/` | rented GPUs: estimate, rent, run, fetch, destroy, guard, cost book entries | compute |
 | `render/` | edit plan workbench: 2D (Chromium), 3D (Blender local or rented), assembly with sound, preview | render |
+| `media.py` | what the episode view shows first: thumbnail variants, the cut as film strip with waveform and Critic markers (frames and peaks cached in `work/strip-<video>/`), 3D scenes with their render state, the open GPU rental | server |
 | `cut/` | ingest, audio check, transcription, speaker cut tools, grade, SRT | cut |
 
 ## Command line

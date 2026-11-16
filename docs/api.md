@@ -26,17 +26,98 @@ the local machine can reach it. The teleprompter has its own port and a token (s
 
 `status` of a step: `open`, `working`, `waiting` (a card is open), `done`, `skipped`.
 
+Optional fields of an episode, for its card in the grid:
+- `cover`: URL of the newest thumbnail image, or `null`.
+- `needs`: the first open card with up to three small pictures, or `null`:
+  `{"card": 41, "kind": "thumbnail", "title": "Thumbnail A, test B", "images": ["/api/files/…", "…"]}`. The pictures
+  are the thumbnail variants for a `thumbnail` card, the 3D frames (or probe stills) for a `spend` card, else the
+  card's `preview` or `file` when it is an image.
+- `seconds`: length of the newest export or cut (see `cut` under "Episode media"), or `null`. ffprobe runs once per
+  file version (cache keyed by path, size and mtime), not on every call.
+
+Optional field of an activity: `preview`, the URL of the newest image written in the job's episode since the job
+started (render frames, probe stills, thumbnail drafts, strip frames), for `running` and `waiting` jobs; else `null`.
+A `thumbnail` job looks in `graphics/`, an `edit` job in `render/`, `review/` and `work/strip-*/`, others in all of
+them. The scan is bounded (300 folders, depth 4) and cached per folder until its mtime changes.
+
 ## Episodes
 
 | Method and path | Body | Answer |
 |---|---|---|
 | `GET /api/episodes/{id}` | | episode as in `state.episodes[]` plus `project` (the raw `project.json`) and `files` (list of `{path, size, kind}` under `export/`, `graphics/`, `brief/`) |
+| `GET /api/episodes/{id}/media` | | what the episode view shows first: thumbnails, the cut, 3D scenes, the rented GPU (see "Episode media" below) |
 | `POST /api/episodes` | `{"text": "an idea in one sentence"}` | the new episode; the Showrunner starts with the sentence |
 | `GET /api/episodes/{id}/messages?after=ID` | | `[{"id", "at", "author", "text", "card", "cite", "step", "preview", "facts"}]`; `author` is `user` or an identity id; `cite`, `preview` (a file in the episode) and `facts` (`[{"label", "value"}]`) are optional |
 | `POST /api/episodes/{id}/messages` | `{"text": "…"}` | the stored message; the Showrunner answers in later messages |
 | `GET /api/files/{episode}/{path}` | | the file (video, image, text) for previews; only inside the episode folder |
 | `POST /api/episodes/{id}/upload` | multipart, field `file` (one or more) | `[{"path": "inbox/…", "size"}]`; recordings dropped into the chat land in `studio/inbox/<episode>/` and the Editor ingests them |
 | `GET /api/episodes/{id}/prompter` | | `{"url": "http://<lan-host>:4748/p/<token>", "qr_svg": "<svg …>"}` for the teleprompter on a phone |
+
+## Episode media
+
+`GET /api/episodes/{id}/media` (code: `crewcut/media.py`, UI types: `EpisodeMedia` in `web/src/api/types.ts`). It only
+reads the episode folder and the database. A missing folder or file gives `null` or an empty list, never an error; an
+unknown episode is a 404.
+
+```json
+{
+  "thumbnails": [{"id": "A", "label": "Face right", "note": "Title left, four sites", "recommended": true,
+                  "url": "/api/files/003-local-llms/graphics/thumbnail/v2-face/A-face-right/thumbnail-v001.png",
+                  "picked": false, "card": 41}],
+  "cut": {"version": "v2", "seconds": 312.4, "shots": 38, "pending": false,
+          "frames": [{"t": 15.62, "url": "/api/files/003-local-llms/work/strip-003-local-llms-v002-preview/frame-01.jpg"}],
+          "peaks": [0.12, 0.4, 1.0],
+          "markers": [{"t": 41.2, "level": "error", "text": "Black frame between two cuts"}],
+          "facts": ["Keywords only", "8 cuts a minute", "-14 LUFS"]},
+  "scenes": {"title": "3D scenes", "done": 1, "total": 3,
+             "items": [{"id": "d1", "name": "Stack", "status": "done", "progress": 1.0, "seconds": 3.0,
+                        "url": "/api/files/003-local-llms/render/inserts/d1-1a2b3c4d5e/0076.png"},
+                       {"id": "d2", "name": "Tower", "status": "rendering", "progress": 0.31, "seconds": 2.0,
+                        "url": "…"},
+                       {"id": "d3", "name": "Scale", "status": "queued", "progress": null, "seconds": 4.0,
+                        "url": null}]},
+  "gpu": {"name": "RTX 4090", "started": "2026-11-16T10:02:00Z", "minutes_left": 45, "so_far_usd": 0.3,
+          "cap_usd": 1.5, "progress": 0.37, "delete_note": "Deleted when done, frames come home", "session": 7}
+}
+```
+
+- **`thumbnails`**: the variants of the newest round in `graphics/thumbnail/` (the round folder `vN-<purpose>/` whose
+  newest image is newest; images directly in `graphics/thumbnail/` count as a round too). One variant per folder
+  `A-<motif>/`, `B-<motif>/` (its image: a file named `thumbnail*` first, then the highest version, then the newest),
+  else the round's images in file order as A, B, C. Inputs (`1-photo.jpg`, `3-result.png`), preview sheets
+  (`preview-*.png`) and upload copies (`*-1280x720.jpg`) are not variants. `label` defaults to the motif ("Face
+  right") or "Variant A". The Designer may write `variants.json` in the round folder to set `label`, `note`,
+  `recommended` and optionally `file` (relative to the round folder) per `id`: a list of objects, `{"variants": [...]}`
+  or `{"A": {...}}`. `card` is the open `thumbnail` card of the episode; `picked` comes from the newest accepted
+  `thumbnail` card's `choice` (the option's letter or label, else the index), unless a newer thumbnail card is open or
+  the accepted card's file lies in another round.
+- **`cut`**: the newest video in `export/` (highest version in the name, then newest file; `*.tmp.*` skipped), else
+  the newest `work/speaker-vNNN.mov`; `null` when there is none. `version` is `v` plus the number in the name (`v2`).
+  `seconds` comes from ffprobe (cached). `shots` = the pieces of the matching cut plan (`edit/cut-plan-vNNN.json`
+  `cuts`, or `edit/pieces-vNNN.json` `pieces` for a Short; the version of the edit plan's `base`) plus the full-frame
+  inserts (not `transparent`) of the edit plan whose `output` is this video (else the plan of the same version).
+  `markers` are the findings with a time from `review/cut-check-vNNN.json` of the same version (else the newest):
+  `ERROR` → `error`, `CHECK` → `warning`, `NOTE` → `note`; `OK` is left out. `facts` come from the style pack:
+  captions, `pace_cuts_per_minute`, `loudness_lufs` (a Short's own `edit_style.shorts` values where they exist).
+- **Frames and peaks** are made once per video by ffmpeg in a background thread (one at a time per video) into
+  `work/strip-<video stem>/`: `frame-01.jpg` … `frame-10.jpg` (320 px wide, at 5 %, 15 % … 95 % of the length) and
+  `peaks.json` (240 values 0..1: the loudest sample of each slice, scaled to the loudest slice; written last, with the
+  video's size and mtime). A request never waits: until `peaks.json` matches the video, `cut` has `frames: []`,
+  `peaks: []`, `pending: true`. A changed video (other size or mtime) is made again. A video ffmpeg cannot read gets a
+  `peaks.json` with empty lists and `errors`, so it is not retried on every request.
+- **`scenes`**: the `kind: "3d"` inserts of the newest `edit/plan-vNNN.json`; `null` without a plan or without 3D
+  inserts. `title` is the plan's `title`, else "3D scenes". Frames are counted in the insert's folder
+  `render/inserts/<id>-<hash>/` (as the renderer names it; when the plan does not load, the newest
+  `render/inserts/<id>-<10 hex>/`). `done` when the encoded clip exists or every frame is there; `rendering` while a
+  running job of the episode says it renders 3D (or Blender) or a rented GPU of the episode is live: the inserts that
+  have some frames, else the first unfinished one; else `queued`. `progress` is frames done / frames to render (1.0
+  when done, `null` before the first frame). `url` is the newest rendered frame, else the newest probe still
+  `render/probe/<id>-NNNN.png`, else `null`. `name` is the insert's `name`, else its scene.
+- **`gpu`**: the live machines (`creating`, `starting`, `ready`, `lost`) of the episode's newest compute session in the
+  `rentals` table, else `null`. `name` is the GPU model ("2 × RTX 4090" for two machines), `started` the earliest
+  start, `minutes_left` the minutes until the latest deadline, `so_far_usd` price times time over every machine of the
+  session, `cap_usd` the session's cap, `progress` the renting job's progress (else frames done / frames over the 3D
+  inserts). `session` is the row id of the newest live rental (the compute session's own id is a hex string).
 
 ## Cards
 

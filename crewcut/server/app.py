@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Streamin
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .. import __version__, approvals, brand, db, engines, episodes, events, ledger, paths, prompter, team
+from .. import __version__, approvals, brand, db, engines, episodes, events, ledger, media, paths, prompter, team
 from ..conductor import flow, queue
 
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "[::1]", "::1"}
@@ -167,6 +167,14 @@ def create_app(start_worker: bool = True) -> FastAPI:
         except (FileNotFoundError, ValueError):
             raise HTTPException(404, "No such episode.") from None
         return {**s, "project": episodes.read(eid), "files": episodes.files(eid)}
+
+    @app.get("/api/episodes/{eid}/media")
+    def get_media(eid: str):
+        try:
+            episodes.read(eid)
+        except (FileNotFoundError, ValueError):
+            raise HTTPException(404, "No such episode.") from None
+        return media.episode_media(eid)
 
     @app.post("/api/episodes")
     def post_episode(body: TextIn):

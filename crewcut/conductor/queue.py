@@ -44,12 +44,13 @@ def job_view(j: dict) -> dict:
     secs = int((ended or time.time()) - started) if started else 0
     d = j.get("data") if isinstance(j.get("data"), dict) else {}
     info = d.get("engine_info") or {}
+    from .. import media  # the newest picture the job made, for "Working now" (cheap: cached by folder mtime)
     return {"job": j["id"], "episode": j["episode"], "identity": j["identity"], "step": j["step"],
             "doing": j.get("doing") or "", "progress": j.get("progress"), "status": j["status"],
             "started": j.get("started"), "ended": j.get("ended"), "seconds": secs,
             "cost_usd": round(float(j.get("cost_usd") or 0), 4), "equiv_usd": round(float(j.get("equiv_usd") or 0), 4),
             "engine": d.get("engine"), "model": info.get("model"), "effort": d.get("effort"),
-            "engine_version": info.get("claude_code_version")}
+            "engine_version": info.get("claude_code_version"), "preview": media.job_preview(j)}
 
 
 def active(episode: str | None = None) -> list[dict]:
