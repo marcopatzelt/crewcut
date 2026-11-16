@@ -98,7 +98,7 @@ export function LargeTitle({
   sub,
   lead,
 }: {
-  innerRef: RefObject<HTMLDivElement>;
+  innerRef: RefObject<HTMLDivElement | null>;
   title: string;
   sub?: string;
   lead?: ReactNode;

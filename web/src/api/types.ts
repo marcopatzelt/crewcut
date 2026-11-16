@@ -46,6 +46,67 @@ export interface Episode {
   source_episode?: string | null;
   /** URL of the newest thumbnail image, the episode's cover in the grid */
   cover?: string | null;
+  /** the first open card, with small preview images (e.g. the thumbnail variants), for the "Needs you" cards */
+  needs?: { card: number; kind: string; title: string; images: string[] } | null;
+  /** length of the newest cut or final, in seconds */
+  seconds?: number | null;
+}
+
+/** GET /api/episodes/{id}/media: what the episode view shows first (thumbnails, the cut, 3D scenes, the GPU). */
+export interface EpisodeMedia {
+  thumbnails: MediaThumb[];
+  cut: MediaCut | null;
+  scenes: MediaScenes | null;
+  gpu: MediaGpu | null;
+}
+
+export interface MediaThumb {
+  id: string; // "A", "B", "C"
+  label: string; // "Face right"
+  note?: string | null; // "Title left, four sites"
+  url: string;
+  recommended?: boolean;
+  picked?: boolean;
+  /** the open thumbnail card these variants belong to */
+  card?: number | null;
+}
+
+export interface MediaCut {
+  version: string; // "v2"
+  seconds: number;
+  shots: number;
+  frames: { t: number; url: string }[];
+  /** 0..1, evenly spaced over the cut */
+  peaks: number[];
+  markers: { t: number; level: "error" | "warning" | "note"; text: string }[];
+  /** style facts shown as chips: "Keywords only", "8 cuts a minute", "-14 LUFS" */
+  facts?: string[];
+  pending?: boolean;
+}
+
+export interface MediaScenes {
+  title: string; // "Intro, Oberkassel at golden hour, 4K"
+  done: number;
+  total: number;
+  items: {
+    id: string;
+    name: string;
+    status: "done" | "rendering" | "queued";
+    progress: number | null;
+    seconds: number | null;
+    url: string | null;
+  }[];
+}
+
+export interface MediaGpu {
+  name: string; // "RTX 4090"
+  started: string;
+  minutes_left: number | null;
+  so_far_usd: number;
+  cap_usd: number | null;
+  progress: number | null;
+  delete_note: string;
+  session: number;
 }
 
 export interface FileEntry {
@@ -88,6 +149,8 @@ export interface Activity {
   model?: string | null;
   effort?: string | null;
   engine_version?: string | null;
+  /** Optional: the newest picture this job made (a render frame, a thumbnail draft), shown live in "Working now". */
+  preview?: string | null;
 }
 
 export interface Money {
