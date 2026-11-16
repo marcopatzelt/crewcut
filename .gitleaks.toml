@@ -1,0 +1,12 @@
+# gitleaks configuration: the default rules, plus an allowlist for the deliberately fake secrets that the scrubber
+# tests feed in to prove they are removed. Nothing real ever lives in these files.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "fake secrets in scrubber tests"
+paths = [
+  '''tests/compute/test_compute_scrub\.py''',
+  '''tests/compute/test_compute_session\.py''',
+  '''__pycache__/''',
+]

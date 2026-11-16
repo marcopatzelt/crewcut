@@ -2,6 +2,31 @@
 
 A style pack holds the user's taste as data; this page lists the keys each step reads, with the neutral default.
 
+## How a pack works
+
+A style pack is the user's taste as data. Skills and tools hold the know-how and read every colour, font, loudness,
+limit and channel rule from the active pack through `crewcut.brand.load()`; none of it is written in code.
+
+| Pack | Where | Owner |
+|---|---|---|
+| neutral default | `packs/neutral/` in the app | the app; updates may change it |
+| the user's pack | `studio/brand/` | the user; updates never touch it |
+| example | `examples/striq/` | a real, dated example (the author's channel): values and rules only |
+
+- The user's pack is merged over the neutral one: a key the user's pack does not set keeps its neutral default.
+- `studio/brand/` appears when onboarding writes it (`crewcut brand init` copies the neutral pack first) or when the first
+  learned rule is accepted.
+- Every value may carry its source in the file's `sources` map, keyed by the dotted path
+  (`"colors.accent": "from your website, 16 Nov 2026"`). The profile view shows it next to the value.
+- `rules/<step>.md` holds learned rules, one list item each, newest last:
+  `- 2026-11-11: Music stays about 3 dB under the voice. (source: user, "music a bit too loud")`. A rule is added only
+  after the user accepts its card. Rules replace older rules on the same point instead of piling up.
+- `brand/templates/` may hold copies of 2D scenes rebuilt for this brand; the app's own templates are never edited.
+- `crewcut brand show` prints the active pack, `crewcut brand check` validates it, `crewcut brand preview` renders the
+  10-second sample.
+
+The sections below list the keys the skills read, file by file.
+
 ## edit-style.json: edit and cut-check
 
 Read by the skills `edit` and `cut-check` and by `skills/cut-check/scripts/style_check.py` and `cut_check.py`.

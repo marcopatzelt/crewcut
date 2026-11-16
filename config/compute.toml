@@ -1,0 +1,53 @@
+# Rented GPUs (optional). Copy a key into <studio>/config/compute.toml to change it for your studio.
+# Renting is never required: every step has a local way. See docs/compute.md.
+
+provider = "vast"
+vast_referral = "https://cloud.vast.ai/?ref_id=855305"   # the author's referral link; change or empty it in your fork
+vast_template = ""         # a public Vast template link of the Crewcut GPU image (planned; empty = rent by image)
+label_prefix = "crewcut"   # machines carry the label <prefix>-<studio id>; only those are ever destroyed
+
+[vast]
+gpus = ["RTX 4090", "RTX 5090", "RTX 4080S", "RTX 3090"]   # preference order; one GPU per machine
+max_price_per_hour = 0.80  # dollars per machine and hour, disk included
+regions = ["SE", "US", "CA", "NO", "NL", "DE", "FI", "DK"]   # host countries (ISO codes)
+min_reliability = 0.98
+min_inet_down_mbps = 300
+min_inet_up_mbps = 100
+min_hours_left = 4         # skip hosts whose offer ends sooner
+verified = true
+disk_gb = 40
+image = "ghcr.io/marcopatzelt/crewcut:gpu"                 # the Crewcut GPU image (Blender at /opt/blender, app at /app)
+fallback_image = "nvidia/cuda:12.4.1-runtime-ubuntu22.04"  # used when the image cannot be pulled; setup installs Blender
+blender_version = "5.0.1"
+
+[limits]
+default_max_minutes = 60   # each machine gets a deadline; the watchdog on the machine deletes it then
+session_cap_usd = 3.0      # default cap of one session; at 100 % every machine of the session is destroyed
+max_gpus = 8
+ssh_wait_minutes = 4       # not reachable by SSH after this: destroy, try the next offer
+image_wait_minutes = 10    # extra time while the Crewcut image is still loading (untested: pull time of a large image)
+setup_minutes = 12
+probe_mb = 5               # upload probe per new machine
+guard_grace_minutes = 2    # the local guard destroys this long after the deadline
+check_seconds = 20         # how often a live session checks its money and deadlines
+guard_every_minutes = 3
+
+[estimate]
+price_per_hour = 0.45      # used without a key or without live offers (studio: 0.35 to 0.50 per GPU and hour)
+overhead_minutes = 8       # boot, setup, upload and fetch per rented run
+target_minutes = 30        # pick enough GPUs to finish in about this time, up to limits.max_gpus
+offers_cache_minutes = 5
+
+[suggest]
+# Suggest renting only when it saves a lot: more than this many minutes AND more than this many times faster.
+min_minutes_saved = 15
+min_speedup = 3.0
+
+[kinds.blender]
+unit = "frames"
+gpu_sec_per_frame = 45          # RTX 4090, the studio's scenes at 128 samples: roughly 20 to 70 s per frame
+gpu_sec_per_frame_worst = 70
+local_sec_per_frame = 144       # a laptop CPU, same scenes; a measured probe on this machine replaces it
+
+# More kinds (music with ACE-Step, image to 3D, cutouts, long encodes) use the same session interface.
+# Their default numbers are planned: until measured, pass local and GPU seconds per unit to the estimate.

@@ -90,7 +90,8 @@ def user_message(episode: str, text: str) -> dict:
             "version) or, if the user clearly said yes or picked an option, accept it with `crewcut card accept <id> "
             "[--choice N]` (never for spend, publish or final cards: those need the button). If it is a correction "
             "that should hold for future videos, propose a rule. If it asks for work, assign it with `crewcut job "
-            "add`. Read the recent chat with `crewcut chat --episode " + episode + " --last 12` if you need context.")
+            "add`; the conductor already starts the owner of the next step after every yes, so never add a job for a "
+            "step that is working or waiting. Read the recent chat with `crewcut chat --episode " + episode + " --last 12` if you need context.")
     queue.add(episode, "showrunner", None, task)
     return message(mid)
 

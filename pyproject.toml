@@ -35,6 +35,9 @@ Homepage = "https://github.com/marcopatzelt/crewcut"
 [tool.setuptools.packages.find]
 include = ["crewcut*"]
 
+[tool.setuptools.package-data]
+crewcut = ["compute/setup.sh"]
+
 [tool.ruff]
 line-length = 120
 target-version = "py311"

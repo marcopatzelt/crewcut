@@ -97,12 +97,14 @@ crewcut ingest <episode> <file> [<file> …]
 crewcut transcribe <file> [--model small] [--device auto|cpu|cuda] [--language xx]
 crewcut cut islands|plan|build|verify|doubles|grade|srt …
 
-crewcut compute estimate --kind blender --frames N [--local-sec-per-frame S]
-crewcut compute rent --episode ID [--gpus 1] [--minutes 60] [--max-usd X]
-crewcut compute run <machine> -- <command>
+crewcut compute estimate --kind blender --frames N [--local-sec-per-frame S] [--gpu-sec-per-frame S] [--gpus N]
+                         [--scene NAME] [--episode ID] [--job ID] [--local-fine] [--json]
+crewcut compute rent --episode ID [--gpus 1] [--minutes 60] [--max-usd X] [--step edit] [--purpose "…"] [--json]
+crewcut compute put <machine> <local> [<local> …] <remote-dir>
+crewcut compute run <machine> [--timeout S] [--doing "rendering"] -- <command>
 crewcut compute fetch <machine> <remote-dir> <local-dir>
 crewcut compute destroy [<machine> | --all-ours]
-crewcut compute guard [--once]
+crewcut compute guard [--once] [--every S]
 crewcut compute ledger [--episode ID]
 
 crewcut thumbnail make --episode ID --prompt FILE [--ref IMG …] [--way codex|api] [--variants 3]

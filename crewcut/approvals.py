@@ -60,7 +60,7 @@ def propose(episode: str | None, step: str | None, kind: str, title: str, body: 
         db.insert("messages", at=db.now(), episode=episode, author=identity or "showrunner", text=title, card=cid,
                   job=job)
     card = get(cid)
-    events.emit("card", episode=episode, identity=identity, text=title, data=card)
+    events.emit("card", episode=episode, identity=identity, text=title, data=view(card))
     if job:
         db.update("jobs", job, status="waiting", doing=f"Waiting for your yes: {title}")
         events.emit("activity", episode=episode, identity=identity, data={"job": job, "status": "waiting"})
@@ -69,6 +69,14 @@ def propose(episode: str | None, step: str | None, kind: str, title: str, body: 
 
 def get(card_id: int) -> dict | None:
     return db.get("cards", card_id)
+
+
+def view(card: dict) -> dict:
+    """A card as the UI sees it: plus the URL of its file."""
+    out = dict(card)
+    if card.get("file"):
+        out["file_url"] = f"/api/files/{card.get('episode') or '_onboarding'}/{card['file']}"
+    return out
 
 
 def list_cards(episode: str | None = None, status: str | None = None) -> list[dict]:
@@ -106,7 +114,7 @@ def decide(card_id: int, accepted: bool, choice: int | None = None, reason: str 
         if j and j["status"] == "waiting":
             db.update("jobs", card["job"], status="done", ended=j.get("ended") or db.now(),
                       doing="Answered: " + ("yes" if accepted else "change requested"))
-    events.emit("card", episode=card["episode"], identity=card["identity"], text=card["title"], data=card)
+    events.emit("card", episode=card["episode"], identity=card["identity"], text=card["title"], data=view(card))
     from .conductor import flow  # late import: the conductor reacts to the answer (next step, new version, ...)
     flow.on_card_decided(card)
     return card

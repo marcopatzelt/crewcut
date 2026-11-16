@@ -99,10 +99,7 @@ def _onboarded() -> bool:
 
 
 def _card_view(c: dict) -> dict:
-    out = dict(c)
-    if c.get("file"):
-        out["file_url"] = f"/api/files/{c['episode'] or flow.ONBOARDING}/{c['file']}"
-    return out
+    return approvals.view(c)
 
 
 def money() -> dict:
