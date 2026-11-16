@@ -27,6 +27,19 @@ jobs:
           mkdir -p shots
           npx -y playwright@1.50.1 screenshot --viewport-size "1440, 900" --wait-for-timeout 2000 "file://$PWD/docs/mockup.html" shots/mockup.png
           npx -y playwright@1.50.1 screenshot --viewport-size "1440, 900" --color-scheme dark --wait-for-timeout 2000 "file://$PWD/docs/mockup.html" shots/mockup-dark.png
+      - name: Build the web UI
+        if: hashFiles('web/package-lock.json') != ''
+        run: cd web && npm ci --no-audit --no-fund && npm run build
+      - name: Web UI in demo mode, light, dark and phone width
+        if: hashFiles('web/package-lock.json') != ''
+        run: |
+          (cd web/dist && python3 -m http.server 8099 > /dev/null 2>&1 &)
+          sleep 2
+          P="npx -y playwright@1.50.1 screenshot --wait-for-timeout 2500"
+          $P --viewport-size "1440, 900" "http://localhost:8099/index.html?demo=1" shots/app.png
+          $P --viewport-size "1440, 900" --color-scheme dark "http://localhost:8099/index.html?demo=1" shots/app-dark.png
+          $P --viewport-size "390, 844" "http://localhost:8099/index.html?demo=1" shots/app-phone.png
+          $P --viewport-size "390, 844" "http://localhost:8099/prompter.html?demo=1" shots/prompter-phone.png
       - uses: actions/upload-artifact@v4
         with:
           name: screens

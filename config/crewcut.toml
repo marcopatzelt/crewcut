@@ -1,0 +1,26 @@
+# Crewcut settings. Copy a key into <studio>/config/crewcut.toml to change it for your studio.
+# The agents pick sensible values themselves; nothing here has to be touched to start.
+
+[engine]
+name = "claude"            # claude (Claude Code, default) or codex (beta); the user can also just say "use Codex"
+max_parallel_agents = 3    # agent runs at the same time
+agent_timeout_minutes = 60
+
+[engine.claude]
+plan_model = "opus"        # crew members with `model: plan` (plan and check)
+work_model = "sonnet"      # crew members with `model: work` (do the bulk)
+
+[engine.codex]
+plan_model = ""            # empty = the model Codex picks for your plan
+work_model = ""
+
+[queue]
+heavy_parallel = 1         # heavy jobs (render, transcription, assembly) at the same time
+
+[money]
+cap_month_usd = 20.0       # real money per month (rented GPUs, paid APIs); renting stops at the cap
+default_episode_budget_usd = 5.0
+
+[server]
+port = 4747
+prompter_port = 4748

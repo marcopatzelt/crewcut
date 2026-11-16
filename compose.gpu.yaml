@@ -1,0 +1,14 @@
+# Linux or Windows with an NVIDIA card and the NVIDIA Container Toolkit:
+#   docker compose -f compose.yaml -f compose.gpu.yaml up
+services:
+  crewcut:
+    image: ghcr.io/marcopatzelt/crewcut:${CREWCUT_TAG:-latest}-gpu
+    build:
+      target: gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

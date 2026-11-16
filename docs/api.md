@@ -34,6 +34,8 @@ the local machine can reach it. The teleprompter has its own port and a token (s
 | `GET /api/episodes/{id}/messages?after=ID` | | `[{"id", "at", "author", "text", "card"}]`; `author` is `user` or an identity id |
 | `POST /api/episodes/{id}/messages` | `{"text": "…"}` | the stored message; the Showrunner answers in later messages |
 | `GET /api/files/{episode}/{path}` | | the file (video, image, text) for previews; only inside the episode folder |
+| `POST /api/episodes/{id}/upload` | multipart, field `file` (one or more) | `[{"path": "inbox/…", "size"}]`; recordings dropped into the chat land in `studio/inbox/<episode>/` and the Editor ingests them |
+| `GET /api/episodes/{id}/prompter` | | `{"url": "http://<lan-host>:4748/p/<token>", "qr_svg": "<svg …>"}` for the teleprompter on a phone |
 
 ## Cards
 
@@ -65,6 +67,9 @@ card carries the profile and a 10-second preview video path.
 | `GET /api/jobs/{id}/log` | `{"lines": ["…"]}`: the readable log of one job (tool calls and messages, secrets removed) |
 
 ## Brand and onboarding
+
+The onboarding chat uses the pseudo-episode id `_onboarding`: `GET/POST /api/episodes/_onboarding/messages` and cards
+with `"episode": "_onboarding"` (the `profile` card). It never appears in `state.episodes`.
 
 | Method and path | Body | Answer |
 |---|---|---|

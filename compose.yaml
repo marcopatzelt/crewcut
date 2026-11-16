@@ -1,0 +1,27 @@
+# Crewcut: `docker compose up` (or ./start.sh, which also writes .env on the first run).
+# The web UI is only reachable from this computer (127.0.0.1). The teleprompter port is open to your network so a
+# phone can read the script; every teleprompter link carries a random token.
+name: crewcut
+services:
+  crewcut:
+    image: ghcr.io/marcopatzelt/crewcut:${CREWCUT_TAG:-latest}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: base
+    pull_policy: ${CREWCUT_PULL_POLICY:-missing}
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      CREWCUT_STUDIO: /studio
+    ports:
+      - "127.0.0.1:${CREWCUT_PORT:-4747}:4747"
+      - "${CREWCUT_PROMPTER_BIND:-0.0.0.0}:${CREWCUT_PROMPTER_PORT:-4748}:4748"
+    volumes:
+      - ${CREWCUT_STUDIO_DIR:-./studio}:/studio
+      - engine:/opt/engine
+    restart: unless-stopped
+
+volumes:
+  engine:

@@ -1,0 +1,28 @@
+name: Bug report
+description: Something does not work as described.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `crewcut doctor`
+      description: Run `docker compose exec crewcut crewcut doctor` and paste the output. It never contains your token.
+      render: text
+  - type: input
+    id: system
+    attributes:
+      label: Computer and Docker
+      placeholder: "macOS 15 on M3, Docker Desktop 4.x / Ubuntu 24.04, Docker Engine 27"
+  - type: textarea
+    id: log
+    attributes:
+      label: Job log (optional)
+      description: The log of the crew member that failed (click its row in the Crew column). Remove anything private.
+      render: text

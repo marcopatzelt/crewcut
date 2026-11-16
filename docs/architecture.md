@@ -9,7 +9,7 @@ the same pull request.
 Browser (localhost:4747)        episodes, main chat, who is working on what, cards, costs
    │  HTTP + server-sent events
 Container "crewcut"             web server (FastAPI), conductor, job queue, approvals, cost book
-   │                            engines: Claude Code (and later Codex) as the user's own CLI login
+   │                            engines: Claude Code (default) or Codex (beta), the user's own CLI and subscription
    │                            tools: ffmpeg, Chromium (Playwright), Blender (amd64), Python, Node, faster-whisper
    │
 Studio folder (mounted)         brand/, episodes/, config/, .crewcut/ (database, logs, keys)
@@ -53,7 +53,7 @@ A skill never hard-codes a colour, font, logo, loudness or mix limit. It reads t
 | `ledger.py` | cost book: add, totals for today / episode / month, cap | core |
 | `episodes.py` | create and read episodes, `project.json`, the ten steps | core |
 | `conductor/` | steps, job queue (one heavy job at a time), engine runner | core |
-| `engine/` | `claude.py`: runs `claude -p … --output-format stream-json`; `codex.py` (planned) | core |
+| `engines/` | one interface (`base.py`: Task, Event, RunResult; start, stream, stop, resume) and two engines on the user's own subscription: `claude_code.py` (default) and `codex.py` (beta); see [engine.md](engine.md) | core |
 | `server/` | FastAPI app, API under `/api`, SSE at `/api/events`, teleprompter, serves `web/dist` | core |
 | `doctor.py` | checks programs, fonts, templates, engine login, GPU, disk | core |
 | `onboarding/` | fetch brand facts from pasted links, write `brand/`, ask for the preview | core |
@@ -77,14 +77,19 @@ crewcut episode new "<working title>" [--source URL]      prints the episode id,
 crewcut episode status [<id>] [--json]
 crewcut episode step <id> <step> <status>                 status: open | working | waiting | done | skipped
 
-crewcut say --episode ID "<text>"                         message in the main chat, from $CREWCUT_IDENTITY
+crewcut say --episode ID [--cite "<method> (<source>)"] "<text>"   message in the main chat, from $CREWCUT_IDENTITY
+crewcut chat --episode ID [--last 12]                     the recent chat, for context
 crewcut doing --episode ID "<what I am doing now>" [--progress 0.4]   updates the right column
 crewcut card propose --episode ID --step STEP --kind KIND --title "…" [--file PATH] [--body "…"] [--option "…" …]
 crewcut card wait <card-id> [--timeout S]                 exit 0 accepted, 3 declined or timed out
+crewcut card accept <id> [--choice N] | decline <id> --reason "…"   Showrunner only: a yes or a change the user said in
+                                                          words (never for spend, publish or final cards)
+crewcut card list [--episode ID] [--status open]
 crewcut rule propose --step STEP --rule "…" --source "…" [--episode ID]
 crewcut job add --episode ID --identity ID --step STEP "<task>"
 
-crewcut brand show [--json] | check | preview [--out file.mp4]
+crewcut brand show [--json] | check | init | preview [--out file.mp4]
+crewcut engine status | use <claude|codex> | install <name> | login <name> [--episode ID]
 crewcut onboard <link> [<link> …]
 
 crewcut render plan|2d|3d|probe|cut|shown|all <plan.json> [--local | --rented] [--gpus N]

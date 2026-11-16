@@ -1,0 +1,18 @@
+# Rules for script
+
+- 2026-11-04: Short videos: only what matters, then the verdict. (source: Marco, 4 Nov 2026)
+- 2026-11-04: No basic knowledge the audience already has. (source: Marco, 4 Nov 2026)
+- 2026-11-04: No ad or sales tone. Say what was tested; promise the viewer nothing. (source: Marco, 4 Nov 2026)
+- 2026-11-06: Sentence 1 names the tool and its claim; the opening hooks with a number. (source: Marco, 6 Nov 2026)
+- 2026-11-06: Business shows through examples, never by addressing the viewer's business. (source: Marco, 6 Nov 2026)
+- 2026-11-06: No private people, no test counts, no internal switches, no file names or commands in speech. (source: Marco, 6 Nov 2026)
+- 2026-11-06: No grand "not this, but that" contrast in the opening. (source: Marco, 6 Nov 2026)
+- 2026-11-07: Teleprompter text only: no brackets, stage notes, headings, chapters, minutes or dashes. One to three sentences per paragraph. Notes go below the --- line. (source: Marco, 7 Nov 2026)
+- 2026-11-09: One subscribe line, right after the first strong result. (source: Marco, 9 Nov 2026)
+- 2026-11-11: No fixed closing question. The verdict takes a new form in every video. (source: Marco, 11 Nov 2026)
+- 2026-11-11: Every statement once. In comparison videos at most two blocks with the same build in a row. (source: Marco, 11 Nov 2026)
+- 2026-11-11: The story form is allowed when something happened: one time stamp, no private side notes, technical words stay in English. (source: Marco, 11 Nov 2026)
+- 2026-11-13: The hook is the first seconds: promise and number in the first two sentences. (source: Marco, 13 Nov 2026)
+- 2026-11-13: The subscribe line says that no vendor pays for the tests, when that is true. (source: Marco, 13 Nov 2026)
+- 2026-11-13: The last sentence before the goodbye says what STRIQ builds for companies. The blog link is only in the description. (source: Marco, 13 Nov 2026)
+- 2026-11-13: Record each part twice: first free from the cue sheet, then from the script; the edit takes the better take. (source: Marco, 13 Nov 2026)

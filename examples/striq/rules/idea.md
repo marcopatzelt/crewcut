@@ -1,0 +1,17 @@
+# Rules for idea
+
+- 2026-11-04: The topic is Claude or AI agents doing real work. No gaming, lifestyle, get-rich-quick, drama or fear. (source: Marco, 4 Nov 2026)
+- 2026-11-04: Every idea carries an honest own test with real numbers. If the result differs from the promise, the video says so. (source: Marco, 4 Nov 2026)
+- 2026-11-04: Cover only tools Marco uses himself, unless he asks to try one. (source: Marco, 4 Nov 2026)
+- 2026-11-04: A strong US video with no German version is a strong candidate. (source: Marco, 4 Nov 2026)
+- 2026-11-05: Be early with new GitHub tools. (source: Marco, 5 Nov 2026)
+- 2026-11-07: Ideas start from measured YouTube data and what went viral for others, not from a feeling. (source: Marco, 7 Nov 2026)
+- 2026-11-07: A news item alone is no video. It may be the shell when an own test is the core. (source: Marco, 7 Nov 2026)
+- 2026-11-07: The idea needs a business use case for the blog article. (source: Marco, 7 Nov 2026)
+- 2026-11-09: The test solves a problem a company has, so viewers see what the channel's business does for companies. (source: Marco, 9 Nov 2026)
+- 2026-11-09: Small budget only. Every amount needs an OK first. (source: Marco, 9 Nov 2026)
+- 2026-11-09: Marco must be able to make it alone. Companies are made up; opponents and test persons are agents. (source: Marco, 9 Nov 2026)
+- 2026-11-12: Research also reads trending GitHub repositories and Hugging Face models. (source: Marco, 12 Nov 2026)
+- 2026-11-12: No ideas about AI voices, voice cloning or phone assistants, even with good data. (source: Marco, 12 Nov 2026)
+- 2026-11-13: Rank an idea as title and thumbnail first. The business task stays in the video, never in the title. (source: Marco, 13 Nov 2026)
+- 2026-11-13: Every idea names the viewer's problem in one sentence and its four parts: format, best-known interest topic, click word, extra. (source: Marco, 13 Nov 2026)

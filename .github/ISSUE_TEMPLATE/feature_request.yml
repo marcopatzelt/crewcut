@@ -1,0 +1,22 @@
+name: Feature request
+description: An idea that would make Crewcut better.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What do you have to do by hand today, or what is missing?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: How should the crew solve it? Remember the rule "no forms": what would the user say or approve?
+  - type: checkboxes
+    id: roadmap
+    attributes:
+      label: Roadmap
+      options:
+        - label: I checked the roadmap in the README and this is not already planned.

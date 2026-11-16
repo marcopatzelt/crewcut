@@ -1,0 +1,15 @@
+# Rules for title
+
+- 2026-11-05: Title, thumbnail and video must match. The video keeps the promise of the click. (source: Marco, 5 Nov 2026)
+- 2026-11-06: Title and thumbnail text are fixed before the script; they set what the viewer expects. (source: Marco, 6 Nov 2026)
+- 2026-11-06: Only "Claude" in the title: no product sub-name and no model name. (source: Marco, 6 Nov 2026)
+- 2026-11-06: No colon in a title. (source: Marco, 6 Nov 2026)
+- 2026-11-07: A percentage instead of an "x times" factor. (source: Marco, 7 Nov 2026)
+- 2026-11-07: No news or weekly-roundup wording; the channel is not a news channel. (source: Marco, 7 Nov 2026)
+- 2026-11-08: At most 50 characters, aim for 45 or less. (source: Marco, 8 Nov 2026)
+- 2026-11-08: No words in capitals; the channel must not look cheap. (source: Marco, 8 Nov 2026)
+- 2026-11-08: A number in the title only when the own test measured it. (source: Marco, 8 Nov 2026)
+- 2026-11-08: No business words in the title; business belongs in the test and the blog. (source: Marco, 8 Nov 2026)
+- 2026-11-08: A title with a percentage is A/B tested against the same title without it. (source: Marco, 8 Nov 2026)
+- 2026-11-09: Every video gets an A/B test of title and thumbnail with three variants. (source: Marco, 9 Nov 2026)
+- 2026-11-13: A price ladder or a contrast is welcome when the video measures every step. (source: Marco, 13 Nov 2026)

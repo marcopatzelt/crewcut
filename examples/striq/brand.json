@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "name": "STRIQ",
+  "colors": {
+    "accent": "#2320D6"
+  },
+  "fonts": {
+    "display": {"family": "Manrope", "weight": 800, "files": []},
+    "body": {"family": "Manrope", "weight": 500, "files": []}
+  },
+  "logo": {"file": null, "mark": null, "placement": "none", "text": null},
+  "stage3d": {"material": "clay", "accent": "#2320D6", "font": "Manrope"},
+  "sources": {
+    "stage3d.material": "Marco, 10 Nov 2026 (a light clay look, inspired by the channel fern; no measured values here)",
+    "stage3d.accent": "STRIQ brand colour, Marco, 10 Nov 2026 (not everything in 3D is blue: Marco, 6 Nov 2026)",
+    "stage3d.font": "Marco, 10 Nov 2026 (flat, sharp word in the brand font)",
+    "colors.accent": "STRIQ brand colour, Marco, 16 Nov 2026",
+    "fonts.display.family": "STRIQ brand font, Marco, 16 Nov 2026 (OFL; no font files in this example)",
+    "fonts.body.family": "STRIQ brand font, Marco, 16 Nov 2026 (OFL; no font files in this example)",
+    "logo.placement": "no logo in this example"
+  }
+}

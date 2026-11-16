@@ -7,5 +7,11 @@
   "colors": ["accent", "ink", "paper"],
   "reference_photo": null,
   "variants": 3,
+  "face_min_area": 0.06,
+  "max_faces": 1,
+  "max_numbers": 1,
+  "avoid_colors": [],
+  "background": null,
+  "style_reference": null,
   "sources": {}
 }

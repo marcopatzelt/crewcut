@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "max_words": 3,
+  "variants": 2,
+  "layouts": [
+    "face-result",
+    "result-vs-result",
+    "progress"
+  ],
+  "face": true,
+  "face_position": "side",
+  "face_min_area": 0.1,
+  "max_faces": 1,
+  "max_numbers": 1,
+  "colors": [
+    "#0B0E14",
+    "accent",
+    "#FFFFFF"
+  ],
+  "background": "#0B0E14",
+  "avoid_colors": [
+    {
+      "name": "yellow",
+      "hue": [
+        42,
+        68
+      ]
+    }
+  ],
+  "reference_photo": null,
+  "style_reference": null,
+  "sources": {
+    "max_words": "Marco, 8 Nov 2026 (one key word of the title and the verdict)",
+    "variants": "Marco, 12 Nov 2026 (exactly two thumbnails per test)",
+    "layouts": "Marco, 8 Nov 2026 (face-result is always image 1; the others only as test variants)",
+    "face_position": "Marco, 8 Nov 2026 (left or right third, pointing at the result, never in the middle)",
+    "face_min_area": "studio check, 8 Nov 2026 (forehead to chin about half the image height)",
+    "max_faces": "studio check, 8 Nov 2026",
+    "max_numbers": "Marco, 7 Nov 2026 (one measured number, percent instead of 'x times')",
+    "colors": "Marco, 5 Nov 2026 (thumbnails follow the brand colours: dark ink, brand blue, white)",
+    "background": "Marco, 8 Nov 2026 (dark ink background)",
+    "avoid_colors": "Marco, 5 Nov 2026 (no yellow)",
+    "reference_photo": "the author's photo is not part of this example",
+    "style_reference": "the author's best own thumbnail is not part of this example"
+  }
+}

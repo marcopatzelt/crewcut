@@ -19,6 +19,9 @@
   "shape": {"radius": 20, "shadow": "soft", "shadow_css": "0 16px 36px rgba(17,17,17,.14)", "line": 3},
   "motion": {"entrance_frames": 10, "entrance_from": 0.94, "stagger_frames": 6, "drift_per_s": 0.0, "decor": "none"},
   "stage3d": {"background": "#EFEFEC", "material": "matte", "base": "#F7F7F5", "accent": "#E4572E", "font": null,
-              "samples": 128, "light": "soft"},
+              "samples": 128, "light": "soft",
+              "checks": {"background_tolerance": 0.06, "accent_share": [0.01, 0.30], "accent_distance": 40,
+                         "shadow_depth": [0.08, 0.40], "dark_share_max": 0.10, "object_height_min": 0.30,
+                         "word_height_max": 0.18}},
   "sources": {}
 }

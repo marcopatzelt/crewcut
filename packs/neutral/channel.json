@@ -13,5 +13,50 @@
   "category_id": 28,
   "default_privacy": "private",
   "links": {},
+  "idea": {
+    "market_language": "en",
+    "market_region": "US",
+    "fresh_days": 14,
+    "long_min_seconds": 181,
+    "outlier_x_median": 2.0,
+    "outlier_per_sub": 1.0,
+    "small_channel_subs": [1000, 100000],
+    "breakthrough_per_sub": 3.0,
+    "gap_thin_views": 30000
+  },
+  "title": {
+    "max_chars": 70,
+    "target_chars": 55,
+    "name_within": 40,
+    "names": [],
+    "acronyms": [],
+    "exclamations_max": 1,
+    "variants": 3,
+    "checks": {"colon": "off", "dash": "off", "caps_words": "hint", "factor": "off", "question": "hint"}
+  },
+  "script": {
+    "words_per_minute": 150,
+    "sentence_max_words": 25,
+    "sentence_avg_words": 14,
+    "paragraph_max_sentences": 3,
+    "hook_sentences": 2,
+    "name_within_sentences": 4,
+    "title_number_within_sentences": 6,
+    "end_mentions": [],
+    "checks": {"dash": "off", "question_opening": "hint", "hook_number": "off", "title_number": "warn",
+               "paragraph": "warn"}
+  },
+  "upload": {
+    "tags_min": 5,
+    "tags_max": 15,
+    "hashtags_max": 3,
+    "main_link": null,
+    "link_within_lines": 3,
+    "required_text": [],
+    "publish_time": null,
+    "timezone": null,
+    "playlist": null,
+    "checks": {"dash": "off"}
+  },
   "sources": {}
 }

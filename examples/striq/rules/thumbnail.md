@@ -1,0 +1,15 @@
+# Rules for thumbnail
+
+- 2026-11-05: No yellow; thumbnails follow the brand colours. (source: Marco, 5 Nov 2026)
+- 2026-11-06: No glow or halo behind the person; a subtle blue rim light is fine (7 Nov). (source: Marco, 6 and 7 Nov 2026)
+- 2026-11-07: Always a complete new prompt, never an edit prompt. (source: Marco, "give me the complete one")
+- 2026-11-07: The face stays the same, only lightly refined. (source: Marco, 7 Nov 2026)
+- 2026-11-07: Percent instead of "x times"; a comparison shows the two real results of the same test. (source: Marco, 7 Nov 2026)
+- 2026-11-08: The person stands in the left or right third and points at the result, never in the middle. (source: Marco, 8 Nov 2026)
+- 2026-11-08: The product logo is large, about a third of the image height. (source: Marco, 8 Nov 2026)
+- 2026-11-08: The fixed photo is image 1 and the best own thumbnail is the style reference; never copy its layout. (source: Marco, 8 Nov 2026)
+- 2026-11-09: Every video gets an A/B test of title and thumbnail. (source: Marco, 9 Nov 2026)
+- 2026-11-09: The result shows the topic (for example all tested tools, the winner marked), not one unrelated end product. (source: Marco, 9 Nov 2026)
+- 2026-11-12: Exactly two thumbnails per test, one folder per variant; they differ in one feature only. (source: Marco, 12 Nov 2026)
+- 2026-11-12: Never change text in a generated image by script; make a new image from a complete prompt. (source: Marco, 12 Nov 2026)
+- 2026-11-13: Break the pattern of the niche, show proof instead of a subscriber count, and give the thumbnail and the first seconds the most care. (source: Marco, 13 Nov 2026)

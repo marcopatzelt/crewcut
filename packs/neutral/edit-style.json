@@ -20,5 +20,14 @@
   "zoom_max": 1.15,
   "intro": null,
   "end_card": true,
+  "keywords_max": 8,
+  "text_share_max": 0.4,
+  "speaker_share_max": 0.95,
+  "speaker_open_close_seconds": 3.0,
+  "speech_speed": 1.0,
+  "zoom_base": 1.0,
+  "zoom_punch": 1.1,
+  "loudness_window_lu": [-2.0, 0.5],
+  "cut_words": {"fillers": [], "same_meaning": [], "transcript_noise": [], "same_spelling": {}, "end_card_cue": []},
   "sources": {}
 }

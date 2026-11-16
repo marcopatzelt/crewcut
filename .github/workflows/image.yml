@@ -1,0 +1,164 @@
+name: image
+
+# Builds the Docker image on GitHub's runners (never on a developer laptop):
+#   base for linux/amd64 (with smoke tests and renders) and linux/arm64 (QEMU emulation, the private repo has no free
+#   arm64 runner), and the gpu variant for linux/amd64. Pushing to GHCR only on a manual run with push = true.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "docs/**"]
+  workflow_dispatch:
+    inputs:
+      push:
+        description: "Push the images to ghcr.io (the package stays private while the repo is private)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  base-amd64:
+    name: base, linux/amd64, smoke tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: base
+          platforms: linux/amd64
+          load: true
+          tags: crewcut:ci
+          cache-from: type=gha,scope=base-amd64
+          cache-to: type=gha,mode=max,scope=base-amd64
+      - name: doctor
+        run: docker run --rm --entrypoint "" -e CREWCUT_STUDIO=/tmp/studio crewcut:ci crewcut doctor --ci
+      - name: unit tests inside the image
+        run: docker run --rm --entrypoint "" crewcut:ci bash -c "cd /app && /opt/venv/bin/pip install -q pytest && /opt/venv/bin/python -m pytest -q tests"
+      - name: entrypoint starts the server as a normal user
+        run: |
+          mkdir -p studio-ci && docker run -d --name cc -p 127.0.0.1:4747:4747 -e CREWCUT_INSTALL_ENGINE=0 -v "$PWD/studio-ci:/studio" crewcut:ci
+          for i in $(seq 1 30); do curl -fsS http://localhost:4747/api/health && break; sleep 2; done
+          curl -fsS http://localhost:4747/api/state | head -c 400; echo
+          docker exec cc ps -o user=,args= | grep "crewcut serve"
+          docker logs cc; docker rm -f cc
+      - name: render every 2D scene, a 3D still on the CPU, and the 10-second preview
+        run: |
+          mkdir -p ci-out && chmod 777 ci-out
+          docker run --rm --entrypoint "" -v "$PWD/ci-out:/out" crewcut:ci bash /app/tests/smoke/render.sh /out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: renders-amd64
+          path: ci-out/
+          if-no-files-found: warn
+
+  base-arm64:
+    name: base, linux/arm64 (QEMU)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: base
+          platforms: linux/arm64
+          load: true
+          tags: crewcut:ci-arm64
+          cache-from: type=gha,scope=base-arm64
+          cache-to: type=gha,mode=max,scope=base-arm64
+      - name: doctor under emulation
+        run: docker run --rm --platform linux/arm64 --entrypoint "" -e CREWCUT_STUDIO=/tmp/studio crewcut:ci-arm64 crewcut doctor --ci
+      - name: one 2D frame under emulation
+        run: |
+          mkdir -p ci-out && chmod 777 ci-out
+          docker run --rm --platform linux/arm64 --entrypoint "" -v "$PWD/ci-out:/out" crewcut:ci-arm64 bash /app/tests/smoke/render.sh /out --quick
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: renders-arm64
+          path: ci-out/
+          if-no-files-found: warn
+
+  gpu-amd64:
+    name: gpu, linux/amd64 (build only, the runner has no GPU)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: gpu
+          platforms: linux/amd64
+          load: true
+          tags: crewcut:ci-gpu
+          cache-from: |
+            type=gha,scope=base-amd64
+            type=gha,scope=gpu-amd64
+          cache-to: type=gha,mode=max,scope=gpu-amd64
+      - name: doctor (no GPU here, so the GPU check is a note)
+        run: docker run --rm --entrypoint "" -e CREWCUT_STUDIO=/tmp/studio crewcut:ci-gpu crewcut doctor --ci
+      - name: CUDA libraries are found
+        run: docker run --rm --entrypoint "" crewcut:ci-gpu bash -c "ldconfig -p | grep -E 'libcublas|libcudnn' | head -4"
+
+  push:
+    name: push to ghcr.io (manual)
+    if: github.event_name == 'workflow_dispatch' && inputs.push
+    needs: [base-amd64, base-arm64, gpu-amd64]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: base
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+          cache-from: |
+            type=gha,scope=base-amd64
+            type=gha,scope=base-arm64
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: gpu
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:gpu
+            ghcr.io/${{ github.repository }}:latest-gpu
+          cache-from: |
+            type=gha,scope=base-amd64
+            type=gha,scope=gpu-amd64
