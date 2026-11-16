@@ -74,12 +74,21 @@ class Codex(Engine):
         return False, "not logged in: say \"use Codex\" in the chat, or run `crewcut engine login codex`"
 
     def command(self, task: Task) -> list[str]:
-        # Codex has no separate system prompt flag in exec mode; the house rules go first in the prompt.
-        prompt = f"{task.system}\n\n---\n\nYOUR TASK\n\n{task.prompt}"
+        # Codex has no separate system prompt flag in exec mode; the identity and the house rules go first in the
+        # prompt. Layer 1 (fixed): exec --json and the resume subcommand. Layer 2: sandbox, approvals, model, effort.
+        # Layer 3: extra_args and -c key=value pairs, passed through unchanged after layer 2 (later -c wins in Codex).
+        opts = task.engine_options or {}
+        soul = opts.get("soul") or ""
+        prompt = (f"{soul}\n\n" if soul else "") + f"{task.system}\n\n---\n\nYOUR TASK\n\n{task.prompt}"
         cmd = [self.binary() or "codex", "exec", "--json", "--skip-git-repo-check", "--sandbox", "danger-full-access",
                "-c", 'approval_policy="never"']
         if task.model:
             cmd += ["-m", task.model]
+        if task.effort:
+            cmd += ["-c", f'model_reasoning_effort="{task.effort}"']
+        for kv in opts.get("config") or []:
+            cmd += ["-c", kv]
+        cmd += [a for a in task.extra_args if a not in ("--json",)]
         if task.resume:
             cmd += ["resume", task.resume]  # untested: exec flags before the resume subcommand
         return cmd + [prompt]
@@ -111,6 +120,8 @@ class Codex(Engine):
             err = obj.get("error") or {}
             state["error"] = str(err.get("message") if isinstance(err, dict) else err or obj.get("message") or t)[:400]
             out.append(Event("error", state["error"]))
+        elif t not in ("turn.started", "item.updated"):
+            out.append(Event("raw", str(t or "unknown"), {"raw": obj}))  # never swallow an event Crewcut does not know
         return out
 
     def probe(self, timeout_s: int = 180) -> tuple[bool, str]:

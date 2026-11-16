@@ -210,9 +210,20 @@ def build_parser() -> argparse.ArgumentParser:
     enu.add_argument("name")
     eni = ensub.add_parser("install")
     eni.add_argument("name")
+    enp = ensub.add_parser("update", help="bring in the newest version of the channel if it passes a smoke test")
+    enp.add_argument("name", nargs="?")
+    enp.add_argument("--channel", help="latest (default), stable, or a fixed version like 2.1.325")
+    enp.add_argument("--no-login-test", action="store_true")
+    enr = ensub.add_parser("rollback", help="go back to the previous good version")
+    enr.add_argument("name", nargs="?")
     enl = ensub.add_parser("login", help="Codex: device-code login, the link and code appear in the chat")
     enl.add_argument("name")
     enl.add_argument("--episode", help="which chat gets the link (default: the onboarding chat)")
+
+    hk = sub.add_parser("hook", help="hooks that Claude Code calls (from the Crewcut plugin)")
+    hk.add_argument("event", choices=["pre-tool"])
+    pl = sub.add_parser("plugin", help="build the Crewcut plugin for Claude Code (skills, crew agents, hooks)")
+    pl.add_argument("--out", help="folder to write (default: <studio>/.crewcut/plugin/crewcut)")
 
     pr = sub.add_parser("prompter", help="print the phone link and QR code of the teleprompter")
     pr.add_argument("episode")
@@ -420,14 +431,16 @@ def _run(a) -> int:
             for key in engines.ENGINES:
                 e = engines.get(key)
                 ok, why = e.login_status() if e.installed() or key == "claude" else (False, "not installed")
+                from .engines import versions
                 rows.append({"engine": key, "label": e.label, "beta": e.beta, "chosen": key == engines.current_name(),
-                             "installed": e.installed(), "logged_in": ok, "detail": why})
+                             "installed": e.installed(), "logged_in": ok, "detail": why, **versions.status(key)})
             if a.json:
                 _print(rows, True)
             else:
                 for r in rows:
                     print(f"{'*' if r['chosen'] else ' '} {r['label']:<12}{' beta' if r['beta'] else '     '} "
-                          f"installed: {'yes' if r['installed'] else 'no '}  login: {r['detail']}")
+                          f"version: {r['current'] or '-'} (channel {r['channel']}, last good {r['last_good'] or '-'})"
+                          f"  login: {r['detail']}")
             return 0
         if a.encmd == "use":
             e = engines.use(a.name)
@@ -440,6 +453,20 @@ def _run(a) -> int:
             ok, why = e.login_status()
             print(f"New work runs on {e.label}{' (beta)' if e.beta else ''}. Login: {why}")
             return 0 if ok else 4
+        if a.encmd == "update":
+            from .engines import versions
+            name = engines.normalize(a.name) if a.name else engines.current_name()
+            res = versions.update(name, a.channel, with_login=not a.no_login_test)
+            print(f"{name}: " + (f"now on {res['current']}" if res["changed"] else f"stays on {res['current']}"))
+            for n in res["notes"]:
+                print("  " + n)
+            return 0
+        if a.encmd == "rollback":
+            from .engines import versions
+            name = engines.normalize(a.name) if a.name else engines.current_name()
+            msg = versions.rollback(name)
+            print(msg or "No earlier good version to go back to.")
+            return 0 if msg else 1
         if a.encmd == "install":
             e = engines.get(a.name)
             ok, out = e.install()
@@ -459,6 +486,23 @@ def _run(a) -> int:
                              stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
             print(f"The {e.label} login link and code will appear in the chat in a few seconds.")
             return 0
+    if a.cmd == "hook":
+        from . import plugin
+        try:
+            payload = json.loads(sys.stdin.read() or "{}")
+        except ValueError:
+            return 0
+        ok, reason = plugin.guard_decision(payload, os.environ.get("CREWCUT_IDENTITY"))
+        if not ok:
+            print(reason, file=sys.stderr)
+            return 2  # Claude Code blocks the tool call and shows the reason to the agent
+        return 0
+    if a.cmd == "plugin":
+        from pathlib import Path
+
+        from . import plugin
+        print(plugin.build(Path(a.out) if a.out else None))
+        return 0
     if a.cmd == "prompter":
         from . import prompter
         url = prompter.url_for(a.episode)

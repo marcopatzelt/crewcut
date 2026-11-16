@@ -34,9 +34,11 @@ How you talk and act:
 """
 
 
-def system_prompt(identity: dict, episode: str | None, step: str | None) -> str:
+def system_prompt(identity: dict, episode: str | None, step: str | None, with_identity: bool = True) -> str:
+    """The job context. With a real engine agent (`--agent crewcut:<id>`) the identity's soul already is the agent's
+    system prompt, so it is left out here (with_identity=False) and only what changes per job is appended."""
     ident = (f"You are {identity.get('name')}, {identity.get('role')}\n\n"
-             f"How you work:\n{identity.get('soul', '').strip()}\n")
+             f"How you work:\n{identity.get('soul', '').strip()}\n") if with_identity else ""
     rights = (f"Your rights: may spend money: {'yes' if identity.get('may_spend') else 'no'}; "
               f"may publish: {'yes' if identity.get('may_publish') else 'no'}.\n")
     skills = identity.get("skills") or []

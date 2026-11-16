@@ -45,7 +45,18 @@ jobs:
           $P --viewport-size "1280, 800" "http://localhost:8099/index.html?demo=1" shots/app-1280.png
           $P --viewport-size "1100, 800" "http://localhost:8099/index.html?demo=1" shots/app-1100.png
           $P --viewport-size "900, 800" "http://localhost:8099/index.html?demo=1" shots/app-900.png
+      - name: README images (window, 2x density, light and dark) and the animation
+        if: hashFiles('web/package-lock.json') != ''
+        run: |
+          sudo apt-get install -y -qq ffmpeg > /dev/null
+          mkdir -p /tmp/shots-tool && cd /tmp/shots-tool && npm init -y > /dev/null && npm i -s playwright@1.50.1
+          cp "$GITHUB_WORKSPACE/tools/ci/readme_shots.mjs" /tmp/shots-tool/
+          node /tmp/shots-tool/readme_shots.mjs http://localhost:8099 "$GITHUB_WORKSPACE/shots/readme"
+          rm -rf "$GITHUB_WORKSPACE/shots/readme/video-tmp"
+          ls -la "$GITHUB_WORKSPACE/shots/readme"
       - uses: actions/upload-artifact@v4
         with:
           name: screens
-          path: shots/*.png
+          path: |
+            shots/*.png
+            shots/readme/

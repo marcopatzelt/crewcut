@@ -29,7 +29,7 @@ def _load_all(team_dir: str) -> tuple[dict, ...]:
         if not meta.get("id"):
             continue
         meta = {"skills": [], "steps": [], "may_spend": False, "may_publish": False, "model": "work", "sources": [],
-                **meta, "soul": soul[:SOUL_LIMIT]}
+                "effort": None, "extra_args": [], **meta, "soul": soul[:SOUL_LIMIT]}
         out.append(meta)
     return tuple(out)
 
@@ -56,7 +56,7 @@ def for_step(step: str) -> dict | None:
 
 
 def public(x: dict, with_soul: bool = False) -> dict:
-    keys = ["id", "name", "role", "mark", "skills", "steps", "may_spend", "may_publish", "model", "sources"]
+    keys = ["id", "name", "role", "mark", "skills", "steps", "may_spend", "may_publish", "model", "effort", "sources"]
     d = {k: x.get(k) for k in keys}
     if with_soul:
         d["soul"] = x.get("soul", "")

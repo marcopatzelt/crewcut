@@ -45,15 +45,20 @@ def scrub(text: str) -> str:
 @dataclass
 class Task:
     prompt: str
-    system: str
+    system: str                    # what changes per job: house rules, episode state, step (not the identity)
     cwd: Path
     env: dict[str, str] = field(default_factory=dict)
-    model: str | None = None
+    model: str | None = None       # empty = the engine's own default for the user's plan
     skills: list[Path] = field(default_factory=list)
     resume: str | None = None
     timeout_s: int = 3600
     log_path: Path | None = None
     extra_dirs: list[str] = field(default_factory=list)
+    agent: str | None = None       # the crew member this run starts as (a real engine agent where the engine has them)
+    effort: str | None = None      # passed through as --effort; empty = engine default
+    extra_args: list[str] = field(default_factory=list)   # passed through unchanged, after Crewcut's own flags
+    name: str | None = None        # a readable session name
+    engine_options: dict = field(default_factory=dict)    # anything only one engine understands
 
 
 @dataclass
@@ -110,12 +115,18 @@ class Engine:
     def installed(self) -> bool:
         return self.binary() is not None
 
-    def install(self) -> tuple[bool, str]:
-        """Install the CLI from its official npm package into the engine volume (/opt/engine)."""
-        prefix = os.environ.get("CREWCUT_ENGINE_PREFIX", "/opt/engine")
-        r = subprocess.run(["npm", "install", "-g", "--prefix", prefix, "--no-audit", "--no-fund", self.npm_package],
-                           capture_output=True, text=True, timeout=900)
-        return r.returncode == 0, scrub((r.stderr or r.stdout).strip()[-400:])
+    def install(self, version: str | None = None) -> tuple[bool, str]:
+        """Install the newest version of the channel (or a given one) from the official npm package, then switch to it."""
+        from . import versions
+        if version is None:
+            res = versions.update(self.name, with_login=False)
+            if res["changed"] or res["current"]:
+                return True, "; ".join(res["notes"])
+            return False, "; ".join(res["notes"])
+        ok, out = versions.install(self.name, version)
+        if ok:
+            versions.switch(self.name, version)
+        return ok, scrub(out)
 
     def run(self, task: Task, on_event: Callable[[Event], None] | None = None,
             stop: threading.Event | None = None) -> RunResult:
@@ -139,13 +150,19 @@ class Engine:
 
         def emit(ev: Event) -> None:
             ev.text = scrub(ev.text)
-            if ev.kind in ("text", "tool", "step", "error"):
+            if ev.kind in ("text", "tool", "step", "error", "subagent", "hook"):
                 write(f"{ev.kind}: {ev.text}")
+            elif ev.kind in ("raw", "init"):
+                write(f"{ev.kind}: {ev.text} " + json.dumps(ev.data.get("raw", ev.data), default=str)[:600])
             if on_event:
                 on_event(ev)
 
         write(f"--- start {time.strftime('%Y-%m-%d %H:%M:%S')} engine={self.name} model={task.model or 'default'}"
-              + (f" resume={task.resume}" if task.resume else ""))
+              + (f" agent={task.agent}" if task.agent else "") + (f" effort={task.effort}" if task.effort else "")
+              + (f" resume={task.resume}" if task.resume else "")
+              + (f" extra={' '.join(task.extra_args)}" if task.extra_args else ""))
+        for note in (task.engine_options or {}).get("notes", []):
+            write("note: " + note)
         proc = subprocess.Popen(cmd, cwd=str(task.cwd), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 text=True, stdin=subprocess.DEVNULL, start_new_session=True)
         state: dict = {"texts": [], "usage": {}, "session": task.resume, "result": None, "cost": 0.0, "turns": 0,

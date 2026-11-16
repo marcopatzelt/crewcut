@@ -86,6 +86,11 @@ def checks(ci: bool = False, probe: bool = False) -> list[dict]:
     eng = engines.current()
     other = engines.get("codex" if eng.name == "claude" else "claude")
     tag = " (beta)" if eng.beta else ""
+    from .engines import versions
+    vs = versions.status(eng.name)
+    add(OK if vs["current"] else NOTE, "engine version",
+        f"{vs['current'] or 'none yet'} (channel {vs['channel']}, last good {vs['last_good'] or '-'}"
+        + (f", skipped as broken: {', '.join(vs['bad'])}" if vs["bad"] else "") + ")")
     if not eng.installed():
         add(NOTE if ci else ERROR, f"engine {eng.label}{tag}", "not installed yet",
             "The container installs Claude Code at the first start; Codex when you say \"use Codex\". "
@@ -111,6 +116,25 @@ def checks(ci: bool = False, probe: bool = False) -> list[dict]:
                                 if eng.name == "claude" else "Log in to Codex again: `crewcut engine login codex`."))
     add(NOTE, "other engine", f"{other.label}{' (beta)' if other.beta else ''}: "
         + ("installed" if other.installed() else "not installed") + "; say \"use " + other.label + "\" to switch")
+
+    # the user's own Claude Code settings in <studio>/.claude: hooks or MCP servers that call missing programs
+    user_settings = paths.studio_root() / ".claude" / "settings.json"
+    if user_settings.is_file():
+        try:
+            st = json.loads(user_settings.read_text(encoding="utf-8"))
+        except ValueError:
+            st = {}
+            add(WARN, "your Claude settings", ".claude/settings.json is not valid JSON")
+        missing = set()
+        for groups in (st.get("hooks") or {}).values():
+            for g in groups or []:
+                for h in g.get("hooks") or []:
+                    exe = str(h.get("command", "")).split()[:1]
+                    if exe and not exe[0].startswith("$") and not shutil.which(exe[0]) and not os.path.exists(exe[0]):
+                        missing.add(exe[0])
+        add(WARN if missing else OK, "your Claude settings",
+            ("hooks call programs this container does not have: " + ", ".join(sorted(missing))) if missing else
+            "in use (.claude/ in the studio folder)")
 
     # GPU, keys, disk
     smi = _first_line(_run(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"])) \

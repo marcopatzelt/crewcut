@@ -40,6 +40,7 @@ Showrunner, with one card that needs your yes. Right: who is working on what, an
 | **One command** | `docker compose up`, then `localhost` in the browser. Same image on Linux, macOS (Apple chips) and Windows | built; image tested in CI |
 | **The whole chain** | idea from data, title and thumbnail text before the script, proof test, script, teleprompter, speaker cut, 2D and 3D inserts, sound, checks, thumbnail, upload | built; not yet run end to end |
 | **Your subscription, two engines** | Claude Code (default) or Codex, picked once by saying it; one interface: start, live events, stop, resume | Claude Code built; Codex **beta** (not yet run on a real episode) |
+| **The engine is never held back** | newest Claude Code at every start (smoke test, automatic way back), every flag passed through, the crew as real Claude Code agents, Crewcut as a plugin, your own `.claude/` settings kept | built, unit-tested; nightly CI checks the newest versions |
 | **A crew with roles** | seven crew members plus Brand for onboarding, each with its own skills and rights; only the Editor may rent, only the Publisher may publish; the Critic never checks its own work | built |
 | **No forms** | onboarding is "paste your links"; corrections are one sentence or voice; every decision is one card with one button | built |
 | **Your style, not ours** | a neutral default style; the Brand agent builds your style pack from your website and channel and shows a 10-second sample | built; not yet run on a real brand |
@@ -203,7 +204,8 @@ rented GPU there; a bridge to Blender on the Mac itself is planned. A test on a 
 Agents use your Claude login; uploads go to your YouTube channel only after your yes.
 
 **Which engines?** Exactly two, both on your own subscription: Claude Code (default) and Codex (beta). Say "use Codex"
-in the chat to switch. No API keys needed. Details: [docs/engine.md](docs/engine.md).
+in the chat to switch. No API keys needed. Crewcut never pins or hides the engine: a new Claude Code release is live in
+Crewcut at the next start. Details: [docs/engine.md](docs/engine.md).
 
 ## Documentation
 

@@ -1,0 +1,103 @@
+name: engine-nightly
+
+# Every night: the newest Claude Code and Codex inside the Crewcut image. Today only the parts that need no login run:
+# install through Crewcut's own version manager (smoke test without a login call), the Crewcut plugin through
+# `claude plugin validate`, and a comparison of the engines' flags with the snapshots in engine/help/. When a login
+# secret exists (CREWCUT_CI_CLAUDE_TOKEN, an API key with a small limit is recommended), the login smoke test and a tiny
+# real run are added. Findings become one issue per engine version, never a change to the repo.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      measure_crew:
+        description: "Also measure the crew modes (runs vs subagents) on the demo episode; needs the login secret"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  newest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      HAS_TOKEN: ${{ secrets.CREWCUT_CI_CLAUDE_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: base
+          platforms: linux/amd64
+          load: true
+          tags: crewcut:nightly
+          cache-from: type=gha,scope=base-amd64
+      - name: Newest engines through the version manager (no login)
+        run: |
+          mkdir -p out && chmod 777 out
+          docker run --rm --entrypoint "" -e CREWCUT_STUDIO=/tmp/studio -v "$PWD/out:/out" crewcut:nightly bash -c '
+            set -e
+            crewcut engine update claude --channel latest --no-login-test | tee /out/claude-update.txt
+            crewcut engine update codex --channel latest --no-login-test | tee /out/codex-update.txt
+            crewcut engine status | tee /out/status.txt
+            claude --version > /out/claude.version
+            claude --help > /out/claude.txt
+            codex --version > /out/codex.version || true
+            codex exec --help > /out/codex-exec.txt || true
+            crewcut plugin --out /tmp/plugin/crewcut
+            claude plugin validate /tmp/plugin/crewcut | tee /out/plugin-validate.txt
+          '
+      - name: Login smoke test and a tiny run
+        if: env.HAS_TOKEN == 'true'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CREWCUT_CI_CLAUDE_TOKEN }}
+        run: |
+          docker run --rm --entrypoint "" -e CREWCUT_STUDIO=/tmp/studio -e CLAUDE_CODE_OAUTH_TOKEN crewcut:nightly bash -c '
+            crewcut engine update claude --channel latest && crewcut doctor --probe'
+      - name: Measure the crew modes on the demo episode
+        if: env.HAS_TOKEN == 'true' && inputs.measure_crew
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CREWCUT_CI_CLAUDE_TOKEN }}
+        run: |
+          docker run --rm --shm-size=1g --entrypoint "" -e CLAUDE_CODE_OAUTH_TOKEN -v "$PWD/out:/out" crewcut:nightly bash -c '
+            crewcut engine update claude --channel latest >/dev/null && python3 /app/tools/ci/measure_crew_modes.py --out /out/crew-modes.json'
+          cat out/crew-modes.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Compare flags with the snapshots
+        id: diff
+        run: |
+          set +e
+          python3 tools/ci/flag_diff.py engine/help/claude.txt out/claude.txt "Claude Code $(cat out/claude.version)" | tee out/diff.txt
+          a=$?
+          python3 tools/ci/flag_diff.py engine/help/codex-exec.txt out/codex-exec.txt "Codex exec $(cat out/codex.version 2>/dev/null)" | tee -a out/diff.txt
+          b=$?
+          cat out/diff.txt >> "$GITHUB_STEP_SUMMARY"
+          echo "changed=$([ $a -ne 0 ] || [ $b -ne 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "title=Engine changes: Claude Code $(cat out/claude.version | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      - name: Open an issue for new or removed flags (once per version)
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: ${{ steps.diff.outputs.title }}
+        run: |
+          if ! gh issue list --state all --search "$TITLE in:title" --json title --jq '.[].title' | grep -qxF "$TITLE"; then
+            { echo "The nightly run found flag changes. Check whether Crewcut should use them (docs/engine.md), then"
+              echo "update the snapshots in engine/help/."; echo; echo '```'; cat out/diff.txt; echo '```'; } > body.md
+            gh issue create --title "$TITLE" --body-file body.md
+          fi
+      - name: Open an issue when the newest engine fails
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --title "Nightly engine run failed ($(date -u +%F))" \
+            --body "The newest engine failed in the nightly run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: engine-nightly
+          path: out/

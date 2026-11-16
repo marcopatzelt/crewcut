@@ -16,22 +16,34 @@ as_user() { setpriv --reuid="$uid" --regid="$gid" --clear-groups -- "$@"; }
 
 if [ "$(id -u)" != "0" ]; then as_user() { "$@"; }; fi
 
-# Engine: the one the user chose (Claude Code by default, Codex beta), from its official npm package, once.
-mkdir -p /opt/engine/codex-home && chmod 700 /opt/engine/codex-home
-chown "$uid:$gid" /opt/engine/codex-home 2>/dev/null || true
+# Engine: the newest version of the one the user chose (Claude Code by default, Codex beta), installed next to the
+# last good one and switched only after a smoke test (crewcut/engines/versions.py). The first start waits for it; later
+# starts update in the background so the UI is there at once. Offline: the current version simply stays.
+mkdir -p /opt/engine/codex-home /opt/engine/versions /opt/engine/current && chmod 700 /opt/engine/codex-home
+chown -R "$uid:$gid" /opt/engine 2>/dev/null || true
 engine=$(as_user python3 -c "from crewcut import engines; print(engines.current_name())" 2>/dev/null || echo claude)
-bin=claude; [ "$engine" = "codex" ] && bin=codex
-if ! command -v "$bin" >/dev/null 2>&1 && [ "${CREWCUT_INSTALL_ENGINE:-1}" = "1" ]; then
-  echo "crewcut: installing $engine (first start only)..."
-  as_user crewcut engine install "$engine" > "$STUDIO/.crewcut/logs/engine-install.log" 2>&1 \
-    || echo "crewcut: $engine could not be installed; see .crewcut/logs/engine-install.log in your studio folder."
+if [ "${CREWCUT_INSTALL_ENGINE:-1}" = "1" ]; then
+  if [ -e "/opt/engine/current/$engine" ]; then
+    ( as_user crewcut engine update "$engine" > "$STUDIO/.crewcut/logs/engine-update.log" 2>&1 || true ) &
+  else
+    echo "crewcut: installing $engine (first start only)..."
+    as_user crewcut engine update "$engine" > "$STUDIO/.crewcut/logs/engine-update.log" 2>&1 \
+      || echo "crewcut: $engine could not be installed; see .crewcut/logs/engine-update.log in your studio folder."
+  fi
 fi
 
-# Skills: visible to Claude Code in every folder.
-as_user mkdir -p "$HOME/.claude/skills"
-for d in /app/skills/*/; do
-  [ -f "$d/SKILL.md" ] && as_user ln -sfn "$d" "$HOME/.claude/skills/$(basename "$d")"
-done
+# The user's Claude Code settings: <studio>/.claude/ is Claude Code's own folder inside the container (settings.json,
+# CLAUDE.md, skills/, agents/, commands/, MCP). Optional: your host's ~/.claude mounted read only at /host-claude is
+# copied in once (never the login file). Crewcut itself comes as a plugin (--plugin-dir) and never edits these files.
+as_user mkdir -p "$STUDIO/.claude"
+[ -e "$HOME/.claude" ] || as_user ln -s "$STUDIO/.claude" "$HOME/.claude"
+if [ -d /host-claude ] && [ ! -e "$STUDIO/.claude/.copied-from-host" ]; then
+  for item in settings.json CLAUDE.md skills agents commands; do
+    if [ -e "/host-claude/$item" ] && [ ! -e "$STUDIO/.claude/$item" ]; then as_user cp -r "/host-claude/$item" "$STUDIO/.claude/"; fi
+  done
+  as_user touch "$STUDIO/.claude/.copied-from-host"
+fi
+as_user crewcut plugin > /dev/null 2>&1 || echo "crewcut: the Claude Code plugin could not be built"
 
 # One check at start, with a tiny login call when the engine is logged in; in the background, the UI starts at once.
 ( as_user crewcut doctor --probe > "$STUDIO/.crewcut/logs/doctor.log" 2>&1 || true ) &

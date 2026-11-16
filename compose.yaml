@@ -22,6 +22,8 @@ services:
       - ${CREWCUT_STUDIO_DIR:-./studio}:/studio
       - ${CREWCUT_IMPORT_DIR:-./import}:/import:ro   # optional: earlier work to import, read only
       - engine:/opt/engine
+      # optional: copy your own Claude Code settings (skills, agents, CLAUDE.md, settings.json) in once, read only
+      # - ~/.claude:/host-claude:ro
     shm_size: "1gb"            # Chromium renders the 2D graphics; Docker's default 64 MB is too small for big frames
     restart: unless-stopped
 

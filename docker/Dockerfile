@@ -4,8 +4,9 @@
 #                                      Blender on amd64 (there is no official Linux arm64 build of Blender)
 #   gpu   linux/amd64                  base + NVIDIA libraries for speech recognition on a GPU; also the image that
 #                                      rented GPU machines run (as a worker, without any login data)
-# The engines are not inside the image: the entrypoint installs the one the user chose (Claude Code by default, Codex
-# when the user says so) from its official npm package into the engine volume at the first start. Claude Code's licence
+# The engines are not inside the image: at every start the entrypoint brings in the newest version of the one the user
+# chose (Claude Code by default, Codex when the user says so) from its official npm package into the engine volume,
+# next to the last good one, and switches only after a smoke test. Claude Code's licence
 # is not open, so it is never shipped; logins stay in the environment (Claude) or in the engine volume (Codex).
 
 ARG BLENDER_VERSION=5.0.1
@@ -42,7 +43,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     DISABLE_AUTOUPDATER=1 \
     CODEX_HOME=/opt/engine/codex-home \
     CREWCUT_ENGINE_PREFIX=/opt/engine \
-    PATH=/opt/venv/bin:/opt/engine/bin:$PATH
+    PATH=/opt/venv/bin:/opt/engine/current/claude/bin:/opt/engine/current/codex/bin:/opt/engine/bin:$PATH
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       python3 python3-venv python3-pip \

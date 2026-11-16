@@ -5,14 +5,27 @@
 name = "claude"            # claude (Claude Code, default) or codex (beta); the user can also just say "use Codex"
 max_parallel_agents = 3    # agent runs at the same time
 agent_timeout_minutes = 60
+update_every_hours = 24    # look for a newer engine version this often, only while no job runs
 
 [engine.claude]
-plan_model = "opus"        # crew members with `model: plan` (plan and check)
-work_model = "sonnet"      # crew members with `model: work` (do the bulk)
+channel = "latest"         # latest (default), stable, or a fixed version such as "2.1.325"; a version that fails the
+                           # smoke test is never used, two engine failures in a row go back to the last good one
+crew = "runs"              # runs: every crew member is its own Claude Code run (`--agent crewcut:<id>`)
+                           # subagents: the Showrunner runs and hands work to the crew as its subagents
+plugin = true              # load Crewcut as a Claude Code plugin (skills, crew agents, guard hook)
+plan_model = ""            # empty = the model Claude Code picks for your plan; any name Claude Code knows works
+work_model = ""
+probe_model = ""           # the model of the tiny login test at start; empty = Claude Code's default
+extra_args = []            # passed to every run, unchanged, e.g. ["--fallback-model", "sonnet"]
+env = {}                   # extra environment for every run
 
 [engine.codex]
+channel = "latest"
 plan_model = ""            # empty = the model Codex picks for your plan
 work_model = ""
+extra_args = []
+config = []                # -c key=value pairs passed to every run, e.g. ['model_verbosity="low"']
+env = {}
 
 [queue]
 heavy_parallel = 1         # heavy jobs (render, transcription, assembly) at the same time

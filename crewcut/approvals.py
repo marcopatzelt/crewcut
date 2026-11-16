@@ -180,6 +180,10 @@ def require_right(right: str, identity: str | None = None) -> None:
     identity = identity or os.environ.get("CREWCUT_IDENTITY")
     if not identity:
         return
+    if identity == "showrunner" and os.environ.get("CREWCUT_CREW_MODE") == "subagents":
+        # one session holds the whole crew; the plugin's guard hook checks the subagent (agent_type). Money and
+        # publishing stay gated below by the cards, checksums and caps in any mode.
+        return
     ident = team.get(identity)
     if ident is None or not ident.get(f"may_{right}", False):
         raise RightsError(f"{identity} may not {right}. Ask the crew member who may (see team/README.md).")
