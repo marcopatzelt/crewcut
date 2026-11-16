@@ -95,7 +95,7 @@ crewcut onboard <link> [<link> …]
 crewcut render plan|2d|3d|probe|cut|shown|all <plan.json> [--local | --rented] [--gpus N]
 crewcut ingest <episode> <file> [<file> …]
 crewcut transcribe <file> [--model small] [--device auto|cpu|cuda] [--language xx]
-crewcut cut islands|plan|build|verify|doubles|grade|srt …
+crewcut cut islands|dips|probe|takes|plan|build|verify|doubles|grade|srt|audio|loudness …   (docs/recording.md)
 
 crewcut compute estimate --kind blender --frames N [--local-sec-per-frame S] [--gpu-sec-per-frame S] [--gpus N]
                          [--scene NAME] [--episode ID] [--job ID] [--local-fine] [--json]
@@ -123,8 +123,8 @@ Environment set by the conductor for every agent run: `CREWCUT_STUDIO`, `CREWCUT
 | 2 | `title` | Scout | `brief/TITLE-vNNN.md` | title and thumbnail text |
 | 3 | `proof` | Scout | `brief/PROOF-vNNN.md`, raw data in `review/` | what goes into the video |
 | 4 | `script` | Writer | `brief/SCRIPT-vNNN.md` | script |
-| 5 | `record` | the user; Editor ingests | `originals/`, `brief/ingest-*.json` | none (the user records) |
-| 6 | `edit` | Editor, then Critic | `edit/plan-vNNN.json`, `export/<id>-vNNN-preview.mp4`, `review/cut-check-vNNN.json` | preview, then final |
+| 5 | `record` | the user; Editor ingests | `originals/`, `brief/ingest-<time>.json` | none (the user records) |
+| 6 | `edit` | Editor, then Critic | `work/words-*.json`, `edit/selects-vNNN.json`, `edit/cut-plan-vNNN.json`, `work/speaker-vNNN.mov`, `audio/voice-vNNN.wav`, `work/edit-decisions-vNNN.json`, `work/cut-verification-vNNN.json`, `review/takes-vNNN.json`, `edit/plan-vNNN.json`, `export/<id>-vNNN-preview.mp4`, `review/cut-check-vNNN.json` | mix, preview, then final |
 | 7 | `thumbnail` | Designer | `graphics/thumbnail/` | thumbnail |
 | 8 | `blog` | (planned) | | |
 | 9 | `upload` | Publisher | `export/upload.json` | publish (every time) |
@@ -146,7 +146,7 @@ One plan builds one version of the video. Times are seconds; frames are at `fps`
 {
   "format": "landscape",
   "words": "work/words-v001.json",
-  "base": "work/speaker-v001.mp4",
+  "base": "work/speaker-v001.mov",
   "base_until": null,
   "voice": "audio/voice-v001.wav",
   "voice_db": 0.0,

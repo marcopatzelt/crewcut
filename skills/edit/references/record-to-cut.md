@@ -5,7 +5,7 @@ the episode folder. Exact arguments of every tool: `crewcut cut <tool> --help`.
 
 ## 1. Ingest, and check the sound to the end at once
 
-`crewcut ingest <episode> <file> [<file> …]` copies the files to `originals/` and writes `brief/ingest-<sha>.json`.
+`crewcut ingest <episode> <file> [<file> …]` copies the files to `originals/` and writes `brief/ingest-<time>.json`.
 
 - Never write to or delete from the user's card or folder. Ingest only reads there.
 - Ingest reports two things: which channel carries the clip-on microphone, and **sound to the end**: "sound until X s

@@ -16,8 +16,18 @@ STEP_DONE = {"topic": "idea", "title": "title", "proof": "proof", "script": "scr
 
 
 def post(episode: str, text: str, author: str = "showrunner", cite: str | None = None, card: int | None = None,
-         job: int | None = None) -> int:
-    mid = db.insert("messages", at=db.now(), episode=episode, author=author, text=text, cite=cite, card=card, job=job)
+         job: int | None = None, step: str | None = None, preview: str | None = None,
+         facts: list[dict] | None = None) -> int:
+    if step is None and job:
+        step = (db.get("jobs", job) or {}).get("step")
+    if step is None and episode and not episode.startswith("_") and author != "user":
+        try:
+            step = episodes.read(episode).get("step")
+        except (FileNotFoundError, ValueError):
+            step = None
+    extra = {k: v for k, v in (("preview", preview), ("facts", facts)) if v}
+    mid = db.insert("messages", at=db.now(), episode=episode, author=author, text=text, cite=cite, card=card, job=job,
+                    step=step, data=extra or None)
     events.emit("message", episode=episode, identity=None if author == "user" else author, text=text,
                 data=message(mid))
     return mid
@@ -25,8 +35,11 @@ def post(episode: str, text: str, author: str = "showrunner", cite: str | None =
 
 def message(mid: int) -> dict:
     m = db.get("messages", mid)
-    return {"id": m["id"], "at": m["at"], "episode": m["episode"], "author": m["author"], "text": m["text"],
-            "cite": m.get("cite"), "card": m.get("card")}
+    out = {"id": m["id"], "at": m["at"], "episode": m["episode"], "author": m["author"], "text": m["text"],
+           "cite": m.get("cite"), "card": m.get("card"), "step": m.get("step")}
+    extra = m.get("data") if isinstance(m.get("data"), dict) else {}
+    out.update({k: extra[k] for k in ("preview", "facts") if extra.get(k)})
+    return out
 
 
 def messages(episode: str, after: int = 0, limit: int = 500) -> list[dict]:
@@ -197,7 +210,8 @@ def start_onboarding(text: str) -> int:
     links = re.findall(r"https?://[^\s<>\"']+", text)
     task = ("Onboarding. Follow the onboarding skill. The user pasted: " + repr(text) + ". "
             + (f"Fetch the facts first: `crewcut onboard {' '.join(links)}`. " if links else
-               "There are no links: ask at most one question, 'What is your channel about?', with `crewcut say "
+               "There are no links: if the user wants to skip, keep the neutral pack and go straight to the profile "
+               "card; otherwise ask at most one question, 'What is your channel about?', with `crewcut say "
                f"--episode {ONBOARDING}` and stop. ")
             + "Then write the pack in the studio's brand/ folder with a source for every value, run `crewcut brand "
             "check` until it is clean, make the 10-second sample with `crewcut brand preview --out brand/preview.mp4`, "

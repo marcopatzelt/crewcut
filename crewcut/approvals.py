@@ -63,7 +63,10 @@ def propose(episode: str | None, step: str | None, kind: str, title: str, body: 
     events.emit("card", episode=episode, identity=identity, text=title, data=view(card))
     if job:
         db.update("jobs", job, status="waiting", doing=f"Waiting for your yes: {title}")
-        events.emit("activity", episode=episode, identity=identity, data={"job": job, "status": "waiting"})
+        from .conductor import queue
+        j = queue.get(job)
+        if j:
+            events.emit("activity", episode=episode, identity=identity, data=queue.job_view(j))
     return card
 
 
@@ -114,6 +117,9 @@ def decide(card_id: int, accepted: bool, choice: int | None = None, reason: str 
         if j and j["status"] == "waiting":
             db.update("jobs", card["job"], status="done", ended=j.get("ended") or db.now(),
                       doing="Answered: " + ("yes" if accepted else "change requested"))
+            from .conductor import queue
+            events.emit("activity", episode=card["episode"], identity=card["identity"],
+                        data=queue.job_view(queue.get(card["job"])))
     events.emit("card", episode=card["episode"], identity=card["identity"], text=card["title"], data=view(card))
     from .conductor import flow  # late import: the conductor reacts to the answer (next step, new version, ...)
     flow.on_card_decided(card)

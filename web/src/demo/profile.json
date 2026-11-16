@@ -1,0 +1,24 @@
+{
+  "source": "brand",
+  "rows": [
+    {"label": "Accent", "value": "#E4572E", "kind": "color", "source": "from your website, 13 Nov"},
+    {"label": "Background", "value": "#F1F1EF", "kind": "color", "source": "from your website, 13 Nov"},
+    {"label": "Text", "value": "#111111", "kind": "color", "source": "from your website, 13 Nov"},
+    {"label": "Font", "value": "Inter, 600 for titles", "kind": "font", "source": "from your website, 13 Nov"},
+    {"label": "Captions", "value": "Keywords only, never full sentences", "kind": "text", "source": "your words, 14 Nov"},
+    {"label": "Pace", "value": "8 cuts per minute", "kind": "number", "source": "measured on your best video"},
+    {"label": "Speaker on screen", "value": "55 to 65 %", "kind": "number", "source": "measured on your best video"},
+    {"label": "Loudness", "value": "-14 LUFS", "kind": "number", "source": "YouTube's playback level"},
+    {"label": "Language", "value": "English", "kind": "text", "source": "from your channel"},
+    {"label": "Closing line", "value": "See you in the next one.", "kind": "text", "source": "from your last three videos"}
+  ],
+  "preview": "brand/preview-v001.mp4",
+  "rules": [
+    {"step": "title", "date": "2026-11-12", "rule": "Put the number in the first three words.", "source": "your words: \"numbers first, always\""},
+    {"step": "script", "date": "2026-11-13", "rule": "Open with the result, then show how.", "source": "your correction on episode 002"},
+    {"step": "script", "date": "2026-11-14", "rule": "No sentence longer than 18 words.", "source": "your words: \"I trip over long sentences\""},
+    {"step": "edit", "date": "2026-11-14", "rule": "Keep laughs and real reactions, even when they are off-script.", "source": "your words on episode 003"},
+    {"step": "edit", "date": "2026-11-15", "rule": "Captions show keywords only.", "source": "your correction on episode 002"},
+    {"step": "thumbnail", "date": "2026-11-15", "rule": "At most three words on the thumbnail.", "source": "your words: \"three words max\""}
+  ]
+}

@@ -19,7 +19,8 @@ DELEGATED = {
     "transcribe": ("crewcut.cut.cli", True),
     "cut": ("crewcut.cut.cli", True),
 }
-HEAVY = {"render": {"2d", "3d", "probe", "cut", "all"}, "transcribe": None, "cut": {"build", "grade"}}
+HEAVY = {"render": {"2d", "3d", "probe", "cut", "all"}, "transcribe": None,
+         "cut": {"build", "grade", "islands", "probe", "verify", "doubles", "takes"}}
 
 
 def _env_episode(a) -> str | None:
@@ -56,7 +57,7 @@ def _delegate(cmd: str, argv: list[str]) -> int:
     heavy = HEAVY.get(cmd, set())
     sub = argv[0] if argv else ""
     if cmd in HEAVY and (heavy is None or sub in heavy) and "--help" not in argv and "-h" not in argv:
-        local_only = cmd != "render" or "--rented" not in argv
+        local_only = "--rented" not in argv
         if local_only:
             from .conductor import lanes
             with lanes.heavy(f"{cmd} {sub}".strip()):
@@ -97,6 +98,8 @@ def build_parser() -> argparse.ArgumentParser:
     sy = sub.add_parser("say", help="a message in the main chat, from the running crew member")
     sy.add_argument("--episode")
     sy.add_argument("--cite", help="one short line: the method and its source")
+    sy.add_argument("--preview", help="a video or image in the episode to show under the message")
+    sy.add_argument("--fact", action="append", default=[], help='a row of a small table: "Loudness=-14.1 LUFS"')
     sy.add_argument("text")
 
     dg = sub.add_parser("doing", help="what the running crew member does right now (Crew column)")
@@ -269,7 +272,10 @@ def _run(a) -> int:
         if not ep:
             print("crewcut say: which episode? Use --episode.", file=sys.stderr)
             return 2
-        flow.post(ep, a.text, author=_identity(), cite=a.cite, job=_job())
+        facts = [{"label": f.split("=", 1)[0].strip(), "value": f.split("=", 1)[1].strip()} for f in a.fact if "=" in f]
+        if a.preview:
+            paths.inside(paths.episode_dir(ep), a.preview)
+        flow.post(ep, a.text, author=_identity(), cite=a.cite, job=_job(), preview=a.preview, facts=facts or None)
         return 0
     if a.cmd == "doing":
         jid = _job()

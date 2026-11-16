@@ -95,7 +95,8 @@ def _gpu_local() -> bool:
 
 
 def _onboarded() -> bool:
-    return db.kv_get("onboarded") == "1" or (paths.user_brand_dir() / "brand.json").is_file()
+    """True after the user accepted the profile card (the pack folder alone appears while Brand is still working)."""
+    return db.kv_get("onboarded") == "1"
 
 
 def _card_view(c: dict) -> dict:
@@ -398,6 +399,13 @@ def create_prompter_app() -> FastAPI:
         if not eid:
             raise HTTPException(404, "Unknown teleprompter link.")
         return eid
+
+    @app.get("/favicon.svg", include_in_schema=False)
+    def favicon():
+        p = dist / "favicon.svg"
+        if not p.is_file():
+            raise HTTPException(404, "Not found.")
+        return FileResponse(p)
 
     @app.get("/p/{token}")
     def page(token: str):

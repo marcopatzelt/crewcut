@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" width="320" height="180">
+  <!-- Demo preview frame (test data): a counter scene at 2:31 in the demo style pack. -->
+  <rect width="320" height="180" fill="#F1F1EF"/>
+  <rect x="104" y="44" width="112" height="22" rx="4" fill="#111111"/>
+  <text x="160" y="59" text-anchor="middle" font-family="Inter, Helvetica, Arial, sans-serif" font-size="9" font-weight="600" letter-spacing="0.6" fill="#FFFFFF">TOKENS PER SECOND</text>
+  <text x="152" y="118" text-anchor="end" font-family="Inter, Helvetica, Arial, sans-serif" font-size="44" font-weight="600" fill="#111111">41</text>
+  <text x="158" y="118" font-family="Inter, Helvetica, Arial, sans-serif" font-size="16" font-weight="600" fill="#E4572E">tok/s</text>
+  <text x="10" y="170" font-family="Inter, Helvetica, Arial, sans-serif" font-size="10" fill="#6B6B6B">2:31</text>
+</svg>

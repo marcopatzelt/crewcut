@@ -1,0 +1,266 @@
+/* The teleprompter page: big text on a dark background, a reading line, a small remote panel.
+   Colours come from the --prompter-* tokens in tokens.css. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--prompter-bg);
+  color: var(--prompter-ink);
+  font: 400 15px/24px var(--font);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--prompter-line);
+  outline-offset: 2px;
+}
+
+svg {
+  display: block;
+  flex: none;
+}
+
+.pr {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pr-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pr-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.pr-text {
+  --unit: clamp(28px, calc(4vw + 16px), 72px);
+  font-size: calc(var(--size, 1) * var(--unit));
+  line-height: 1.35;
+  font-weight: 500;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 33vh max(24px, 6vw) 70vh;
+  transform-origin: center;
+}
+
+.pr-text.mirror {
+  transform: scaleX(-1);
+}
+
+.pr-text p {
+  margin: 0 0 0.9em;
+}
+
+.pr-text ul {
+  margin: 0 0 0.9em;
+  padding: 0;
+  list-style: none;
+}
+
+.pr-text li {
+  margin: 0 0 0.5em;
+  padding-left: 0.9em;
+  position: relative;
+}
+
+.pr-text li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 0.3em;
+  height: 0.3em;
+  border-radius: 999px;
+  background: var(--prompter-ink-2);
+}
+
+.pr-title {
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--prompter-ink-2);
+  font-weight: 500;
+  margin: 0 0 24px;
+}
+
+.pr-line {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 33vh;
+  height: 0;
+  border-top: 2px solid var(--prompter-line);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.pr-panel {
+  position: fixed;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: calc(100% - 32px);
+  padding: 8px;
+  border-radius: 16px;
+  background: var(--prompter-panel);
+  transition: opacity 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pr-panel.dim {
+  opacity: 0.35;
+}
+
+.pr-panel.dim:hover,
+.pr-panel.dim:focus-within {
+  opacity: 1;
+}
+
+.pr-btn {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--prompter-ink);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+.pr-btn:hover {
+  opacity: 0.8;
+}
+
+.pr-btn[aria-pressed="true"] {
+  color: var(--prompter-line);
+}
+
+.pr-btn.play {
+  background: var(--prompter-ink);
+  color: var(--prompter-bg);
+  padding: 0 16px;
+}
+
+.pr-value {
+  min-width: 48px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--prompter-ink-2);
+}
+
+.pr-sep {
+  width: 1px;
+  height: 24px;
+  background: var(--prompter-ink-2);
+  opacity: 0.3;
+  margin: 0 4px;
+}
+
+.pr-state {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+  color: var(--prompter-ink-2);
+}
+
+.pr-note {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--prompter-ink-2);
+}
+
+/* The remote page: only the panel, big. */
+.pr-remote {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 24px;
+}
+
+.pr-remote h1 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.pr-remote .pr-panel {
+  position: static;
+  transform: none;
+  max-width: 560px;
+}
+
+.pr-remote .pr-btn {
+  min-width: 56px;
+  height: 56px;
+}
+
+.spin {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pr-panel,
+  .spin {
+    transition: none;
+    animation: none;
+  }
+}

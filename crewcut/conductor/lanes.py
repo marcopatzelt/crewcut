@@ -12,7 +12,7 @@ import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from .. import config, db, events, paths
+from .. import config, paths
 
 
 @contextmanager
@@ -33,13 +33,13 @@ def heavy(what: str) -> Iterator[None]:
                     continue
             if held is None:
                 if not announced and job and job.isdigit():
-                    db.update("jobs", int(job), doing=f"Waiting for the heavy lane: {what}")
-                    events.emit("activity", episode=os.environ.get("CREWCUT_EPISODE"),
-                                identity=os.environ.get("CREWCUT_IDENTITY"), data={"job": int(job)})
+                    from . import queue
+                    queue.set_doing(int(job), f"Waiting for the heavy lane: {what}")
                     announced = True
                 time.sleep(2)
         if announced and job and job.isdigit():
-            db.update("jobs", int(job), doing=what)
+            from . import queue
+            queue.set_doing(int(job), what)
         yield
     finally:
         if held is not None:

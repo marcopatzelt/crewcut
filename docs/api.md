@@ -31,7 +31,7 @@ the local machine can reach it. The teleprompter has its own port and a token (s
 |---|---|---|
 | `GET /api/episodes/{id}` | | episode as in `state.episodes[]` plus `project` (the raw `project.json`) and `files` (list of `{path, size, kind}` under `export/`, `graphics/`, `brief/`) |
 | `POST /api/episodes` | `{"text": "an idea in one sentence"}` | the new episode; the Showrunner starts with the sentence |
-| `GET /api/episodes/{id}/messages?after=ID` | | `[{"id", "at", "author", "text", "card"}]`; `author` is `user` or an identity id |
+| `GET /api/episodes/{id}/messages?after=ID` | | `[{"id", "at", "author", "text", "card", "cite", "step", "preview", "facts"}]`; `author` is `user` or an identity id; `cite`, `preview` (a file in the episode) and `facts` (`[{"label", "value"}]`) are optional |
 | `POST /api/episodes/{id}/messages` | `{"text": "…"}` | the stored message; the Showrunner answers in later messages |
 | `GET /api/files/{episode}/{path}` | | the file (video, image, text) for previews; only inside the episode folder |
 | `POST /api/episodes/{id}/upload` | multipart, field `file` (one or more) | `[{"path": "inbox/…", "size"}]`; recordings dropped into the chat land in `studio/inbox/<episode>/` and the Editor ingests them |
@@ -54,7 +54,10 @@ A card asks the user for one yes. Declining or changing is a sentence in the cha
 | `POST /api/cards/{id}/accept` | `{"choice": 0}` (optional, index into `options`) | the card; the conductor continues |
 | `POST /api/cards/{id}/decline` | `{"reason": "…"}` (optional) | the card |
 
-Card kinds: `topic`, `title`, `proof`, `script`, `preview`, `final`, `thumbnail`, `publish`, `spend`, `rule`, `profile`.
+Card kinds: `topic`, `title`, `proof`, `script`, `mix`, `preview`, `final`, `thumbnail`, `publish`, `spend`, `rule`,
+`profile`, `other`. Optional `data` fields the UI shows: `estimate` (`local_seconds`, `local_source`, `rented_seconds`,
+`rented_usd`, `rented_usd_worst`, `gpus`, `gpu_name`), `amount_usd`, `cap_usd` or `budget_usd`, `referral`, `rule`,
+`source`, `profile`, `schedule` (ISO time, publish cards), `facts` (`[{"label", "value"}]`).
 A `spend` card carries `amount_usd` and the two estimates; a `rule` card carries the rule text and its source; a `profile`
 card carries the profile and a 10-second preview video path.
 

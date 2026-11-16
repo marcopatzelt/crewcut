@@ -1,0 +1,30 @@
+# Speech recognition and speaker cut settings. Copy a key into <studio>/config/speech.toml to change it.
+# Taste values of the cut (speed, zoom) live in the style pack (edit-style.json "cut"), not here.
+
+[speech]
+model = "large-v3-turbo"     # faster-whisper model. "small" is faster on a CPU but misses more words
+device = "auto"              # auto (cuda when a GPU is visible, else cpu) | cpu | cuda
+compute_type_cpu = "int8"
+compute_type_cuda = "float16"
+cpu_threads = 0              # 0 = the library default
+beam_size = 5
+language = ""                # empty = the style pack's channel.language
+model_dir = ""               # empty = <studio>/.crewcut/models (downloaded on first use)
+quiet_db = -25.0             # a recording quieter than this gets gain_db before recognition
+gain_db = 14.0
+rented_cap_usd = 0.5         # spend cap for one transcription on a rented GPU (needs a spend card anyway)
+rented_max_minutes = 30
+
+[spelling]
+# Words the recognizer writes differently from the script. verify, doubles and takes compare them as equal.
+# Lower case, one pair per line, e.g.:
+# "cloud" = "claude"
+
+[instructions]
+# Extra phrases (lower case) the speaker uses to talk to the editor while recording. Added to the built-in English
+# and German lists in crewcut/cut/takes.py.
+scratch = []    # throw away the attempt just before ("scratch that")
+first = []      # use the first full attempt of that sentence ("take the first version")
+drop = []       # leave the sentence just before out of the video ("leave that out")
+keep = []       # keep the attempt just before ("that part was good, keep it")
+continue = []   # nothing to do, the script goes on ("I'll just read on")

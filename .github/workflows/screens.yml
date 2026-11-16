@@ -40,6 +40,9 @@ jobs:
           $P --viewport-size "1440, 900" --color-scheme dark "http://localhost:8099/index.html?demo=1" shots/app-dark.png
           $P --viewport-size "390, 844" "http://localhost:8099/index.html?demo=1" shots/app-phone.png
           $P --viewport-size "390, 844" "http://localhost:8099/prompter.html?demo=1" shots/prompter-phone.png
+          $P --viewport-size "1440, 900" "http://localhost:8099/index.html?demo=1#/profile" shots/app-profile.png
+          $P --viewport-size "1440, 900" "http://localhost:8099/index.html?demo=1#/crew" shots/app-crew.png
+          $P --viewport-size "1100, 800" "http://localhost:8099/index.html?demo=1" shots/app-1100.png
       - uses: actions/upload-artifact@v4
         with:
           name: screens

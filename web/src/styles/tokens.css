@@ -1,0 +1,102 @@
+/* Crewcut design tokens (DESIGN.md rule 4). The only file in src/ with raw colour values.
+   Light is the default; dark follows the system unless [data-theme] says otherwise.
+   The two dark blocks must stay identical: npm run check:contrast compares them. */
+
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #FBFBFA;
+  --panel: #F4F4F2;
+  --card: #FFFFFF;
+  --sunken: #EEEEEB;
+  --hover: rgba(17, 17, 17, 0.05);
+  --selected: #E7EFEC;
+  --ink: #16181A;
+  --ink-2: #4A4F55;
+  --ink-3: #62666C;
+  --line: #E2E2DE;
+  --accent: #0F6E5C;
+  --accent-ink: #FFFFFF;
+  --focus: #0F6E5C;
+  --ok: #2B7349;
+  --warn: #8A5A00;
+  --danger: #B42318;
+  --shadow: rgba(17, 17, 17, 0.12);
+  --qr-plate: #FFFFFF;
+  --qr-ink: #111111;
+  --prompter-bg: #0E0F10;
+  --prompter-panel: #1A1B1D;
+  --prompter-ink: #F2F3F4;
+  --prompter-ink-2: #A9AEB4;
+  --prompter-line: #3FB59A;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #141516;
+  --panel: #1A1B1D;
+  --card: #202124;
+  --sunken: #26282B;
+  --hover: rgba(255, 255, 255, 0.05);
+  --selected: #1E2C28;
+  --ink: #ECEDEE;
+  --ink-2: #B5B9BE;
+  --ink-3: #969BA1;
+  --line: #2E3033;
+  --accent: #3FB59A;
+  --accent-ink: #0B1412;
+  --focus: #3FB59A;
+  --ok: #5DBE86;
+  --warn: #D6A23E;
+  --danger: #F2766A;
+  --shadow: rgba(0, 0, 0, 0.5);
+  --qr-plate: #FFFFFF;
+  --qr-ink: #111111;
+  --prompter-bg: #0E0F10;
+  --prompter-panel: #1A1B1D;
+  --prompter-ink: #F2F3F4;
+  --prompter-ink-2: #A9AEB4;
+  --prompter-line: #3FB59A;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #141516;
+    --panel: #1A1B1D;
+    --card: #202124;
+    --sunken: #26282B;
+    --hover: rgba(255, 255, 255, 0.05);
+    --selected: #1E2C28;
+    --ink: #ECEDEE;
+    --ink-2: #B5B9BE;
+    --ink-3: #969BA1;
+    --line: #2E3033;
+    --accent: #3FB59A;
+    --accent-ink: #0B1412;
+    --focus: #3FB59A;
+    --ok: #5DBE86;
+    --warn: #D6A23E;
+    --danger: #F2766A;
+    --shadow: rgba(0, 0, 0, 0.5);
+    --qr-plate: #FFFFFF;
+    --qr-ink: #111111;
+    --prompter-bg: #0E0F10;
+    --prompter-panel: #1A1B1D;
+    --prompter-ink: #F2F3F4;
+    --prompter-ink-2: #A9AEB4;
+    --prompter-line: #3FB59A;
+  }
+}
+
+:root {
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --t-press: 120ms;
+  --t-msg: 160ms;
+  --t-card: 200ms;
+  --r-full: 999px;
+  --r-row: 8px;
+  --r-card: 12px;
+  --r-composer: 16px;
+}
