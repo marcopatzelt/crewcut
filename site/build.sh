@@ -29,14 +29,15 @@ cp "$B/crewcut-lockup.svg" "$B/crewcut-lockup-dark.svg" "$B/slate-icon-small.svg
 cp "$B"/crew/*.svg "$OUT/assets/brand/crew/"
 cp "$B"/states/*.svg "$OUT/assets/brand/states/"
 
-# the app window: 1200 and 1760 px wide WebP from the README images (3520 x 2320)
+# the app window: WebP in three widths from the README images (3520 x 2320), cropped to the window and its shadow
+# (3280 x 2120 from 120,120; the page sets width 1760 and height 1138 on the <img>, the same 1.547 shape)
 webp() { # source, width, target
-  if command -v cwebp > /dev/null 2>&1; then cwebp -quiet -q 82 -resize "$2" 0 "$1" -o "$3"
-  elif command -v magick > /dev/null 2>&1; then magick "$1" -resize "$2"x -quality 82 "$3"
-  else ffmpeg -loglevel error -y -i "$1" -vf "scale=$2:-1" -quality 82 "$3"; fi
+  if command -v cwebp > /dev/null 2>&1; then cwebp -quiet -q 82 -crop 120 120 3280 2120 -resize "$2" 0 "$1" -o "$3"
+  elif command -v magick > /dev/null 2>&1; then magick "$1" -crop 3280x2120+120+120 +repage -resize "$2"x -quality 82 "$3"
+  else ffmpeg -loglevel error -y -i "$1" -vf "crop=3280:2120:120:120,scale=$2:-1" -quality 82 "$3"; fi
 }
 for t in light dark; do
-  for w in 1200 1760; do webp "$ROOT/docs/readme/crewcut-$t.png" "$w" "$OUT/assets/app/crewcut-$t-$w.webp"; done
+  for w in 1200 1760 2400; do webp "$ROOT/docs/readme/crewcut-$t.png" "$w" "$OUT/assets/app/crewcut-$t-$w.webp"; done
 done
 
 if [ -z "$TASTE" ]; then

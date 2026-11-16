@@ -42,9 +42,9 @@
      (DESIGN.md 1.3, nothing moves to draw attention). Moment: word-highlight, the one dealable moment the brief has
      material for (no photographs, no proof figures). Screens at 1440x900: hero 1, app 1, statement 1, how 1, crew 1,
      closing 1. Brand files come from docs/brand and the window from docs/readme, copied by build.sh, never redrawn. -->
-<a class="skip-link" href="#main">Skip to content</a>
 <header class="nav">
   <div class="wrap nav__bar">
+    <a class="skip-link" href="#main">Skip to content</a>
     <a class="nav__logo" href="#top">
       <picture>
         <source srcset="assets/brand/crewcut-lockup-dark.svg" media="(prefers-color-scheme: dark)">
@@ -87,8 +87,8 @@
       </div>
       <div class="app-window">
         <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="assets/app/crewcut-dark-1200.webp 1200w, assets/app/crewcut-dark-1760.webp 1760w" sizes="(min-width: 1024px) 820px, 92vw">
-          <img src="assets/app/crewcut-light-1760.webp" srcset="assets/app/crewcut-light-1200.webp 1200w, assets/app/crewcut-light-1760.webp 1760w" sizes="(min-width: 1024px) 820px, 92vw" alt="Crewcut: your episodes on the left; in the middle the chat with the crew and one card that waits for your yes; on the right the crew at work and what it cost" width="1760" height="1160" loading="lazy" decoding="async">
+          <source media="(prefers-color-scheme: dark)" srcset="assets/app/crewcut-dark-1200.webp 1200w, assets/app/crewcut-dark-1760.webp 1760w, assets/app/crewcut-dark-2400.webp 2400w" sizes="(min-width: 1360px) 1200px, calc(100vw - 48px)">
+          <img src="assets/app/crewcut-light-1760.webp" srcset="assets/app/crewcut-light-1200.webp 1200w, assets/app/crewcut-light-1760.webp 1760w, assets/app/crewcut-light-2400.webp 2400w" sizes="(min-width: 1360px) 1200px, calc(100vw - 48px)" alt="Crewcut: your episodes on the left; in the middle the chat with the crew and one card that waits for your yes; on the right the crew at work and what it cost" width="1760" height="1138" loading="lazy" decoding="async">
         </picture>
       </div>
     </div>
@@ -108,23 +108,25 @@
         <h2 id="how-h">How the crew makes a video</h2>
         <p class="lead">The crew works between the steps. You decide at each card, with one press.</p>
       </div>
-      <ol class="flow">
-        <li><img src="assets/brand/crew/scout.svg" alt="" width="64" height="64"><b>Idea</b><span>Scout</span></li>
-        <li><img src="assets/brand/crew/writer.svg" alt="" width="64" height="64"><b>Script</b><span>Writer</span></li>
-        <li><span class="flow__you" aria-hidden="true">You</span><b>Record</b><span>You, with the teleprompter</span></li>
-        <li><img src="assets/brand/crew/editor.svg" alt="" width="64" height="64"><b>Cut</b><span>Editor</span></li>
-        <li><img src="assets/brand/crew/editor.svg" alt="" width="64" height="64"><b>2D and 3D</b><span>Editor</span></li>
-        <li><img src="assets/brand/crew/designer.svg" alt="" width="64" height="64"><b>Thumbnail</b><span>Designer</span></li>
-        <li><img src="assets/brand/crew/publisher.svg" alt="" width="64" height="64"><b>Upload</b><span>Publisher</span></li>
-      </ol>
-      <div class="states">
-        <h3>Slate shows who works on what</h3>
-        <ul class="states__list">
-          <li><img src="assets/brand/states/idle.svg" alt="" width="56" height="56"><span>Asleep: waits its turn</span></li>
-          <li><img src="assets/brand/states/working.svg" alt="" width="56" height="56"><span>Bar ticking: at work</span></li>
-          <li><img src="assets/brand/states/waiting.svg" alt="" width="56" height="56"><span>A small sign: needs your yes</span></li>
-          <li><img src="assets/brand/states/done.svg" alt="" width="56" height="56"><span>Bar shut, a check: done</span></li>
-        </ul>
+      <div class="ui ui-flow">
+        <ol class="flow" aria-label="The steps of a video">
+          <li><img src="assets/brand/crew/scout.svg" alt="" width="72" height="72" loading="lazy"><b>Idea</b><span>Scout</span></li>
+          <li><img src="assets/brand/crew/writer.svg" alt="" width="72" height="72" loading="lazy"><b>Script</b><span>Writer</span></li>
+          <li><span class="flow__you" aria-hidden="true">You</span><b>Record</b><span>You, with the teleprompter</span></li>
+          <li><img src="assets/brand/crew/editor.svg" alt="" width="72" height="72" loading="lazy"><b>Cut</b><span>Editor</span></li>
+          <li><img src="assets/brand/crew/editor.svg" alt="" width="72" height="72" loading="lazy"><b>2D and 3D</b><span>Editor</span></li>
+          <li><img src="assets/brand/crew/designer.svg" alt="" width="72" height="72" loading="lazy"><b>Thumbnail</b><span>Designer</span></li>
+          <li><img src="assets/brand/crew/publisher.svg" alt="" width="72" height="72" loading="lazy"><b>Upload</b><span>Publisher</span></li>
+        </ol>
+        <div class="states">
+          <h3>Slate shows what the crew is doing</h3>
+          <ul class="states__list">
+            <li><img src="assets/brand/states/idle.svg" alt="" width="56" height="56" loading="lazy"><span>Asleep: waits its turn</span></li>
+            <li><img src="assets/brand/states/working.svg" alt="" width="56" height="56" loading="lazy"><span>Bar ticking: at work</span></li>
+            <li><img src="assets/brand/states/waiting.svg" alt="" width="56" height="56" loading="lazy"><span>A small sign: needs your yes</span></li>
+            <li><img src="assets/brand/states/done.svg" alt="" width="56" height="56" loading="lazy"><span>Bar shut, a check: done</span></li>
+          </ul>
+        </div>
       </div>
       <p class="note">Before the script, the Scout writes title and thumbnail text and runs the proof. Blog and the 48-hour results check are <em>planned</em>.</p>
     </div>
@@ -138,55 +140,47 @@
       </div>
       <div class="cards">
         <article class="card">
-          <div class="panel">
-            <ul class="crew">
-              <li><img src="assets/brand/crew/showrunner.svg" alt="" width="44" height="44"><span>Showrunner</span></li>
-              <li><img src="assets/brand/crew/scout.svg" alt="" width="44" height="44"><span>Scout</span></li>
-              <li><img src="assets/brand/crew/writer.svg" alt="" width="44" height="44"><span>Writer</span></li>
-              <li><img src="assets/brand/crew/editor.svg" alt="" width="44" height="44"><span>Editor</span></li>
-              <li><img src="assets/brand/crew/critic.svg" alt="" width="44" height="44"><span>Critic</span></li>
-              <li><img src="assets/brand/crew/designer.svg" alt="" width="44" height="44"><span>Designer</span></li>
-              <li><img src="assets/brand/crew/publisher.svg" alt="" width="44" height="44"><span>Publisher</span></li>
-              <li><img src="assets/brand/crew/brand.svg" alt="" width="44" height="44"><span>Brand</span></li>
-            </ul>
-          </div>
+          <ul class="ui ui-crew" aria-label="The crew">
+            <li><img src="assets/brand/crew/showrunner.svg" alt="" width="44" height="44" loading="lazy"><span>Showrunner</span></li>
+            <li><img src="assets/brand/crew/scout.svg" alt="" width="44" height="44" loading="lazy"><span>Scout</span></li>
+            <li><img src="assets/brand/crew/writer.svg" alt="" width="44" height="44" loading="lazy"><span>Writer</span></li>
+            <li><img src="assets/brand/crew/editor.svg" alt="" width="44" height="44" loading="lazy"><span>Editor</span></li>
+            <li><img src="assets/brand/crew/critic.svg" alt="" width="44" height="44" loading="lazy"><span>Critic</span></li>
+            <li><img src="assets/brand/crew/designer.svg" alt="" width="44" height="44" loading="lazy"><span>Designer</span></li>
+            <li><img src="assets/brand/crew/publisher.svg" alt="" width="44" height="44" loading="lazy"><span>Publisher</span></li>
+            <li><img src="assets/brand/crew/brand.svg" alt="" width="44" height="44" loading="lazy"><span>Brand</span></li>
+          </ul>
           <h3>A crew of eight Claude Code agents</h3>
           <p>Seven take your video from idea to upload, and Brand sets up your style.</p>
         </article>
         <article class="card">
-          <div class="panel">
-            <div class="ui ui-tree" role="img" aria-label="The style pack Brand writes from your links">
-              <span class="ui-tree__dir">brand/</span>
-              <span>brand.json</span>
-              <span>edit-style.json</span>
-              <span>channel.json</span>
-              <span>thumbnail.json</span>
-              <span>voice.md</span>
-              <span>rules/</span>
-            </div>
+          <div class="ui ui-tree" role="img" aria-label="The style pack Brand writes from your links: brand.json, edit-style.json, channel.json, thumbnail.json, voice.md and your rules">
+            <span class="ui-tree__dir">brand/</span>
+            <span>brand.json</span>
+            <span>edit-style.json</span>
+            <span>channel.json</span>
+            <span>thumbnail.json</span>
+            <span>voice.md</span>
+            <span>rules/</span>
           </div>
           <h3>Your style, read from your links</h3>
           <p>No forms: Brand reads your site and channel and names the source of every value.</p>
         </article>
         <article class="card">
-          <div class="panel">
-            <div class="ui ui-choice" role="img" aria-label="A card from the Editor: 9 scenes, about 3 hours on this machine or about 12 minutes for about $0.60 on a rented GPU">
-              <div class="ui-choice__ways">
-                <span class="ui-choice__way"><small>This machine</small><b>About 3 h</b></span>
-                <span class="ui-choice__way is-on"><small>Rented GPU</small><b>About 12 min</b></span>
-              </div>
-              <span class="ui-choice__pill">Rent a GPU for $0.60</span>
+          <div class="ui ui-choice" role="img" aria-label="A card from the Editor: 9 scenes, about 3 hours on this machine or about 12 minutes for about $0.60 on a rented GPU">
+            <div class="ui-choice__ways">
+              <span class="ui-choice__way"><small>This machine</small><b>About 3 h</b></span>
+              <span class="ui-choice__way is-on"><small>Rented GPU</small><b>About 12 min</b></span>
             </div>
+            <span class="ui-choice__pill">Rent a GPU for $0.60</span>
           </div>
           <h3>Fast with a rented GPU, free without one</h3>
           <p>Everything runs on your computer. For slow 3D, the Editor offers a rented GPU once.</p>
         </article>
         <article class="card">
-          <div class="panel">
-            <div class="ui ui-engines" role="img" aria-label="Two engines: Claude Code by default, Codex in beta">
-              <span class="ui-engines__row is-on"><b>Claude Code</b><small>default</small></span>
-              <span class="ui-engines__row"><b>Codex</b><small>beta</small></span>
-            </div>
+          <div class="ui ui-engines" role="img" aria-label="Two engines: Claude Code by default, Codex in beta">
+            <span class="ui-engines__row is-on"><b>Claude Code</b><small>default</small></span>
+            <span class="ui-engines__row"><b>Codex</b><small>beta</small></span>
           </div>
           <h3>Runs on your own Claude Code subscription</h3>
           <p>The crew needs no API keys: it runs on the plan you already pay for. Codex is in beta.</p>
@@ -199,24 +193,26 @@
 
 <footer class="closing" id="quick-start" aria-labelledby="start-h">
   <div class="wrap">
-    <div class="close">
+    <div class="close split">
       <div class="close__text">
-        <img class="close__slate" src="assets/brand/states/done.svg" alt="" width="64" height="64">
         <h2 id="start-h">Start Crewcut in three commands</h2>
-        <p class="lead">You need Docker and a Claude subscription with Claude Code. Then open localhost:4747, paste your links and say your first idea.</p>
+        <p class="lead">You need Docker and a Claude subscription with Claude Code.</p>
         <div class="btn-row">
           <a class="btn btn--primary" href="https://github.com/marcopatzelt/crewcut">Get Crewcut on GitHub</a>
           <a class="btn btn--secondary" href="https://github.com/marcopatzelt/crewcut/blob/main/docs/getting-started.md">Read the setup guide</a>
         </div>
       </div>
-      <ol class="cmds" aria-label="Quick start">
-        <li><code>git clone https://github.com/marcopatzelt/crewcut.git &amp;&amp; cd crewcut</code></li>
-        <li><code>claude setup-token</code><span>once, on any computer with a browser: prints your token</span></li>
-        <li><code>./start.sh</code><span>asks for the token once (hidden), writes .env, runs docker compose up</span></li>
-      </ol>
+      <div class="cmds">
+        <ol aria-label="Quick start">
+          <li><code>git clone https://github.com/marcopatzelt/crewcut.git &amp;&amp; cd crewcut</code></li>
+          <li><code>claude setup-token</code><span>once, on any computer with a browser: prints your token</span></li>
+          <li><code>./start.sh</code><span>asks for the token once (hidden), writes .env, runs docker compose up</span></li>
+        </ol>
+        <p class="cmds__done"><img src="assets/brand/states/done.svg" alt="" width="48" height="48" loading="lazy"><span>Open localhost:4747, paste your links and say your first idea. The Scout comes back with a topic card.</span></p>
+      </div>
     </div>
     <div class="foot">
-      <div class="foot__credits">
+      <div class="foot__credits split">
         <p class="foot__title">Built on the playbooks of</p>
         <p>The skills distil public know-how from these creators into our own short rules: <a href="https://www.youtube.com/watch?v=41HMFGbENj4">Vexian in Grant Owen's podcast</a>, <a href="https://simonwillison.net/2024/Sep/15/how-to-succeed-in-mrbeast-production/">MrBeast's production handbook</a>, <a href="https://www.youtube.com/@AlexHormozi">Alex Hormozi's editing style by Ryan Magin</a>, <a href="https://www.youtube.com/@fern-tv">fern</a>, <a href="https://www.youtube.com/@nateherk">Nate Herk</a>, and the reel storytelling of <a href="https://www.youtube.com/@farzatv">Farza</a>, <a href="https://www.youtube.com/@raroque">Chris Raroque</a>, <a href="https://www.youtube.com/@im_roy_lee">Roy Lee</a>, <a href="https://www.youtube.com/@rileybrownai">Riley Brown</a>, <a href="https://www.youtube.com/@VarunMayya">Varun Mayya</a> and <a href="https://www.youtube.com/@CodieSanchezCT">Codie Sanchez</a>.</p>
         <p class="foot__small">Crewcut is not affiliated with or endorsed by any of these creators. The skills contain our own summaries, not their content.</p>
