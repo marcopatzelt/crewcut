@@ -23,7 +23,7 @@ Open source, one Docker container, on your own computer.**
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/readme/crewcut-dark.png">
-  <img alt="Crewcut: your episodes on the left; in the middle the chat with the crew and one card that waits for your yes; on the right the crew at work and what it cost" src="docs/readme/crewcut-light.png" width="100%">
+  <img alt="Crewcut's episode view as a glass window on a rendered landscape: three thumbnail variants with a phone-size preview, the cut as a film strip with waveform and the Critic's notes, the 3D scenes and the rented GPU; on the right the crew chat with who works on what" src="docs/readme/crewcut-light.png" width="100%">
 </picture>
 
 </div>
@@ -40,16 +40,16 @@ published, rented or paid for without your yes.
 > smoke-tested in CI for amd64 and arm64, with real 2D, 3D and assembly renders. A full episode with real footage has
 > **not** run yet; that is the next step. What does not exist yet is marked *planned*. The pictures show demo data.
 
-<img alt="A card asks whether to render nine 3D scenes on this machine or on a rented GPU; the choice switches, one press, the card folds away and the Editor starts in the crew column" src="docs/readme/crewcut-demo.webp" width="100%">
+<img alt="In the episode view a card asks for one yes; one press, the card folds away, the rented GPU starts and the crew column shows the work" src="docs/readme/crewcut-demo.webp" width="100%">
 
-<p align="center"><sub>One card, one choice, one press. Demo data, rendered in CI from the current app.</sub></p>
+<p align="center"><sub>Media first, the crew chat beside it. Demo data from the author's own videos, rendered in CI from the current app.</sub></p>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/readme/crewcut-episodes-dark.png">
-  <img alt="All episodes as large cards with their covers, filter pills on top: long videos and Shorts, what needs your yes" src="docs/readme/crewcut-episodes-light.png" width="100%">
+  <img alt="The home: what needs your yes as two large media cards, then a grid of real thumbnails, a row of Shorts, and on the right who is working now with a live picture of each job and what it cost" src="docs/readme/crewcut-episodes-light.png" width="100%">
 </picture>
 
-<p align="center"><sub>All your videos and Shorts at a glance, filtered with one tap.</sub></p>
+<p align="center"><sub>Every video and Short at a glance, and live pictures of the work in progress.</sub></p>
 
 ## Quick start
 
@@ -325,7 +325,10 @@ Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md), [
 
 [MIT](LICENSE), copyright Marco Patzelt. The mascot Slate was made by the author with ChatGPT image generation and
 redrawn by hand as SVG ([`docs/brand/`](docs/brand/)); it is part of the MIT-licensed repository. Third-party tools keep their own licences: ffmpeg (LGPL/GPL build from Debian),
-Blender (GPL, called as a program, not linked), Chromium (BSD), Inter (SIL Open Font License), Claude Code and Codex
+Blender (GPL, called as a program, not linked), Chromium (BSD), Inter (SIL Open Font License), the
+[Astryx](https://github.com/meta/astryx) design system by Meta (MIT) for some of the app's controls, Claude Code and Codex
 (installed from their official packages at first start, not shipped), [Humanizer](https://github.com/blader/humanizer)
 by blader (MIT; the newest release is downloaded at start and loaded as a skill, its text is not part of this
-repository), yt-dlp (Unlicense, reads the captions of your own videos for the voice sample).
+repository), yt-dlp (Unlicense, reads the captions of your own videos for the voice sample). The app's wallpapers were
+rendered for Crewcut in Blender from CC0 assets of Poly Haven and ambientCG ([credits](web/public/wallpapers/CREDITS.md)).
+The demo pictures are frames and thumbnails of the author's own videos.
