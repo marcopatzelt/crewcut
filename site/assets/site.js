@@ -55,14 +55,14 @@
     }
     function frame(t) {
       const dt = last ? Math.min(t - last, 100) : 0; last = t;
-      if (!reduce && !paused) turn -= dt * 360 / 80000;
+      if (!reduce && !paused) turn -= dt * 360 / 140000;
       if (visible) draw();
       requestAnimationFrame(frame);
     }
     size(); draw();
     for (const it of items) it.im.addEventListener("load", draw, { once: true });
     addEventListener("resize", () => { size(); draw(); });
-    if (!reduce) addEventListener("scroll", () => { if (!paused) scrollTurn = scrollY * -0.12; }, { passive: true });
+    if (!reduce) addEventListener("scroll", () => { if (!paused) scrollTurn = scrollY * -0.05; }, { passive: true });
     if ("IntersectionObserver" in window) new IntersectionObserver((e) => { visible = e[0].isIntersecting; }).observe(drum);
     requestAnimationFrame(frame);
   }

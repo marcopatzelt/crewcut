@@ -162,8 +162,6 @@ main > section.g2 > .wrap > .group { min-height: 0; display: flex; flex-directio
 .workcard__j span { font-size: 12px; color: rgba(234, 245, 241, 0.72); }
 .workcard__bar { display: block; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.12); margin-top: 6px; overflow: hidden; }
 .workcard__bar i { display: block; height: 100%; width: 56%; background: var(--mint); border-radius: 2px; transform-origin: 0 50%; }
-@media (prefers-reduced-motion: no-preference) { .workcard__bar i { animation: work 3.2s ease-in-out infinite alternate; } }
-@keyframes work { from { transform: scaleX(0.68); } to { transform: scaleX(1.32); } }
 .stage__phone { position: absolute; right: 24px; bottom: 24px; width: 250px; z-index: 3; }
 
 /* the phone, a drawn teleprompter */
@@ -174,7 +172,6 @@ main > section.g2 > .wrap > .group { min-height: 0; display: flex; flex-directio
 .phone__top { display: flex; align-items: center; gap: 8px; margin-top: 22px; }
 .phone__pill { font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); }
 .phone__rec { color: #FF6B5E; }
-.phone__cam { position: absolute; right: 14px; top: 46px; width: 64px; height: 86px; border-radius: 14px; background: url("../media/frames/talk.jpg") 58% 28% / 300%; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18); }
 .phone__lines { margin-top: 30px; display: flex; flex-direction: column; gap: 12px; font: 700 20px/1.22 var(--display); letter-spacing: -0.01em; }
 .phone__lines .past { color: rgba(255, 255, 255, 0.3); }
 .phone__lines .now u { text-decoration: none; box-shadow: inset 0 -3px 0 var(--mint); }
@@ -183,11 +180,9 @@ main > section.g2 > .wrap > .group { min-height: 0; display: flex; flex-directio
 .phone__bottom { margin-top: auto; display: flex; align-items: center; justify-content: space-between; font: 600 13px var(--font); color: rgba(255, 255, 255, 0.7); font-variant-numeric: tabular-nums; }
 .phone__recbtn { width: 58px; height: 58px; border-radius: 50%; box-shadow: inset 0 0 0 4px #fff; display: grid; place-items: center; }
 .phone__recbtn i { width: 24px; height: 24px; border-radius: 6px; background: #FF4F45; display: block; }
-@media (prefers-reduced-motion: no-preference) { .phone__lines { animation: roll 16s linear infinite; } }
-@keyframes roll { from { transform: translateY(0); } to { transform: translateY(-46px); } }
 
 /* ---------------------------------------------------------------- the drum of real thumbnails: drawn on one canvas */
-.drum { position: relative; height: 420px; }
+.drum { position: relative; height: 440px; margin-inline: calc(50% - 50vw); }
 .drum__canvas { display: block; width: 100%; height: 100%; }
 .drum__still { display: none; }
 html:not(.js) .drum__canvas { display: none; }
@@ -302,8 +297,8 @@ footer.closing a, footer.closing button { pointer-events: auto; }
   .nav__links { display: none; }
   .crew { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .crew-sec { --h: 2; }
-  .two { grid-template-columns: 1fr; }
-  .render { --h: 2; }
+  .two { flex: none; grid-template-columns: 1fr; }
+  .feat { min-height: 640px; }
   .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
