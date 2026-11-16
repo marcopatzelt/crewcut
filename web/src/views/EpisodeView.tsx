@@ -3,10 +3,10 @@
 import { AlertCircle, Check, LoaderCircle } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type DragEvent } from "react";
 import { ONBOARDING, type Card, type Episode, type Identity, type Message, type Step } from "../api/types";
-import { ErrorLine, Facts, identityOf, Loading, Mark, Media } from "../components/bits";
+import { ErrorLine, Facts, identityOf, Loading, Media } from "../components/bits";
+import { Avatar, SlateFigure } from "../slate/Slate";
 import { CardItem } from "../components/CardView";
 import { ExchangeLine } from "../components/Exchange";
-import { Logo } from "../components/Episodes";
 import { PrompterButton, PrompterPopover } from "../components/PrompterPopover";
 import { LargeTitle, Toolbar, useScrollChrome } from "../components/Toolbar";
 import { ago, bytes, episodeNumber, paragraphs } from "../lib/format";
@@ -119,7 +119,7 @@ function IdentityMessage({
   const step = m.step ? steps.find((s) => s.id === m.step) : undefined;
   return (
     <article className={fresh ? "msg is-new" : "msg"} aria-label={`${who.name}`} data-step={m.step ?? undefined}>
-      <Mark mark={who.mark} />
+      <Avatar who={who} />
       <div className="msg-main">
         <div className="who">
           <b>{who.name}</b>
@@ -169,7 +169,7 @@ function Onboarding() {
   return (
     <div className="hero">
       <span className="hero-mark">
-        <Logo size={48} />
+        <SlateFigure state="wave" size={120} />
       </span>
       <h1>Paste your links.</h1>
       <p>Website, YouTube channel, socials. The crew reads the rest.</p>
@@ -287,7 +287,10 @@ export function EpisodeView({ id }: { id: string }) {
         role="log"
       >
         {items.length === 0 && mine.length === 0 && !onboardingChat ? (
-          <p className="chat-empty">Say an idea below, or ask the Scout for three.</p>
+          <div className="chat-empty">
+            <SlateFigure size={96} />
+            <p>Say an idea below, or ask the Scout for three.</p>
+          </div>
         ) : null}
         {items.map((it) => {
           const fresh = isFresh(it.key, it.at);
@@ -397,7 +400,10 @@ export function NewEpisodeView() {
         <div className="thread">
           <LargeTitle innerRef={large} title="New episode" sub="One sentence is enough. The Showrunner starts from it." />
           <div className="chat">
-            <p className="chat-empty">{count ? "Say an idea below." : "No episodes yet. Say an idea below."}</p>
+            <div className="chat-empty">
+              <SlateFigure size={96} />
+              <p>{count ? "Say an idea below." : "No episodes yet. Say an idea below."}</p>
+            </div>
           </div>
         </div>
       </div>

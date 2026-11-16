@@ -23,7 +23,8 @@ Spending and publishing always go through a card as well: `spend` for money, `pu
 ---
 id: scout
 name: Scout
-mark: SC
+mark: SC               # two letters, used where a picture does not fit (logs, the terminal)
+avatar: magnifier      # the prop Slate holds in the app: headset, magnifier, pencil, scissors, clipboard, brush, plane, swatches
 role: "Finds the next idea in data, writes the title and thumbnail text, and proves the promise."
 model: plan            # plan = strong model (plans, checks), work = cheaper model (does the bulk)
 skills: [idea, title]

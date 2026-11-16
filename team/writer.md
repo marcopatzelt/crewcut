@@ -2,6 +2,7 @@
 id: writer
 name: Writer
 mark: WR
+avatar: pencil
 role: "Writes the script in the user's own voice, from the approved title and proof."
 model: plan
 skills: [script]

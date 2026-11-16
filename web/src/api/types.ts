@@ -14,6 +14,8 @@ export interface Identity {
   name: string;
   role: string;
   mark: string;
+  /** The prop Slate holds for this crew member (team/<id>.md `avatar`), e.g. "scissors". */
+  avatar?: string;
   skills: string[];
   may_spend: boolean;
   may_publish: boolean;

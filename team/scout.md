@@ -2,6 +2,7 @@
 id: scout
 name: Scout
 mark: SC
+avatar: magnifier
 role: "Finds the next idea in data, writes the title and thumbnail text, and proves the promise."
 model: plan
 skills: [idea, title]

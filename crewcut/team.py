@@ -56,7 +56,7 @@ def for_step(step: str) -> dict | None:
 
 
 def public(x: dict, with_soul: bool = False) -> dict:
-    keys = ["id", "name", "role", "mark", "skills", "steps", "may_spend", "may_publish", "model", "effort", "sources"]
+    keys = ["id", "name", "role", "mark", "avatar", "skills", "steps", "may_spend", "may_publish", "model", "effort", "sources"]
     d = {k: x.get(k) for k in keys}
     if with_soul:
         d["soul"] = x.get("soul", "")

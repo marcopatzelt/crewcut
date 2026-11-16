@@ -2,6 +2,7 @@
 id: brand
 name: Brand
 mark: BR
+avatar: swatches
 role: "Sets up the user's style pack from their links and keeps it up to date."
 model: plan
 skills: [onboarding]

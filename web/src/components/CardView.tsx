@@ -6,7 +6,8 @@ import { api } from "../api/client";
 import { about, usd, versionOf, when } from "../lib/format";
 import { reducedMotion } from "../lib/platform";
 import { accept, decline, messageOf } from "../store/actions";
-import { ErrorLine, Facts, identityOf, Keys, Mark, Media } from "./bits";
+import { ErrorLine, Facts, identityOf, Keys, Media } from "./bits";
+import { Avatar } from "../slate/Slate";
 
 const NOUN: Record<CardKind, string> = {
   topic: "Topic",
@@ -336,7 +337,7 @@ export function OpenCard({
       data-card-step={card.step}
     >
       <div className="card-head">
-        <Mark mark={who.mark} small />
+        <Avatar who={who} size="small" />
         <b>{who.name}</b>
         {step ? <span className="one-line">{step.label}</span> : null}
         <span className="card-ask">needs your yes</span>

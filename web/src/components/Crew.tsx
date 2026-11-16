@@ -6,7 +6,8 @@ import type { Activity, Episode, Identity, Money } from "../api/types";
 import { clock, countWord, sameDay, usd, usdShort } from "../lib/format";
 import { jumpToOpenCard, navigate } from "../store/actions";
 import { EMPTY, useUi } from "../store/store";
-import { identityOf, Mark } from "./bits";
+import { identityOf } from "./bits";
+import { Avatar } from "../slate/Slate";
 
 const ACTIVE = new Set(["running", "waiting", "queued"]);
 const ORDER: Record<string, number> = { running: 0, waiting: 1, queued: 2 };
@@ -79,7 +80,13 @@ function JobRow({
         onClick={open}
         aria-label={`${who.name}: ${doing}. ${meta}. ${toCard ? "Open the card." : "Open the log."}`}
       >
-        <Mark mark={who.mark} state={running ? "working" : a.status === "waiting" ? "waiting" : undefined} />
+        {/* The key restarts the tick when the crew member reports a new step: Slate ticks when something happens. */}
+        <Avatar
+          key={`${a.status}:${doing}`}
+          who={who}
+          size="crew"
+          state={running ? "working" : a.status === "waiting" ? "waiting" : "idle"}
+        />
         <span className="job-main">
           <span className="job-name one-line">{who.name}</span>
           <span className="job-doing one-line">{doing}</span>
@@ -228,6 +235,12 @@ export function CrewContent({ headingId }: { headingId: string }) {
                   onClick={() => navigate({ kind: "job", id: a.job })}
                   aria-label={`${identityOf(team, a.identity).name}: ${a.doing}, ${a.status}. Open the log.`}
                 >
+                  <Avatar
+                    who={identityOf(team, a.identity)}
+                    size="small"
+                    state={a.status === "done" ? "done" : "plain"}
+                    still={!fresh(`d${a.job}`)}
+                  />
                   <span className="one-line">
                     {identityOf(team, a.identity).name} ·{" "}
                     {a.status === "done" ? lowerFirst(a.doing ?? "") : `${a.doing ?? "job"}, ${a.status}`}
@@ -287,7 +300,7 @@ export function CrewBar() {
         <span className="marks" aria-hidden="true">
           {!engineOk ? <span className="dot warn" /> : null}
           {marks.map((id) => (
-            <Mark key={id} mark={identityOf(team, id).mark} small />
+            <Avatar key={id} who={identityOf(team, id)} size="small" />
           ))}
         </span>
         <span className="summary one-line">

@@ -5,7 +5,7 @@ name: screens
 on:
   push:
     branches: [main]
-    paths: ["docs/mockup.html", "web/**", ".github/workflows/screens.yml"]
+    paths: ["docs/mockup.html", "docs/brand/**", "web/**", "tools/ci/**", ".github/workflows/screens.yml"]
   workflow_dispatch:
 
 permissions:
@@ -54,6 +54,11 @@ jobs:
           node /tmp/shots-tool/readme_shots.mjs http://localhost:8099 "$GITHUB_WORKSPACE/shots/readme"
           rm -rf "$GITHUB_WORKSPACE/shots/readme/video-tmp"
           ls -la "$GITHUB_WORKSPACE/shots/readme"
+      - name: Brand PNGs (icons 16 to 1024, social preview, crew) from the SVGs in docs/brand
+        if: hashFiles('web/package-lock.json') != ''
+        run: |
+          cp "$GITHUB_WORKSPACE/tools/ci/brand_png.mjs" /tmp/shots-tool/
+          node /tmp/shots-tool/brand_png.mjs "$GITHUB_WORKSPACE/docs/brand" "$GITHUB_WORKSPACE/shots/brand"
       - name: Taste gate (design check of the built app, report)
         if: hashFiles('web/package-lock.json') != ''
         continue-on-error: true
@@ -73,4 +78,5 @@ jobs:
           path: |
             shots/*.png
             shots/readme/
+            shots/brand/
             shots/taste/

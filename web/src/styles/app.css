@@ -298,8 +298,13 @@ svg.lucide {
 }
 
 .side-empty {
-  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 24px 8px 8px;
   color: var(--ink-3);
+  text-align: center;
 }
 
 .side-foot {
@@ -370,6 +375,9 @@ svg.lucide {
   overscroll-behavior: contain;
   padding: 52px 0 calc(var(--dock-h, 88px) + 16px);
   scroll-padding: 64px 0 calc(var(--dock-h, 88px) + 16px);
+  /* Text that scrolls under the toolbar fades out, so it never shows through as a second title. */
+  -webkit-mask-image: var(--under-bar-fade);
+  mask-image: var(--under-bar-fade);
 }
 
 .thread {
@@ -730,9 +738,15 @@ svg.lucide {
 }
 
 .chat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 0;
   color: var(--ink-2);
   font-size: 15px;
   line-height: 23px;
+  text-align: center;
 }
 
 .msg {
@@ -885,58 +899,176 @@ svg.lucide {
 
 /* ---------- identity marks (rule 13): a rounded square like a small app icon ---------- */
 
-.mark {
+/* Slate avatars (DESIGN.md rule 19): a crew member is Slate with its prop on a round tile. Decorative: the name always
+   stands next to it. */
+.avatar {
   position: relative;
+  display: block;
+  flex: none;
   width: 28px;
   height: 28px;
-  border-radius: var(--r-row);
-  background: var(--sunken);
-  box-shadow: inset 0 0 0 0.5px var(--line-strong);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font: 600 11px/14px var(--font-rounded);
-  letter-spacing: 0.02em;
-  color: var(--ink-2);
+}
+
+.slate svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.avatar.small {
+  width: 20px;
+  height: 20px;
+}
+
+.avatar.crew {
+  width: 32px;
+  height: 32px;
+}
+
+.avatar.big {
+  width: 44px;
+  height: 44px;
+}
+
+.app-icon {
+  display: block;
   flex: none;
 }
 
-.mark.small {
-  width: 20px;
-  height: 20px;
-  border-radius: var(--r-xs);
-  letter-spacing: 0;
+/* The states. Each plays once and then holds still: working ticks four times and starts again when the crew member
+   reports a new step (the component remounts), so nothing moves for more than about four seconds on its own. */
+.slate .sl-bar,
+.slate .sl-arm {
+  transform-box: fill-box;
+  transform-origin: 0% 100%;
 }
 
-.mark.big {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--r-ctl);
-  font-size: 13px;
-  line-height: 18px;
+.slate .sl-mark,
+.slate .sl-z {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
 }
 
-.mark.is-working::after,
-.mark.is-waiting::after {
-  content: "";
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: 8px;
-  height: 8px;
-  border-radius: var(--r-full);
-  box-shadow: 0 0 0 1px var(--card);
+.slate.is-working .sl-bar {
+  animation: slate-tick var(--t-tick) var(--ease-out) 4;
 }
 
-.mark.is-working::after {
-  background: var(--accent);
+.slate.is-working .sl-mark {
+  animation: slate-fade var(--t-tick) var(--ease-out) 4;
 }
 
-.mark.is-waiting::after {
-  background: var(--card);
-  box-shadow:
-    inset 0 0 0 1.5px var(--warn),
-    0 0 0 1px var(--card);
+.slate.is-done .sl-bar {
+  animation: slate-snap var(--t-snappy) var(--spring-snappy) both;
+}
+
+.slate.is-done .sl-mark,
+.slate.is-waiting .sl-mark {
+  animation: slate-pop var(--t-soft) var(--spring-snappy) both;
+}
+
+.slate.is-idle .sl-z {
+  animation: slate-doze var(--t-doze) var(--ease-out) both;
+}
+
+.slate.is-idle .sl-z2 {
+  animation-delay: var(--t-soft);
+}
+
+.slate.is-idle .sl-z1 {
+  animation-delay: var(--t-tip);
+}
+
+.slate.is-wave .sl-arm {
+  animation: slate-wave var(--t-wave) ease-in-out 3;
+}
+
+@keyframes slate-tick {
+  0%,
+  100% {
+    transform: rotate(-13.4deg);
+  }
+
+  45% {
+    transform: rotate(-2deg);
+  }
+}
+
+@keyframes slate-fade {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  45% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes slate-snap {
+  from {
+    transform: rotate(-13.4deg);
+  }
+
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes slate-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slate-doze {
+  from {
+    opacity: 0;
+    transform: translate(-4px, 6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes slate-wave {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(-14deg);
+  }
+}
+
+.slate.is-still .sl-bar,
+.slate.is-still .sl-mark,
+.slate.is-still .sl-z,
+.slate.is-still .sl-arm {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slate.is-working .sl-bar,
+  .slate.is-working .sl-mark,
+  .slate.is-done .sl-bar,
+  .slate.is-done .sl-mark,
+  .slate.is-waiting .sl-mark,
+  .slate.is-idle .sl-z,
+  .slate.is-idle .sl-z1,
+  .slate.is-idle .sl-z2,
+  .slate.is-wave .sl-arm {
+    animation: none;
+  }
 }
 
 /* ---------- cards (rule 12) ---------- */
@@ -1829,7 +1961,7 @@ a.pill:hover {
 
 .person {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-columns: 44px minmax(0, 1fr);
   gap: 16px;
   padding: 16px 0;
   box-shadow: inset 0 -0.5px 0 var(--line-strong);
@@ -1922,6 +2054,8 @@ a.pill:hover {
 
 .first-start .scroll {
   padding-top: 0;
+  -webkit-mask-image: none;
+  mask-image: none;
 }
 
 .hero {
@@ -1939,7 +2073,7 @@ a.pill:hover {
 
 .hero-mark {
   color: var(--ink);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .hero h1 {
@@ -2055,7 +2189,7 @@ a.pill:hover {
 .job {
   position: relative;
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
   gap: 2px 10px;
   width: 100%;
   padding: 10px 12px;
@@ -2188,13 +2322,14 @@ a.pill:hover {
   background: var(--hover);
 }
 
-.fin span:first-child {
+.fin .one-line {
+  flex: 1;
   color: var(--ink-2);
   font-size: 13px;
   line-height: 18px;
 }
 
-.fin.failed span:first-child {
+.fin.failed .one-line {
   color: var(--danger);
 }
 
@@ -2688,10 +2823,9 @@ a.pill:hover {
     gap: 8px;
   }
 
-  .msg > .mark {
+  .msg > .avatar {
     width: 24px;
     height: 24px;
-    border-radius: var(--r-xs);
   }
 
   .card,

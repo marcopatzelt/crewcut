@@ -26,6 +26,14 @@
   --ok: #1E7A34;
   --warn: #B25000;
   --danger: #D70015;
+  /* Slate, the mascot (brand: deep green board, mint stripes, white face). */
+  --slate-body: #0F6E5C;
+  --slate-stripe: #34C3A4;
+  --slate-face: #FFFFFF;
+  --slate-tile: #BFEEDF;
+  --slate-paper: #FFFFFF;
+  --slate-red: #E5484D;
+  --slate-soft: #8EDCC4;
   --material-sidebar: rgba(246, 246, 244, 0.72);
   --material-bar: rgba(255, 255, 255, 0.78);
   --material-float: rgba(255, 255, 255, 0.86);
@@ -66,6 +74,13 @@
   --accent-ink: #06231D;
   --focus: rgba(52, 195, 164, 0.60);
   --selection: rgba(52, 195, 164, 0.30);
+  --slate-body: #1A9078;
+  --slate-stripe: #5FE3C3;
+  --slate-face: #FFFFFF;
+  --slate-tile: #1E3D35;
+  --slate-paper: #F2F5F4;
+  --slate-red: #FF6B6B;
+  --slate-soft: #3FB596;
   --ok: #30D158;
   --warn: #FF9F0A;
   --danger: #FF6961;
@@ -110,6 +125,13 @@
     --accent-ink: #06231D;
     --focus: rgba(52, 195, 164, 0.60);
     --selection: rgba(52, 195, 164, 0.30);
+    --slate-body: #1A9078;
+    --slate-stripe: #5FE3C3;
+    --slate-face: #FFFFFF;
+    --slate-tile: #1E3D35;
+    --slate-paper: #F2F5F4;
+    --slate-red: #FF6B6B;
+    --slate-soft: #3FB596;
     --ok: #30D158;
     --warn: #FF9F0A;
     --danger: #FF6961;
@@ -173,6 +195,10 @@
   --t-tip: 600ms;
   --t-loop: 1.6s;
   --t-spin: 900ms;
+  --under-bar-fade: linear-gradient(to bottom, transparent 0, transparent 34px, black 52px);
+  --t-tick: 900ms; /* one open-and-shut of Slate's bar while a crew member works */
+  --t-doze: 2400ms; /* the Zzz drifting in once */
+  --t-wave: 700ms; /* one wave of the welcome */
 }
 
 /* Browsers without linear() get the plain ease-out curve instead of the springs. */

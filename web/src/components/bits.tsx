@@ -10,25 +10,6 @@ import { keyLabels } from "../lib/platform";
  * A two-letter mark on a neutral plate, a rounded square like a small app icon (DESIGN.md rule 13).
  * "working" adds a small accent dot at the bottom right, "waiting" a ring in --warn. No colours per identity.
  */
-export function Mark({
-  mark,
-  big,
-  small,
-  state,
-}: {
-  mark: string;
-  big?: boolean;
-  small?: boolean;
-  state?: "working" | "waiting";
-}) {
-  const cls = ["mark", big ? "big" : small ? "small" : null, state ? `is-${state}` : null].filter(Boolean).join(" ");
-  return (
-    <span className={cls} aria-hidden="true">
-      {mark}
-    </span>
-  );
-}
-
 /** Keeps the layout; shows a spinner only after 300 ms (DESIGN.md rule 11). */
 export function Loading({ label = "Loading" }: { label?: string }) {
   const [show, setShow] = useState(false);

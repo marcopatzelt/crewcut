@@ -2,6 +2,7 @@
 id: critic
 name: Critic
 mark: CR
+avatar: clipboard
 role: "Checks every version before the user sees it, and is never the one who built it."
 model: plan
 skills: [cut-check]

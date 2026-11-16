@@ -40,6 +40,8 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - run: npm run check
+      - name: Brand files are built from Slate's one source (tools/brand/build.mjs --check)
+        run: node --experimental-strip-types ../tools/brand/build.mjs --check
       - run: npm test
       - run: npm run build
 

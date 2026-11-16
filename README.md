@@ -1,5 +1,10 @@
 <div align="center">
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/slate-dark.svg">
+  <img alt="Slate, the Crewcut mascot: a clapperboard with a face" src="docs/brand/slate.svg" width="112">
+</picture>
+
 # Crewcut
 
 ### Your Claude Code subscription, now a YouTube crew.
@@ -108,16 +113,31 @@ These are rules in the code, not settings a prompt can talk around.
 
 ## Meet the crew
 
+<p align="center">
+  <img src="docs/brand/crew/showrunner.svg" width="64" alt="Showrunner">
+  <img src="docs/brand/crew/scout.svg" width="64" alt="Scout">
+  <img src="docs/brand/crew/writer.svg" width="64" alt="Writer">
+  <img src="docs/brand/crew/editor.svg" width="64" alt="Editor">
+  <img src="docs/brand/crew/critic.svg" width="64" alt="Critic">
+  <img src="docs/brand/crew/designer.svg" width="64" alt="Designer">
+  <img src="docs/brand/crew/publisher.svg" width="64" alt="Publisher">
+  <img src="docs/brand/crew/brand.svg" width="64" alt="Brand">
+</p>
+
+Every crew member is **Slate**, the Crewcut clapperboard, with the tool of its role. In the app Slate also shows the
+state: asleep while it waits its turn, the bar ticking while it works, a small "?" sign when it needs you, the bar shut
+with a check when it is done.
+
 | | Crew member | What it does | May |
 |---|---|---|---|
-| SR | **Showrunner** | Runs the episode through the ten steps and answers you in the chat. Shows you nothing unchecked | |
-| SC | **Scout** | Finds the topic in data, writes title and thumbnail text, runs the proof | |
-| WR | **Writer** | Writes the script in your voice | |
-| ED | **Editor** | Ingests your recordings, cuts the speaker, builds 2D and 3D, sound and assembly | rent a GPU, with your card |
-| CR | **Critic** | Checks every version against your best video; never the one who built it | |
-| DE | **Designer** | Thumbnail and test variants | |
-| PU | **Publisher** | Upload package and upload | publish, with your card |
-| BR | **Brand** | Onboarding: builds your style pack from your links and names the source of every value | |
+| <img src="docs/brand/crew/showrunner.svg" width="32" alt=""> | **Showrunner** | Runs the episode through the ten steps and answers you in the chat. Shows you nothing unchecked | |
+| <img src="docs/brand/crew/scout.svg" width="32" alt=""> | **Scout** | Finds the topic in data, writes title and thumbnail text, runs the proof | |
+| <img src="docs/brand/crew/writer.svg" width="32" alt=""> | **Writer** | Writes the script in your voice | |
+| <img src="docs/brand/crew/editor.svg" width="32" alt=""> | **Editor** | Ingests your recordings, cuts the speaker, builds 2D and 3D, sound and assembly | rent a GPU, with your card |
+| <img src="docs/brand/crew/critic.svg" width="32" alt=""> | **Critic** | Checks every version against your best video; never the one who built it | |
+| <img src="docs/brand/crew/designer.svg" width="32" alt=""> | **Designer** | Thumbnail and test variants | |
+| <img src="docs/brand/crew/publisher.svg" width="32" alt=""> | **Publisher** | Upload package and upload | publish, with your card |
+| <img src="docs/brand/crew/brand.svg" width="32" alt=""> | **Brand** | Onboarding: builds your style pack from your links and names the source of every value | |
 
 Each crew member is a real Claude Code agent (`crewcut:editor`, …) with a short identity in [`team/`](team/README.md) and
 the skills of its step in [`skills/`](skills/). Crewcut loads itself into Claude Code as a plugin, so your own
@@ -282,6 +302,7 @@ Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md), [
 
 ## License
 
-[MIT](LICENSE), copyright Marco Patzelt. Third-party tools keep their own licences: ffmpeg (LGPL/GPL build from Debian),
+[MIT](LICENSE), copyright Marco Patzelt. The mascot Slate was made by the author with ChatGPT image generation and
+redrawn by hand as SVG ([`docs/brand/`](docs/brand/)); it is part of the MIT-licensed repository. Third-party tools keep their own licences: ffmpeg (LGPL/GPL build from Debian),
 Blender (GPL, called as a program, not linked), Chromium (BSD), Inter (SIL Open Font License), Claude Code and Codex
 (installed from their official packages at first start, not shipped).

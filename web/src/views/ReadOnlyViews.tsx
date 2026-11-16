@@ -3,7 +3,8 @@ import { ArrowLeft } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api/client";
 import { ONBOARDING, type Identity, type JobLog, type Profile, type Source } from "../api/types";
-import { ErrorLine, identityOf, Loading, Mark, Media } from "../components/bits";
+import { ErrorLine, identityOf, Loading, Media } from "../components/bits";
+import { Avatar } from "../slate/Slate";
 import { LargeTitle, Toolbar, useScrollChrome } from "../components/Toolbar";
 import { STEP_LABELS } from "../demo/fixtures";
 import { clock, day, usd } from "../lib/format";
@@ -196,7 +197,7 @@ function Person({ p }: { p: Identity }) {
   ];
   return (
     <article className="person" aria-labelledby={`person-${p.id}`}>
-      <Mark mark={p.mark} big />
+      <Avatar who={p} size="big" />
       <div className="msg-main">
         <div className="name" id={`person-${p.id}`}>
           {p.name}
@@ -290,7 +291,7 @@ export function JobLogView({ id }: { id: number }) {
       label={`Log of job ${id}`}
       title={job ? `${who.name}: ${job.doing}` : `Job ${id}`}
       sub={meta}
-      lead={job ? <Mark mark={who.mark} big /> : undefined}
+      lead={job ? <Avatar who={who} size="big" /> : undefined}
     >
       <BackToChat />
       {engine ? <p className="meta engine-meta">{engine}</p> : null}

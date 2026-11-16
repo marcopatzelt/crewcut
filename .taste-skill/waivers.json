@@ -31,7 +31,7 @@
     },
     {
       "check": "overlap-text",
-      "reason": "The chat runs under the material toolbar on purpose (DESIGN.md rule 18); the text that Taste sees overlapping is the scrolled content behind the material."
+      "reason": "The chat runs under the material toolbar on purpose (DESIGN.md rule 18) and fades out there (--under-bar-fade), so no text shows through as a second title; Taste measures the boxes, not what is visible."
     },
     {
       "check": "cut-text",
@@ -43,7 +43,7 @@
     },
     {
       "check": "loop-pause",
-      "reason": "The flagged change is the elapsed-time clock of a job (one update per second, no animation); the only looping animation is the run shimmer of working jobs (rule 9), which stops with the work."
+      "reason": "The flagged change is the elapsed-time clock of a job (one update per second, no animation). Slate's states play once and hold still (working: four ticks of 0.9 s, again only when a new step is reported); the only looping animation is the run shimmer of working jobs (rule 9), which stops with the work."
     },
     {
       "check": "hover-move",

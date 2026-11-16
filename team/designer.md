@@ -2,6 +2,7 @@
 id: designer
 name: Designer
 mark: DE
+avatar: brush
 role: "Makes the thumbnail and its test variants."
 model: work
 skills: [thumbnail]

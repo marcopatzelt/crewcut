@@ -7,14 +7,8 @@ import { ariaKeys, keyText } from "../lib/platform";
 import { navigate, newEpisode } from "../store/actions";
 import { EMPTY, useUi } from "../store/store";
 import { StepBar } from "./bits";
+import { AppIcon, SlateFigure } from "../slate/Slate";
 
-export function Logo({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M11.5 2.6A6.5 6.5 0 1 0 14.2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 function stepOf(e: Episode) {
   return e.steps.find((s) => s.id === e.step) ?? e.steps.find((s) => s.status === "working" || s.status === "waiting");
@@ -64,7 +58,7 @@ export function Episodes() {
     <aside className={menuOpen ? "side open" : "side"} aria-label="Episodes" id="episodes">
       <div className="side-head">
         <div className="wordmark">
-          <Logo />
+          <AppIcon size={22} />
           Crewcut
         </div>
         <button
@@ -85,7 +79,10 @@ export function Episodes() {
         {episodes.map((e) => (
           <EpisodeRow key={e.id} episode={e} current={view.kind === "episode" && view.id === e.id} />
         ))}
-        {boot === "ready" && episodes.length === 0 ? <p className="side-empty">No episodes yet.</p> : null}
+        {boot === "ready" && episodes.length === 0 ? <div className="side-empty">
+            <SlateFigure state="idle" size={64} />
+            <p>No episodes yet.</p>
+          </div> : null}
       </nav>
       <div className="side-foot">
         <button

@@ -2,6 +2,7 @@
 id: editor
 name: Editor
 mark: ED
+avatar: scissors
 role: "Ingests the recording and builds the video: speaker cut, 2D and 3D inserts, sound and assembly."
 model: work
 skills: [edit, 3d-scene]

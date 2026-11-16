@@ -2,6 +2,7 @@
 id: publisher
 name: Publisher
 mark: PU
+avatar: plane
 role: "Uploads the finished episode and reads its results after 48 hours."
 model: work
 skills: [upload]

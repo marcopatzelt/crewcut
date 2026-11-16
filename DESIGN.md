@@ -153,7 +153,7 @@ values. Where the browser supports `corner-shape: squircle`, panels and cards us
 
 - `lucide-react` only, 16 px in rows and buttons, 14 px next to 12 px text, stroke width 1.75. No emoji, no icon
   fonts, no SF Symbols.
-- Icons are bare: no tinted squares or circles. Identity marks are the only shapes with a plate.
+- Icons are bare: no tinted squares or circles. Slate's avatars (rule 13) are the only shapes on a tile.
 - Decorative icons get `aria-hidden="true"`; icon-only buttons get an `aria-label`.
 
 ## 9. Motion
@@ -176,12 +176,18 @@ values. Where the browser supports `corner-shape: squircle`, panels and cards us
 | Current step dot moves on | position, `--spring-soft` | 420 ms |
 | Palette, dialog | scale 0.96 to 1 from where it was opened, `--spring-snappy`; closing only fades | 280 / 120 ms |
 | Switching the episode | the content cross-fades, nothing moves | 160 ms |
+| Slate works (Crew column) | the bar ticks open and shut four times, again when the crew member reports a new step | 4 × 900 ms |
+| Slate needs you | the "?" sign pops up once, `--spring-snappy` | 420 ms |
+| Slate is done | the bar snaps shut once and the check pops up | 280 / 420 ms |
+| Slate waits its turn | the Zzz drift in once | 2.4 s |
+| The welcome | Slate waves three times | 3 × 700 ms |
 
 - Animate only `transform` and `opacity`; heights go through `grid-template-rows` (0fr to 1fr), panel widths through
   `grid-template-columns`. Never width, height or position directly.
 - The only loop is the run shimmer: on the progress line of a running job, the active segment of a running episode and a
   loading preview, only while that work runs. The loading spinner (rule 11, after 300 ms) is the one other repeating
-  animation.
+  animation. Slate never loops: each state plays once and holds its end pose, so nothing moves on its own for more
+  than about four seconds.
 - Content that is already there when a chat opens does not animate; only what arrives later does.
 - `prefers-reduced-motion` turns all of it off, except cross-fades of 120 ms.
 - Nothing moves to draw attention to itself (rule 1.3).
@@ -191,7 +197,8 @@ values. Where the browser supports `corner-shape: squircle`, panels and cards us
 - Short sentences, sentence case, no exclamation marks, no marketing words inside the app.
 - Buttons say what they do. Never "OK", "Submit" or "Yes".
 - Errors say what happened and what to do next: "Couldn't reach Vast.ai. Check the key in .env and try again."
-- Empty states are one line and one action: "No episodes yet. Say an idea below."
+- Empty states are one line and one action: "No episodes yet. Say an idea below." Slate stands above the line (asleep
+  where nothing runs).
 - Times and money are exact and honest: "about 12 min", "$0.31", "API equivalent $0.41 (on your subscription)".
 - Never promise unbuilt features in the app. Planned work lives in the README roadmap.
 - An agent may name the method it applies, in a short line under its message: "Niche check after Vexian's growth
@@ -205,7 +212,7 @@ crew); narrow window; light and dark; the engine not logged in.
 
 ## 12. Cards
 
-- Card anatomy, top to bottom: who asks (mark and name) and the step; title (15/600); one sentence of reason; the preview
+- Card anatomy, top to bottom: who asks (avatar and name) and the step; title (15/600); one sentence of reason; the preview
   (options list, video, image, diff, numbers); one primary button; the quiet line "Or say what to change".
 - A card about a file shows what the user approves: the exact file, with its checksum stored. Approving means this
   version; any change after that is a new version and a new card.
@@ -216,13 +223,20 @@ crew); narrow window; light and dark; the engine not logged in.
 
 ## 13. Identities
 
-- Each crew member has a name, a one-line role and a two-letter mark (`SR`, `SC`, `WR`, `ED`, `CR`, `DE`, `PU`, `BR`). The
-  mark sits on a neutral plate (`--sunken`, a 0.5 px `--line-strong` edge, a rounded square like a small app icon). No faces, no mascots, no speech-bubble personalities.
-- In the chat a message from an identity starts with its mark and name. User messages have no mark.
+- Each crew member has a name, a one-line role, a two-letter mark for logs and the terminal (`SR`, `SC`, `WR`, `ED`,
+  `CR`, `DE`, `PU`, `BR`) and an avatar: **Slate**, the Crewcut mascot (a clapperboard with a face; the striped bar is
+  the "flat-top crew cut"), holding the prop of its role on a round `--slate-tile`: headset (Showrunner), magnifier
+  (Scout), pencil (Writer), scissors (Editor), clipboard with a red check (Critic), brush (Designer), paper plane
+  (Publisher), colour swatches (Brand). `avatar:` in `team/<id>.md` names the prop.
+- Slate shows the state, never decoration: asleep with a small Zzz (waiting its turn), the bar ticking (working), a
+  small "?" sign (needs you), the bar shut with a check (done). The welcome of the first start is Slate waving. One
+  geometry for the app and the brand files: `web/src/slate/art.ts`; colours only from the `--slate-*` tokens. No speech
+  bubbles.
+- In the chat a message from an identity starts with its avatar and name. User messages have no avatar.
 - Crew members may message each other directly in three narrow cases ([crew-talk.md](docs/crew-talk.md)). A finished
   exchange is one quiet, collapsed line in the chat ("Critic and Editor · fix about review/cut-check-v001.json ·
   2 messages"); opened, it lists who wrote to whom, the file and the text. No bubbles between crew members.
-- In the Crew column one row per running job: mark, name, "what it is doing" (one line), step, elapsed time, cost.
+- In the Crew column one row per running job: avatar with its state, name, "what it is doing" (one line), step, elapsed time, cost.
   Waiting jobs say what they wait for ("Waiting for your yes on the preview").
 
 ## 14. Money
@@ -306,4 +320,7 @@ these five steps, in this order:
 
 Behind everything lies `--window` with a very faint, fixed gradient (two large blurred spots, at most 6 % opacity), so
 the glass has something to show. It never moves. No refraction effects. If you notice the effect, it is too strong.
+
+Text that scrolls under the toolbar fades out (`--under-bar-fade` on the scroll area): the material may blur what lies
+behind it, but it never shows the chat as a second, ghost title.
 
