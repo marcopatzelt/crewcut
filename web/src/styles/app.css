@@ -353,28 +353,66 @@ a.pill:hover {
   color: var(--ink);
 }
 
+/* The ten steps: each step is as wide as its own text, the free space is shared out evenly between them
+   (space-between, at least 16 px), so gaps are equal and underlines never touch. When the header gets narrow, the
+   labels of the other steps fold away (numbers stay, the current step keeps its label); narrower still, the compact
+   "Step 6 of 10" line takes over. Container queries follow the header's own width, not the window's. */
+.head {
+  container-type: inline-size;
+  container-name: head;
+}
+
 .steps {
-  display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
-  gap: 4px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
   margin: 16px 0 0;
   padding: 0;
   list-style: none;
 }
 
 .step {
+  flex: none;
   padding: 0 0 12px;
   font-size: 12px;
   line-height: 16px;
   color: var(--ink-3);
   border-bottom: 2px solid transparent;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .step .n {
   margin-right: 4px;
+}
+
+@container head (max-width: 719px) {
+  .step:not(.now) .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .step:not(.now) .n {
+    margin-right: 0;
+  }
+}
+
+@container head (max-width: 379px) {
+  .steps {
+    display: none;
+  }
+
+  .steps-compact {
+    display: block;
+    padding: 12px 0;
+  }
+
+  .steps-compact .bar {
+    margin-top: 4px;
+  }
 }
 
 .step.done {
@@ -1431,20 +1469,6 @@ a.pill:hover {
 
 /* ---------- narrow windows ---------- */
 
-@media (max-width: 959px) {
-  .steps {
-    display: none;
-  }
-
-  .steps-compact {
-    display: block;
-    padding: 12px 0;
-  }
-
-  .steps-compact .bar {
-    margin-top: 4px;
-  }
-}
 
 @media (max-width: 1099px) {
   .app {

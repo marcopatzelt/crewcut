@@ -63,7 +63,7 @@ function Header({ episode, id }: { episode: Episode | undefined; id: string }) {
           return (
             <li key={s.id} className={cls} title={`${s.n} ${s.label}: ${s.status}`} aria-current={s.id === now?.id ? "step" : undefined}>
               <span className="n">{s.n}</span>
-              {s.label}
+              <span className="label">{s.label}</span>
             </li>
           );
         })}

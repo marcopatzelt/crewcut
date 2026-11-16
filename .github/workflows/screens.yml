@@ -42,7 +42,9 @@ jobs:
           $P --viewport-size "390, 844" "http://localhost:8099/prompter.html?demo=1" shots/prompter-phone.png
           $P --viewport-size "1440, 900" "http://localhost:8099/index.html?demo=1#/profile" shots/app-profile.png
           $P --viewport-size "1440, 900" "http://localhost:8099/index.html?demo=1#/crew" shots/app-crew.png
+          $P --viewport-size "1280, 800" "http://localhost:8099/index.html?demo=1" shots/app-1280.png
           $P --viewport-size "1100, 800" "http://localhost:8099/index.html?demo=1" shots/app-1100.png
+          $P --viewport-size "900, 800" "http://localhost:8099/index.html?demo=1" shots/app-900.png
       - uses: actions/upload-artifact@v4
         with:
           name: screens
