@@ -166,7 +166,8 @@ main > section.g2 > .wrap > .group { min-height: 0; display: flex; flex-directio
 
 /* the phone, a drawn teleprompter */
 .phone__f { border-radius: 44px; padding: 10px; background: #0B0E0D; box-shadow: 0 50px 90px -30px rgba(0, 20, 16, 0.75), inset 0 0 0 1.5px rgba(255, 255, 255, 0.12); }
-.phone__s { position: relative; border-radius: 35px; overflow: hidden; aspect-ratio: 9 / 19.3; background: #050807; color: #fff; display: flex; flex-direction: column; padding: 16px 18px 20px; }
+.phone__s { position: relative; border-radius: 35px; overflow: hidden; aspect-ratio: 390 / 844; background: #000; }
+.phone__shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; }
 .phone__bar { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; padding: 0 8px; }
 .phone__island { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 84px; height: 24px; border-radius: 14px; background: #000; }
 .phone__top { display: flex; align-items: center; gap: 8px; margin-top: 22px; }
@@ -252,22 +253,20 @@ html.is-paused *, html.is-paused *::before, html.is-paused *::after { animation-
 .render .note { margin-top: 16px; font-size: 13.5px; line-height: 1.5; color: var(--text-3); max-width: 64em; }
 .render .note strong { color: var(--text-2); }
 
-/* ---------------------------------------------------------------- the ten steps: a full band on the golden hills */
-.steps-sec { color: #fff; overflow: hidden; }
+/* ---------------------------------------------------------------- the ten steps: a calm grid on the page ground */
 .layer { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
-.steps-sec::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(4, 18, 14, 0.84), rgba(4, 18, 14, 0.42) 75%); z-index: 1; }
 .steps-sec > .wrap { justify-content: center; }
-.steps-sec h2 { font-size: var(--h2); max-width: 680px; }
-.steps__lead { font-size: 18px; line-height: 1.5; color: #fff; max-width: 540px; margin-top: 16px; }
-.steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--gutter); margin-top: 48px; }
-.steps li { display: grid; grid-template-columns: 34px minmax(0, 1fr); column-gap: 10px; align-items: start; border-radius: 18px; padding: 14px; background: rgba(8, 22, 19, 0.6); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14); }
-.steps li img { grid-row: 1 / span 3; width: 34px; height: 34px; }
-.steps li small { font: 700 13px var(--display); color: #8FEBD3; }
-.steps li b { display: block; font: 700 18px var(--display); margin-top: 2px; }
-.steps li span { display: block; font-size: 13px; color: rgba(255, 255, 255, 0.86); margin-top: 4px; line-height: 1.35; }
-.steps li.you { background: rgba(10, 70, 58, 0.72); }
-@media (prefers-reduced-motion: no-preference) { .steps li { animation: step 12s linear infinite; animation-delay: calc(var(--k) * 1.2s); } }
-@keyframes step { 0%, 9% { box-shadow: inset 0 0 0 2px var(--mint), 0 18px 40px -18px rgba(52, 195, 164, 0.7); transform: translateY(-3px); } 11%, 100% { transform: none; } }
+.steps-sec h2 { font-size: var(--h2); max-width: 760px; }
+.steps__lead { font-size: 19px; line-height: 1.5; color: var(--text-2); max-width: 600px; margin-top: 16px; }
+.steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--gutter); margin-top: 48px; counter-reset: none; }
+.steps li { position: relative; display: flex; flex-direction: column; gap: 4px; min-height: 168px; border-radius: 22px; padding: 18px; background: var(--card); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), inset 0 0 0 1px var(--line); }
+.steps li img { width: 40px; height: 40px; margin-bottom: 8px; }
+.steps li small { position: absolute; right: 16px; top: 16px; font: 800 28px/1 var(--display); letter-spacing: -0.03em; color: var(--chip); color: rgba(15, 110, 92, 0.18); }
+.steps li b { display: block; font: 700 19px var(--display); letter-spacing: -0.01em; }
+.steps li span { display: block; font-size: 14px; color: var(--text-2); line-height: 1.4; }
+.steps li.you { background: linear-gradient(160deg, rgba(52, 195, 164, 0.16), rgba(52, 195, 164, 0.04)), var(--card); box-shadow: inset 0 0 0 1.5px var(--mint); }
+.steps li.you span::before { content: "You decide · "; color: var(--green); font-weight: 600; }
+@media (prefers-color-scheme: dark) { .steps li small { color: rgba(52, 195, 164, 0.28); } .steps li.you span::before { color: var(--mint); } }
 
 /* ---------------------------------------------------------------- the close: fogged glass over the hills, the footer row on glass */
 footer.closing { overflow: hidden; color: #fff; }
@@ -351,13 +350,13 @@ footer.closing a, footer.closing button { pointer-events: auto; }
   .feat p { font-size: 15.5px; }
   .gpucard { margin-bottom: 20px; }
   .feat__phone { width: 210px; margin-bottom: -120px; }
-  .steps-sec::after { background: rgba(4, 18, 14, 0.7); }
   .steps__lead { font-size: 16px; }
   .steps { grid-template-columns: 1fr 1fr; margin-top: 26px; }
-  .steps li { padding: 10px; grid-template-columns: 26px minmax(0, 1fr); column-gap: 8px; }
-  .steps li img { width: 26px; height: 26px; }
-  .steps li b { font-size: 15px; }
-  .steps li span { font-size: 12px; }
+  .steps li { padding: 14px; min-height: 0; }
+  .steps li img { width: 30px; height: 30px; margin-bottom: 4px; }
+  .steps li small { font-size: 22px; right: 12px; top: 12px; }
+  .steps li b { font-size: 16px; }
+  .steps li span { font-size: 12.5px; }
   .final__card { padding: 22px 18px; }
   .final__crew img { width: 38px; height: 38px; margin: 0 -5px; }
   .final__card .btn-row { flex-direction: column; align-items: stretch; }
