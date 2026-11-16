@@ -461,9 +461,11 @@ def level_voice(raw: Path, dest: Path, folder: Path, targets: dict, tries: int =
     gain = targets["lufs"] + targets["headroom_db"] - float(before["integrated_lufs"])
     tmp = folder / "voice-try.wav"
     m = before
+    history = []
     for _ in range(tries):
         media.run(level_cmd(raw, tmp, gain, targets["true_peak_db"] - 0.5))
         m = audio.measure_loudness(tmp)
+        history.append({"gain_db": round(gain, 2), "lufs": m["integrated_lufs"], "true_peak": m["true_peak_dbtp"]})
         off = targets["lufs"] - float(m["integrated_lufs"])
         if abs(off) <= 0.5:
             break
@@ -471,7 +473,7 @@ def level_voice(raw: Path, dest: Path, folder: Path, targets: dict, tries: int =
     if dest.exists():
         raise CutError(f"{dest.name} exists already. Make a new spec version.")
     tmp.replace(dest)
-    return {"before_lufs": before["integrated_lufs"], "gain_db": round(gain, 2),
+    return {"before_lufs": before["integrated_lufs"], "gain_db": round(gain, 2), "tries": history,
             "measured_lufs": m["integrated_lufs"], "true_peak_dbtp": m["true_peak_dbtp"], **targets}
 
 

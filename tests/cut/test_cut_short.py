@@ -184,7 +184,7 @@ def test_build_from_the_clean_voice_with_new_words(studio):
     assert r["speaker"] == "work/speaker-v001.mov" and build.probe_frames(speaker) == 64
     v = media.video_stream(media.probe(speaker))
     assert (v["width"], v["height"]) == (90, 160)
-    assert abs(r["voice"]["measured_lufs"] - r["voice"]["lufs"]) <= 0.6        # on target after the limiter
+    assert abs(r["voice"]["measured_lufs"] - r["voice"]["lufs"]) <= 0.6, r["voice"]  # on target after the limiter
     assert r["voice"]["from"] == "audio/voice-v001.wav"
     words = json.loads((ep / "work" / "words-v001.json").read_text())
     assert [w["w"] for w in words] == ["One", "two.", "Three", "fo"]
