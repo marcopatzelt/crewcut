@@ -7,7 +7,7 @@ command -v docker >/dev/null 2>&1 || {
   echo "Docker is not installed. Install Docker Desktop, Colima or Docker Engine, then run ./start.sh again."; exit 1; }
 
 [ -f .env ] || { cp .env.example .env; chmod 600 .env; }
-mkdir -p studio
+mkdir -p studio import
 
 set_env() {  # set_env KEY VALUE: replace one line in .env without ever printing the value
   local tmp; tmp=$(mktemp)

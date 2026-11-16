@@ -74,6 +74,7 @@ crewcut doctor [--json] [--ci]
 crewcut serve [--host 0.0.0.0 --port 4747]
 
 crewcut episode new "<working title>" [--source URL]      prints the episode id, e.g. 003-local-llms
+crewcut episode import <folder> --title "…" [--format portrait] [--script F] [--broll F …] [--plan F] [--skip upload]
 crewcut episode status [<id>] [--json]
 crewcut episode step <id> <step> <status>                 status: open | working | waiting | done | skipped
 
@@ -88,7 +89,8 @@ crewcut card list [--episode ID] [--status open]
 crewcut rule propose --step STEP --rule "…" --source "…" [--episode ID]
 crewcut job add --episode ID --identity ID --step STEP "<task>"
 
-crewcut brand show [--json] | check | init | preview [--out file.mp4]
+crewcut brand show [--json] | check | preview [--out file.mp4]
+crewcut brand init [--from <pack>] [--font ROLE=FILE …] [--logo FILE] [--accept]
 crewcut engine status | use <claude|codex> | install <name> | login <name> [--episode ID]
 crewcut onboard <link> [<link> …]
 

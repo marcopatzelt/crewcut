@@ -20,6 +20,7 @@ services:
       - "${CREWCUT_PROMPTER_BIND:-0.0.0.0}:${CREWCUT_PROMPTER_PORT:-4748}:4748"
     volumes:
       - ${CREWCUT_STUDIO_DIR:-./studio}:/studio
+      - ${CREWCUT_IMPORT_DIR:-./import}:/import:ro   # optional: earlier work to import, read only
       - engine:/opt/engine
     shm_size: "1gb"            # Chromium renders the 2D graphics; Docker's default 64 MB is too small for big frames
     restart: unless-stopped

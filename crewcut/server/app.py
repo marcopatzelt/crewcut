@@ -133,6 +133,8 @@ def create_app(start_worker: bool = True) -> FastAPI:
         if start_worker:
             app.state.worker = queue.Worker()
             app.state.worker.start_background()
+            from ..conductor import inbox
+            inbox.start_background()
             try:
                 from ..compute import guard as compute_guard
                 compute_guard.start_background()
@@ -208,6 +210,8 @@ def create_app(start_worker: bool = True) -> FastAPI:
                 shutil.copyfileobj(f.file, out, length=1 << 20)
             saved.append({"path": str(target.relative_to(paths.studio_root())), "size": target.stat().st_size})
         if saved:
+            seen = set(json.loads(db.kv_get(f"inbox_seen:{eid}") or "[]"))
+            db.kv_set(f"inbox_seen:{eid}", json.dumps(sorted(seen | {s["path"] for s in saved})))
             flow.on_upload(eid, [s["path"] for s in saved])
         return saved
 

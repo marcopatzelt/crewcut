@@ -159,6 +159,10 @@ def on_card_decided(card: dict) -> None:
         nxt = _first_open_step(episodes.read(episode))
         if nxt:
             start_step(episode, nxt)
+        else:
+            off = [k for k, v in episodes.read(episode)["steps"].items() if v.get("status") == "skipped"]
+            post(episode, "Every step that is switched on is done." +
+                 (f" Switched off for this episode: {', '.join(off)}." if off else ""))
     elif kind == "preview":
         queue.add(episode, "editor", "edit",
                   f"The user approved the preview (card #{card['id']}, file {card.get('file')}). Build the final version "

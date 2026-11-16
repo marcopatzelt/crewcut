@@ -89,6 +89,17 @@ def build_parser() -> argparse.ArgumentParser:
     es = esub.add_parser("status")
     es.add_argument("episode", nargs="?")
     es.add_argument("--json", action="store_true")
+    ei = esub.add_parser("import", help="bring earlier work (script, B-roll, plan) into a new episode")
+    ei.add_argument("source", help="a folder the container can read, e.g. /import/episodes/S017-ki-beirat")
+    ei.add_argument("--title", required=True)
+    ei.add_argument("--format", choices=["landscape", "portrait"])
+    ei.add_argument("--script", help="script file (default: the newest SCRIPT-*.md in the folder)")
+    ei.add_argument("--broll", action="extend", nargs="+",
+                    help="B-roll files (default: everything in 04-broll/ or broll/)")
+    ei.add_argument("--plan", help="an earlier edit plan to translate (German studio keys are understood)")
+    ei.add_argument("--done", help="steps already done, comma separated (default: idea,title,proof and script if any)")
+    ei.add_argument("--skip", default="upload", help="steps switched off, comma separated (default: upload)")
+    ei.add_argument("--no-start", action="store_true", help="do not start the first open step yet")
     est = esub.add_parser("step")
     est.add_argument("episode")
     est.add_argument("step")
@@ -161,7 +172,11 @@ def build_parser() -> argparse.ArgumentParser:
     bsub.add_parser("check")
     bp = bsub.add_parser("preview")
     bp.add_argument("rest", nargs=argparse.REMAINDER)
-    bsub.add_parser("init", help="create studio/brand from the neutral pack (the Brand identity does this)")
+    bi = bsub.add_parser("init", help="make a pack your own: studio/brand from the neutral pack or --from a pack")
+    bi.add_argument("--from", dest="from_", help="a style pack folder, e.g. /app/examples/striq")
+    bi.add_argument("--font", action="append", default=[], help="ROLE=FILE, e.g. display=/import/fonts/X.otf")
+    bi.add_argument("--logo", help="a logo file (SVG or PNG) from your own files")
+    bi.add_argument("--accept", action="store_true", help="the user chose this pack: onboarding is done")
 
     o = sub.add_parser("onboard", help="fetch brand facts from links (Brand identity)")
     o.add_argument("links", nargs="+")
@@ -263,6 +278,20 @@ def _run(a) -> int:
                     print(f"  {st['n']:>2} {st['label']:<10} {st['status']}")
                 print(f"Next: {s.get('next_action') or '-'}")
             return 0
+        if a.ecmd == "import":
+            from pathlib import Path
+
+            from . import importer
+            listed = lambda v: [x.strip() for x in v.split(",") if x.strip()] if v is not None else None  # noqa: E731
+            p = importer.import_episode(
+                Path(a.source), a.title, fmt=a.format, script=Path(a.script) if a.script else None,
+                broll=[Path(b) for b in a.broll] if a.broll else None, plan=Path(a.plan) if a.plan else None,
+                skip=listed(a.skip), done=listed(a.done), start=not a.no_start)
+            print(p["id"])
+            for line in p.get("imported", {}).get("files", []):
+                print("  " + line)
+            print("  steps: " + ", ".join(f"{k} {v['status']}" for k, v in p["steps"].items()))
+            return 0
         if a.ecmd == "step":
             episodes.set_step(a.episode, a.step, a.status, next_action=a.next)
             print(f"{a.episode}: {a.step} {a.status}")
@@ -357,7 +386,19 @@ def _run(a) -> int:
             print("ok" if not problems else f"{len(problems)} problem(s)")
             return 0 if not problems else 1
         if a.bcmd == "init":
-            print(approvals.ensure_user_pack())
+            from pathlib import Path
+
+            from . import importer
+            fonts = {}
+            for spec in a.font:
+                role, _, f = spec.partition("=")
+                if not f:
+                    print(f"--font needs ROLE=FILE, got {spec!r}", file=sys.stderr)
+                    return 2
+                fonts[role.strip()] = Path(f.strip())
+            d = importer.init_pack(Path(a.from_) if a.from_ else None, fonts=fonts or None,
+                                   logo=Path(a.logo) if a.logo else None, accept=a.accept)
+            print(f"style pack: {d}" + (" (accepted)" if a.accept else ""))
             return 0
     if a.cmd == "onboard":
         from .onboarding import fetch

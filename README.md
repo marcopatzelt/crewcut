@@ -219,6 +219,7 @@ in the chat to switch. No API keys needed. Details: [docs/engine.md](docs/engine
 | [YouTube](docs/youtube.md) | connecting your channel, what the upload does, honest limits |
 | [Web UI](docs/ui.md) and [DESIGN.md](DESIGN.md) | the three places, demo mode, the design rules and their checks |
 | [HTTP API](docs/api.md) | what the UI talks to |
+| [First real episode](docs/first-real-episode.md) | bring earlier work, record, edit, thumbnail; where the work runs |
 | [Integration tests](docs/integration-test.md) | the tests that need real machines and a real login |
 
 ## Contributing

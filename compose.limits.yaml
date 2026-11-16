@@ -1,0 +1,8 @@
+# Keeps the computer usable while Crewcut works: memory and CPU limits for the container. Heavy jobs then slow down
+# instead of freezing the machine; if one needs more memory, only that job fails.
+#   docker compose -f compose.yaml -f compose.limits.yaml up -d
+services:
+  crewcut:
+    mem_limit: ${CREWCUT_MEM_LIMIT:-14g}
+    memswap_limit: ${CREWCUT_MEM_LIMIT:-14g}
+    cpus: ${CREWCUT_CPUS:-6}
