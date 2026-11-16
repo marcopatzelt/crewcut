@@ -2,7 +2,9 @@
 
 # Crewcut
 
-**A crew of AI agents that makes your whole YouTube video, from idea to upload. You record and approve.**
+### Your YouTube channel, run by a crew of agents.
+
+**From the idea to the upload, on your own computer. You record and say yes. The crew does the rest.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![CI](https://img.shields.io/github/actions/workflow/status/marcopatzelt/crewcut/ci.yml?branch=main&style=flat-square&label=ci)](https://github.com/marcopatzelt/crewcut/actions/workflows/ci.yml)
@@ -10,28 +12,31 @@
 ![Status](https://img.shields.io/badge/status-v0.1%20pre--release-orange?style=flat-square)
 ![Engines](https://img.shields.io/badge/engines-Claude%20Code%20%C2%B7%20Codex%20(beta)-d97757?style=flat-square)
 
-</div>
+<br>
 
-Crewcut is an open-source YouTube studio that runs in one Docker container on your own computer. A crew of agents
-(Showrunner, Scout, Writer, Editor, Critic, Designer, Publisher) finds the topic in data, writes title and script, cuts
-your recording, builds 2D and 3D graphics in your style, makes the thumbnail and uploads through the YouTube API. You
-say one sentence or give one yes at a few points. The agents run on **your own subscription**: Claude Code by default,
-or Codex (beta). Heavy rendering runs on your machine, or on a GPU you rent for cents when you want it faster.
-
-> **Status: v0.1, pre-release.** The pieces below are built and unit-tested, and the image is built and smoke-tested in
-> CI for amd64 and arm64. A complete episode end to end has **not** been run yet; that is the next step. Features that
-> do not exist yet are marked *planned*.
-
-## Demo
-
-<!-- Placeholder: a 60-second screen recording from the launch video goes here (no voice, English captions). -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png">
-  <img alt="Crewcut main screen: episodes on the left, the chat with the Showrunner in the middle, the crew at work on the right" src="docs/screenshot.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/crewcut-dark.png">
+  <img alt="Crewcut: episodes on the left, the chat with the Showrunner and a card that needs one yes in the middle, the crew at work and the money row on the right" src="docs/readme/crewcut-light.png" width="100%">
 </picture>
 
-*The main screen with demo data (rendered in CI). Left: episodes with their ten steps. Middle: the chat with the
-Showrunner, with one card that needs your yes. Right: who is working on what, and the money you spent.*
+</div>
+
+Seven crew members (Showrunner, Scout, Writer, Editor, Critic, Designer, Publisher) find the topic in data, write title
+and script, cut your recording, build 2D and 3D graphics in **your** style, make the thumbnail and upload through the
+YouTube API. You see who works on what, live, and every decision waits for one button: no forms, no settings dialogs.
+The crew runs on **your own subscription** (Claude Code by default, Codex in beta) and on **the newest Claude Code**:
+a new release is live in Crewcut at the next start, with an automatic way back if it breaks. Heavy rendering runs on your machine, or on a GPU you rent for cents, only when you say yes.
+
+> **Status: v0.1, pre-release.** Everything below is built and unit-tested; the image is built and smoke-tested in CI
+> for amd64 and arm64, including real 2D, 3D and assembly renders. A complete episode with real footage has **not** run
+> yet; that is the next step. What does not exist yet is marked *planned*.
+
+## See it move
+
+<img alt="A card appears, the choice switches from this machine to a rented GPU, one press, the card folds away and the Editor starts in the crew column" src="docs/readme/crewcut-demo.webp" width="100%">
+
+*Demo data, rendered in CI. One card, one choice, one press: the crew column shows the work starting. The full demo
+video from the launch is coming.*
 
 ## Features
 

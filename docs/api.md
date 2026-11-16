@@ -18,7 +18,8 @@ the local machine can reach it. The teleprompter has its own port and a token (s
                 "updated": "2026-11-16T10:00:00Z", "open_cards": 1}],
   "activity": [{"job": 12, "episode": "003-local-llms", "identity": "writer", "step": "script",
                 "doing": "Writing the script, version 2", "progress": 0.4, "status": "running",
-                "started": "2026-11-16T10:02:00Z", "seconds": 312, "cost_usd": 0.0, "equiv_usd": 0.41}],
+                "started": "2026-11-16T10:02:00Z", "seconds": 312, "cost_usd": 0.0, "equiv_usd": 0.41,
+                "engine": "claude", "model": "the model the engine reported", "effort": null, "engine_version": "2.1.325"}],
   "money": {"today_usd": 0.0, "episode_usd": {"003-local-llms": 0.62}, "month_usd": 3.78, "cap_month_usd": 20.0}
 }
 ```
