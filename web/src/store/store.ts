@@ -5,10 +5,16 @@ import type { Card, EpisodeDetail, Message, State } from "../api/types";
 export type View =
   | { kind: "episode"; id: string } // a real episode or the onboarding chat
   | { kind: "new" } // no episode selected: the composer starts one
-  | { kind: "episodes" } // all episodes and Shorts as cards
+  | { kind: "episodes"; filter?: Filter } // the home: all episodes and Shorts as media cards
+  | { kind: "renders" } // rented GPUs and render jobs
   | { kind: "profile" }
   | { kind: "crew" }
   | { kind: "job"; id: number };
+
+/** The filter pills of the home (DESIGN.md rule 2). */
+export type Filter = "all" | "needs" | "work" | "long" | "shorts" | "done";
+
+export const FILTER_IDS: readonly Filter[] = ["all", "needs", "work", "long", "shorts", "done"];
 
 export interface Thread {
   status: "loading" | "ready" | "error";
@@ -34,6 +40,8 @@ export interface UiState {
   view: View;
   /** The episode chat the composer talks to when a read-only view is open. */
   lastEpisode: string | null;
+  /** The channel name and picture from the style pack, when it has them (the sidebar's "Channel"). */
+  channel: { name: string; avatar: string | null } | null;
   threads: Record<string, Thread>;
   cards: Record<number, Card>;
   details: Record<string, EpisodeDetail>;
@@ -60,6 +68,7 @@ export function initialUi(): UiState {
     state: null,
     view: { kind: "new" },
     lastEpisode: null,
+    channel: null,
     threads: {},
     cards: {},
     details: {},

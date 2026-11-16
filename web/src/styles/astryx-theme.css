@@ -1,0 +1,70 @@
+/* The Astryx theme "crewcut" (DESIGN.md rule 4): Astryx's tokens point at Crewcut's, so its controls follow
+   tokens.css in light and dark. <html data-astryx-theme="crewcut"> turns it on (index.html). No raw values here:
+   colours, radii, shadows and durations all come from tokens.css. Unlayered, so it wins over Astryx's defaults. */
+
+[data-astryx-theme="crewcut"] {
+  /* Crewcut green is the one accent: mint fills with dark ink, the deeper green for words. */
+  --color-accent: var(--accent-fill);
+  --color-accent-muted: var(--selection);
+  --color-on-accent: var(--accent-fill-ink);
+  --color-text-accent: var(--accent);
+  --color-icon-accent: var(--accent);
+
+  /* Surfaces: the window is glass; Astryx surfaces are the tiles on it, popovers stay opaque. */
+  --color-background-body: var(--material-window);
+  --color-background-surface: var(--tile);
+  --color-background-card: var(--tile);
+  --color-background-popover: var(--card);
+  --color-background-muted: var(--chip);
+  --color-background-inverted: var(--chip-on);
+  --color-neutral: var(--chip);
+  --color-overlay: var(--scrim);
+  --color-overlay-hover: var(--hover);
+  --color-overlay-pressed: var(--selected);
+  --color-tint-hover: var(--ink);
+  --color-skeleton: var(--chip);
+  --color-track: var(--line);
+
+  --color-text-primary: var(--ink);
+  --color-text-secondary: var(--ink-2);
+  --color-text-disabled: var(--ink-3);
+  --color-icon-primary: var(--ink);
+  --color-icon-secondary: var(--ink-2);
+  --color-icon-disabled: var(--ink-3);
+  --color-border: var(--line);
+  --color-border-emphasized: var(--line-strong);
+  --color-on-dark: var(--tag-ink);
+
+  /* Status means status (rule 4): the waiting amber, the done green, the error red. */
+  --color-success: var(--ok);
+  --color-warning: var(--warn);
+  --color-error: var(--danger);
+  --color-on-success: var(--bg);
+  --color-on-warning: var(--bg);
+  --color-on-error: var(--bg);
+
+  /* Type: Inter (system font on Apple devices), weight 700 only for display titles (rule 5). */
+  --font-family-body: var(--font);
+  --font-family-heading: var(--font-display);
+  --font-family-code: var(--font-mono);
+
+  /* Shape and depth (rule 6): pills for buttons, our radii for the rest. */
+  --radius-inner: var(--r-row);
+  --radius-element: var(--r-ctl);
+  --radius-container: var(--r-panel);
+  --radius-page: var(--r-window);
+  --radius-full: var(--r-full);
+  --shadow-low: var(--shadow-1);
+  --shadow-med: var(--shadow-media);
+  --shadow-high: var(--shadow-window);
+
+  /* Motion (rule 9): short linear fades and our springs. */
+  --duration-fast: var(--t-fast);
+  --duration-medium: var(--t-snappy);
+  --duration-slow: var(--t-soft);
+  --ease-standard: var(--spring-snappy);
+
+  /* Focus (rule 15): Crewcut draws its own 3 px ring; the Astryx outline stays transparent, so forced-colours
+     modes still get a visible outline from the system. */
+  --focus-outline-color: transparent;
+}

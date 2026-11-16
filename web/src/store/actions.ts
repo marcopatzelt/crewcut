@@ -2,12 +2,15 @@
 import { api, ApiError, connectEvents, setBackend, usingBackend, type EventKind } from "../api/client";
 import { ONBOARDING, type Activity, type Card, type Episode, type Message, type Money, type State } from "../api/types";
 import { createDemoBackend } from "../demo/backend";
-import { getUi, setUi, type Thread, type UiState, type View } from "./store";
+import { FILTER_IDS, getUi, setUi, type Filter, type Thread, type UiState, type View } from "./store";
 
 export function messageOf(e: unknown): string {
   if (e instanceof Error && e.message) return e.message;
   return "Something went wrong.";
 }
+
+/** True while the scripted demo (?demo=1&play=1) runs: it opens its episode instead of the home. */
+let playing = false;
 
 // ---------- navigation (the view lives in the URL hash, so Back works and CI can open each place) ----------
 
@@ -18,7 +21,9 @@ export function viewToHash(v: View): string {
     case "new":
       return "#/new";
     case "episodes":
-      return "#/episodes";
+      return v.filter && v.filter !== "all" ? `#/episodes/${v.filter}` : "#/episodes";
+    case "renders":
+      return "#/renders";
     case "profile":
       return "#/profile";
     case "crew":
@@ -35,17 +40,24 @@ export function hashToView(hash: string): View | null {
   if (head === "e" && rest) return { kind: "episode", id: decodeURIComponent(rest) };
   if (head === "onboarding") return { kind: "episode", id: ONBOARDING };
   if (head === "new") return { kind: "new" };
-  if (head === "episodes") return { kind: "episodes" };
+  if (head === "episodes") {
+    const filter = (FILTER_IDS as readonly string[]).includes(rest) ? (rest as Filter) : undefined;
+    return filter && filter !== "all" ? { kind: "episodes", filter } : { kind: "episodes" };
+  }
+  if (head === "renders") return { kind: "renders" };
   if (head === "profile") return { kind: "profile" };
   if (head === "crew") return { kind: "crew" };
   if (head === "job" && /^\d+$/.test(rest)) return { kind: "job", id: Number(rest) };
   return null;
 }
 
+/** The start: the onboarding chat until the user is onboarded, then the Episodes home (or "New episode" when there
+ *  is none yet). The scripted demo opens its episode, so the card plays where it can be seen. */
 function defaultView(state: State): View {
   if (!state.app.onboarded) return { kind: "episode", id: ONBOARDING };
   const first = state.episodes[0];
-  return first ? { kind: "episode", id: first.id } : { kind: "new" };
+  if (first && playing) return { kind: "episode", id: first.id };
+  return first ? { kind: "episodes" } : { kind: "new" };
 }
 
 export function navigate(v: View, opts: { replace?: boolean; fromHash?: boolean } = {}): void {
@@ -81,6 +93,7 @@ export async function boot(opts: { demo?: boolean; play?: boolean } = {}): Promi
   const mine = (bootSeq += 1);
   setUi({ boot: "loading", bootError: null });
   if (opts.demo && !usingBackend()) {
+    playing = Boolean(opts.play);
     setBackend(createDemoBackend({ play: opts.play }));
     setUi({ demo: "asked" });
   }
@@ -99,9 +112,22 @@ export async function boot(opts: { demo?: boolean; play?: boolean } = {}): Promi
   }
   if (mine !== bootSeq) return;
   setUi({ state, boot: "ready", seen: stamp(state.activity, {}) });
+  void loadChannel();
   const fromHash = typeof window !== "undefined" ? hashToView(window.location.hash) : null;
   navigate(fromHash ?? defaultView(state), { replace: true });
   startLive();
+}
+
+/** The channel for the sidebar, from the style pack's "Channel" row. Quiet when the profile has none. */
+async function loadChannel(): Promise<void> {
+  try {
+    const profile = await api.profile();
+    const row = profile.rows?.find((r) => r.label.toLowerCase() === "channel");
+    const pic = profile.rows?.find((r) => r.label.toLowerCase() === "channel picture");
+    if (row?.value) setUi({ channel: { name: row.value, avatar: pic?.value ?? null } });
+  } catch {
+    // no profile yet: the sidebar leaves the channel out
+  }
 }
 
 export function startLive(): void {
@@ -116,6 +142,7 @@ export function startLive(): void {
 export function stopLiveUpdates(): void {
   stopLive?.();
   stopLive = null;
+  playing = false;
 }
 
 /** After a broken stream: fetch the state again and anything new in the open chats. */
@@ -334,6 +361,20 @@ export async function accept(card: Card, choice?: number): Promise<void> {
 export async function decline(card: Card, reason: string): Promise<void> {
   const result = await api.decline(card.id, reason);
   upsertCard({ ...card, ...result, status: result?.status ?? "declined" });
+}
+
+/** One sentence to an episode's chat from a button ("Make a Short", the GPU card's Stop): the same as typing it. */
+export async function sayTo(episode: string, text: string): Promise<void> {
+  const msg = await api.say(episode, text);
+  addMessages(episode, [msg]);
+}
+
+/** "Import footage" on the home: open the episode that takes footage, then upload into its chat. */
+export async function importFootage(episode: string, files: File[]): Promise<void> {
+  if (!files.length) return;
+  const v = getUi().view;
+  if (v.kind !== "episode" || v.id !== episode) navigate({ kind: "episode", id: episode });
+  await uploadFiles(files);
 }
 
 let uploadSeq = 0;

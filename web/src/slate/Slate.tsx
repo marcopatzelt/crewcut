@@ -29,7 +29,7 @@ export function Avatar({
   still,
 }: {
   who: { id: string; avatar?: string | null };
-  size?: "small" | "big" | "crew";
+  size?: "small" | "big" | "crew" | "rail" | "dock";
   state?: SlateState;
   /** Show the state's end pose without playing it (e.g. jobs that were already done when the column opened). */
   still?: boolean;

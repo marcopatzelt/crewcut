@@ -4,7 +4,8 @@ import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { App } from "../App";
 import { acceptLabel } from "../components/CardView";
-import { card, episode, episodeRoutes, mockApi, resetApp, state } from "./helpers";
+import userEvent from "@testing-library/user-event";
+import { card, episode, episodeRoutes, mockApi, openAt, resetApp, state } from "./helpers";
 
 beforeEach(() => resetApp());
 
@@ -28,8 +29,8 @@ describe("Shorts", () => {
     });
     mockApi({ "GET /api/state": state({ episodes: [short] }), ...episodeRoutes(short, [], []) });
     render(<App />);
-    const list = await screen.findByRole("navigation", { name: "Episodes" });
-    expect(within(list).getByText(/Short from 003/)).toBeTruthy();
+    const shorts = await screen.findByRole("region", { name: "Shorts" });
+    await userEvent.click(within(shorts).getByRole("button", { name: /^Five models, one laptop\. Short from 003/ }));
     expect(await screen.findByText(/3 of 6 · Edit/)).toBeTruthy();
   });
 
@@ -38,6 +39,7 @@ describe("Shorts", () => {
     const publish = card({ id: 21, episode: short.id, kind: "publish", step: "upload", title: "Publish now",
       data: { standing_offer: true }, options: null });
     mockApi({ "GET /api/state": state({ episodes: [short] }), ...episodeRoutes(short, [], [publish]) });
+    openAt(short.id);
     render(<App />);
     expect(await screen.findByRole("button", { name: "Publish this and all future Shorts without asking" })).toBeTruthy();
     expect(acceptLabel(card({ kind: "script", data: { button: "This really happened" } }))).toBe("This really happened");

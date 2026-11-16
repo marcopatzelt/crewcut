@@ -13,7 +13,7 @@ beforeEach(() => {
 
 describe("the episode grid", () => {
   it("filters with pills and opens an episode from its card", async () => {
-    const long = episode({ id: "003-long", title: "A long video", open_cards: 1, cover: "demo/cover-003.svg" });
+    const long = episode({ id: "003-long", title: "A long video", open_cards: 1, cover: "covers/003.jpg" });
     const short = episode({ id: "005-short", title: "A clip", kind: "short", mode: "clip", source_episode: "003-long" });
     mockApi({
       "GET /api/state": state({ episodes: [long, short] }),

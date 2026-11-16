@@ -36,16 +36,21 @@ jobs:
           (cd web/dist && python3 -m http.server 8099 > /dev/null 2>&1 &)
           sleep 2
           P="npx -y playwright@1.50.1 screenshot --wait-for-timeout 2500"
+          E="#/e/012-website-100-times"
           $P --viewport-size "1440, 900" "http://localhost:8099/index.html?demo=1" shots/app.png
           $P --viewport-size "1440, 900" --color-scheme dark "http://localhost:8099/index.html?demo=1" shots/app-dark.png
+          $P --viewport-size "1440, 900" "http://localhost:8099/index.html?demo=1$E" shots/app-episode.png
+          $P --viewport-size "1440, 900" --color-scheme dark "http://localhost:8099/index.html?demo=1$E" shots/app-episode-dark.png
+          $P --viewport-size "1100, 800" --color-scheme dark "http://localhost:8099/index.html?demo=1$E" shots/app-episode-1100.png
           $P --viewport-size "390, 844" "http://localhost:8099/index.html?demo=1" shots/app-phone.png
+          $P --viewport-size "390, 844" --color-scheme dark "http://localhost:8099/index.html?demo=1$E" shots/app-episode-phone.png
           $P --viewport-size "390, 844" "http://localhost:8099/prompter.html?demo=1" shots/prompter-phone.png
           $P --viewport-size "1440, 900" "http://localhost:8099/index.html?demo=1#/profile" shots/app-profile.png
           $P --viewport-size "1440, 900" "http://localhost:8099/index.html?demo=1#/crew" shots/app-crew.png
           $P --viewport-size "1280, 800" "http://localhost:8099/index.html?demo=1" shots/app-1280.png
           $P --viewport-size "1100, 800" "http://localhost:8099/index.html?demo=1" shots/app-1100.png
           $P --viewport-size "900, 800" "http://localhost:8099/index.html?demo=1" shots/app-900.png
-      - name: README images (window, 2x density, light and dark) and the animation
+      - name: README images (the app on its desk, 2x density, light and dark) and the animation
         if: hashFiles('web/package-lock.json') != ''
         run: |
           sudo apt-get install -y -qq ffmpeg > /dev/null

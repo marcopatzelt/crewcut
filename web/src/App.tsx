@@ -1,13 +1,16 @@
-// The main screen: three places (DESIGN.md rule 2) as floating surfaces on the window (rules 7 and 18).
-// Episodes left, Chat center, Crew right. The composer floats over the bottom of the chat.
+// The app as one glass window on a desk (DESIGN.md rules 2, 7 and 18): the wallpaper behind, the window with its
+// title bar, the places on the left, the open view in the middle, and on the right either the crew rail (Working now
+// and Spend) or, in an episode, the slim crew chat.
 import { WifiOff } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { ONBOARDING } from "./api/types";
-import { Loading, ErrorLine } from "./components/bits";
-import { Composer } from "./components/Composer";
-import { CrewBar, CrewColumn } from "./components/Crew";
-import { Episodes } from "./components/Episodes";
+import { ErrorLine, Loading } from "./components/bits";
+import { useFirstStart } from "./components/ChatPane";
+import { CrewRail } from "./components/Crew";
 import { Palette } from "./components/Palette";
+import { PrompterPopover } from "./components/PrompterPopover";
+import { Sidebar } from "./components/Sidebar";
+import { TitleBar } from "./components/TitleBar";
 import {
   boot,
   focusComposer,
@@ -21,9 +24,9 @@ import {
   toggleSide,
 } from "./store/actions";
 import { getUi, useUi } from "./store/store";
-import { EpisodeView, NewEpisodeView } from "./views/EpisodeView";
-import { JobLogView, ProfileView, TeamView } from "./views/ReadOnlyViews";
-import { EpisodesGrid } from "./views/EpisodesGrid";
+import { Dock, EpisodeView, NewEpisodeView, OnboardingView } from "./views/EpisodeView";
+import { Home } from "./views/Home";
+import { JobLogView, ProfileView, RendersView, TeamView } from "./views/ReadOnlyViews";
 
 /** Ctrl/Cmd+Enter accepts the open card in view (rule 15): the lowest open card visible in the chat. */
 function acceptCardInView(): boolean {
@@ -105,50 +108,67 @@ function Notices() {
   );
 }
 
-function Center() {
+/** The middle and the right of the window for the open view. */
+function Body() {
   const view = useUi((s) => s.view);
   const status = useUi((s) => s.boot);
   const error = useUi((s) => s.bootError);
-  if (status === "loading") return <Loading label="Loading Crewcut" />;
-  if (status === "error") {
+  if (status === "loading" || status === "error") {
     return (
-      <div className="center-state danger">
-        <ErrorLine text={`Couldn't load Crewcut. ${error ?? ""}`} onRetry={() => void boot()} />
-      </div>
+      <>
+        <main className="main chat-main" aria-label="Crewcut">
+          {status === "loading" ? (
+            <Loading label="Loading Crewcut" />
+          ) : (
+            <div className="center-state danger">
+              <ErrorLine text={`Couldn't load Crewcut. ${error ?? ""}`} onRetry={() => void boot()} />
+            </div>
+          )}
+          <Dock />
+        </main>
+        <CrewRail />
+      </>
     );
   }
+  if (view.kind === "episode" && view.id !== ONBOARDING) return <EpisodeView key={view.id} id={view.id} />;
+  let middle;
   switch (view.kind) {
     case "episode":
-      return <EpisodeView key={view.id} id={view.id} />;
+      middle = <OnboardingView />;
+      break;
     case "episodes":
-      return <EpisodesGrid />;
+      middle = <Home />;
+      break;
     case "profile":
-      return <ProfileView />;
+      middle = <ProfileView />;
+      break;
     case "crew":
-      return <TeamView />;
+      middle = <TeamView />;
+      break;
+    case "renders":
+      middle = <RendersView />;
+      break;
     case "job":
-      return <JobLogView key={view.id} id={view.id} />;
+      middle = <JobLogView key={view.id} id={view.id} />;
+      break;
     default:
-      return <NewEpisodeView />;
+      middle = <NewEpisodeView />;
   }
+  return (
+    <>
+      {middle}
+      <CrewRail />
+    </>
+  );
 }
 
 export function App({ demo, play }: { demo?: boolean; play?: boolean }) {
   const menuOpen = useUi((s) => s.menuOpen);
   const sideHidden = useUi((s) => s.sideHidden);
   const crewHidden = useUi((s) => s.crewHidden);
-  const onboardingView = useUi((s) => s.view.kind === "episode" && s.view.id === ONBOARDING);
-  const firstStart = useUi(
-    (s) =>
-      s.view.kind === "episode" &&
-      s.view.id === ONBOARDING &&
-      s.threads[ONBOARDING]?.status === "ready" &&
-      (s.threads[ONBOARDING]?.messages.length ?? 0) === 0 &&
-      !Object.values(s.cards).some((c) => c.episode === ONBOARDING) &&
-      !s.uploads.some((u) => u.episode === ONBOARDING),
-  );
-  const main = useRef<HTMLElement>(null);
-  const dock = useRef<HTMLDivElement>(null);
+  const episodeId = useUi((s) => (s.view.kind === "episode" && s.view.id !== ONBOARDING ? s.view.id : null));
+  const onboarding = useUi((s) => s.view.kind === "episode" && s.view.id === ONBOARDING);
+  const firstStart = useFirstStart(onboarding ? ONBOARDING : "");
 
   useEffect(() => {
     void boot({ demo, play });
@@ -178,32 +198,27 @@ export function App({ demo, play }: { demo?: boolean; play?: boolean }) {
     return () => window.removeEventListener("keydown", onShortcut);
   }, []);
 
-  // The chat scrolls under the composer: it keeps room at the bottom as tall as the floating dock.
-  useEffect(() => {
-    const d = dock.current;
-    const m = main.current;
-    if (!d || !m || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => m.style.setProperty("--dock-h", `${Math.ceil(d.offsetHeight)}px`));
-    ro.observe(d);
-    return () => ro.disconnect();
-  }, []);
-
-  const cls = ["app", sideHidden ? "side-hidden" : null, crewHidden ? "crew-hidden" : null].filter(Boolean).join(" ");
-  const dockCls = ["dock", onboardingView ? "narrow" : null, firstStart ? "centered" : null].filter(Boolean).join(" ");
+  const cls = [
+    "app",
+    episodeId ? "in-episode" : "in-home",
+    sideHidden ? "side-hidden" : null,
+    crewHidden ? "crew-hidden" : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className={cls}>
-      <Episodes />
-      {menuOpen ? <div className="scrim" aria-hidden="true" onClick={() => setMenu(false)} /> : null}
-      <main className="main" ref={main}>
-        <Center />
-        <Notices />
-        <div className={dockCls} ref={dock}>
-          <CrewBar />
-          <Composer />
+      <div className="window">
+        <TitleBar quiet={firstStart} />
+        {episodeId ? <PrompterPopover episode={episodeId} /> : null}
+        <div className="win-body">
+          <Sidebar compact={Boolean(episodeId)} />
+          {menuOpen ? <div className="scrim" aria-hidden="true" onClick={() => setMenu(false)} /> : null}
+          <Body />
         </div>
-      </main>
-      <CrewColumn />
+        <Notices />
+      </div>
       <Palette />
     </div>
   );

@@ -1,33 +1,17 @@
-// The Chat place: the toolbar with the ten steps, the large title, the transcript with cards and previews.
-// The transcript runs under the toolbar and under the composer (DESIGN.md rule 7).
-import { AlertCircle, Check, LoaderCircle } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type DragEvent } from "react";
-import { ONBOARDING, type Card, type Episode, type Identity, type Message, type Step } from "../api/types";
-import { ErrorLine, Facts, identityOf, Loading, Media } from "../components/bits";
+// The episode view (DESIGN.md rule 2): media first. The title with the episode's facts and its ten steps, then the
+// thumbnail variants, the cut, the 3D scenes and the rented GPU; the crew chat is a slim column on the right with the
+// working tiles on top and the composer at the bottom. The onboarding chat and "New episode" use the main column.
+import { Badge } from "@astryxdesign/core/Badge";
+import type { CSSProperties } from "react";
+import { ONBOARDING, type Card, type Step } from "../api/types";
+import { ChatPane, useFirstStart } from "../components/ChatPane";
+import { Composer } from "../components/Composer";
+import { DemoNote, MoneyLine, WorkingHint, WorkingList } from "../components/Crew";
+import { ago, clock, episodeNumber } from "../lib/format";
+import { jumpToStep } from "../store/actions";
+import { EMPTY, useUi } from "../store/store";
 import { Avatar, SlateFigure } from "../slate/Slate";
-import { CardItem } from "../components/CardView";
-import { ExchangeLine } from "../components/Exchange";
-import { PrompterButton, PrompterPopover } from "../components/PrompterPopover";
-import { LargeTitle, Toolbar, useScrollChrome } from "../components/Toolbar";
-import { ago, bytes, episodeNumber, paragraphs } from "../lib/format";
-import { jumpToStep, loadThread, uploadFiles } from "../store/actions";
-import { EMPTY, useUi, type UploadLine } from "../store/store";
-
-type Item = { at: string; key: string; message?: Message; card?: Card };
-
-function timeline(messages: Message[], cards: Card[]): Item[] {
-  const referenced = new Set<number>();
-  const items: Item[] = [];
-  for (const m of messages) {
-    const id = typeof m.card === "number" ? m.card : m.card?.id;
-    if (typeof id === "number") referenced.add(id);
-    items.push({ at: m.at, key: `m${m.id}`, message: m });
-  }
-  for (const c of cards) {
-    if (!referenced.has(c.id)) items.push({ at: c.created, key: `c${c.id}`, card: c });
-  }
-  return items.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
-}
+import { EpisodeMediaPanels } from "./EpisodeMedia";
 
 const STATUS_WORD: Record<string, string> = {
   done: "done",
@@ -46,126 +30,153 @@ function stepTip(s: Step, cards: Card[]): string {
 }
 
 /**
- * The ten steps as dots on a line (rule 2): done dots are filled and jump to their card, the current one is the accent
- * dot with a soft ring, open ones are rings. The accent dot moves on with --spring-soft. For screen readers it stays a
- * list of ten items. In a narrow toolbar only "6 of 10 · Edit" and a thin capsule remain.
+ * The steps as segments (rule 2): done segments are filled and jump to their card in the chat, the current one is the
+ * accent, open ones are faint. For screen readers it stays a list of the steps with aria-current="step".
  */
 export function StepStrip({ steps, current, cards }: { steps: Step[]; current: string | undefined; cards: Card[] }) {
   const index = steps.findIndex((s) => s.id === current);
   const now = index >= 0 ? steps[index] : undefined;
-  const done = steps.filter((s) => s.status === "done" || s.status === "skipped").length;
-  if (!steps.length) return <div className="strip" />;
+  if (!steps.length) return <div className="stages" />;
+  const next = now ? steps.slice(index + 1).filter((s) => s.status !== "skipped").slice(0, 2) : [];
   return (
-    <div className="strip">
-      <div className="dots" style={{ "--now": Math.max(0, index) } as CSSProperties}>
-        <ol aria-label="Steps">
-          {steps.map((s, i) => {
-            const isNow = i === index;
-            const cls = ["step", isNow ? "now" : s.status].join(" ");
-            const tip = stepTip(s, cards);
-            const words = `${s.n} ${s.label}, ${isNow ? "current step" : STATUS_WORD[s.status] ?? s.status}`;
-            return (
-              <li key={s.id} className={cls} aria-current={isNow ? "step" : undefined}>
-                {s.status === "done" && !isNow ? (
-                  <button
-                    type="button"
-                    className="tip"
-                    data-tip={tip}
-                    aria-label={`${words}. Show it in the chat.`}
-                    onClick={() => jumpToStep(s.id)}
-                  >
-                    <i aria-hidden="true" />
-                  </button>
-                ) : (
-                  <span className="tip" data-tip={tip}>
-                    <i aria-hidden="true" />
-                    <span className="sr-only">{words}</span>
-                  </span>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-        {now ? <span className="now-dot" aria-hidden="true" /> : null}
-      </div>
+    <div className="stages" style={{ "--n": steps.length } as CSSProperties}>
       {now ? (
-        <div className="strip-text">
-          <span className="one-line">
-            {now.n} of {steps.length} · {now.label}
-          </span>
-          <span className="capsule" aria-hidden="true">
-            <i style={{ transform: `scaleX(${done / steps.length})` }} />
-          </span>
-        </div>
+        <p className="stage-text">
+          Step <b>{`${now.n} of ${steps.length} · ${now.label}`}</b>
+          {next.length ? <span className="stage-next">, then {next.map((s) => s.label.toLowerCase()).join(" and ")}</span> : null}
+        </p>
       ) : null}
+      <ol aria-label="Steps" className="segs">
+        {steps.map((s, i) => {
+          const isNow = i === index;
+          const cls = ["seg", isNow ? "now" : s.status].join(" ");
+          const tip = stepTip(s, cards);
+          const words = `${s.n} ${s.label}, ${isNow ? "current step" : STATUS_WORD[s.status] ?? s.status}`;
+          return (
+            <li key={s.id} className={cls} aria-current={isNow ? "step" : undefined}>
+              {s.status === "done" && !isNow ? (
+                <button
+                  type="button"
+                  className="tip"
+                  data-tip={tip}
+                  aria-label={`${words}. Show it in the chat.`}
+                  onClick={() => jumpToStep(s.id)}
+                >
+                  <i aria-hidden="true" />
+                </button>
+              ) : (
+                <span className="tip" data-tip={tip}>
+                  <i aria-hidden="true" />
+                  <span className="sr-only">{words}</span>
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }
 
-function IdentityMessage({
-  m,
-  team,
-  steps,
-  episode,
-  fresh,
-}: {
-  m: Message;
-  team: Identity[] | undefined;
-  steps: Episode["steps"];
-  episode: string;
-  fresh: boolean;
-}) {
-  const who = identityOf(team, m.author);
-  const step = m.step ? steps.find((s) => s.id === m.step) : undefined;
+function formatWords(format: string | undefined, short: boolean): string | null {
+  if (short || format === "portrait") return "Short, 9:16";
+  if (format === "landscape" || !format) return "Long video, 16:9";
+  return format;
+}
+
+function EpisodeHead({ id }: { id: string }) {
+  const episode = useUi((s) => s.state?.episodes.find((e) => e.id === id));
+  const detail = useUi((s) => s.details[id]);
+  const cardsById = useUi((s) => s.cards);
+  const activity = useUi((s) => s.state?.activity ?? EMPTY);
+  const team = useUi((s) => s.state?.team);
+  const steps = episode?.steps ?? detail?.steps ?? EMPTY;
+  const cards = Object.values(cardsById).filter((c) => c.episode === id);
+  const title = episode?.title ?? detail?.title ?? id;
+  const n = episodeNumber(id);
+  const short = (episode?.kind ?? detail?.kind) === "short";
+  const seconds = episode?.seconds ?? detail?.seconds;
+  const facts = [
+    short ? null : n ? `Episode ${n}` : null,
+    formatWords(detail?.project?.format, short),
+    typeof seconds === "number" ? `${short ? "Clip" : "Cut"} ${clock(seconds)}` : null,
+    detail?.project?.created ? `Started ${ago(detail.project.created)}` : null,
+  ].filter((x): x is string => Boolean(x));
+  const crew = [...new Set(activity.filter((a) => a.episode === id && a.status !== "done" && a.status !== "failed" && a.status !== "cancelled").map((a) => a.identity))];
   return (
-    <article className={fresh ? "msg is-new" : "msg"} aria-label={`${who.name}`} data-step={m.step ?? undefined}>
-      <Avatar who={who} />
-      <div className="msg-main">
-        <div className="who">
-          <b>{who.name}</b>
-          {[step?.label, ago(m.at)].filter(Boolean).join(" · ")}
-        </div>
-        <div className="txt">
-          {paragraphs(m.text).map((p, i) => (
-            <p key={i}>{p}</p>
-          ))}
-        </div>
-        {m.cite ? <p className="cite">{m.cite}</p> : null}
-        {m.preview || m.facts?.length ? (
-          <div className={m.preview && m.facts?.length ? "preview" : "preview solo"}>
-            {m.preview ? <Media episode={episode} path={m.preview} label={`Preview from ${who.name}`} /> : null}
-            {m.facts?.length ? <Facts facts={m.facts} /> : null}
+    <header className="ep-head">
+      <div className="ep-title">
+        <h1 className="one-line" title={title}>
+          {title}
+        </h1>
+        {facts.length ? (
+          <div className="ep-facts">
+            {facts.map((f) => (
+              <Badge key={f} variant="neutral" label={f} className="chip" />
+            ))}
           </div>
         ) : null}
       </div>
-    </article>
+      <StepStrip steps={steps} current={episode?.step ?? detail?.step} cards={cards} />
+      {crew.length ? (
+        <span className="stack" aria-hidden="true">
+          {crew.slice(0, 4).map((who) => (
+            <Avatar key={who} who={team?.find((t) => t.id === who) ?? { id: who }} size="crew" />
+          ))}
+        </span>
+      ) : null}
+    </header>
   );
 }
 
-function UploadItem({ u }: { u: UploadLine }) {
-  const state =
-    u.status === "uploading" ? "uploading" : u.status === "done" ? "in the inbox, the Editor takes it from here" : `couldn't upload. ${u.error ?? ""}`;
+/** The crew chat column: who works now, the money line, the transcript, the composer. */
+function CrewChat({ id }: { id: string }) {
   return (
-    <div className={u.status === "failed" ? "line-item failed" : "line-item"}>
-      {u.status === "uploading" ? (
-        <LoaderCircle size={14} className="spin" aria-hidden="true" />
-      ) : u.status === "done" ? (
-        <Check size={14} aria-hidden="true" />
-      ) : (
-        <AlertCircle size={14} aria-hidden="true" />
-      )}
-      <span className="one-line" title={u.name}>
-        {u.name}
-      </span>
-      <span className="meta">
-        {bytes(u.size)} · {state}
-      </span>
+    <section className="chatcol" aria-labelledby="chat-heading">
+      <header className="chat-head">
+        <h2 id="chat-heading">Crew chat</h2>
+        <WorkingHint episode={id} />
+      </header>
+      <div className="chat-work">
+        <WorkingList shape="chat" episode={id} />
+        <MoneyLine episode={id} />
+      </div>
+      <ChatPane id={id} empty="Say an idea below, or ask the Scout for three." />
+      <div className="chat-dock">
+        <Composer />
+      </div>
+    </section>
+  );
+}
+
+export function EpisodeView({ id }: { id: string }) {
+  const title = useUi((s) => s.state?.episodes.find((e) => e.id === id)?.title ?? s.details[id]?.title ?? id);
+  return (
+    <>
+      <main className="main media-main" aria-label={title}>
+        <div className="media-scroll">
+          <EpisodeHead id={id} />
+          <EpisodeMediaPanels key={id} id={id} />
+          <DemoNote />
+        </div>
+      </main>
+      <CrewChat id={id} />
+    </>
+  );
+}
+
+/** The composer floating at the bottom of the main column (rule 7); on the first start it sits under the sentence. */
+export function Dock({ centered, narrow }: { centered?: boolean; narrow?: boolean }) {
+  const cls = ["dock", narrow ? "narrow" : null, centered ? "centered" : null].filter(Boolean).join(" ");
+  return (
+    <div className={cls}>
+      <Composer />
     </div>
   );
 }
 
-/** The first start (rule 3, DESIGN plan 6.14): no toolbar, the mark, one sentence; the composer floats below it. */
-function Onboarding() {
+/** The first start (rule 3): no title bar actions, Slate waving, one sentence; the composer floats below it. */
+function Welcome() {
   return (
     <div className="hero">
       <span className="hero-mark">
@@ -177,228 +188,34 @@ function Onboarding() {
   );
 }
 
-/** Which items are new since the chat opened: only those animate in (rule 9). */
-function useFresh(ready: boolean, keys: string[], id: string) {
-  const known = useRef<Set<string> | null>(null);
-  const opened = useRef(Date.now());
-  useLayoutEffect(() => {
-    known.current = null;
-    opened.current = Date.now();
-  }, [id]);
-  useEffect(() => {
-    if (ready && known.current === null) known.current = new Set(keys);
-  });
-  return (key: string, at: string) =>
-    known.current !== null && !known.current.has(key) && Date.parse(at) > opened.current - 5000;
-}
-
-export function EpisodeView({ id }: { id: string }) {
-  const thread = useUi((s) => s.threads[id]);
-  const episode = useUi((s) => s.state?.episodes.find((e) => e.id === id));
-  const detail = useUi((s) => s.details[id]);
-  const team = useUi((s) => s.state?.team);
-  const cardsById = useUi((s) => s.cards);
-  const uploads = useUi((s) => s.uploads);
-  const steps = episode?.steps ?? detail?.steps ?? EMPTY;
-  const { scroller, large, scrolled, showTitle, update } = useScrollChrome();
-  const stick = useRef(true);
-  const [dropping, setDropping] = useState(false);
-
-  const messages = thread?.messages ?? EMPTY;
-  const cards = Object.values(cardsById).filter((c) => c.episode === id);
-  const byId = new Map(cards.map((c) => [c.id, c]));
-  const items = timeline(messages, cards);
-  const mine = uploads.filter((u) => u.episode === id);
-  const canDrop = id !== ONBOARDING;
-  const isFresh = useFresh(thread?.status === "ready", items.map((i) => i.key), id);
-  const firstStart = id === ONBOARDING && thread?.status === "ready" && items.length === 0 && mine.length === 0;
-
-  // Stay at the bottom while the user is there; leave the scroll alone when they read further up.
-  useLayoutEffect(() => {
-    const el = scroller.current;
-    if (el && stick.current) el.scrollTop = el.scrollHeight;
-    update();
-  }, [items.length, mine.length, thread?.status, id]);
-
-  useLayoutEffect(() => {
-    stick.current = true;
-  }, [id]);
-
-  // Images and videos load after the first scroll; keep the bottom in view while the user is there.
-  useEffect(() => {
-    const el = scroller.current;
-    const content = el?.firstElementChild;
-    if (!el || !content || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => {
-      if (stick.current) el.scrollTop = el.scrollHeight;
-      update();
-    });
-    ro.observe(content);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [thread?.status, id, firstStart]);
-
-  function onScroll() {
-    const el = scroller.current;
-    if (!el) return;
-    stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    update();
-  }
-
-  const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes("Files");
-
-  function onDrop(e: DragEvent) {
-    if (!canDrop || !hasFiles(e)) return;
-    e.preventDefault();
-    setDropping(false);
-    stick.current = true;
-    void uploadFiles(Array.from(e.dataTransfer.files));
-  }
-
-  const onboardingChat = id === ONBOARDING;
-  const title = onboardingChat ? "Set up your style" : episode?.title ?? detail?.title ?? id;
-  const n = episodeNumber(id);
-  const sub = onboardingChat
-    ? "The Brand identity reads your links and builds your profile. Nothing else to fill in."
-    : [
-        n ? `Episode ${n}` : null,
-        detail?.project?.format ?? null,
-        detail?.project?.created ? `started ${ago(detail.project.created)}` : null,
-      ]
-        .filter(Boolean)
-        .join(" · ");
-
-  let body;
-  if (!thread || (thread.status === "loading" && !messages.length)) {
-    body = <Loading label="Loading the chat" />;
-  } else if (thread.status === "error" && !messages.length) {
-    body = (
-      <div className="center-state danger">
-        <ErrorLine text={`Couldn't load the chat. ${thread.error ?? ""}`} onRetry={() => void loadThread(id, true)} />
-      </div>
-    );
-  } else {
-    body = (
-      <div
-        className={dropping ? "chat dropping" : "chat"}
-        aria-live="polite"
-        aria-relevant="additions"
-        aria-label="Chat"
-        role="log"
-      >
-        {items.length === 0 && mine.length === 0 && !onboardingChat ? (
-          <div className="chat-empty">
-            <SlateFigure size={96} />
-            <p>Say an idea below, or ask the Scout for three.</p>
-          </div>
-        ) : null}
-        {items.map((it) => {
-          const fresh = isFresh(it.key, it.at);
-          if (it.card) return <CardItem key={it.key} card={it.card} team={team} steps={steps} fresh={fresh} />;
-          const m = it.message as Message;
-          const cardId = typeof m.card === "number" ? m.card : m.card?.id;
-          const card = typeof cardId === "number" ? byId.get(cardId) : undefined;
-          return <MessageBlock key={it.key} m={m} card={card} team={team} steps={steps} episode={id} fresh={fresh} />;
-        })}
-        {mine.map((u) => (
-          <UploadItem key={u.key} u={u} />
-        ))}
-        {thread.status === "error" ? (
-          <ErrorLine text={`Couldn't load new messages. ${thread.error ?? ""}`} onRetry={() => void loadThread(id, true)} />
-        ) : null}
-      </div>
-    );
-  }
-
-  if (firstStart) {
-    return (
-      <section className="view first-start" aria-label="Set up your style">
-        <div className="scroll" ref={scroller} data-testid="chat-scroll">
-          <Onboarding />
-          {body}
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <section className="view" aria-label={onboardingChat ? title : episode?.title ?? "Chat"}>
-      <Toolbar
-        title={title}
-        sub={sub}
-        showTitle={showTitle}
-        scrolled={scrolled}
-        actions={onboardingChat ? null : <PrompterButton />}
-      >
-        {onboardingChat ? <div className="strip" /> : <StepStrip steps={steps} current={episode?.step ?? detail?.step} cards={cards} />}
-      </Toolbar>
-      {onboardingChat ? null : <PrompterPopover episode={id} />}
-      <div
-        ref={scroller}
-        className="scroll"
-        onScroll={onScroll}
-        onDragOver={(e) => {
-          if (!canDrop || !hasFiles(e)) return;
-          e.preventDefault();
-          setDropping(true);
-        }}
-        onDragLeave={(e) => {
-          if (e.currentTarget === e.target) setDropping(false);
-        }}
-        onDrop={onDrop}
-        data-testid="chat-scroll"
-      >
-        <div className="thread">
-          <LargeTitle innerRef={large} title={title} sub={sub || undefined} />
-          {body}
-        </div>
-      </div>
-    </section>
+/** The onboarding chat in the main column: the Brand identity reads the links and builds the style pack. */
+export function OnboardingView() {
+  const firstStart = useFirstStart(ONBOARDING);
+  const head = firstStart ? null : (
+    <div className="page-head">
+      <h1 className="one-line">Set up your style</h1>
+      <p className="sub">The Brand identity reads your links and builds your profile. Nothing else to fill in.</p>
+    </div>
   );
-}
-
-function MessageBlock({
-  m,
-  card,
-  team,
-  steps,
-  episode,
-  fresh,
-}: {
-  m: Message;
-  card: Card | undefined;
-  team: Identity[] | undefined;
-  steps: Episode["steps"];
-  episode: string;
-  fresh: boolean;
-}) {
-  // The server posts a card together with a message that only repeats its title: show the card alone.
-  const onlyTitle = card && m.text.trim() === card.title.trim() && !m.cite;
   return (
-    <>
-      {onlyTitle ? null : m.exchange?.messages?.length ? (
-        <ExchangeLine m={m} exchange={m.exchange} team={team} />
-      ) : m.author === "user" ? (
-        <div className={fresh ? "user is-new" : "user"}>{m.text}</div>
-      ) : (
-        <IdentityMessage m={m} team={team} steps={steps} episode={episode} fresh={fresh} />
-      )}
-      {card ? <CardItem card={card} team={team} steps={steps} fresh={fresh} /> : null}
-    </>
+    <main className={firstStart ? "main chat-main first-start" : "main chat-main"} aria-label="Set up your style">
+      {firstStart ? <Welcome /> : null}
+      <ChatPane id={ONBOARDING} head={head} />
+      <Dock narrow centered={firstStart} />
+    </main>
   );
 }
 
 export function NewEpisodeView() {
   const count = useUi((s) => s.state?.episodes.length ?? 0);
-  const { scroller, large, scrolled, showTitle, update } = useScrollChrome();
   return (
-    <section className="view" aria-label="New episode">
-      <Toolbar title="New episode" showTitle={showTitle} scrolled={scrolled}>
-        <div className="strip" />
-      </Toolbar>
-      <div className="scroll" ref={scroller} onScroll={update}>
+    <main className="main chat-main" aria-label="New episode">
+      <div className="chat-scroll">
         <div className="thread">
-          <LargeTitle innerRef={large} title="New episode" sub="One sentence is enough. The Showrunner starts from it." />
+          <div className="page-head">
+            <h1 className="one-line">New episode</h1>
+            <p className="sub">One sentence is enough. The Showrunner starts from it.</p>
+          </div>
           <div className="chat">
             <div className="chat-empty">
               <SlateFigure size={96} />
@@ -407,6 +224,7 @@ export function NewEpisodeView() {
           </div>
         </div>
       </div>
-    </section>
+      <Dock />
+    </main>
   );
 }

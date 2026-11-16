@@ -1,15 +1,16 @@
-// Profile, Crew and job log: read-only views in the center place (DESIGN.md rule 2). No edit controls anywhere.
+// Style pack, Crew, GPU and renders, job log: read-only views in the main column (DESIGN.md rule 2). No edit controls
+// anywhere; a change is a sentence in the chat.
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api/client";
 import { ONBOARDING, type Identity, type JobLog, type Profile, type Source } from "../api/types";
 import { ErrorLine, identityOf, Loading, Media } from "../components/bits";
-import { Avatar } from "../slate/Slate";
-import { LargeTitle, Toolbar, useScrollChrome } from "../components/Toolbar";
+import { Avatar, SlateFigure } from "../slate/Slate";
 import { STEP_LABELS } from "../demo/fixtures";
-import { clock, day, usd } from "../lib/format";
+import { ago, clock, day, usd } from "../lib/format";
 import { messageOf, navigate } from "../store/actions";
-import { useUi } from "../store/store";
+import { EMPTY, useUi } from "../store/store";
+import { Dock } from "./EpisodeView";
 
 const CHANGE_LINE = "To change something, say it in the chat.";
 
@@ -48,7 +49,7 @@ function BackToChat() {
   );
 }
 
-/** A read-only page: the toolbar, the large title that scrolls under it, then the content. */
+/** A read-only page: the large title, then the content; the composer floats at the bottom (rule 7). */
 export function Page({
   label,
   title,
@@ -61,23 +62,28 @@ export function Page({
   title: string;
   sub: string;
   lead?: ReactNode;
-  /** grids use the width of the window, text pages keep a reading width */
+  /** grids use the width of the column, text pages keep a reading width */
   wide?: boolean;
   children: ReactNode;
 }) {
-  const { scroller, large, scrolled, showTitle, update } = useScrollChrome();
   return (
-    <section className="view" aria-label={label}>
-      <Toolbar title={title} sub={sub} showTitle={showTitle} scrolled={scrolled}>
-        <div className="strip" />
-      </Toolbar>
-      <div className="scroll" ref={scroller} onScroll={update}>
+    <main className="main page-main" aria-label={label}>
+      <div className="page-scroll">
         <div className={wide ? "doc wide" : "doc"}>
-          <LargeTitle innerRef={large} title={title} sub={sub} lead={lead} />
+          <div className="page-head">
+            {lead}
+            <div className="page-words">
+              <h1 className="one-line" title={title}>
+                {title}
+              </h1>
+              {sub ? <p className="sub">{sub}</p> : null}
+            </div>
+          </div>
           {children}
         </div>
       </div>
-    </section>
+      <Dock />
+    </main>
   );
 }
 
@@ -161,7 +167,7 @@ export function ProfileView() {
       ? "The neutral style pack. Paste your links in the chat to make it yours."
       : "Your style pack. Every value names its source.";
   return (
-    <Page label="Profile" title="Profile" sub={sub}>
+    <Page label="Style pack" title="Style pack" sub={sub}>
       <BackToChat />
       {content}
       <p className="hint-line">{CHANGE_LINE}</p>
@@ -325,4 +331,61 @@ export function engineWords(job: { engine?: string | null; model?: string | null
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+/** Render work and rented GPUs: the jobs that render or rent, running first. Each opens its log. */
+const RENDER_WORDS = /render|gpu|blender|3d/i;
+
+export function RendersView() {
+  const activity = useUi((s) => s.state?.activity ?? EMPTY);
+  const team = useUi((s) => s.state?.team);
+  const episodes = useUi((s) => s.state?.episodes ?? EMPTY);
+  const jobs = activity
+    .filter((a) => RENDER_WORDS.test(a.doing ?? "") || RENDER_WORDS.test(a.step ?? ""))
+    .sort((a, b) => Number(b.status === "running") - Number(a.status === "running") || b.job - a.job);
+  return (
+    <Page
+      wide
+      label="GPU and renders"
+      title="GPU and renders"
+      sub="Every render job and rented GPU. A rented machine is deleted when its frames are home."
+    >
+      <BackToChat />
+      {jobs.length ? (
+        <ul className="renders">
+          {jobs.map((a) => {
+            const who = identityOf(team, a.identity);
+            const ep = episodes.find((e) => e.id === a.episode);
+            return (
+              <li key={a.job}>
+                <button
+                  type="button"
+                  className="render-row"
+                  onClick={() => navigate({ kind: "job", id: a.job })}
+                  aria-label={`${who.name}: ${a.doing}, ${a.status}. Open the log.`}
+                >
+                  <Avatar who={who} size="crew" state={a.status === "running" ? "working" : a.status === "done" ? "done" : "plain"} still />
+                  {a.preview ? <img src={a.preview} alt="" className="render-pic" loading="lazy" /> : null}
+                  <span className="render-words">
+                    <b className="one-line">{a.doing}</b>
+                    <span className="meta one-line">
+                      {[who.name, ep?.title, a.status === "running" ? `running ${clock(a.seconds)}` : `${a.status} ${ago(a.ended ?? a.started)}`, a.cost_usd ? usd(a.cost_usd) : null]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <div className="home-empty">
+          <SlateFigure state="idle" size={80} />
+          <p>No renders right now. When a step needs a GPU, a card asks first.</p>
+        </div>
+      )}
+      <p className="hint-line">{CHANGE_LINE}</p>
+    </Page>
+  );
 }

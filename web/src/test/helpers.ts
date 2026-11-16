@@ -60,6 +60,11 @@ export function mockApi(routes: Routes): Call[] {
   return calls;
 }
 
+/** Opens the app on one episode, as a link to #/e/<id> does (the start view is the Episodes home). */
+export function openAt(id: string): void {
+  window.history.replaceState(null, "", `/#/e/${encodeURIComponent(id)}`);
+}
+
 export function resetApp(): void {
   stopLiveUpdates();
   setBackend(null);

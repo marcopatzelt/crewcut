@@ -3,7 +3,9 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App";
-import { card, episode, episodeRoutes, job, message, mockApi, NEVER, Reply, resetApp, state } from "./helpers";
+import { navigate } from "../store/actions";
+import { getUi } from "../store/store";
+import { card, episode, episodeRoutes, job, message, mockApi, NEVER, openAt, Reply, resetApp, state } from "./helpers";
 
 beforeEach(() => {
   resetApp();
@@ -18,7 +20,7 @@ describe("loading", () => {
   it("keeps the three places and shows the spinner only after 300 ms", async () => {
     mockApi({ "GET /api/state": NEVER });
     render(<App />);
-    expect(screen.getByRole("complementary", { name: "Episodes" })).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "Places" })).toBeTruthy();
     expect(screen.getByRole("complementary", { name: "Working now" })).toBeTruthy();
     expect(screen.getByLabelText("Message")).toBeTruthy();
     const loading = screen.getByTestId("loading");
@@ -31,8 +33,7 @@ describe("empty", () => {
   it("says there are no episodes and nobody is working", async () => {
     mockApi({ "GET /api/state": state() });
     render(<App />);
-    expect(await screen.findByText("No episodes yet.")).toBeTruthy();
-    expect(screen.getByText("No episodes yet. Say an idea below.")).toBeTruthy();
+    expect(await screen.findByText("No episodes yet. Say an idea below.")).toBeTruthy();
     const crew = screen.getByRole("complementary", { name: "Working now" });
     expect(within(crew).getByText("Nobody is working. Nothing is running, nothing costs money.")).toBeTruthy();
     expect(within(crew).getByText("$0.00 of $20")).toBeTruthy();
@@ -76,6 +77,7 @@ describe("error", () => {
       },
       ...episodeRoutes(ep, [message({ text: "Script version 1 is ready." })], []),
     });
+    openAt(ep.id);
     render(<App />);
     expect(await screen.findByText("Couldn't load Crewcut. The database is locked.")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
@@ -96,6 +98,7 @@ describe("error", () => {
         return [message({ text: "Back again." })];
       },
     });
+    openAt(ep.id);
     render(<App />);
     expect(await screen.findByText("Couldn't load the chat. The conductor is restarting.")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
@@ -106,7 +109,7 @@ describe("error", () => {
     mockApi({ "GET /api/state": new TypeError("Failed to fetch") });
     render(<App />);
     expect(await screen.findByText("Demo data. Crewcut is not running at this address.")).toBeTruthy();
-    expect((await screen.findAllByText("I ran five local AI models on a $900 laptop")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Claude improves a website 100 times")).length).toBeGreaterThan(0);
   });
 
   it("says when the engine is not logged in", async () => {
@@ -123,12 +126,15 @@ describe("long content", () => {
     expect(title.length).toBe(90);
     const ep = episode({ title });
     mockApi({ "GET /api/state": state({ episodes: [ep] }), ...episodeRoutes(ep, [], []) });
+    openAt(ep.id);
     render(<App />);
     const heading = await screen.findByRole("heading", { level: 1, name: title });
     expect(heading.getAttribute("title")).toBe(title);
     expect(heading.className).toContain("one-line");
-    const row = screen.getByRole("button", { name: new RegExp(`^${title}`) });
-    expect(row.getAttribute("title")).toBe(title);
+    // On the home its card names it in full, and the clamped title keeps the full text too.
+    act(() => navigate({ kind: "episodes" }));
+    const cardButton = await screen.findByRole("button", { name: new RegExp(`^${title}`) });
+    expect(cardButton.querySelector(".ep-card-title")?.getAttribute("title")).toBe(title);
   });
 
   it("renders a 4,000-word script message", async () => {
@@ -138,6 +144,7 @@ describe("long content", () => {
       "GET /api/state": state({ episodes: [ep] }),
       ...episodeRoutes(ep, [message({ author: "showrunner", text: words })], []),
     });
+    openAt(ep.id);
     render(<App />);
     const chat = await screen.findByRole("log", { name: "Chat" });
     const count = () =>
@@ -152,8 +159,9 @@ describe("long content", () => {
     const ep = episode();
     const activity = Array.from({ length: 30 }, (_, i) => job(i + 1));
     mockApi({ "GET /api/state": state({ episodes: [ep], activity }), ...episodeRoutes(ep, [], []) });
+    openAt(ep.id);
     render(<App />);
-    const crew = await screen.findByRole("complementary", { name: "Working now" });
+    const crew = await screen.findByRole("region", { name: "Crew chat" });
     await waitFor(() => expect(within(crew).getAllByRole("button", { name: /Open the log/ }).length).toBe(30));
     expect(within(crew).getByText("One of the crew is on this episode.")).toBeTruthy();
   });
@@ -172,6 +180,7 @@ describe("cards", () => {
         choice: (c.body as { choice: number }).choice,
       }),
     });
+    openAt(ep.id);
     render(<App />);
     const group = await screen.findByRole("group", { name: "Pick a title" });
     await userEvent.click(within(group).getByRole("radio", { name: /Second title/ }));
@@ -195,6 +204,7 @@ describe("cards", () => {
       ...episodeRoutes(ep, [], [open]),
       "POST /api/cards/4/accept": { ...open, status: "accepted" },
     });
+    openAt(ep.id);
     render(<App />);
     await screen.findByRole("group", { name: "Approve the script" });
     fireEvent.keyDown(window, { key: "Enter", ctrlKey: true });
@@ -222,6 +232,7 @@ describe("cards", () => {
       },
     });
     mockApi({ "GET /api/state": state({ episodes: [ep] }), ...episodeRoutes(ep, [], [spend]) });
+    openAt(ep.id);
     render(<App />);
     const group = await screen.findByRole("group", { name: "Render the 3D scenes on a rented GPU?" });
     expect(within(group).getByText("On this machine")).toBeTruthy();
@@ -238,6 +249,7 @@ describe("cards", () => {
       ...episodeRoutes(ep, [], [card()]),
       "POST /api/cards/4/accept": new Reply(409, { detail: "The card was already decided." }),
     });
+    openAt(ep.id);
     render(<App />);
     const group = await screen.findByRole("group", { name: "Pick a title" });
     await userEvent.click(within(group).getByRole("button", { name: "Use this title" }));
@@ -255,6 +267,7 @@ describe("composer", () => {
       [`POST /api/episodes/${ep.id}/messages`]: (c: { body: unknown }) =>
         message({ id: 50, author: "user", text: (c.body as { text: string }).text }),
     });
+    openAt(ep.id);
     render(<App />);
     await screen.findByRole("log", { name: "Chat" });
     const box = screen.getByLabelText("Message") as HTMLTextAreaElement;
@@ -300,6 +313,7 @@ describe("composer", () => {
       ...episodeRoutes(ep, [], []),
       [`POST /api/episodes/${ep.id}/messages`]: new Reply(500, { detail: "The server is busy." }),
     });
+    openAt(ep.id);
     render(<App />);
     await screen.findByRole("log", { name: "Chat" });
     const box = screen.getByLabelText("Message") as HTMLTextAreaElement;
@@ -311,21 +325,22 @@ describe("composer", () => {
   it("hides the microphone when the browser has no speech input", async () => {
     mockApi({ "GET /api/state": state() });
     render(<App />);
-    await screen.findByText("No episodes yet.");
+    await screen.findByText("No episodes yet. Say an idea below.");
     expect(screen.queryByRole("button", { name: "Speak" })).toBeNull();
     expect(screen.getByRole("button", { name: "Send" })).toBeTruthy();
   });
 });
 
 describe("live updates", () => {
-  it("applies a card event to the episode row", async () => {
+  it("applies a card event to the chat and to the episode's count", async () => {
     const ep = episode();
     mockApi({ "GET /api/state": state({ episodes: [ep] }), ...episodeRoutes(ep, [], []) });
     const { applyEvent } = await import("../store/actions");
+    openAt(ep.id);
     render(<App />);
     await screen.findByRole("log", { name: "Chat" });
     act(() => applyEvent("card", card()));
     expect(await screen.findByRole("group", { name: "Pick a title" })).toBeTruthy();
-    expect(screen.getByText(", needs your yes")).toBeTruthy();
+    expect(getUi().state?.episodes[0]?.open_cards).toBe(1);
   });
 });

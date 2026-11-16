@@ -3,10 +3,10 @@
 // prefers-reduced-transparency and under prefers-contrast: more.
 import { cssRules, lineOf, read, rel, report, srcRoot, walk } from "./lib.mjs";
 
-// The surfaces that may use material: Episodes panel, toolbar, money row, composer, palette, the teleprompter dialog,
-// and the control capsule of the teleprompter page.
-const ALLOWED = new Set([".side", ".toolbar", ".money", ".composer", ".palette", ".popover", ".pr-panel"]);
-const OPAQUE = /^var\(--(panel|card|bg|prompter-panel|prompter-bg)\)$/;
+// The surfaces that may use material: the window (one sheet of glass on the desk), the tags on pictures, the palette,
+// the teleprompter dialog, and the control capsule of the teleprompter page.
+const ALLOWED = new Set([".window", ".glass-tag", ".palette", ".popover", ".pr-panel"]);
+const OPAQUE = /^var\(--(panel|card|bg|tag-solid|prompter-panel|prompter-bg)\)$/;
 const TRANSLUCENT = /^var\(--(material-[\w-]+|prompter-material)\)$/;
 
 const problems = [];

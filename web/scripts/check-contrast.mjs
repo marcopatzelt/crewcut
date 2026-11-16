@@ -88,6 +88,11 @@ function ink(vars, text, surface) {
   return color(vars, text);
 }
 
+// The window is glass over a wallpaper (rule 18): text on it is checked over the brightest and the darkest blurred
+// sample of the wallpaper (--desk-hi, --desk-lo) and over the opaque stand-in (--panel). Tiles, chips and row states
+// sit on that glass.
+const GLASS = ["--material-window@--desk-hi", "--material-window@--desk-lo"];
+const onGlass = (layer) => GLASS.map((g) => `${layer}@${g}`);
 const surfaces = [
   "--bg",
   "--panel",
@@ -95,13 +100,13 @@ const surfaces = [
   "--sunken",
   "--selected@--panel",
   "--hover@--panel",
-  "--hover@--bg",
   "--hover@--card",
-  "--material-sidebar@--window",
-  "--selected@--material-sidebar@--window",
-  "--hover@--material-sidebar@--window",
-  "--material-bar@--bg",
-  "--material-bar@--panel",
+  ...GLASS,
+  ...onGlass("--tile"),
+  ...onGlass("--chip"),
+  ...onGlass("--selected"),
+  ...onGlass("--hover"),
+  "--tile@--panel",
   "--material-float@--bg",
 ];
 const pairs = [
@@ -109,16 +114,22 @@ const pairs = [
   ["--ink", surfaces, 4.5],
   ["--ink-2", surfaces, 4.5],
   ["--ink-3", surfaces, 4.5],
-  ["--accent", ["--bg", "--panel", "--card", "--selected@--panel", "--material-sidebar@--window"], 4.5],
+  ["--accent", ["--bg", "--panel", "--card", "--selected@--panel", ...GLASS, ...onGlass("--tile")], 4.5],
   ["--accent-ink", ["--accent"], 4.5],
-  ["--ok", ["--bg", "--panel", "--card"], 4.5],
-  ["--warn", ["--bg", "--panel", "--card", "--material-bar@--bg"], 4.5],
-  ["--danger", ["--bg", "--panel", "--card", "--sunken", "--material-float@--bg"], 4.5],
+  ["--accent-fill-ink", ["--accent-fill"], 4.5],
+  ["--chip-on-ink", ["--chip-on"], 4.5],
+  ["--ok", ["--bg", "--panel", "--card", ...onGlass("--tile")], 4.5],
+  ["--warn", ["--bg", "--panel", "--card", ...GLASS, ...onGlass("--tile")], 4.5],
+  ["--danger", ["--bg", "--panel", "--card", "--sunken", "--material-float@--bg", ...onGlass("--tile")], 4.5],
+  // Words on pictures: the tag's opaque stand-in and the tag over a white picture (the worst case).
+  ["--tag-ink", ["--tag-solid", "--material-tag@--gpu-base", "--media-fade@--gpu-base"], 4.5],
+  ["--gpu-ink", ["--gpu-top@--gpu-base", "--gpu-bottom@--gpu-base"], 4.5],
+  ["--gpu-ink-2", ["--gpu-top@--gpu-base", "--gpu-bottom@--gpu-base"], 4.5],
   ["--qr-ink", ["--qr-plate"], 4.5],
   ["--prompter-ink", ["--prompter-bg", "--prompter-panel", "--prompter-material@--prompter-bg"], 4.5],
   ["--prompter-ink-2", ["--prompter-bg", "--prompter-panel", "--prompter-material@--prompter-bg"], 4.5],
   // Focus ring, reading line and the accent dot are not text: 3:1 is the bar (WCAG 1.4.11).
-  ["--focus", ["--bg", "--panel", "--card", "--sunken", "--material-float@--bg", "--material-sidebar@--window"], 3],
+  ["--focus", ["--bg", "--panel", "--card", "--sunken", "--material-float@--bg", ...GLASS], 3],
   ["--prompter-line", ["--prompter-bg"], 3],
 ];
 

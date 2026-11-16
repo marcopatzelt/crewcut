@@ -5,27 +5,42 @@
 :root,
 :root[data-theme="light"] {
   color-scheme: light;
-  --window: #ECECEA;
-  --window-tint-1: rgba(52, 195, 164, 0.10);
-  --window-tint-2: rgba(15, 110, 92, 0.12);
+  /* The desk: the wallpaper behind the window, and two samples of it after the window's blur (brightest and darkest),
+     which npm run check:contrast uses as the ground under the glass. */
+  --wallpaper: url("/wallpapers/mint-dawn-2560.jpg");
+  --wallpaper-small: url("/wallpapers/mint-dawn-1280.jpg");
+  --window: #E3ECE8;
+  --desk-hi: #CFE4DF;
+  --desk-lo: #5F8669;
+  --desk-tint: rgba(255, 255, 255, 0.06);
+  /* The window: one sheet of glass (rule 18). --panel is its opaque stand-in. */
+  --material-window: rgba(247, 250, 248, 0.80);
+  --edge-window: rgba(255, 255, 255, 0.75);
+  --panel: #F1F5F3;
+  --tile: rgba(255, 255, 255, 0.62);
   --bg: #FFFFFF;
-  --panel: #F5F5F4;
   --card: #FFFFFF;
-  --sunken: #F0F0EE;
-  --hover: rgba(0, 0, 0, 0.045);
-  --selected: rgba(0, 0, 0, 0.075);
-  --ink: #1D1D1F;
-  --ink-2: #515154;
-  --ink-3: #636367;
-  --line: rgba(0, 0, 0, 0.09);
-  --line-strong: rgba(0, 0, 0, 0.16);
-  --accent: #0F6E5C;
+  --sunken: #EBF0ED;
+  --chip: rgba(15, 30, 26, 0.06);
+  --chip-on: #0E1A17;
+  --chip-on-ink: #FFFFFF;
+  --hover: rgba(15, 30, 26, 0.05);
+  --selected: rgba(15, 30, 26, 0.08);
+  --ink: #0E1A17;
+  --ink-2: #384540;
+  --ink-3: #4A5752;
+  --line: rgba(15, 30, 26, 0.09);
+  --line-strong: rgba(15, 30, 26, 0.16);
+  --accent: #0B5E4E;
   --accent-ink: #FFFFFF;
-  --focus: rgba(15, 110, 92, 0.70);
+  --accent-fill: #34C3A4;
+  --accent-fill-ink: #062A22;
+  --focus: rgba(11, 94, 78, 0.80);
   --selection: rgba(15, 110, 92, 0.25);
-  --ok: #1E7A34;
-  --warn: #B25000;
-  --danger: #D70015;
+  --ok: #1B6E30;
+  --warn: #8F4500;
+  --danger: #C2001A;
+  --marker: #F4B23E;
   /* Slate, the mascot (brand: deep green board, mint stripes, white face). */
   --slate-body: #0F6E5C;
   --slate-stripe: #34C3A4;
@@ -34,16 +49,48 @@
   --slate-paper: #FFFFFF;
   --slate-red: #E5484D;
   --slate-soft: #8EDCC4;
-  --material-sidebar: rgba(246, 246, 244, 0.72);
-  --material-bar: rgba(255, 255, 255, 0.78);
-  --material-float: rgba(255, 255, 255, 0.86);
+  --material-float: rgba(255, 255, 255, 0.88);
   --edge-light: rgba(255, 255, 255, 0.60);
   --scrim: rgba(0, 0, 0, 0.20);
   --shimmer: rgba(255, 255, 255, 0.55);
-  --shadow-1: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-2: 0 0 0 0.5px rgba(0, 0, 0, 0.10), 0 6px 20px rgba(0, 0, 0, 0.10);
-  --shadow-3: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 18px 48px rgba(0, 0, 0, 0.18);
+  --shadow-1: 0 0 0 0.5px rgba(15, 30, 26, 0.08), 0 1px 2px rgba(15, 30, 26, 0.06);
+  --shadow-2: 0 0 0 0.5px rgba(15, 30, 26, 0.10), 0 6px 20px rgba(10, 40, 32, 0.10);
+  --shadow-3: 0 0 0 0.5px rgba(15, 30, 26, 0.12), 0 18px 48px rgba(10, 40, 32, 0.20);
   --shadow-press: inset 0 1px 2px rgba(0, 0, 0, 0.12);
+  --shadow-window: 0 40px 120px -30px rgba(10, 40, 32, 0.45), 0 12px 40px -12px rgba(10, 40, 32, 0.25);
+  --shadow-media: 0 18px 40px -18px rgba(10, 40, 32, 0.45);
+
+  /* On pictures: tags, captions and the duration chip read the same in both themes. */
+  --material-tag: rgba(10, 20, 18, 0.60);
+  --tag-solid: #18241F;
+  --tag-ink: #FFFFFF;
+  --tag-edge: rgba(255, 255, 255, 0.14);
+  --media-ground: #0E1513;
+  --on-media: #FFFFFF;
+  --on-media-shade: rgba(0, 0, 0, 0.80);
+  --media-fade: rgba(0, 0, 0, 0.75);
+  --render-pending: rgba(14, 22, 20, 0.90);
+  --on-media-ring: rgba(255, 255, 255, 0.90);
+  /* The phone preview of a thumbnail in a feed. */
+  --phone: #0B0F0E;
+  --phone-screen: #0F0F0F;
+  --phone-line: #2A2A2A;
+  --phone-edge: rgba(255, 255, 255, 0.08);
+  /* The GPU card: dark green over the newest render frame, in both themes. --gpu-base is the worst case under it. */
+  --gpu-top: rgba(10, 52, 44, 0.92);
+  --gpu-bottom: rgba(6, 26, 22, 0.94);
+  --gpu-base: #FFFFFF;
+  --gpu-ink: #FFFFFF;
+  --gpu-ink-2: #B9CFC8;
+  --gpu-chip: rgba(52, 195, 164, 0.18);
+  --gpu-mint: #34C3A4;
+  --gpu-track: rgba(255, 255, 255, 0.14);
+  --gpu-button: rgba(255, 255, 255, 0.12);
+  --gpu-edge: rgba(255, 255, 255, 0.08);
+  /* The three dots of the title bar: decorative, they do nothing. */
+  --dot-close: #FF5F57;
+  --dot-minimize: #FEBC2E;
+  --dot-zoom: #28C840;
   --qr-plate: #FFFFFF;
   --qr-ink: #111111;
   --prompter-bg: #000000;
@@ -56,24 +103,39 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --window: #121213;
-  --window-tint-1: rgba(52, 195, 164, 0.07);
-  --window-tint-2: rgba(26, 144, 120, 0.12);
-  --bg: #1C1C1E;
-  --panel: #232325;
-  --card: #2A2A2D;
-  --sunken: #161618;
+  --wallpaper: url("/wallpapers/green-dusk-2560.jpg");
+  --wallpaper-small: url("/wallpapers/green-dusk-1280.jpg");
+  --window: #0B1613;
+  --desk-hi: #61787C;
+  --desk-lo: #0D1F15;
+  --desk-tint: rgba(0, 0, 0, 0.10);
+  --material-window: rgba(9, 22, 19, 0.70);
+  --edge-window: rgba(255, 255, 255, 0.12);
+  --panel: #10201C;
+  --tile: rgba(255, 255, 255, 0.055);
+  --bg: #12231F;
+  --card: #1B2D28;
+  --sunken: #0D1B18;
+  --chip: rgba(255, 255, 255, 0.075);
+  --chip-on: #F2F7F5;
+  --chip-on-ink: #0B1613;
   --hover: rgba(255, 255, 255, 0.06);
   --selected: rgba(255, 255, 255, 0.10);
-  --ink: #F5F5F7;
-  --ink-2: #B4B4B9;
-  --ink-3: #A5A5AA;
-  --line: rgba(255, 255, 255, 0.10);
-  --line-strong: rgba(255, 255, 255, 0.18);
-  --accent: #34C3A4;
-  --accent-ink: #06231D;
+  --ink: #F2F7F5;
+  --ink-2: #C6D2CD;
+  --ink-3: #A9B9B3;
+  --line: rgba(255, 255, 255, 0.085);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --accent: #5FD9BC;
+  --accent-ink: #062A22;
+  --accent-fill: #34C3A4;
+  --accent-fill-ink: #062A22;
   --focus: rgba(52, 195, 164, 0.60);
   --selection: rgba(52, 195, 164, 0.30);
+  --ok: #4ADE80;
+  --warn: #F4B23E;
+  --danger: #FF8A80;
+  --marker: #F4B23E;
   --slate-body: #1A9078;
   --slate-stripe: #5FE3C3;
   --slate-face: #FFFFFF;
@@ -81,19 +143,48 @@
   --slate-paper: #F2F5F4;
   --slate-red: #FF6B6B;
   --slate-soft: #3FB596;
-  --ok: #30D158;
-  --warn: #FF9F0A;
-  --danger: #FF6961;
-  --material-sidebar: rgba(32, 32, 34, 0.68);
-  --material-bar: rgba(28, 28, 30, 0.72);
-  --material-float: rgba(44, 44, 46, 0.82);
+  --material-float: rgba(22, 38, 34, 0.86);
   --edge-light: rgba(255, 255, 255, 0.08);
   --scrim: rgba(0, 0, 0, 0.45);
   --shimmer: rgba(255, 255, 255, 0.30);
-  --shadow-1: 0 0 0 0.5px rgba(255, 255, 255, 0.10), 0 1px 2px rgba(0, 0, 0, 0.40);
-  --shadow-2: 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 8px 24px rgba(0, 0, 0, 0.50);
-  --shadow-3: 0 0 0 0.5px rgba(255, 255, 255, 0.14), 0 22px 60px rgba(0, 0, 0, 0.60);
+  --shadow-1: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.40);
+  --shadow-2: 0 0 0 0.5px rgba(255, 255, 255, 0.10), 0 8px 24px rgba(0, 0, 0, 0.50);
+  --shadow-3: 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 22px 60px rgba(0, 0, 0, 0.60);
   --shadow-press: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-window: 0 50px 140px -30px rgba(0, 0, 0, 0.75), 0 16px 50px -16px rgba(0, 0, 0, 0.6);
+  --shadow-media: 0 20px 44px -20px rgba(0, 0, 0, 0.8);
+
+  /* On pictures: tags, captions and the duration chip read the same in both themes. */
+  --material-tag: rgba(10, 20, 18, 0.60);
+  --tag-solid: #18241F;
+  --tag-ink: #FFFFFF;
+  --tag-edge: rgba(255, 255, 255, 0.14);
+  --media-ground: #0E1513;
+  --on-media: #FFFFFF;
+  --on-media-shade: rgba(0, 0, 0, 0.80);
+  --media-fade: rgba(0, 0, 0, 0.75);
+  --render-pending: rgba(14, 22, 20, 0.90);
+  --on-media-ring: rgba(255, 255, 255, 0.90);
+  /* The phone preview of a thumbnail in a feed. */
+  --phone: #0B0F0E;
+  --phone-screen: #0F0F0F;
+  --phone-line: #2A2A2A;
+  --phone-edge: rgba(255, 255, 255, 0.08);
+  /* The GPU card: dark green over the newest render frame, in both themes. --gpu-base is the worst case under it. */
+  --gpu-top: rgba(10, 52, 44, 0.92);
+  --gpu-bottom: rgba(6, 26, 22, 0.94);
+  --gpu-base: #FFFFFF;
+  --gpu-ink: #FFFFFF;
+  --gpu-ink-2: #B9CFC8;
+  --gpu-chip: rgba(52, 195, 164, 0.18);
+  --gpu-mint: #34C3A4;
+  --gpu-track: rgba(255, 255, 255, 0.14);
+  --gpu-button: rgba(255, 255, 255, 0.12);
+  --gpu-edge: rgba(255, 255, 255, 0.08);
+  /* The three dots of the title bar: decorative, they do nothing. */
+  --dot-close: #FF5F57;
+  --dot-minimize: #FEBC2E;
+  --dot-zoom: #28C840;
   --qr-plate: #FFFFFF;
   --qr-ink: #111111;
   --prompter-bg: #000000;
@@ -107,24 +198,39 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --window: #121213;
-    --window-tint-1: rgba(52, 195, 164, 0.07);
-    --window-tint-2: rgba(26, 144, 120, 0.12);
-    --bg: #1C1C1E;
-    --panel: #232325;
-    --card: #2A2A2D;
-    --sunken: #161618;
+    --wallpaper: url("/wallpapers/green-dusk-2560.jpg");
+    --wallpaper-small: url("/wallpapers/green-dusk-1280.jpg");
+    --window: #0B1613;
+    --desk-hi: #61787C;
+    --desk-lo: #0D1F15;
+    --desk-tint: rgba(0, 0, 0, 0.10);
+    --material-window: rgba(9, 22, 19, 0.70);
+    --edge-window: rgba(255, 255, 255, 0.12);
+    --panel: #10201C;
+    --tile: rgba(255, 255, 255, 0.055);
+    --bg: #12231F;
+    --card: #1B2D28;
+    --sunken: #0D1B18;
+    --chip: rgba(255, 255, 255, 0.075);
+    --chip-on: #F2F7F5;
+    --chip-on-ink: #0B1613;
     --hover: rgba(255, 255, 255, 0.06);
     --selected: rgba(255, 255, 255, 0.10);
-    --ink: #F5F5F7;
-    --ink-2: #B4B4B9;
-    --ink-3: #A5A5AA;
-    --line: rgba(255, 255, 255, 0.10);
-    --line-strong: rgba(255, 255, 255, 0.18);
-    --accent: #34C3A4;
-    --accent-ink: #06231D;
+    --ink: #F2F7F5;
+    --ink-2: #C6D2CD;
+    --ink-3: #A9B9B3;
+    --line: rgba(255, 255, 255, 0.085);
+    --line-strong: rgba(255, 255, 255, 0.16);
+    --accent: #5FD9BC;
+    --accent-ink: #062A22;
+    --accent-fill: #34C3A4;
+    --accent-fill-ink: #062A22;
     --focus: rgba(52, 195, 164, 0.60);
     --selection: rgba(52, 195, 164, 0.30);
+    --ok: #4ADE80;
+    --warn: #F4B23E;
+    --danger: #FF8A80;
+    --marker: #F4B23E;
     --slate-body: #1A9078;
     --slate-stripe: #5FE3C3;
     --slate-face: #FFFFFF;
@@ -132,19 +238,48 @@
     --slate-paper: #F2F5F4;
     --slate-red: #FF6B6B;
     --slate-soft: #3FB596;
-    --ok: #30D158;
-    --warn: #FF9F0A;
-    --danger: #FF6961;
-    --material-sidebar: rgba(32, 32, 34, 0.68);
-    --material-bar: rgba(28, 28, 30, 0.72);
-    --material-float: rgba(44, 44, 46, 0.82);
+    --material-float: rgba(22, 38, 34, 0.86);
     --edge-light: rgba(255, 255, 255, 0.08);
     --scrim: rgba(0, 0, 0, 0.45);
     --shimmer: rgba(255, 255, 255, 0.30);
-    --shadow-1: 0 0 0 0.5px rgba(255, 255, 255, 0.10), 0 1px 2px rgba(0, 0, 0, 0.40);
-    --shadow-2: 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 8px 24px rgba(0, 0, 0, 0.50);
-    --shadow-3: 0 0 0 0.5px rgba(255, 255, 255, 0.14), 0 22px 60px rgba(0, 0, 0, 0.60);
+    --shadow-1: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.40);
+    --shadow-2: 0 0 0 0.5px rgba(255, 255, 255, 0.10), 0 8px 24px rgba(0, 0, 0, 0.50);
+    --shadow-3: 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 22px 60px rgba(0, 0, 0, 0.60);
     --shadow-press: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-window: 0 50px 140px -30px rgba(0, 0, 0, 0.75), 0 16px 50px -16px rgba(0, 0, 0, 0.6);
+    --shadow-media: 0 20px 44px -20px rgba(0, 0, 0, 0.8);
+
+    /* On pictures: tags, captions and the duration chip read the same in both themes. */
+    --material-tag: rgba(10, 20, 18, 0.60);
+    --tag-solid: #18241F;
+    --tag-ink: #FFFFFF;
+    --tag-edge: rgba(255, 255, 255, 0.14);
+    --media-ground: #0E1513;
+    --on-media: #FFFFFF;
+    --on-media-shade: rgba(0, 0, 0, 0.80);
+    --media-fade: rgba(0, 0, 0, 0.75);
+    --render-pending: rgba(14, 22, 20, 0.90);
+    --on-media-ring: rgba(255, 255, 255, 0.90);
+    /* The phone preview of a thumbnail in a feed. */
+    --phone: #0B0F0E;
+    --phone-screen: #0F0F0F;
+    --phone-line: #2A2A2A;
+    --phone-edge: rgba(255, 255, 255, 0.08);
+    /* The GPU card: dark green over the newest render frame, in both themes. --gpu-base is the worst case under it. */
+    --gpu-top: rgba(10, 52, 44, 0.92);
+    --gpu-bottom: rgba(6, 26, 22, 0.94);
+    --gpu-base: #FFFFFF;
+    --gpu-ink: #FFFFFF;
+    --gpu-ink-2: #B9CFC8;
+    --gpu-chip: rgba(52, 195, 164, 0.18);
+    --gpu-mint: #34C3A4;
+    --gpu-track: rgba(255, 255, 255, 0.14);
+    --gpu-button: rgba(255, 255, 255, 0.12);
+    --gpu-edge: rgba(255, 255, 255, 0.08);
+    /* The three dots of the title bar: decorative, they do nothing. */
+    --dot-close: #FF5F57;
+    --dot-minimize: #FEBC2E;
+    --dot-zoom: #28C840;
     --qr-plate: #FFFFFF;
     --qr-ink: #111111;
     --prompter-bg: #000000;
@@ -153,20 +288,22 @@
     --prompter-ink: #F5F5F7;
     --prompter-ink-2: #A1A1A6;
     --prompter-line: #34C3A4;
-  }
 }
-
+}
 /* Type (rule 5). Inter everywhere; the system font only on Apple devices, where it is already installed.
    main.tsx puts the class is-apple on <html>. No Apple font file is ever bundled (npm run check:fonts). */
 :root {
   --font: "Inter", sans-serif;
   --font-rounded: "Inter", sans-serif;
   --font-mono: ui-monospace, Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  /* Display titles (the page title, the episode title, section heads): the one place for weight 700. */
+  --font-display: "Inter", sans-serif;
 }
 
 :root.is-apple {
   --font: system-ui, -apple-system, "Inter", sans-serif;
   --font-rounded: ui-rounded, system-ui, -apple-system, "Inter", sans-serif;
+  --font-display: system-ui, -apple-system, "Inter", sans-serif;
 }
 
 /* Shape, material and motion (rules 6, 9 and 18). */
@@ -177,12 +314,13 @@
   --r-group: 12px;
   --r-card: 14px;
   --r-panel: 18px;
+  --r-window: 20px;
   --r-composer: 22px;
   --r-full: 999px;
 
-  --blur-sidebar: saturate(180%) blur(28px);
-  --blur-bar: saturate(180%) blur(20px);
   --blur-float: saturate(160%) blur(24px);
+  --blur-window: blur(44px) saturate(1.5);
+  --blur-tag: blur(14px) saturate(1.4);
 
   /* Springs from scripts/springs.mjs: high damping, at most 2.5 % overshoot. */
   --spring-snappy: linear(0, 0.049, 0.163, 0.305, 0.453, 0.589, 0.707, 0.804, 0.879, 0.935, 0.974, 0.999, 1.014, 1.022, 1.025, 1.024, 1.022, 1.018, 1.015, 1.011, 1.008, 1.005, 1.003, 1.002, 1);

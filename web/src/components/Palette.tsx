@@ -46,8 +46,10 @@ function useCommands(): Command[] {
     });
     list.push(
       { id: "v-episodes", group: "Views", label: "Show all episodes", run: () => navigate({ kind: "episodes" }) },
-      { id: "v-profile", group: "Views", label: "Show profile", run: () => navigate({ kind: "profile" }) },
+      { id: "v-shorts", group: "Views", label: "Show the Shorts", run: () => navigate({ kind: "episodes", filter: "shorts" }) },
+      { id: "v-profile", group: "Views", label: "Show the style pack", meta: "profile", run: () => navigate({ kind: "profile" }) },
       { id: "v-crew", group: "Views", label: "Show the crew", run: () => navigate({ kind: "crew" }) },
+      { id: "v-renders", group: "Views", label: "Show GPU and renders", run: () => navigate({ kind: "renders" }) },
       { id: "a-new", group: "Actions", label: "New episode", keys: ["mod", "N"], run: newEpisode },
     );
     if (view.kind === "episode" && view.id !== ONBOARDING) {
@@ -63,16 +65,17 @@ function useCommands(): Command[] {
       list.push({
         id: "a-side",
         group: "Actions",
-        label: sideHidden ? "Show the episodes panel" : "Hide the episodes panel",
+        label: sideHidden ? "Show the sidebar" : "Hide the sidebar",
         keys: ["mod", "B"],
         run: toggleSide,
       });
     }
-    if (!narrow(1100)) {
+    if (!narrow(900)) {
+      const panel = view.kind === "episode" && view.id !== ONBOARDING ? "crew chat" : "crew column";
       list.push({
         id: "a-crew",
         group: "Actions",
-        label: crewHidden ? "Show the crew column" : "Hide the crew column",
+        label: crewHidden ? `Show the ${panel}` : `Hide the ${panel}`,
         keys: ["mod", "alt", "B"],
         run: toggleCrew,
       });

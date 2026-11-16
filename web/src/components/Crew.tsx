@@ -1,6 +1,8 @@
-// The right place: who works on what right now, done today, and the money row (DESIGN.md rules 2, 13, 14).
-// An opaque floating panel: it holds numbers that must read safely. The running jobs are a grouped list on a card.
-import { ChevronUp } from "lucide-react";
+// Who works on what right now, done today, and the money (DESIGN.md rules 1.5, 13, 14). Two shapes:
+// - "rail": the right column of the home and the read-only views, each running job with its newest picture;
+// - "chat": slim tiles on top of the episode's crew chat.
+// A waiting row jumps to the open card of its episode; every other row opens the job's log.
+import { ProgressBar } from "@astryxdesign/core/ProgressBar";
 import { useEffect, useRef, useState } from "react";
 import type { Activity, Episode, Identity, Money } from "../api/types";
 import { clock, countWord, sameDay, usd, usdShort } from "../lib/format";
@@ -11,6 +13,7 @@ import { Avatar } from "../slate/Slate";
 
 const ACTIVE = new Set(["running", "waiting", "queued"]);
 const ORDER: Record<string, number> = { running: 0, waiting: 1, queued: 2 };
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 /** Re-renders every second while work runs; otherwise nothing counts (rule 1.3). */
 export function useTicker(active: boolean): number {
@@ -49,6 +52,8 @@ function stepLabel(episodes: readonly Episode[], a: Activity): string {
   return step ? `${step.n} ${step.label}` : a.step;
 }
 
+export type Shape = "rail" | "chat";
+
 function JobRow({
   a,
   who,
@@ -56,6 +61,7 @@ function JobRow({
   seconds,
   fresh,
   hasCard,
+  shape,
 }: {
   a: Activity;
   who: Identity;
@@ -63,19 +69,22 @@ function JobRow({
   seconds: number;
   fresh: boolean;
   hasCard: boolean;
+  shape: Shape;
 }) {
   const running = a.status === "running";
   const doing = a.status === "queued" && !a.doing ? "Waiting for a free slot" : a.doing;
   const toCard = a.status === "waiting" && hasCard;
+  const progress = typeof a.progress === "number" ? Math.min(1, Math.max(0, a.progress)) : null;
   const open = () => {
     if (toCard && jumpToOpenCard(a.episode)) return;
     navigate({ kind: "job", id: a.job });
   };
+  const live = shape === "rail" && a.preview && ACTIVE.has(a.status);
   return (
     <div className={fresh ? "job-wrap is-new" : "job-wrap"}>
       <button
         type="button"
-        className="job"
+        className={`job job-${shape}`}
         data-job={a.job}
         onClick={open}
         aria-label={`${who.name}: ${doing}. ${meta}. ${toCard ? "Open the card." : "Open the log."}`}
@@ -84,60 +93,45 @@ function JobRow({
         <Avatar
           key={`${a.status}:${doing}`}
           who={who}
-          size="crew"
+          size={shape === "rail" ? "rail" : "crew"}
           state={running ? "working" : a.status === "waiting" ? "waiting" : "idle"}
         />
         <span className="job-main">
-          <span className="job-name one-line">{who.name}</span>
-          <span className="job-doing one-line">{doing}</span>
-          <span className="job-meta one-line">{meta}</span>
-        </span>
-        <span className="job-right">
-          <b>{clock(seconds)}</b>
-          {running ? usd(a.cost_usd) : null}
-        </span>
-        {running ? (
-          typeof a.progress === "number" ? (
-            <span className="prog" aria-hidden="true">
-              <i style={{ transform: `scaleX(${Math.min(1, Math.max(0, a.progress))})` }} />
+          <span className="job-who">
+            <span className="job-name one-line">{who.name}</span>
+            <span className="job-time">{clock(seconds)}</span>
+          </span>
+          <span className={shape === "rail" ? "job-doing" : "job-doing one-line"}>{doing}</span>
+          {shape === "rail" ? <span className="job-meta one-line">{meta}</span> : null}
+          {live ? (
+            <span className="job-live">
+              <img src={a.preview ?? ""} alt="" loading="lazy" />
+              <span className="glass-tag">
+                {progress !== null ? `${Math.round(progress * 100)} %` : a.status === "waiting" ? "Waits for you" : "Draft"}
+              </span>
             </span>
-          ) : (
-            <span className="prog unknown" aria-hidden="true">
-              <i />
-            </span>
-          )
-        ) : null}
+          ) : null}
+          {running ? (
+            <ProgressBar
+              className="job-bar"
+              label={`${who.name}: progress`}
+              isLabelHidden
+              value={progress !== null ? Math.round(progress * 100) : undefined}
+              isIndeterminate={progress === null}
+            />
+          ) : null}
+        </span>
+        {running && a.cost_usd > 0 ? <span className="job-cost">{usd(a.cost_usd)}</span> : null}
       </button>
     </div>
   );
 }
 
-function MoneyRow({ money, episode }: { money: Money | undefined; episode: string | null }) {
-  if (!money) return null;
-  const cap = money.cap_month_usd;
-  const share = cap > 0 ? money.month_usd / cap : 0;
-  const tone = share >= 1 ? "danger" : share > 0.8 ? "warn" : undefined;
-  const ep = episode ? money.episode_usd[episode] ?? 0 : 0;
-  const zero = money.today_usd === 0 && money.month_usd === 0 && ep === 0;
-  return (
-    <div className={zero ? "money zero" : "money"} aria-label="Money spent" data-testid="money">
-      <span>
-        Today<b key={usd(money.today_usd)}>{usd(money.today_usd)}</b>
-      </span>
-      <span>
-        Episode<b key={episode ? usd(ep) : "none"}>{episode ? usd(ep) : "–"}</b>
-      </span>
-      <span className="month">
-        Month
-        <b className={tone} key={usd(money.month_usd)}>
-          {usd(money.month_usd)} of {usdShort(cap)}
-        </b>
-        <span className={tone ? `cap ${tone}` : "cap"} aria-hidden="true">
-          <i style={{ transform: `scaleX(${Math.min(1, Math.max(0, share))})` }} />
-        </span>
-      </span>
-    </div>
-  );
+/** The engine is not logged in: one line with a --warn dot (rule 11). */
+export function engineLine(engine: string): string {
+  return engine === "claude"
+    ? "Claude Code is not logged in. Run claude setup-token, put the value in .env and restart Crewcut."
+    : `${engine} is not logged in. Run ${engine} login, put the value in .env and restart Crewcut.`;
 }
 
 function hintFor(active: Activity[], episode: string | null): string {
@@ -151,28 +145,15 @@ function hintFor(active: Activity[], episode: string | null): string {
   return here === 1 ? "One of the crew is on this episode." : `${countWord(here)} of the crew are on this episode.`;
 }
 
-/** The engine is not logged in: one line with a --warn dot (rule 11). */
-export function engineLine(engine: string): string {
-  return engine === "claude"
-    ? "Claude Code is not logged in. Run claude setup-token, put the value in .env and restart Crewcut."
-    : `${engine} is not logged in. Run ${engine} login, put the value in .env and restart Crewcut.`;
-}
-
-/** The content of the Crew place, used in the right column and in the narrow-window sheet. */
-export function CrewContent({ headingId }: { headingId: string }) {
+/** The running, waiting and queued jobs, then "Done today". `episode` is the chat in view, if any. */
+export function WorkingList({ shape, episode }: { shape: Shape; episode: string | null }) {
   const activity = useUi((s) => s.state?.activity ?? EMPTY);
   const team = useUi((s) => s.state?.team);
   const episodes = useUi((s) => s.state?.episodes ?? EMPTY);
-  const money = useUi((s) => s.state?.money);
-  const engineOk = useUi((s) => s.state?.app.engine_ok ?? true);
-  const engine = useUi((s) => s.state?.app.engine ?? "claude");
   const cards = useUi((s) => s.cards);
   const seen = useUi((s) => s.seen);
-  const view = useUi((s) => s.view);
-  const lastEpisode = useUi((s) => s.lastEpisode);
   const boot = useUi((s) => s.boot);
 
-  const episode = view.kind === "episode" ? view.id : lastEpisode;
   const active = activity
     .filter((a) => ACTIVE.has(a.status))
     .sort((x, y) => (ORDER[x.status] ?? 9) - (ORDER[y.status] ?? 9));
@@ -197,10 +178,63 @@ export function CrewContent({ headingId }: { headingId: string }) {
   };
 
   return (
+    <div className={`crew-list crew-${shape}`}>
+      {active.length ? (
+        <div className="group">
+          {active.map((a) => (
+            <JobRow
+              key={a.job}
+              a={a}
+              who={identityOf(team, a.identity)}
+              meta={metaFor(a)}
+              seconds={elapsed(a, seen[a.job], now)}
+              fresh={fresh(`a${a.job}`)}
+              hasCard={openCardIn.has(a.episode)}
+              shape={shape}
+            />
+          ))}
+        </div>
+      ) : null}
+      {done.length && shape === "rail" ? (
+        <div className="later">
+          <h3 className="group-label">Done today</h3>
+          {done.map((a) => (
+            <div key={a.job} className={fresh(`d${a.job}`) ? "job-wrap is-new" : "job-wrap"}>
+              <button
+                type="button"
+                className={a.status === "done" ? "fin" : "fin failed"}
+                onClick={() => navigate({ kind: "job", id: a.job })}
+                aria-label={`${identityOf(team, a.identity).name}: ${a.doing}, ${a.status}. Open the log.`}
+              >
+                <Avatar
+                  who={identityOf(team, a.identity)}
+                  size="small"
+                  state={a.status === "done" ? "done" : "plain"}
+                  still={!fresh(`d${a.job}`)}
+                />
+                <span className="one-line">
+                  {identityOf(team, a.identity).name} ·{" "}
+                  {a.status === "done" ? lowerFirst(a.doing ?? "") : `${a.doing ?? "job"}, ${a.status}`}
+                </span>
+                <span>{clock(a.seconds)}</span>
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** The head of the working list: the hint line and, when the engine is not logged in, the warn line. */
+export function WorkingHint({ episode }: { episode: string | null }) {
+  const activity = useUi((s) => s.state?.activity ?? EMPTY);
+  const engineOk = useUi((s) => s.state?.app.engine_ok ?? true);
+  const engine = useUi((s) => s.state?.app.engine ?? "claude");
+  const boot = useUi((s) => s.boot);
+  const active = activity.filter((a) => ACTIVE.has(a.status));
+  return (
     <>
-      <h2 id={headingId} className="crew-title">
-        Working now
-      </h2>
       <p className="hint">{boot === "ready" ? hintFor(active, episode) : " "}</p>
       {boot === "ready" && !engineOk ? (
         <p className="engine-line" role="alert">
@@ -208,107 +242,115 @@ export function CrewContent({ headingId }: { headingId: string }) {
           <span>{engineLine(engine)}</span>
         </p>
       ) : null}
-      <div className="crew-list">
-        {active.length ? (
-          <div className="group">
-            {active.map((a) => (
-              <JobRow
-                key={a.job}
-                a={a}
-                who={identityOf(team, a.identity)}
-                meta={metaFor(a)}
-                seconds={elapsed(a, seen[a.job], now)}
-                fresh={fresh(`a${a.job}`)}
-                hasCard={openCardIn.has(a.episode)}
-              />
-            ))}
-          </div>
-        ) : null}
-        {done.length ? (
-          <div className="later">
-            <div className="group-label">Done today</div>
-            {done.map((a) => (
-              <div key={a.job} className={fresh(`d${a.job}`) ? "job-wrap is-new" : "job-wrap"}>
-                <button
-                  type="button"
-                  className={a.status === "done" ? "fin" : "fin failed"}
-                  onClick={() => navigate({ kind: "job", id: a.job })}
-                  aria-label={`${identityOf(team, a.identity).name}: ${a.doing}, ${a.status}. Open the log.`}
-                >
-                  <Avatar
-                    who={identityOf(team, a.identity)}
-                    size="small"
-                    state={a.status === "done" ? "done" : "plain"}
-                    still={!fresh(`d${a.job}`)}
-                  />
-                  <span className="one-line">
-                    {identityOf(team, a.identity).name} ·{" "}
-                    {a.status === "done" ? lowerFirst(a.doing ?? "") : `${a.doing ?? "job"}, ${a.status}`}
-                  </span>
-                  <span>{clock(a.seconds)}</span>
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </div>
-      <MoneyRow money={money} episode={episode === "_onboarding" ? null : episode} />
     </>
   );
 }
 
-export function CrewColumn() {
-  return (
-    <aside className="crew" aria-labelledby="crew-heading">
-      <CrewContent headingId="crew-heading" />
-    </aside>
-  );
+function moneyTone(money: Money): "danger" | "warn" | undefined {
+  const share = money.cap_month_usd > 0 ? money.month_usd / money.cap_month_usd : 0;
+  return share >= 1 ? "danger" : share > 0.8 ? "warn" : undefined;
 }
 
-/** Below 1100 px the Crew place folds into this bar above the composer. */
-export function CrewBar() {
-  const activity = useUi((s) => s.state?.activity ?? EMPTY);
-  const team = useUi((s) => s.state?.team);
+/** The Spend card of the right column (rule 14): today, this episode, this month against the cap. */
+export function SpendCard({ episode }: { episode: string | null }) {
   const money = useUi((s) => s.state?.money);
-  const engineOk = useUi((s) => s.state?.app.engine_ok ?? true);
   const engine = useUi((s) => s.state?.app.engine ?? "claude");
-  const [open, setOpen] = useState(false);
-  const active = activity.filter((a) => ACTIVE.has(a.status));
-  const first = active.find((a) => a.status === "running") ?? active[0];
-  const marks = [...new Set(active.map((a) => a.identity))].slice(0, 4);
-  const summary = !engineOk
-    ? engineLine(engine)
-    : first
-      ? `${identityOf(team, first.identity).name}: ${first.doing}`
-      : "Nobody is working. Nothing is running, nothing costs money.";
-  const monthLine = money && engineOk ? ` · Month ${usd(money.month_usd)} of ${usdShort(money.cap_month_usd)}` : "";
-
+  if (!money) return null;
+  const cap = money.cap_month_usd;
+  const share = cap > 0 ? Math.min(1, money.month_usd / cap) : 0;
+  const tone = moneyTone(money);
+  const ep = episode ? money.episode_usd[episode] ?? 0 : 0;
+  const zero = money.today_usd === 0 && money.month_usd === 0 && ep === 0;
+  const plan = engine === "claude" ? "your Claude Code plan" : `your ${engine} plan`;
   return (
-    <>
-      {open ? (
-        <div className="crew-sheet" role="region" aria-labelledby="crew-sheet-heading">
-          <CrewContent headingId="crew-sheet-heading" />
-        </div>
-      ) : null}
-      <button
-        type="button"
-        className="crewbar"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        aria-label={`Crew: ${summary}. ${open ? "Hide" : "Show"} who is working.`}
-      >
-        <span className="marks" aria-hidden="true">
-          {!engineOk ? <span className="dot warn" /> : null}
-          {marks.map((id) => (
-            <Avatar key={id} who={identityOf(team, id)} size="small" />
-          ))}
+    <section className="rail-card spend" aria-labelledby="spend-heading">
+      <h2 className="rail-title">
+        <span id="spend-heading">Spend</span>
+        <span className="rail-note">{MONTHS[new Date().getMonth()]}</span>
+      </h2>
+      <div className={zero ? "money zero" : "money"} aria-label="Money spent" data-testid="money">
+        <span>
+          Today<b key={usd(money.today_usd)}>{usd(money.today_usd)}</b>
         </span>
-        <span className="summary one-line">
-          {summary}
-          {monthLine}
+        <span>
+          Episode<b key={episode ? usd(ep) : "none"}>{episode ? usd(ep) : "–"}</b>
         </span>
-        <ChevronUp size={16} aria-hidden="true" className={open ? "chev" : "chev down"} />
-      </button>
-    </>
+        <span className="month">
+          Month
+          <b className={tone} key={usd(money.month_usd)}>
+            {usd(money.month_usd)} of {usdShort(cap)}
+          </b>
+        </span>
+      </div>
+      <ProgressBar
+        className="cap-bar"
+        label="This month against the cap"
+        isLabelHidden
+        value={Math.round(share * 100)}
+        variant={tone === "danger" ? "error" : tone === "warn" ? "warning" : "neutral"}
+      />
+      <p className="foot-note">
+        Cap {usdShort(cap)} a month. Rented GPUs and paid APIs only; the crew runs on {plan}.
+      </p>
+    </section>
+  );
+}
+
+/** The money in one quiet line, under the working tiles of the crew chat (rule 14). */
+export function MoneyLine({ episode }: { episode: string }) {
+  const money = useUi((s) => s.state?.money);
+  if (!money) return null;
+  const tone = moneyTone(money);
+  const ep = money.episode_usd[episode] ?? 0;
+  const zero = money.today_usd === 0 && money.month_usd === 0 && ep === 0;
+  return (
+    <p className={zero ? "money-line zero" : "money-line"} aria-label="Money spent" data-testid="money">
+      <span>
+        Today <b>{usd(money.today_usd)}</b>
+      </span>
+      <span>
+        Episode <b>{usd(ep)}</b>
+      </span>
+      <span>
+        Month{" "}
+        <b className={tone}>
+          {usd(money.month_usd)} of {usdShort(money.cap_month_usd)}
+        </b>
+      </span>
+    </p>
+  );
+}
+
+/** The demo says so, always (rule 17). */
+export function DemoNote() {
+  const demo = useUi((s) => s.demo);
+  if (!demo) return null;
+  return (
+    <p className="demo-note">
+      {demo === "auto" ? "Demo data. Crewcut is not running at this address." : "Demo data. Nothing here is real."}
+    </p>
+  );
+}
+
+/** The right column of the home and the read-only views: "Working now", then "Spend". */
+export function CrewRail() {
+  const view = useUi((s) => s.view);
+  const lastEpisode = useUi((s) => s.lastEpisode);
+  const activity = useUi((s) => s.state?.activity ?? EMPTY);
+  const episode = view.kind === "episode" ? view.id : lastEpisode;
+  const n = activity.filter((a) => ACTIVE.has(a.status)).length;
+  return (
+    <aside className="rail" aria-labelledby="crew-heading">
+      <section className="rail-card">
+        <h2 className="rail-title">
+          <span id="crew-heading">Working now</span>
+          {n ? <span className="rail-note">{n}</span> : null}
+        </h2>
+        <WorkingHint episode={null} />
+        <WorkingList shape="rail" episode={null} />
+      </section>
+      <SpendCard episode={episode === "_onboarding" ? null : episode} />
+      <DemoNote />
+    </aside>
   );
 }

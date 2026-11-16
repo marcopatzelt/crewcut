@@ -9,7 +9,7 @@ import { matches } from "../components/Palette";
 import { keyLabels } from "../lib/platform";
 import { getUi, setUi } from "../store/store";
 import { engineWords } from "../views/ReadOnlyViews";
-import { card, episode, episodeRoutes, job, message, mockApi, resetApp, state } from "./helpers";
+import { card, episode, episodeRoutes, job, message, mockApi, openAt, resetApp, state } from "./helpers";
 
 beforeEach(() => {
   resetApp();
@@ -45,13 +45,14 @@ describe("empty and error states", () => {
     render(<App />);
     expect(await screen.findByRole("heading", { level: 1, name: "Paste your links." })).toBeTruthy();
     expect(screen.getByText("Website, YouTube channel, socials. The crew reads the rest.")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Command palette" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Search episodes/ })).toBeNull();
     expect(document.querySelector(".dock")?.className).toContain("centered");
   });
 
   it("an episode without messages shows its large title and one sentence", async () => {
     const ep = episode({ title: "Local models on a phone" });
     mockApi({ "GET /api/state": state({ episodes: [ep] }), ...episodeRoutes(ep, [], []) });
+    openAt(ep.id);
     render(<App />);
     expect(await screen.findByRole("heading", { level: 1, name: "Local models on a phone" })).toBeTruthy();
     expect(await screen.findByText("Say an idea below, or ask the Scout for three.")).toBeTruthy();
@@ -77,7 +78,7 @@ describe("empty and error states", () => {
   it("says when the connection to the container is lost", async () => {
     mockApi({ "GET /api/state": state() });
     render(<App />);
-    await screen.findByText("No episodes yet.");
+    await screen.findByText("No episodes yet. Say an idea below.");
     act(() => setUi({ live: "retrying" }));
     expect(screen.getByRole("status", { name: "" }).textContent).toContain(
       "Lost the connection to the container. Retrying…",
@@ -90,6 +91,7 @@ describe("empty and error states", () => {
       "GET /api/state": state({ episodes: [ep] }),
       ...episodeRoutes(ep, [message({ author: "editor", text: "Frame below.", preview: "review/frame.png" })], []),
     });
+    openAt(ep.id);
     render(<App />);
     const box = await screen.findByTestId("media");
     expect(box.getAttribute("data-state")).toBe("waiting");
@@ -104,6 +106,7 @@ describe("empty and error states", () => {
       "GET /api/state": state({ episodes: [ep] }),
       ...episodeRoutes(ep, [message({ author: "editor", text: "Frame below.", preview: "review/frame.png" })], []),
     });
+    openAt(ep.id);
     render(<App />);
     const box = await screen.findByTestId("media");
     fireEvent.error(box.querySelector("img") as HTMLImageElement);
@@ -115,11 +118,12 @@ describe("empty and error states", () => {
   });
 });
 
-describe("the toolbar and the step dots", () => {
+describe("the steps and the shortcuts", () => {
   it("lists ten steps, marks the current one and names done steps with their approval", async () => {
     const ep = episode({ open_cards: 0 });
     const decided = card({ status: "accepted", choice: 0, decided_at: new Date(Date.now() - 2 * 86_400_000).toISOString() });
     mockApi({ "GET /api/state": state({ episodes: [ep] }), ...episodeRoutes(ep, [], [decided]) });
+    openAt(ep.id);
     render(<App />);
     const steps = await screen.findByRole("list", { name: "Steps" });
     const items = within(steps).getAllByRole("listitem");
@@ -130,10 +134,10 @@ describe("the toolbar and the step dots", () => {
     expect(title.getAttribute("data-tip")).toBe("Title · approved 2 days ago");
   });
 
-  it("folds the Episodes and Crew panels with Ctrl+B and Ctrl+Alt+B", async () => {
+  it("folds the sidebar and the crew column with Ctrl+B and Ctrl+Alt+B", async () => {
     mockApi({ "GET /api/state": state() });
     const { container } = render(<App />);
-    await screen.findByText("No episodes yet.");
+    await screen.findByText("No episodes yet. Say an idea below.");
     const app = container.querySelector(".app") as HTMLElement;
     fireEvent.keyDown(window, { key: "b", code: "KeyB", ctrlKey: true });
     expect(app.className).toContain("side-hidden");
@@ -151,6 +155,7 @@ describe("the toolbar and the step dots", () => {
       ...episodeRoutes(one, [], []),
       ...episodeRoutes(two, [], []),
     });
+    openAt(one.id);
     render(<App />);
     await screen.findByRole("heading", { level: 1, name: "First episode" });
     fireEvent.keyDown(window, { key: "2", ctrlKey: true });
@@ -170,6 +175,7 @@ describe("the spend card", () => {
       ...episodeRoutes(ep, [], [spend]),
       "POST /api/cards/9/decline": { ...spend, status: "declined" },
     });
+    openAt(ep.id);
     render(<App />);
     const group = await screen.findByRole("group", { name: "Render the 3D scenes on a rented GPU?" });
     expect(within(group).getByRole("radio", { name: /On this machine/ }).getAttribute("aria-checked")).toBe("true");
@@ -193,6 +199,7 @@ describe("the spend card", () => {
       ...episodeRoutes(ep, [], [spend]),
       "POST /api/cards/9/accept": { ...spend, status: "accepted" },
     });
+    openAt(ep.id);
     render(<App />);
     const group = await screen.findByRole("group", { name: "Render the 3D scenes on a rented GPU?" });
     await userEvent.click(within(group).getByRole("radio", { name: /Rented GPU/ }));
@@ -206,15 +213,16 @@ describe("the spend card", () => {
     expect(foldedText({ ...spendCard(11_400), status: "accepted" })).toBe("GPU rental approved · about 12 min for about $0.60");
   });
 
-  it("a waiting row in the Crew column jumps to the open card", async () => {
+  it("a waiting row in the crew chat jumps to the open card", async () => {
     const ep = episode({ open_cards: 1 });
     const waiting = job(11, { identity: "showrunner", status: "waiting", doing: "Waiting for your yes on the GPU", progress: null });
     mockApi({
       "GET /api/state": state({ episodes: [ep], activity: [waiting] }),
       ...episodeRoutes(ep, [], [spendCard(11_400)]),
     });
+    openAt(ep.id);
     render(<App />);
-    const crew = await screen.findByRole("complementary", { name: "Working now" });
+    const crew = await screen.findByRole("region", { name: "Crew chat" });
     await screen.findByRole("group", { name: "Render the 3D scenes on a rented GPU?" });
     const row = await within(crew).findByRole("button", { name: /Waiting for your yes on the GPU.*Open the card\./ });
     await userEvent.click(row);
@@ -231,6 +239,7 @@ describe("the command palette", () => {
       ...episodeRoutes(one, [], []),
       ...episodeRoutes(two, [], []),
     });
+    openAt(one.id);
     render(<App />);
     await screen.findByRole("heading", { level: 1, name: "First episode" });
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
@@ -249,7 +258,7 @@ describe("the command palette", () => {
   it("switches the theme and closes with Escape", async () => {
     mockApi({ "GET /api/state": state() });
     render(<App />);
-    await screen.findByText("No episodes yet.");
+    await screen.findByText("No episodes yet. Say an idea below.");
     fireEvent.keyDown(window, { key: "k", metaKey: true });
     const dialog = await screen.findByRole("dialog", { name: "Command palette" });
     await userEvent.type(within(dialog).getByRole("combobox"), "dark theme");
@@ -285,6 +294,7 @@ describe("crew talk", () => {
       },
     });
     mockApi({ "GET /api/state": state({ episodes: [ep] }), ...episodeRoutes(ep, [exchange], []) });
+    openAt(ep.id);
     render(<App />);
     const line = await screen.findByRole("button", { name: /Critic and Editor · fix about review\/cut-check-v001\.json · 2 messages/ });
     expect(line.getAttribute("aria-expanded")).toBe("false");
@@ -314,31 +324,40 @@ describe("the scripted demo for the README", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     render(<App demo play />);
     await vi.advanceTimersByTimeAsync(500);
-    expect(screen.queryByRole("group", { name: "Render the 9 3D scenes on a rented GPU?" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Render 3D scene 5 on a rented GPU?" })).toBeNull();
     await vi.advanceTimersByTimeAsync(800);
-    const group = screen.getByRole("group", { name: "Render the 9 3D scenes on a rented GPU?" });
+    const group = screen.getByRole("group", { name: "Render 3D scene 5 on a rented GPU?" });
     expect(within(group).getByRole("button", { name: "Render on this machine" })).toBeTruthy();
     await vi.advanceTimersByTimeAsync(1500);
     expect(within(group).getByRole("button", { name: "Rent a GPU for $0.60" })).toBeTruthy();
     await vi.advanceTimersByTimeAsync(1800);
-    expect(screen.queryByRole("group", { name: "Render the 9 3D scenes on a rented GPU?" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Render 3D scene 5 on a rented GPU?" })).toBeNull();
     expect(screen.getByText("GPU rental approved · about 12 min for about $0.60")).toBeTruthy();
     await vi.advanceTimersByTimeAsync(800);
-    const crew = screen.getByRole("complementary", { name: "Working now" });
-    expect(within(crew).getByText("Rendering 3D scene 1 of 9 · rented GPU")).toBeTruthy();
+    const chat = screen.getByRole("region", { name: "Crew chat" });
+    expect(within(chat).getByText("Renders 3D scene 5 of 5 on a rented RTX 4090")).toBeTruthy();
+    // the rented GPU shows up among the media of the episode
+    expect(await screen.findByRole("region", { name: "Rented RTX 4090" })).toBeTruthy();
     expect(window.__crewcutPlayDone).toBeUndefined();
     await vi.advanceTimersByTimeAsync(3000);
     expect(window.__crewcutPlayDone).toBe(true);
   });
 
-  it("without play the demo is the still scene of the README image", async () => {
+  it("without play the demo is the still scene of the README images: the home, then episode 012", async () => {
     render(<App demo />);
-    const group = await screen.findByRole("group", { name: "Render the 9 3D scenes on a rented GPU?" });
-    expect(within(group).getByRole("button", { name: "Rent a GPU for $0.60" })).toBeTruthy();
-    const crew = screen.getByRole("complementary", { name: "Working now" });
-    expect(within(crew).getAllByRole("button", { name: /Open the (log|card)\./ }).length).toBeGreaterThanOrEqual(3);
-    expect(within(crew).getByText("$3.78 of $20")).toBeTruthy();
-    expect(screen.getByText("6 of 10 · Edit")).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Episodes" })).toBeTruthy();
+    const needs = screen.getByRole("region", { name: "Needs you" });
+    expect(within(needs).getAllByRole("button", { name: /Needs your yes\./ })).toHaveLength(2);
+    const rail = screen.getByRole("complementary", { name: "Working now" });
+    expect(within(rail).getByText("$4.10 of $20")).toBeTruthy();
+    expect(screen.getByText("Demo data. Nothing here is real.")).toBeTruthy();
+    await userEvent.click(within(needs).getByRole("button", { name: /^Claude improves a website 100 times\./ }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Claude improves a website 100 times" })).toBeTruthy();
+    expect(screen.getByText("7 of 10 · Thumbnail")).toBeTruthy();
+    const variants = await screen.findByRole("radiogroup", { name: "Thumbnail variants" });
+    expect(within(variants).getByRole("radio", { name: /^B: Face centered, the Designer's pick/ }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("region", { name: "Rented RTX 4090" })).toBeTruthy();
+    expect(await screen.findByRole("group", { name: "Pick a thumbnail" })).toBeTruthy();
     expect(window.__crewcutPlayDone).toBeUndefined();
   });
 });

@@ -4,6 +4,7 @@ import type {
   Card,
   Episode,
   EpisodeDetail,
+  EpisodeMedia,
   Identity,
   JobLog,
   Message,
@@ -106,6 +107,8 @@ export const api = {
   profile: () => request<Profile>("GET", "/api/profile"),
   money: () => request<Money>("GET", "/api/money"),
   prompter: (id: string) => request<PrompterLink>("GET", `/api/episodes/${enc(id)}/prompter`),
+  /** What the episode view shows first: thumbnails, the cut, 3D scenes, the rented GPU. */
+  media: (id: string) => request<EpisodeMedia>("GET", `/api/episodes/${enc(id)}/media`),
 
   async upload(episode: string, files: File[]): Promise<UploadResult[]> {
     if (backend) return backend.upload(episode, files);
