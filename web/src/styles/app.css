@@ -616,6 +616,12 @@ svg.lucide {
   }
 }
 
+@container toolbar (max-width: 379px) {
+  .strip {
+    display: none;
+  }
+}
+
 @container toolbar (max-width: 479px) {
   .capsule {
     display: none;
@@ -822,8 +828,7 @@ svg.lucide {
   gap: 6px;
   max-width: 100%;
   min-height: 32px;
-  padding: 0 6px 0 2px;
-  margin-left: -2px;
+  padding: 0 8px 0 0;
   border-radius: var(--r-row);
   font-size: 12px;
   line-height: 16px;
@@ -973,7 +978,7 @@ svg.lucide {
   flex: none;
 }
 
-.card h3 {
+.card .card-title {
   font-size: 15px;
   line-height: 20px;
   font-weight: 600;
@@ -1416,8 +1421,16 @@ svg.lucide {
   font: 400 15px/23px var(--font);
   letter-spacing: -0.005em;
   padding: 4px 0;
+  min-height: 32px;
   max-height: 146px;
   overflow-y: auto;
+}
+
+@media (pointer: coarse) {
+  .composer textarea {
+    min-height: 40px;
+    padding: 8px 0;
+  }
 }
 
 .composer textarea:focus-visible {

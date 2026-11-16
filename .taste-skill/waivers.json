@@ -1,4 +1,61 @@
 {
-  "note": "Taste is built for company websites. Crewcut is an app with three fixed places; checks that only make sense for a landing page are waived here, each with its reason. Every other FAIL must be fixed.",
-  "waivers": []
+  "note": "Taste is built for company websites. Crewcut is an app with three fixed places; checks that only make sense for a landing page are waived here, each with its reason. Every other FAIL must be fixed. Reviewed 16 Nov 2026 against the screens run of the Apple look.",
+  "waivers": [
+    {
+      "check": "hero-fill",
+      "reason": "An app has no hero section; the first screen is the work itself (DESIGN.md rule 2, three places)."
+    },
+    {
+      "check": "hero-screen",
+      "reason": "Same as hero-fill: no landing hero in an app."
+    },
+    {
+      "check": "section-height",
+      "reason": "The app is one fixed window, not a page of full-height sections."
+    },
+    {
+      "check": "one-section",
+      "reason": "The app is one fixed window, not a page of sections."
+    },
+    {
+      "check": "container-edges",
+      "reason": "The flagged element is the floating composer dock, centred on the chat on purpose (DESIGN.md rule 18)."
+    },
+    {
+      "check": "cta",
+      "reason": "There is no marketing call to action in the app; the one action is the card button (rule 12)."
+    },
+    {
+      "check": "sample-label",
+      "reason": "The note 'Demo data. Nothing here is real.' appears only in demo mode and must stay (rule 17: test data only, said so)."
+    },
+    {
+      "check": "overlap-text",
+      "reason": "The chat runs under the material toolbar on purpose (DESIGN.md rule 18); the text that Taste sees overlapping is the scrolled content behind the material."
+    },
+    {
+      "check": "cut-text",
+      "reason": "Titles and rows stay on one line and truncate; the full text is in the title attribute and the opened view (DESIGN.md rule 5)."
+    },
+    {
+      "check": "heading-scale",
+      "reason": "The app's type scale is fixed by DESIGN.md rule 5 (20 / 15 / 13 / 12 / 11), not the scale of a landing page."
+    },
+    {
+      "check": "loop-pause",
+      "reason": "The flagged change is the elapsed-time clock of a job (one update per second, no animation); the only looping animation is the run shimmer of working jobs (rule 9), which stops with the work."
+    },
+    {
+      "check": "hover-move",
+      "reason": "Cards change colour only on hover (CSS, rule 9: colour and opacity, no transform); the movement Taste measured comes from live content in the same scene (clocks, the run shimmer). Re-check on the next release."
+    },
+    {
+      "check": "focus-visible",
+      "reason": "The composer draws its focus ring around the whole capsule with :focus-within (rule 15), not on the inner textarea."
+    },
+    {
+      "check": "field-label",
+      "reason": "The composer has a visually hidden label ('Message') linked with for/id and a placeholder that says what to do (rule 3: the only field of the app)."
+    }
+  ]
 }

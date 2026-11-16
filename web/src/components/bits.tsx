@@ -61,7 +61,7 @@ export function ErrorLine({ text, onRetry, children }: { text: string; onRetry?:
 /** The ten strokes of an episode row: done in --ink-3, the current one in --accent, open ones in --line-strong. */
 export function StepBar({ steps, label }: { steps: Step[]; label?: string }) {
   return (
-    <span className="bar" role="img" aria-label={label}>
+    <span className="bar" {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}>
       {steps.map((s) => (
         <i key={s.id} className={s.status} />
       ))}

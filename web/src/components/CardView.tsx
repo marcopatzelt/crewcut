@@ -341,7 +341,7 @@ export function OpenCard({
         {step ? <span className="one-line">{step.label}</span> : null}
         <span className="card-ask">needs your yes</span>
       </div>
-      <h3>{card.title}</h3>
+      <h2 className="card-title">{card.title}</h2>
       {card.body && card.kind !== "rule" ? <p className="card-body">{card.body}</p> : null}
       <CardPreview card={card} chosen={chosen} onChoose={setChosen} way={way} onWay={setWay} />
       <div className="card-actions">
