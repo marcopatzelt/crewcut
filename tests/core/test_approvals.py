@@ -63,3 +63,16 @@ def test_month_cap_blocks_without_card(ep, monkeypatch):
     ledger.add("gpu", ledger.month_cap() - 0.05, "earlier renders")
     ok, card_id, reason = approvals.require_spend(ep, 0.6, "Rent a GPU?")
     assert not ok and card_id is None and "cap" in reason
+
+
+def test_declined_spend_means_local_is_fine(ep, monkeypatch):
+    from crewcut.compute import state
+    from crewcut.conductor import queue
+    jobs = []
+    monkeypatch.setattr(queue, "add", lambda *a, **k: jobs.append((a, k)) or 1)
+    monkeypatch.setenv("CREWCUT_IDENTITY", "editor")
+    ok, card_id, _ = approvals.require_spend(ep, 0.6, "Rent a GPU?", data={"cap_usd": 1.5, "step": "edit"})
+    monkeypatch.delenv("CREWCUT_IDENTITY")
+    approvals.decide(card_id, False, reason="Local is fine. Render on this machine.")
+    assert state.local_is_fine(ep)
+    assert jobs and "Local is fine for this episode" in jobs[-1][0][3]

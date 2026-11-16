@@ -139,6 +139,20 @@ def on_card_decided(card: dict) -> None:
                       f"{card.get('reason') or 'see the latest chat messages in _onboarding'}. Change the pack, make a "
                       "new preview, then a new profile card.")
         return
+    if not accepted and kind == "spend":
+        # "Render on this machine": local is fine for this episode; the crew carries on locally and does not ask again
+        try:
+            from ..compute.estimate import local_is_fine
+            local_is_fine(episode)
+        except Exception:  # noqa: BLE001 - the compute part is optional
+            pass
+        who = card.get("identity") or "editor"
+        queue.add(episode, who, card.get("step"),
+                  f"The user chose this machine for card #{card['id']} ({card['title']}). Local is fine for this "
+                  "episode: carry on with the local way (`--local`), and do not ask about renting again in this "
+                  f"episode. Their words: {card.get('reason') or 'none'}.", data=_resume_of(card))
+        post(episode, "Rendering on this machine. No more GPU questions in this episode.", card=card["id"])
+        return
     if not accepted:
         who = card.get("identity") or (prompts.owner(card["step"]) or {}).get("id") or "showrunner"
         queue.add(episode, who, card.get("step"),

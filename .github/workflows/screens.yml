@@ -58,6 +58,8 @@ jobs:
         if: hashFiles('web/package-lock.json') != ''
         continue-on-error: true
         run: |
+          # Ubuntu 24.04 runners restrict user namespaces, which Chrome's sandbox needs (Taste starts its own Chrome)
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 > /dev/null
           git clone -q https://github.com/Leonxlnx/taste-skill.git /tmp/taste && git -C /tmp/taste checkout -q f6b76575f949707b4e3c37cd86cb44b0b98643e8
           export CHROME_PATH=$(cd /tmp/shots-tool && node -e "console.log(require('playwright').chromium.executablePath())")
           mkdir -p shots/taste

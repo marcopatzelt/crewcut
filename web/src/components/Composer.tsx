@@ -1,4 +1,4 @@
-// The composer: the only text field in the app (DESIGN.md rule 3).
+// The composer: the one text field for sentences (DESIGN.md rule 3). A floating capsule with material (rule 18).
 // Enter sends, Shift+Enter starts a new line, Ctrl/Cmd+Enter is left to "accept the open card".
 import { ArrowUp, Mic, MicOff } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
@@ -24,6 +24,65 @@ function speechCtor(): RecognitionCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
+const LINE = 23;
+const MAX_LINES = 6;
+const BARS = 5;
+
+/**
+ * Five small strokes that follow the microphone level while the browser listens. They write straight to the DOM,
+ * so the composer does not re-render 60 times a second. Without microphone access they stay still.
+ */
+function useLevel(active: boolean) {
+  const bars = useRef<Array<HTMLElement | null>>([]);
+  useEffect(() => {
+    if (!active || typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return;
+    const Ctx =
+      (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    let stopped = false;
+    let frame = 0;
+    let stream: MediaStream | null = null;
+    let ctx: AudioContext | null = null;
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((s) => {
+        if (stopped) {
+          s.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        stream = s;
+        ctx = new Ctx();
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        ctx.createMediaStreamSource(s).connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        const tick = () => {
+          analyser.getByteFrequencyData(data);
+          const band = Math.floor(data.length / (BARS * 2));
+          for (let i = 0; i < BARS; i += 1) {
+            let sum = 0;
+            for (let j = 0; j < band; j += 1) sum += data[i * band + j] ?? 0;
+            const level = Math.min(1, sum / band / 160);
+            const el = bars.current[i];
+            if (el) el.style.transform = `scaleY(${(0.25 + level * 0.75).toFixed(2)})`;
+          }
+          frame = requestAnimationFrame(tick);
+        };
+        tick();
+      })
+      .catch(() => undefined);
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(frame);
+      stream?.getTracks().forEach((t) => t.stop());
+      void ctx?.close();
+      for (const el of bars.current) if (el) el.style.transform = "";
+    };
+  }, [active]);
+  return bars;
+}
+
 export function Composer() {
   const onboarding = useUi((s) => s.state !== null && !s.state.app.onboarded);
   const ready = useUi((s) => s.boot === "ready");
@@ -35,13 +94,14 @@ export function Composer() {
   const recognition = useRef<Recognition | null>(null);
   const base = useRef("");
   const Speech = speechCtor();
+  const bars = useLevel(listening);
 
-  // Grow with the text, up to eight lines; then the field scrolls.
+  // Grow with the text, up to six lines; then the field scrolls inside.
   useEffect(() => {
     const el = area.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 192)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, LINE * MAX_LINES)}px`;
   }, [text]);
 
   useEffect(() => () => recognition.current?.stop(), []);
@@ -99,6 +159,7 @@ export function Composer() {
   }
 
   const placeholder = onboarding ? "Paste your links." : "Say what you want…";
+  const hasText = text.trim().length > 0;
 
   return (
     <>
@@ -107,7 +168,19 @@ export function Composer() {
           {error}
         </p>
       ) : null}
-      <div className="composer">
+      <div className={listening ? "composer listening" : "composer"}>
+        {listening ? (
+          <span className="level" aria-hidden="true">
+            {Array.from({ length: BARS }, (_, i) => (
+              <i
+                key={i}
+                ref={(el) => {
+                  bars.current[i] = el;
+                }}
+              />
+            ))}
+          </span>
+        ) : null}
         <label htmlFor="composer" className="sr-only">
           Message
         </label>
@@ -124,7 +197,7 @@ export function Composer() {
         {Speech ? (
           <button
             type="button"
-            className="icon-button"
+            className={listening ? "icon-button mic on" : "icon-button mic"}
             aria-label={listening ? "Stop listening" : "Speak"}
             aria-pressed={listening}
             onClick={toggleSpeech}
@@ -134,9 +207,9 @@ export function Composer() {
         ) : null}
         <button
           type="button"
-          className="icon-button send"
+          className={hasText ? "send ready" : "send"}
           aria-label="Send"
-          disabled={!text.trim() || busy || !ready}
+          disabled={!hasText || busy || !ready}
           onClick={() => void submit()}
         >
           <ArrowUp size={16} aria-hidden="true" />

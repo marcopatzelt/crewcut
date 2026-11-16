@@ -1,12 +1,16 @@
-// The Chat place: the episode header with the ten steps, the transcript with cards and previews.
+// The Chat place: the toolbar with the ten steps, the large title, the transcript with cards and previews.
+// The transcript runs under the toolbar and under the composer (DESIGN.md rule 7).
 import { AlertCircle, Check, LoaderCircle } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState, type DragEvent } from "react";
-import { ONBOARDING, type Card, type Episode, type Identity, type Message } from "../api/types";
-import { ErrorLine, Facts, identityOf, Loading, Mark, Media, StepBar } from "../components/bits";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type DragEvent } from "react";
+import { ONBOARDING, type Card, type Episode, type Identity, type Message, type Step } from "../api/types";
+import { ErrorLine, Facts, identityOf, Loading, Mark, Media } from "../components/bits";
 import { CardItem } from "../components/CardView";
-import { PrompterButton } from "../components/PrompterPopover";
+import { ExchangeLine } from "../components/Exchange";
+import { Logo } from "../components/Episodes";
+import { PrompterButton, PrompterPopover } from "../components/PrompterPopover";
+import { LargeTitle, Toolbar, useScrollChrome } from "../components/Toolbar";
 import { ago, bytes, episodeNumber, paragraphs } from "../lib/format";
-import { loadThread, uploadFiles } from "../store/actions";
+import { jumpToStep, loadThread, uploadFiles } from "../store/actions";
 import { EMPTY, useUi, type UploadLine } from "../store/store";
 
 type Item = { at: string; key: string; message?: Message; card?: Card };
@@ -25,64 +29,96 @@ function timeline(messages: Message[], cards: Card[]): Item[] {
   return items.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
 }
 
-function Header({ episode, id }: { episode: Episode | undefined; id: string }) {
-  const detail = useUi((s) => s.details[id]);
-  if (id === ONBOARDING) {
-    return (
-      <header className="head plain">
-        <h1>Set up your style</h1>
-        <p className="sub">The Brand identity reads your links and builds your profile. Nothing else to fill in.</p>
-      </header>
-    );
-  }
-  const title = episode?.title ?? detail?.title ?? id;
-  const steps = episode?.steps ?? detail?.steps ?? [];
-  const n = episodeNumber(id);
-  const sub = [
-    n ? `Episode ${n}` : null,
-    detail?.project?.format ?? null,
-    detail?.project?.created ? `started ${ago(detail.project.created)}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  const now = steps.find((s) => s.id === (episode?.step ?? detail?.step));
+const STATUS_WORD: Record<string, string> = {
+  done: "done",
+  working: "working",
+  waiting: "waiting for your yes",
+  open: "not started",
+  skipped: "switched off",
+};
+
+function stepTip(s: Step, cards: Card[]): string {
+  const approved = cards
+    .filter((c) => c.step === s.id && c.status === "accepted" && c.decided_at)
+    .sort((a, b) => Date.parse(b.decided_at ?? "") - Date.parse(a.decided_at ?? ""))[0];
+  if (s.status === "done" && approved?.decided_at) return `${s.label} · approved ${ago(approved.decided_at)}`;
+  return `${s.label} · ${STATUS_WORD[s.status] ?? s.status}`;
+}
+
+/**
+ * The ten steps as dots on a line (rule 2): done dots are filled and jump to their card, the current one is the accent
+ * dot with a soft ring, open ones are rings. The accent dot moves on with --spring-soft. For screen readers it stays a
+ * list of ten items. In a narrow toolbar only "6 of 10 · Edit" and a thin capsule remain.
+ */
+export function StepStrip({ steps, current, cards }: { steps: Step[]; current: string | undefined; cards: Card[] }) {
+  const index = steps.findIndex((s) => s.id === current);
+  const now = index >= 0 ? steps[index] : undefined;
+  const done = steps.filter((s) => s.status === "done" || s.status === "skipped").length;
+  if (!steps.length) return <div className="strip" />;
   return (
-    <header className="head">
-      <div className="head-row">
-        <div className="head-text">
-          <h1 className="one-line" title={title}>
-            {title}
-          </h1>
-          <p className="sub">{sub || " "}</p>
-        </div>
-        <PrompterButton episode={id} />
+    <div className="strip">
+      <div className="dots" style={{ "--now": Math.max(0, index) } as CSSProperties}>
+        <ol aria-label="Steps">
+          {steps.map((s, i) => {
+            const isNow = i === index;
+            const cls = ["step", isNow ? "now" : s.status].join(" ");
+            const tip = stepTip(s, cards);
+            const words = `${s.n} ${s.label}, ${isNow ? "current step" : STATUS_WORD[s.status] ?? s.status}`;
+            return (
+              <li key={s.id} className={cls} aria-current={isNow ? "step" : undefined}>
+                {s.status === "done" && !isNow ? (
+                  <button
+                    type="button"
+                    className="tip"
+                    data-tip={tip}
+                    aria-label={`${words}. Show it in the chat.`}
+                    onClick={() => jumpToStep(s.id)}
+                  >
+                    <i aria-hidden="true" />
+                  </button>
+                ) : (
+                  <span className="tip" data-tip={tip}>
+                    <i aria-hidden="true" />
+                    <span className="sr-only">{words}</span>
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+        {now ? <span className="now-dot" aria-hidden="true" /> : null}
       </div>
-      <ol className="steps" aria-label="Steps">
-        {steps.map((s) => {
-          const cls = s.id === now?.id ? "step now" : `step ${s.status}`;
-          return (
-            <li key={s.id} className={cls} title={`${s.n} ${s.label}: ${s.status}`} aria-current={s.id === now?.id ? "step" : undefined}>
-              <span className="n">{s.n}</span>
-              <span className="label">{s.label}</span>
-            </li>
-          );
-        })}
-      </ol>
       {now ? (
-        <div className="steps-compact meta">
-          Step {now.n} of {steps.length} · {now.label}
-          <StepBar steps={steps} />
+        <div className="strip-text">
+          <span className="one-line">
+            {now.n} of {steps.length} · {now.label}
+          </span>
+          <span className="capsule" aria-hidden="true">
+            <i style={{ transform: `scaleX(${done / steps.length})` }} />
+          </span>
         </div>
       ) : null}
-    </header>
+    </div>
   );
 }
 
-function IdentityMessage({ m, team, steps, episode }: { m: Message; team: Identity[] | undefined; steps: Episode["steps"]; episode: string }) {
+function IdentityMessage({
+  m,
+  team,
+  steps,
+  episode,
+  fresh,
+}: {
+  m: Message;
+  team: Identity[] | undefined;
+  steps: Episode["steps"];
+  episode: string;
+  fresh: boolean;
+}) {
   const who = identityOf(team, m.author);
   const step = m.step ? steps.find((s) => s.id === m.step) : undefined;
   return (
-    <article className="msg" aria-label={`${who.name}`}>
+    <article className={fresh ? "msg is-new" : "msg"} aria-label={`${who.name}`} data-step={m.step ?? undefined}>
       <Mark mark={who.mark} />
       <div className="msg-main">
         <div className="who">
@@ -128,30 +164,44 @@ function UploadItem({ u }: { u: UploadLine }) {
   );
 }
 
-function EmptyChat({ id, onboarding }: { id: string; onboarding: boolean }) {
-  if (id === ONBOARDING || onboarding) {
-    return (
-      <div className="chat-empty">
-        <strong>Paste your links.</strong>
-        Your channel, your website, or a video you like.
-      </div>
-    );
-  }
-  return <div className="chat-empty">Nothing here yet. The Showrunner writes first.</div>;
+/** The first start (rule 3, DESIGN plan 6.14): no toolbar, the mark, one sentence; the composer floats below it. */
+function Onboarding() {
+  return (
+    <div className="hero">
+      <span className="hero-mark">
+        <Logo size={48} />
+      </span>
+      <h1>Paste your links.</h1>
+      <p>Website, YouTube channel, socials. The crew reads the rest.</p>
+    </div>
+  );
+}
+
+/** Which items are new since the chat opened: only those animate in (rule 9). */
+function useFresh(ready: boolean, keys: string[], id: string) {
+  const known = useRef<Set<string> | null>(null);
+  const opened = useRef(Date.now());
+  useLayoutEffect(() => {
+    known.current = null;
+    opened.current = Date.now();
+  }, [id]);
+  useEffect(() => {
+    if (ready && known.current === null) known.current = new Set(keys);
+  });
+  return (key: string, at: string) =>
+    known.current !== null && !known.current.has(key) && Date.parse(at) > opened.current - 5000;
 }
 
 export function EpisodeView({ id }: { id: string }) {
   const thread = useUi((s) => s.threads[id]);
   const episode = useUi((s) => s.state?.episodes.find((e) => e.id === id));
+  const detail = useUi((s) => s.details[id]);
   const team = useUi((s) => s.state?.team);
   const cardsById = useUi((s) => s.cards);
   const uploads = useUi((s) => s.uploads);
-  const onboarding = useUi((s) => s.state !== null && !s.state.app.onboarded);
-  const detailSteps = useUi((s) => s.details[id]?.steps);
-  const steps = episode?.steps ?? detailSteps ?? EMPTY;
-  const scroller = useRef<HTMLDivElement>(null);
+  const steps = episode?.steps ?? detail?.steps ?? EMPTY;
+  const { scroller, large, scrolled, showTitle, update } = useScrollChrome();
   const stick = useRef(true);
-  const [faded, setFaded] = useState(false);
   const [dropping, setDropping] = useState(false);
 
   const messages = thread?.messages ?? EMPTY;
@@ -160,11 +210,14 @@ export function EpisodeView({ id }: { id: string }) {
   const items = timeline(messages, cards);
   const mine = uploads.filter((u) => u.episode === id);
   const canDrop = id !== ONBOARDING;
+  const isFresh = useFresh(thread?.status === "ready", items.map((i) => i.key), id);
+  const firstStart = id === ONBOARDING && thread?.status === "ready" && items.length === 0 && mine.length === 0;
 
   // Stay at the bottom while the user is there; leave the scroll alone when they read further up.
   useLayoutEffect(() => {
     const el = scroller.current;
     if (el && stick.current) el.scrollTop = el.scrollHeight;
+    update();
   }, [items.length, mine.length, thread?.status, id]);
 
   useLayoutEffect(() => {
@@ -178,16 +231,18 @@ export function EpisodeView({ id }: { id: string }) {
     if (!el || !content || typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(() => {
       if (stick.current) el.scrollTop = el.scrollHeight;
+      update();
     });
     ro.observe(content);
+    ro.observe(el);
     return () => ro.disconnect();
-  }, [thread?.status, id]);
+  }, [thread?.status, id, firstStart]);
 
   function onScroll() {
     const el = scroller.current;
     if (!el) return;
     stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    setFaded(el.scrollTop > 4);
+    update();
   }
 
   const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes("Files");
@@ -199,6 +254,19 @@ export function EpisodeView({ id }: { id: string }) {
     stick.current = true;
     void uploadFiles(Array.from(e.dataTransfer.files));
   }
+
+  const onboardingChat = id === ONBOARDING;
+  const title = onboardingChat ? "Set up your style" : episode?.title ?? detail?.title ?? id;
+  const n = episodeNumber(id);
+  const sub = onboardingChat
+    ? "The Brand identity reads your links and builds your profile. Nothing else to fill in."
+    : [
+        n ? `Episode ${n}` : null,
+        detail?.project?.format ?? null,
+        detail?.project?.created ? `started ${ago(detail.project.created)}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
 
   let body;
   if (!thread || (thread.status === "loading" && !messages.length)) {
@@ -218,15 +286,16 @@ export function EpisodeView({ id }: { id: string }) {
         aria-label="Chat"
         role="log"
       >
-        {items.length === 0 && mine.length === 0 ? <EmptyChat id={id} onboarding={onboarding} /> : null}
+        {items.length === 0 && mine.length === 0 && !onboardingChat ? (
+          <p className="chat-empty">Say an idea below, or ask the Scout for three.</p>
+        ) : null}
         {items.map((it) => {
-          if (it.card) return <CardItem key={it.key} card={it.card} team={team} steps={steps} />;
+          const fresh = isFresh(it.key, it.at);
+          if (it.card) return <CardItem key={it.key} card={it.card} team={team} steps={steps} fresh={fresh} />;
           const m = it.message as Message;
           const cardId = typeof m.card === "number" ? m.card : m.card?.id;
           const card = typeof cardId === "number" ? byId.get(cardId) : undefined;
-          return (
-            <MessageBlock key={it.key} m={m} card={card} team={team} steps={steps} episode={id} />
-          );
+          return <MessageBlock key={it.key} m={m} card={card} team={team} steps={steps} episode={id} fresh={fresh} />;
         })}
         {mine.map((u) => (
           <UploadItem key={u.key} u={u} />
@@ -238,12 +307,32 @@ export function EpisodeView({ id }: { id: string }) {
     );
   }
 
+  if (firstStart) {
+    return (
+      <section className="view first-start" aria-label="Set up your style">
+        <div className="scroll" ref={scroller} data-testid="chat-scroll">
+          <Onboarding />
+          {body}
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="view" aria-label={episode?.title ?? "Chat"}>
-      <Header episode={episode} id={id} />
+    <section className="view" aria-label={onboardingChat ? title : episode?.title ?? "Chat"}>
+      <Toolbar
+        title={title}
+        sub={sub}
+        showTitle={showTitle}
+        scrolled={scrolled}
+        actions={onboardingChat ? null : <PrompterButton />}
+      >
+        {onboardingChat ? <div className="strip" /> : <StepStrip steps={steps} current={episode?.step ?? detail?.step} cards={cards} />}
+      </Toolbar>
+      {onboardingChat ? null : <PrompterPopover episode={id} />}
       <div
         ref={scroller}
-        className={faded ? "scroll faded" : "scroll"}
+        className="scroll"
         onScroll={onScroll}
         onDragOver={(e) => {
           if (!canDrop || !hasFiles(e)) return;
@@ -256,7 +345,10 @@ export function EpisodeView({ id }: { id: string }) {
         onDrop={onDrop}
         data-testid="chat-scroll"
       >
-        {body}
+        <div className="thread">
+          <LargeTitle innerRef={large} title={title} sub={sub || undefined} />
+          {body}
+        </div>
       </div>
     </section>
   );
@@ -268,38 +360,45 @@ function MessageBlock({
   team,
   steps,
   episode,
+  fresh,
 }: {
   m: Message;
   card: Card | undefined;
   team: Identity[] | undefined;
   steps: Episode["steps"];
   episode: string;
+  fresh: boolean;
 }) {
   // The server posts a card together with a message that only repeats its title: show the card alone.
   const onlyTitle = card && m.text.trim() === card.title.trim() && !m.cite;
   return (
     <>
-      {onlyTitle ? null : m.author === "user" ? (
-        <div className="user">{m.text}</div>
+      {onlyTitle ? null : m.exchange?.messages?.length ? (
+        <ExchangeLine m={m} exchange={m.exchange} team={team} />
+      ) : m.author === "user" ? (
+        <div className={fresh ? "user is-new" : "user"}>{m.text}</div>
       ) : (
-        <IdentityMessage m={m} team={team} steps={steps} episode={episode} />
+        <IdentityMessage m={m} team={team} steps={steps} episode={episode} fresh={fresh} />
       )}
-      {card ? <CardItem card={card} team={team} steps={steps} /> : null}
+      {card ? <CardItem card={card} team={team} steps={steps} fresh={fresh} /> : null}
     </>
   );
 }
 
 export function NewEpisodeView() {
   const count = useUi((s) => s.state?.episodes.length ?? 0);
+  const { scroller, large, scrolled, showTitle, update } = useScrollChrome();
   return (
     <section className="view" aria-label="New episode">
-      <header className="head plain">
-        <h1>New episode</h1>
-        <p className="sub">One sentence is enough. The Showrunner starts from it.</p>
-      </header>
-      <div className="scroll">
-        <div className="chat">
-          <div className="chat-empty">{count ? "Say an idea below." : "No episodes yet. Say an idea below."}</div>
+      <Toolbar title="New episode" showTitle={showTitle} scrolled={scrolled}>
+        <div className="strip" />
+      </Toolbar>
+      <div className="scroll" ref={scroller} onScroll={update}>
+        <div className="thread">
+          <LargeTitle innerRef={large} title="New episode" sub="One sentence is enough. The Showrunner starts from it." />
+          <div className="chat">
+            <p className="chat-empty">{count ? "Say an idea below." : "No episodes yet. Say an idea below."}</p>
+          </div>
         </div>
       </div>
     </section>

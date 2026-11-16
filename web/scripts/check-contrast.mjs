@@ -63,9 +63,13 @@ function ratio(a, b) {
   return (l1 + 0.05) / (l2 + 0.05);
 }
 
-// A surface may be a translucent overlay on another surface: "--hover@--panel".
+// A surface may be a translucent overlay on another surface: "--hover@--panel", also nested:
+// "--selected@--material-sidebar@--window". Material is checked twice: as its opaque fallback (--panel) and as
+// the translucent colour over the window behind it (rule 18).
 function color(vars, spec) {
-  const [name, base] = spec.split("@");
+  const at = spec.indexOf("@");
+  const name = at < 0 ? spec : spec.slice(0, at);
+  const base = at < 0 ? "" : spec.slice(at + 1);
   const raw = vars[name];
   if (raw === undefined) throw new Error(`unknown token ${name}`);
   const c = parse(raw);
@@ -77,29 +81,51 @@ function color(vars, spec) {
   return c;
 }
 
-const surfaces = ["--bg", "--panel", "--card", "--sunken", "--selected", "--hover@--panel", "--hover@--bg"];
+// A translucent text or ring token is drawn over the surface it is checked against.
+function ink(vars, text, surface) {
+  const c = parse(vars[text] ?? "");
+  if (c && c[3] < 1) return color(vars, `${text}@${surface}`);
+  return color(vars, text);
+}
+
+const surfaces = [
+  "--bg",
+  "--panel",
+  "--card",
+  "--sunken",
+  "--selected@--panel",
+  "--hover@--panel",
+  "--hover@--bg",
+  "--hover@--card",
+  "--material-sidebar@--window",
+  "--selected@--material-sidebar@--window",
+  "--hover@--material-sidebar@--window",
+  "--material-bar@--bg",
+  "--material-bar@--panel",
+  "--material-float@--bg",
+];
 const pairs = [
   // [text, surfaces, minimum]
   ["--ink", surfaces, 4.5],
   ["--ink-2", surfaces, 4.5],
   ["--ink-3", surfaces, 4.5],
-  ["--accent", ["--bg", "--panel", "--card", "--selected"], 4.5],
+  ["--accent", ["--bg", "--panel", "--card", "--selected@--panel", "--material-sidebar@--window"], 4.5],
   ["--accent-ink", ["--accent"], 4.5],
   ["--ok", ["--bg", "--panel", "--card"], 4.5],
-  ["--warn", ["--bg", "--panel", "--card"], 4.5],
-  ["--danger", ["--bg", "--panel", "--card", "--sunken"], 4.5],
-  ["--bg", ["--ink"], 4.5], // the send button: --bg on --ink
+  ["--warn", ["--bg", "--panel", "--card", "--material-bar@--bg"], 4.5],
+  ["--danger", ["--bg", "--panel", "--card", "--sunken", "--material-float@--bg"], 4.5],
   ["--qr-ink", ["--qr-plate"], 4.5],
-  ["--prompter-ink", ["--prompter-bg"], 4.5],
-  ["--prompter-ink-2", ["--prompter-bg", "--prompter-panel"], 4.5],
-  // Focus ring and the reading line are not text: 3:1 is the bar (WCAG 1.4.11).
-  ["--focus", ["--bg", "--panel", "--card", "--sunken"], 3],
+  ["--prompter-ink", ["--prompter-bg", "--prompter-panel", "--prompter-material@--prompter-bg"], 4.5],
+  ["--prompter-ink-2", ["--prompter-bg", "--prompter-panel", "--prompter-material@--prompter-bg"], 4.5],
+  // Focus ring, reading line and the accent dot are not text: 3:1 is the bar (WCAG 1.4.11).
+  ["--focus", ["--bg", "--panel", "--card", "--sunken", "--material-float@--bg", "--material-sidebar@--window"], 3],
+  ["--prompter-line", ["--prompter-bg"], 3],
 ];
 
 for (const [theme, vars] of [["light", light], ["dark", darkAttr]]) {
   for (const [text, list, min] of pairs) {
     for (const s of list) {
-      const r = ratio(color(vars, text), color(vars, s));
+      const r = ratio(ink(vars, text, s), color(vars, s));
       const line = `${theme.padEnd(5)} ${text} on ${s}: ${r.toFixed(2)}:1`;
       if (r < min) fail(`${line} (needs ${min}:1)`);
       else if (process.argv.includes("--verbose")) console.log(`ok   ${line}`);

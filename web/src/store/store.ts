@@ -40,7 +40,15 @@ export interface UiState {
   seen: Record<number, number>;
   live: "idle" | "open" | "retrying";
   uploads: UploadLine[];
+  /** The Episodes list as a menu (below 760 px). */
   menuOpen: boolean;
+  /** The command palette (Cmd+K). */
+  paletteOpen: boolean;
+  /** The teleprompter dialog of the open episode. */
+  prompterOpen: boolean;
+  /** Cmd+B folds the Episodes panel, Cmd+Alt+B the Crew panel. */
+  sideHidden: boolean;
+  crewHidden: boolean;
 }
 
 export function initialUi(): UiState {
@@ -58,6 +66,10 @@ export function initialUi(): UiState {
     live: "idle",
     uploads: [],
     menuOpen: false,
+    paletteOpen: false,
+    prompterOpen: false,
+    sideHidden: false,
+    crewHidden: false,
   };
 }
 

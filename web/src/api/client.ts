@@ -26,7 +26,7 @@ export class ApiError extends Error {
   }
 }
 
-export type EventKind = "activity" | "message" | "card" | "cost" | "episode";
+export type EventKind = "activity" | "message" | "card" | "cost" | "episode" | "crew";
 export type EventHandler = (kind: EventKind, data: unknown) => void;
 
 /** The demo backend implements the same calls without a server. */
@@ -97,6 +97,8 @@ export const api = {
     request<Card[]>("GET", `/api/cards?episode=${enc(episode)}${status ? `&status=${enc(status)}` : ""}`),
   accept: (id: number, choice?: number) =>
     request<Card>("POST", `/api/cards/${id}/accept`, choice === undefined ? {} : { choice }),
+  decline: (id: number, reason?: string) =>
+    request<Card>("POST", `/api/cards/${id}/decline`, reason ? { reason } : {}),
   team: () => request<Identity[]>("GET", "/api/team"),
   jobs: (episode?: string) =>
     request<Activity[]>("GET", `/api/jobs${episode ? `?episode=${enc(episode)}` : ""}`),
@@ -145,7 +147,8 @@ export function connectEvents(handlers: {
   let retries = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let stopped = false;
-  const kinds: EventKind[] = ["activity", "message", "card", "cost", "episode"];
+  // "crew" (one direct message between crew members) is read but not shown: a finished exchange arrives as a message.
+  const kinds: EventKind[] = ["activity", "message", "card", "cost", "episode", "crew"];
 
   const open = () => {
     if (stopped) return;

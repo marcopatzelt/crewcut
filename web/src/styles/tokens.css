@@ -1,102 +1,184 @@
-/* Crewcut design tokens (DESIGN.md rule 4). The only file in src/ with raw colour values.
-   Light is the default; dark follows the system unless [data-theme] says otherwise.
+/* Crewcut design tokens (DESIGN.md rules 4 to 9 and 18). The only file in src/ with raw colour values, radii,
+   shadows and durations. Light is the default; dark follows the system unless [data-theme] says otherwise.
    The two dark blocks must stay identical: npm run check:contrast compares them. */
 
 :root,
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #FBFBFA;
-  --panel: #F4F4F2;
+  --window: #ECECEA;
+  --window-tint-1: rgba(0, 0, 0, 0.04);
+  --window-tint-2: rgba(15, 110, 92, 0.06);
+  --bg: #FFFFFF;
+  --panel: #F5F5F4;
   --card: #FFFFFF;
-  --sunken: #EEEEEB;
-  --hover: rgba(17, 17, 17, 0.05);
-  --selected: #E7EFEC;
-  --ink: #16181A;
-  --ink-2: #4A4F55;
-  --ink-3: #62666C;
-  --line: #E2E2DE;
+  --sunken: #F0F0EE;
+  --hover: rgba(0, 0, 0, 0.045);
+  --selected: rgba(0, 0, 0, 0.075);
+  --ink: #1D1D1F;
+  --ink-2: #515154;
+  --ink-3: #636367;
+  --line: rgba(0, 0, 0, 0.09);
+  --line-strong: rgba(0, 0, 0, 0.16);
   --accent: #0F6E5C;
   --accent-ink: #FFFFFF;
-  --focus: #0F6E5C;
-  --ok: #2B7349;
-  --warn: #8A5A00;
-  --danger: #B42318;
-  --shadow: rgba(17, 17, 17, 0.12);
+  --focus: rgba(15, 110, 92, 0.70);
+  --selection: rgba(15, 110, 92, 0.25);
+  --ok: #1E7A34;
+  --warn: #B25000;
+  --danger: #D70015;
+  --material-sidebar: rgba(246, 246, 244, 0.72);
+  --material-bar: rgba(255, 255, 255, 0.78);
+  --material-float: rgba(255, 255, 255, 0.86);
+  --edge-light: rgba(255, 255, 255, 0.60);
+  --scrim: rgba(0, 0, 0, 0.20);
+  --shimmer: rgba(255, 255, 255, 0.55);
+  --shadow-1: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-2: 0 0 0 0.5px rgba(0, 0, 0, 0.10), 0 6px 20px rgba(0, 0, 0, 0.10);
+  --shadow-3: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 18px 48px rgba(0, 0, 0, 0.18);
+  --shadow-press: inset 0 1px 2px rgba(0, 0, 0, 0.12);
   --qr-plate: #FFFFFF;
   --qr-ink: #111111;
-  --prompter-bg: #0E0F10;
-  --prompter-panel: #1A1B1D;
-  --prompter-ink: #F2F3F4;
-  --prompter-ink-2: #A9AEB4;
-  --prompter-line: #3FB59A;
+  --prompter-bg: #000000;
+  --prompter-panel: #1C1C1E;
+  --prompter-material: rgba(44, 44, 46, 0.72);
+  --prompter-ink: #F5F5F7;
+  --prompter-ink-2: #A1A1A6;
+  --prompter-line: #34C3A4;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #141516;
-  --panel: #1A1B1D;
-  --card: #202124;
-  --sunken: #26282B;
-  --hover: rgba(255, 255, 255, 0.05);
-  --selected: #1E2C28;
-  --ink: #ECEDEE;
-  --ink-2: #B5B9BE;
-  --ink-3: #969BA1;
-  --line: #2E3033;
-  --accent: #3FB59A;
-  --accent-ink: #0B1412;
-  --focus: #3FB59A;
-  --ok: #5DBE86;
-  --warn: #D6A23E;
-  --danger: #F2766A;
-  --shadow: rgba(0, 0, 0, 0.5);
+  --window: #121213;
+  --window-tint-1: rgba(255, 255, 255, 0.04);
+  --window-tint-2: rgba(52, 195, 164, 0.06);
+  --bg: #1C1C1E;
+  --panel: #232325;
+  --card: #2A2A2D;
+  --sunken: #161618;
+  --hover: rgba(255, 255, 255, 0.06);
+  --selected: rgba(255, 255, 255, 0.10);
+  --ink: #F5F5F7;
+  --ink-2: #B4B4B9;
+  --ink-3: #A5A5AA;
+  --line: rgba(255, 255, 255, 0.10);
+  --line-strong: rgba(255, 255, 255, 0.18);
+  --accent: #34C3A4;
+  --accent-ink: #06231D;
+  --focus: rgba(52, 195, 164, 0.60);
+  --selection: rgba(52, 195, 164, 0.30);
+  --ok: #30D158;
+  --warn: #FF9F0A;
+  --danger: #FF6961;
+  --material-sidebar: rgba(32, 32, 34, 0.68);
+  --material-bar: rgba(28, 28, 30, 0.72);
+  --material-float: rgba(44, 44, 46, 0.82);
+  --edge-light: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(0, 0, 0, 0.45);
+  --shimmer: rgba(255, 255, 255, 0.30);
+  --shadow-1: 0 0 0 0.5px rgba(255, 255, 255, 0.10), 0 1px 2px rgba(0, 0, 0, 0.40);
+  --shadow-2: 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 8px 24px rgba(0, 0, 0, 0.50);
+  --shadow-3: 0 0 0 0.5px rgba(255, 255, 255, 0.14), 0 22px 60px rgba(0, 0, 0, 0.60);
+  --shadow-press: inset 0 1px 2px rgba(0, 0, 0, 0.5);
   --qr-plate: #FFFFFF;
   --qr-ink: #111111;
-  --prompter-bg: #0E0F10;
-  --prompter-panel: #1A1B1D;
-  --prompter-ink: #F2F3F4;
-  --prompter-ink-2: #A9AEB4;
-  --prompter-line: #3FB59A;
+  --prompter-bg: #000000;
+  --prompter-panel: #1C1C1E;
+  --prompter-material: rgba(44, 44, 46, 0.72);
+  --prompter-ink: #F5F5F7;
+  --prompter-ink-2: #A1A1A6;
+  --prompter-line: #34C3A4;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #141516;
-    --panel: #1A1B1D;
-    --card: #202124;
-    --sunken: #26282B;
-    --hover: rgba(255, 255, 255, 0.05);
-    --selected: #1E2C28;
-    --ink: #ECEDEE;
-    --ink-2: #B5B9BE;
-    --ink-3: #969BA1;
-    --line: #2E3033;
-    --accent: #3FB59A;
-    --accent-ink: #0B1412;
-    --focus: #3FB59A;
-    --ok: #5DBE86;
-    --warn: #D6A23E;
-    --danger: #F2766A;
-    --shadow: rgba(0, 0, 0, 0.5);
+    --window: #121213;
+    --window-tint-1: rgba(255, 255, 255, 0.04);
+    --window-tint-2: rgba(52, 195, 164, 0.06);
+    --bg: #1C1C1E;
+    --panel: #232325;
+    --card: #2A2A2D;
+    --sunken: #161618;
+    --hover: rgba(255, 255, 255, 0.06);
+    --selected: rgba(255, 255, 255, 0.10);
+    --ink: #F5F5F7;
+    --ink-2: #B4B4B9;
+    --ink-3: #A5A5AA;
+    --line: rgba(255, 255, 255, 0.10);
+    --line-strong: rgba(255, 255, 255, 0.18);
+    --accent: #34C3A4;
+    --accent-ink: #06231D;
+    --focus: rgba(52, 195, 164, 0.60);
+    --selection: rgba(52, 195, 164, 0.30);
+    --ok: #30D158;
+    --warn: #FF9F0A;
+    --danger: #FF6961;
+    --material-sidebar: rgba(32, 32, 34, 0.68);
+    --material-bar: rgba(28, 28, 30, 0.72);
+    --material-float: rgba(44, 44, 46, 0.82);
+    --edge-light: rgba(255, 255, 255, 0.08);
+    --scrim: rgba(0, 0, 0, 0.45);
+    --shimmer: rgba(255, 255, 255, 0.30);
+    --shadow-1: 0 0 0 0.5px rgba(255, 255, 255, 0.10), 0 1px 2px rgba(0, 0, 0, 0.40);
+    --shadow-2: 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 8px 24px rgba(0, 0, 0, 0.50);
+    --shadow-3: 0 0 0 0.5px rgba(255, 255, 255, 0.14), 0 22px 60px rgba(0, 0, 0, 0.60);
+    --shadow-press: inset 0 1px 2px rgba(0, 0, 0, 0.5);
     --qr-plate: #FFFFFF;
     --qr-ink: #111111;
-    --prompter-bg: #0E0F10;
-    --prompter-panel: #1A1B1D;
-    --prompter-ink: #F2F3F4;
-    --prompter-ink-2: #A9AEB4;
-    --prompter-line: #3FB59A;
+    --prompter-bg: #000000;
+    --prompter-panel: #1C1C1E;
+    --prompter-material: rgba(44, 44, 46, 0.72);
+    --prompter-ink: #F5F5F7;
+    --prompter-ink-2: #A1A1A6;
+    --prompter-line: #34C3A4;
   }
 }
 
+/* Type (rule 5). Inter everywhere; the system font only on Apple devices, where it is already installed.
+   main.tsx puts the class is-apple on <html>. No Apple font file is ever bundled (npm run check:fonts). */
 :root {
-  --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --t-press: 120ms;
-  --t-msg: 160ms;
-  --t-card: 200ms;
-  --r-full: 999px;
+  --font: "Inter", sans-serif;
+  --font-rounded: "Inter", sans-serif;
+  --font-mono: ui-monospace, Menlo, Consolas, "DejaVu Sans Mono", monospace;
+}
+
+:root.is-apple {
+  --font: system-ui, -apple-system, "Inter", sans-serif;
+  --font-rounded: ui-rounded, system-ui, -apple-system, "Inter", sans-serif;
+}
+
+/* Shape, material and motion (rules 6, 9 and 18). */
+:root {
+  --r-xs: 6px;
   --r-row: 8px;
-  --r-card: 12px;
-  --r-composer: 16px;
+  --r-ctl: 10px;
+  --r-group: 12px;
+  --r-card: 14px;
+  --r-panel: 18px;
+  --r-composer: 22px;
+  --r-full: 999px;
+
+  --blur-sidebar: saturate(180%) blur(28px);
+  --blur-bar: saturate(180%) blur(20px);
+  --blur-float: saturate(160%) blur(24px);
+
+  /* Springs from scripts/springs.mjs: high damping, at most 2.5 % overshoot. */
+  --spring-snappy: linear(0, 0.049, 0.163, 0.305, 0.453, 0.589, 0.707, 0.804, 0.879, 0.935, 0.974, 0.999, 1.014, 1.022, 1.025, 1.024, 1.022, 1.018, 1.015, 1.011, 1.008, 1.005, 1.003, 1.002, 1);
+  --spring-soft: linear(0, 0.044, 0.147, 0.278, 0.414, 0.543, 0.657, 0.752, 0.829, 0.889, 0.933, 0.965, 0.987, 1.001, 1.009, 1.014, 1.015, 1.015, 1.013, 1.011, 1.009, 1.007, 1.006, 1.004, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --t-fast: 120ms;
+  --t-fade: 160ms;
+  --t-snappy: 280ms;
+  --t-soft: 420ms;
+  --t-tip: 600ms;
+  --t-loop: 1.6s;
+  --t-spin: 900ms;
+}
+
+/* Browsers without linear() get the plain ease-out curve instead of the springs. */
+@supports not (transition-timing-function: linear(0, 1)) {
+  :root {
+    --spring-snappy: cubic-bezier(0.22, 1, 0.36, 1);
+    --spring-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  }
 }

@@ -17,6 +17,16 @@ Inter is licensed under the SIL Open Font License, Version 1.1. The full licence
 unchanged (as `.woff2` and `.woff` files under `dist/assets/`). The OFL allows bundling and redistribution with
 software; it does not allow selling the fonts on their own.
 
+## The system font on Apple devices
+
+On Apple devices the app asks the browser for the font that is already installed (`system-ui`, the class `is-apple`
+on `<html>`). No Apple font file is bundled, served or kept in the repository: Apple's font licence allows its fonts
+only for mock-ups and forbids embedding them. `npm run check:fonts` fails on any such file. Icons stay `lucide-react`;
+SF Symbols are not used.
+
+The look takes no new packages: material, springs (CSS `linear()` curves from `scripts/springs.mjs`), the command
+palette, tooltips and the keyboard shortcuts are written in this folder.
+
 ## Development only
 
 `vite`, `@vitejs/plugin-react`, `typescript`, `vitest`, `jsdom`, `@testing-library/*` and `@types/*` are used to build

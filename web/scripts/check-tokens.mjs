@@ -1,6 +1,6 @@
-// DESIGN.md rule 4 and 16: no raw colour values in src/ outside src/styles/tokens.css.
-// Components use var(--token). Test files are skipped; they hold no styles.
-import { lineOf, read, rel, report, srcRoot, walk } from "./lib.mjs";
+// DESIGN.md rules 4, 6, 9 and 16: no raw colour values in src/ outside src/styles/tokens.css, and in the style sheets
+// radii, shadows, durations and easing curves only from tokens. Components use var(--token). Test files are skipped.
+import { cssRules, lineOf, read, rel, report, srcRoot, walk } from "./lib.mjs";
 
 const NAMED = [
   "white", "black", "red", "green", "blue", "yellow", "orange", "purple", "pink", "gray", "grey", "silver",
@@ -32,4 +32,34 @@ for (const file of walk(srcRoot, [".ts", ".tsx", ".css", ".html"])) {
   }
 }
 
-report("check:tokens", problems, "no raw colour values outside tokens.css");
+// Radii, shadows, durations and curves (rules 6 and 9).
+const RADIUS_OK = /^(var\(--r-[\w-]+\)|0|inherit|50%)$/;
+const TIME_PROPS = new Set(["transition", "transition-duration", "transition-delay", "animation", "animation-duration", "animation-delay"]);
+for (const file of walk(srcRoot, [".css"])) {
+  if (file.endsWith("styles/tokens.css")) continue;
+  const text = read(file);
+  for (const r of cssRules(text).rules) {
+    const where = `${rel(file)}:${lineOf(text, r.index)}`;
+    for (const d of r.decls) {
+      const v = d.value.replace(/!important/, "").trim();
+      if (/^border(-[a-z]+)*-radius$/.test(d.prop)) {
+        for (const part of v.split(/\s+(?![^(]*\))/)) {
+          if (!RADIUS_OK.test(part)) problems.push(`${where} raw radius "${part}" (use a --r-* token)`);
+        }
+      }
+      if (d.prop === "box-shadow" && v !== "none" && !/var\(--/.test(v)) {
+        problems.push(`${where} box-shadow without a token`);
+      }
+      if (TIME_PROPS.has(d.prop)) {
+        for (const m of v.matchAll(/(?<![\w-])(\d*\.?\d+)(ms|s)\b/g)) {
+          if (Number(m[1]) !== 0) problems.push(`${where} raw duration "${m[0]}" (use a --t-* token)`);
+        }
+      }
+      if (/^(transition|animation)(-timing-function)?$/.test(d.prop) && /(cubic-bezier|linear)\(/.test(v)) {
+        problems.push(`${where} raw easing curve (use --spring-* or --ease-out)`);
+      }
+    }
+  }
+}
+
+report("check:tokens", problems, "no raw colours outside tokens.css; radii, shadows, durations and curves from tokens");

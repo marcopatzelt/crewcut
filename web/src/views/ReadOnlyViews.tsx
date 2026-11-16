@@ -1,9 +1,10 @@
 // Profile, Crew and job log: read-only views in the center place (DESIGN.md rule 2). No edit controls anywhere.
 import { ArrowLeft } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api/client";
 import { ONBOARDING, type Identity, type JobLog, type Profile, type Source } from "../api/types";
 import { ErrorLine, identityOf, Loading, Mark, Media } from "../components/bits";
+import { LargeTitle, Toolbar, useScrollChrome } from "../components/Toolbar";
 import { STEP_LABELS } from "../demo/fixtures";
 import { clock, day, usd } from "../lib/format";
 import { messageOf, navigate } from "../store/actions";
@@ -43,6 +44,36 @@ function BackToChat() {
       <ArrowLeft size={16} aria-hidden="true" />
       Back to the chat
     </button>
+  );
+}
+
+/** A read-only page: the toolbar, the large title that scrolls under it, then the content. */
+function Page({
+  label,
+  title,
+  sub,
+  lead,
+  children,
+}: {
+  label: string;
+  title: string;
+  sub: string;
+  lead?: ReactNode;
+  children: ReactNode;
+}) {
+  const { scroller, large, scrolled, showTitle, update } = useScrollChrome();
+  return (
+    <section className="view" aria-label={label}>
+      <Toolbar title={title} sub={sub} showTitle={showTitle} scrolled={scrolled}>
+        <div className="strip" />
+      </Toolbar>
+      <div className="scroll" ref={scroller} onScroll={update}>
+        <div className="doc">
+          <LargeTitle innerRef={large} title={title} sub={sub} lead={lead} />
+          {children}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -121,24 +152,16 @@ export function ProfileView() {
     );
   }
 
+  const sub =
+    data?.source === "neutral"
+      ? "The neutral style pack. Paste your links in the chat to make it yours."
+      : "Your style pack. Every value names its source.";
   return (
-    <section className="view" aria-label="Profile">
-      <header className="head plain">
-        <h1>Profile</h1>
-        <p className="sub">
-          {data?.source === "neutral"
-            ? "The neutral style pack. Paste your links in the chat to make it yours."
-            : "Your style pack. Every value names its source."}
-        </p>
-      </header>
-      <div className="page">
-        <div className="doc">
-          <BackToChat />
-          {content}
-          <p className="hint-line">{CHANGE_LINE}</p>
-        </div>
-      </div>
-    </section>
+    <Page label="Profile" title="Profile" sub={sub}>
+      <BackToChat />
+      {content}
+      <p className="hint-line">{CHANGE_LINE}</p>
+    </Page>
   );
 }
 
@@ -215,22 +238,16 @@ export function TeamView() {
   const anySources = data?.some((p) => p.sources?.length);
 
   return (
-    <section className="view" aria-label="Crew">
-      <header className="head plain">
-        <h1>Crew</h1>
-        <p className="sub">Who works on your episodes, what they may do, and whose know-how their skills distil.</p>
-      </header>
-      <div className="page">
-        <div className="doc">
-          <BackToChat />
-          {content}
-          {anySources ? (
-            <p className="hint-line">Crewcut is not affiliated with or endorsed by these creators.</p>
-          ) : null}
-          <p className={anySources ? "meta" : "hint-line"}>{CHANGE_LINE}</p>
-        </div>
-      </div>
-    </section>
+    <Page
+      label="Crew"
+      title="Crew"
+      sub="Who works on your episodes, what they may do, and whose know-how their skills distil."
+    >
+      <BackToChat />
+      {content}
+      {anySources ? <p className="hint-line">Crewcut is not affiliated with or endorsed by these creators.</p> : null}
+      <p className={anySources ? "meta" : "hint-line"}>{CHANGE_LINE}</p>
+    </Page>
   );
 }
 
@@ -253,6 +270,7 @@ export function JobLogView({ id }: { id: number }) {
   ]
     .filter(Boolean)
     .join(" · ");
+  const engine = job ? engineWords(job) : "";
 
   let content;
   if (error && !data) content = <ErrorLine text={`Couldn't load the log. ${error}`} onRetry={retry} />;
@@ -268,25 +286,31 @@ export function JobLogView({ id }: { id: number }) {
     );
 
   return (
-    <section className="view" aria-label={`Log of job ${id}`}>
-      <header className="head plain">
-        <div className="head-row">
-          {job ? <Mark mark={who.mark} /> : null}
-          <div className="head-text">
-            <h1 className="one-line" title={job?.doing}>
-              {job ? `${who.name}: ${job.doing}` : `Job ${id}`}
-            </h1>
-            <p className="sub">{meta}</p>
-          </div>
-        </div>
-      </header>
-      <div className="page">
-        <div className="doc">
-          <BackToChat />
-          {content}
-          <p className="hint-line">This log is read-only. Secrets are removed before it is shown.</p>
-        </div>
-      </div>
-    </section>
+    <Page
+      label={`Log of job ${id}`}
+      title={job ? `${who.name}: ${job.doing}` : `Job ${id}`}
+      sub={meta}
+      lead={job ? <Mark mark={who.mark} big /> : undefined}
+    >
+      <BackToChat />
+      {engine ? <p className="meta engine-meta">{engine}</p> : null}
+      {content}
+      <p className="hint-line">This log is read-only. Secrets are removed before it is shown.</p>
+    </Page>
   );
+}
+
+const ENGINE_NAME: Record<string, string> = { claude: "Claude Code", codex: "Codex" };
+
+/** "Runs on Claude Code 2.1.325 · model sonnet · effort high": what the engine reported about itself, if anything. */
+export function engineWords(job: { engine?: string | null; model?: string | null; effort?: string | null; engine_version?: string | null }): string {
+  if (!job.engine && !job.model && !job.effort) return "";
+  const name = job.engine ? ENGINE_NAME[job.engine] ?? job.engine : null;
+  return [
+    name ? `Runs on ${name}${job.engine_version ? ` ${job.engine_version}` : ""}` : null,
+    job.model ? `model ${job.model}` : null,
+    job.effort ? `effort ${job.effort}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }

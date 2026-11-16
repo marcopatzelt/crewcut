@@ -1,8 +1,13 @@
-// DESIGN.md rule 1.2, 3 and 16: the app has one text input (the composer) and no <form> with more than one field.
+// DESIGN.md rule 1.2, 3, 15 and 16: the app has two text fields, the composer and the search field of the command
+// palette (which only picks from a list), and no <form> with more than one field.
 import { lineOf, read, rel, report, srcRoot, walk } from "./lib.mjs";
 
 const TEXT_TYPES = new Set(["text", "search", "email", "url", "number", "password", "tel", "date", "time", ""]);
-const ALLOWED_FILE = "src/components/Composer.tsx";
+// One text field in each of these files, and nowhere else.
+const ALLOWED = new Map([
+  ["src/components/Composer.tsx", "the composer"],
+  ["src/components/Palette.tsx", "the palette's search field"],
+]);
 
 const problems = [];
 const textFields = [];
@@ -31,8 +36,8 @@ for (const file of walk(srcRoot, [".tsx", ".ts", ".html"])) {
   for (const f of fieldsIn(text)) {
     const what = f.tag === "input" ? `<input type="${f.type || "text"}">` : `<${f.tag}>`;
     if (f.text) textFields.push(`${rel(file)}:${lineOf(text, f.index)} ${what}`);
-    if (f.text && rel(file) !== ALLOWED_FILE) {
-      problems.push(`${rel(file)}:${lineOf(text, f.index)} text field outside the composer (<${f.tag}>)`);
+    if (f.text && !ALLOWED.has(rel(file))) {
+      problems.push(`${rel(file)}:${lineOf(text, f.index)} text field outside the composer and the palette (<${f.tag}>)`);
     }
   }
   for (const m of text.matchAll(/<form\b[\s\S]*?<\/form>/g)) {
@@ -41,8 +46,12 @@ for (const file of walk(srcRoot, [".tsx", ".ts", ".html"])) {
   }
 }
 
-if (textFields.length !== 1) {
-  problems.push(`expected exactly one text field (the composer), found ${textFields.length}: ${textFields.join(", ") || "none"}`);
+for (const [file, what] of ALLOWED) {
+  const here = textFields.filter((f) => f.startsWith(`${file}:`));
+  if (here.length !== 1) problems.push(`expected exactly one text field in ${file} (${what}), found ${here.length}`);
+}
+if (textFields.length !== ALLOWED.size) {
+  problems.push(`expected ${ALLOWED.size} text fields (composer and palette), found ${textFields.length}: ${textFields.join(", ") || "none"}`);
 }
 
-report("check:forms", problems, `one text field (${textFields[0] ?? "none"}), no multi-field forms`);
+report("check:forms", problems, `two text fields (${textFields.join(", ") || "none"}), no multi-field forms`);

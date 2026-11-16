@@ -1,16 +1,24 @@
 // An in-memory stand-in for the Crewcut server, used with ?demo=1 or when no API answers.
 // It answers the calls from docs/api.md with the fixtures and never runs anything.
 import { ApiError, type Backend, type EventHandler, type EventKind } from "../api/client";
-import type { Card, Episode, Message, UploadResult } from "../api/types";
+import type { Activity, Card, Episode, Message, UploadResult } from "../api/types";
 import { DEMO_FILES, makeDemo, steps } from "./fixtures";
 
 const REPLY =
   "This is the demo. Nothing runs here, so nobody picks this up. Start Crewcut with Docker to work on a real episode.";
 
-export function createDemoBackend(opts: { latency?: number } = {}): Backend {
+declare global {
+  interface Window {
+    /** Set by the scripted demo (?demo=1&play=1) when its sequence has ended, for the README recording. */
+    __crewcutPlayDone?: boolean;
+  }
+}
+
+export function createDemoBackend(opts: { latency?: number; play?: boolean } = {}): Backend {
   const latency = opts.latency ?? 60;
-  const data = makeDemo();
+  const data = makeDemo(Date.now(), { play: opts.play });
   const handlers = new Set<EventHandler>();
+  const playing = Boolean(opts.play);
   let nextMessage = 1000;
   let nextEpisode = 5;
 
@@ -28,6 +36,7 @@ export function createDemoBackend(opts: { latency?: number } = {}): Backend {
   };
 
   const reply = (episode: string) => {
+    if (playing) return; // the scripted sequence shows the screen, not the demo notice
     setTimeout(() => emit("message", addMessage(episode, "showrunner", REPLY)), 700);
   };
 
@@ -129,6 +138,91 @@ export function createDemoBackend(opts: { latency?: number } = {}): Backend {
     throw notFound(path);
   }
 
+  // ---------- the scripted sequence for the README animation (?demo=1&play=1) ----------
+  // Starts 600 ms after the page has loaded and the screen listens: the GPU card springs in with "On this machine"
+  // chosen, the choice moves to the rented GPU, the button is pressed, the card folds to one line, and a new row
+  // slides into "Working now". It drives the real buttons, so the screen does what it does for a person. Then it
+  // stays still and sets window.__crewcutPlayDone.
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const stamp = (a: Activity, patch: Partial<Activity>): Activity => {
+    const i = data.state.activity.findIndex((x) => x.job === a.job);
+    const next = { ...a, ...patch };
+    if (i < 0) data.state.activity.unshift(next);
+    else data.state.activity[i] = next;
+    return next;
+  };
+  const inPage = (selector: string) =>
+    typeof document === "undefined" ? null : document.querySelector<HTMLElement>(selector);
+
+  async function play() {
+    const card = data.playCard;
+    if (!card) return;
+    const ep = data.state.episodes.find((e) => e.id === card.episode);
+    // 1. The Editor asks: the card appears, the Showrunner waits for the yes.
+    const shown = { ...card, created: new Date().toISOString() };
+    data.cards.push(shown);
+    if (ep) {
+      ep.open_cards += 1;
+      ep.steps = ep.steps.map((st) => (st.id === "edit" ? { ...st, status: "waiting" } : st));
+      emit("episode", { ...ep, open_cards: ep.open_cards - 1 }); // the card event adds the dot
+    }
+    emit("card", shown);
+    if (data.playWaiting) emit("activity", stamp(data.playWaiting, { seconds: 0, started: new Date().toISOString() }));
+    await sleep(1400);
+    // 2. The choice moves from "On this machine" to the rented GPU; the button text follows.
+    inPage(`[data-open-card="${card.id}"] [data-way="rented"]`)?.click();
+    await sleep(1300);
+    // 3. The button is pressed, then released: the yes goes out and the card folds to one line.
+    const button = inPage(`[data-open-card="${card.id}"] [data-accept]`);
+    button?.setAttribute("data-pressed", "true");
+    await sleep(220);
+    button?.removeAttribute("data-pressed");
+    if (button) button.click();
+    else {
+      shown.status = "accepted";
+      shown.decided_at = new Date().toISOString();
+      if (ep) ep.open_cards = Math.max(0, ep.open_cards - 1);
+      emit("card", shown);
+    }
+    await sleep(250);
+    if (data.playWaiting) {
+      emit("activity", stamp(data.playWaiting, {
+          status: "done",
+          doing: "Asked for your yes on the GPU",
+          seconds: 4,
+          ended: new Date().toISOString(),
+        }));
+    }
+    if (ep) {
+      ep.steps = ep.steps.map((st) => (st.id === "edit" ? { ...st, status: "working" } : st));
+      emit("episode", ep);
+    }
+    await sleep(450);
+    // 4. The render starts on the rented GPU: a new row slides into "Working now".
+    if (data.playRender) emit("activity", stamp(data.playRender, { started: new Date().toISOString() }));
+    await sleep(2700);
+    if (typeof window !== "undefined") window.__crewcutPlayDone = true;
+  }
+
+  let loaded = typeof document === "undefined" || document.readyState === "complete";
+  let listening = false;
+  let started = false;
+  const maybePlay = () => {
+    if (!playing || started || !loaded || !listening) return;
+    started = true;
+    setTimeout(() => void play(), 600);
+  };
+  if (playing && !loaded) {
+    window.addEventListener(
+      "load",
+      () => {
+        loaded = true;
+        maybePlay();
+      },
+      { once: true },
+    );
+  }
+
   return {
     request,
     async upload(episode: string, files: File[]): Promise<UploadResult[]> {
@@ -144,6 +238,8 @@ export function createDemoBackend(opts: { latency?: number } = {}): Backend {
     },
     subscribe(handler: EventHandler) {
       handlers.add(handler);
+      listening = true;
+      maybePlay();
       return () => handlers.delete(handler);
     },
   };

@@ -34,6 +34,10 @@ export function steps(statuses: StepStatus[]): Step[] {
 }
 
 export interface DemoData {
+  /** The card and the waiting row the scripted sequence adds, then the row it starts after the yes. */
+  playCard: Card | null;
+  playWaiting: Activity | null;
+  playRender: Activity | null;
   state: State;
   details: Record<string, EpisodeDetail>;
   messages: Record<string, Message[]>;
@@ -45,7 +49,16 @@ export interface DemoData {
   script: PrompterScript;
 }
 
-export function makeDemo(now = Date.now()): DemoData {
+/** What a job's engine reported about itself (docs/api.md). Made-up demo values. */
+function ran(model: string, effort: string | null) {
+  return { engine: "claude", model, effort, engine_version: "2.1.325" };
+}
+
+/**
+ * The demo data. `play` is the start of the scripted sequence (?demo=1&play=1): the GPU card and the Showrunner's
+ * waiting row are not there yet; the timeline in backend.ts adds them, using `playCard` and `playWaiting`.
+ */
+export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoData {
   const ago = (seconds: number) => new Date(now - seconds * 1000).toISOString();
   const MIN = 60;
   const H = 3600;
@@ -177,6 +190,7 @@ export function makeDemo(now = Date.now()): DemoData {
   const activity: Activity[] = [
     {
       job: 12,
+      ...ran("sonnet", "medium"),
       episode: ep3.id,
       identity: "editor",
       step: "edit",
@@ -190,6 +204,7 @@ export function makeDemo(now = Date.now()): DemoData {
     },
     {
       job: 13,
+      ...ran("sonnet", "low"),
       episode: ep3.id,
       identity: "designer",
       step: "thumbnail",
@@ -203,6 +218,7 @@ export function makeDemo(now = Date.now()): DemoData {
     },
     {
       job: 11,
+      ...ran("opus", "high"),
       episode: ep3.id,
       identity: "showrunner",
       step: "edit",
@@ -216,6 +232,7 @@ export function makeDemo(now = Date.now()): DemoData {
     },
     {
       job: 10,
+      ...ran("sonnet", "medium"),
       episode: ep3.id,
       identity: "critic",
       step: "edit",
@@ -230,6 +247,7 @@ export function makeDemo(now = Date.now()): DemoData {
     },
     {
       job: 9,
+      ...ran("sonnet", "medium"),
       episode: ep3.id,
       identity: "editor",
       step: "edit",
@@ -244,6 +262,7 @@ export function makeDemo(now = Date.now()): DemoData {
     },
     {
       job: 8,
+      ...ran("haiku", null),
       episode: ep3.id,
       identity: "editor",
       step: "record",
@@ -446,6 +465,40 @@ export function makeDemo(now = Date.now()): DemoData {
           { label: "Check", value: "0 errors, 1 note" },
         ],
       },
+      {
+        id: 144,
+        at: ago(4 * MIN),
+        author: "showrunner",
+        step: "edit",
+        text: "Critic and Editor · fix about review/cut-check-v001.json · 2 messages",
+        card: null,
+        exchange: {
+          topic: "critic-editor-review/cut-check.json",
+          result: "Trimmed 0.8 s at 2:31. Cut v1 is now 4:04; the check is clean.",
+          messages: [
+            {
+              id: 1,
+              sender: "critic",
+              recipient: "editor",
+              kind: "fix",
+              about: "review/cut-check-v001.json",
+              text: "One note in cut v1: a long pause before the result at 2:31. Trim 0.8 s there; the rest is clean.",
+              route: "live",
+              status: "delivered",
+            },
+            {
+              id: 2,
+              sender: "editor",
+              recipient: "critic",
+              kind: "fix",
+              about: "review/cut-check-v001.json",
+              text: "Trimmed 0.8 s at 2:31. Cut v1 is now 4:04; the check is clean.",
+              route: "live",
+              status: "delivered",
+            },
+          ],
+        },
+      },
     ],
     [ep4.id]: [
       {
@@ -534,7 +587,42 @@ export function makeDemo(now = Date.now()): DemoData {
     ],
   };
 
-  return { state, details, messages, cards, team, logs, profile, prompter, script };
+  let playCard: Card | null = null;
+  let playWaiting: Activity | null = null;
+  let playRender: Activity | null = null;
+  if (opts.play) {
+    // The sequence starts before the Editor asks: the edit step is working, no card is open yet.
+    const card = cards.find((c) => c.id === 9);
+    playWaiting = activity.find((a) => a.job === 11) ?? null;
+    if (card) {
+      cards.splice(cards.indexOf(card), 1);
+      // Fifty minutes here against twelve rented: the honest first choice is this machine (rule 12). The user picks
+      // the rented GPU anyway, to have the cut today.
+      const est = { ...(card.data?.estimate ?? {}), local_seconds: 3000, sentence: undefined };
+      playCard = { ...card, data: { ...card.data, estimate: est } };
+    }
+    state.activity = activity.filter((a) => a.job !== 11);
+    ep3.open_cards = 0;
+    ep3.steps = steps(["done", "done", "done", "done", "done", "working", "open", "skipped", "open", "open"]);
+    details[ep3.id] = { ...details[ep3.id]!, ...ep3 };
+    playRender = {
+      job: 14,
+      episode: ep3.id,
+      identity: "editor",
+      ...ran("sonnet", "medium"),
+      step: "edit",
+      doing: "Rendering 3D scene 1 of 9 · rented GPU",
+      progress: 0.03,
+      status: "running",
+      started: null,
+      seconds: 0,
+      cost_usd: 0,
+      equiv_usd: null,
+    };
+    logs[14] = ["Rented 1 × RTX 4090, cap $1.50.", "Rendering 3D scene 1 of 9."];
+  }
+
+  return { playCard, playWaiting, playRender, state, details, messages, cards, team, logs, profile, prompter, script };
 }
 
 /** Demo preview files: paths inside an episode, mapped to images in public/demo/. */

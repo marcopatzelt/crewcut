@@ -74,6 +74,11 @@ export interface Activity {
   equiv_usd: number | null;
   /** Optional extra: when the job ended. */
   ended?: string | null;
+  /** Optional: the engine that runs the job and what it reported about itself. */
+  engine?: string | null;
+  model?: string | null;
+  effort?: string | null;
+  engine_version?: string | null;
 }
 
 export interface Money {
@@ -199,6 +204,27 @@ export interface Message {
   preview?: string | null;
   /** Optional extra: a small table of numbers under the message. */
   facts?: Fact[] | null;
+  /** Optional: a finished exchange between two crew members (docs/crew-talk.md), shown as one collapsed line. */
+  exchange?: Exchange | null;
+}
+
+/** One direct message between two crew members (docs/crew-talk.md). */
+export interface CrewMessage {
+  id: number;
+  sender: string;
+  recipient: string;
+  kind: string;
+  about: string;
+  text: string;
+  at?: string | null;
+  route?: string | null;
+  status?: string | null;
+}
+
+export interface Exchange {
+  topic: string;
+  result?: string | null;
+  messages: CrewMessage[];
 }
 
 export interface ProfileRow {

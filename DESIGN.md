@@ -51,6 +51,7 @@ The app has three places. New things go into one of them; there is no fourth.
 
 - The composer is the only text field in the app. Its placeholder says "Say what you want…". It has a microphone button
   (browser speech input where available) and a send button.
+- The one exception is the search field of the command palette (rule 15). It picks from a list and takes no values.
 - Onboarding is the composer too: "Paste your links." Links go in, the Brand identity works in the Crew column, a profile
   card comes back.
 - Cards have exactly one primary button. Its label says what happens ("Use this title", "Rent a GPU", "Publish on
@@ -65,69 +66,125 @@ values.
 
 | Job | Tokens |
 |---|---|
-| Surfaces | `--bg` (chat), `--panel` (side columns), `--card`, `--sunken` (composer, inputs), `--hover`, `--selected` |
+| Surfaces | `--window` (behind everything, with a faint fixed gradient), `--bg` (chat), `--panel` (Crew column, opaque stand-in for material), `--card` (cards, menus: the raised layer), `--sunken` (fields, mark plates, preview ground) |
+| Row states | `--hover`, `--selected` (both neutral grey, translucent) |
 | Text | `--ink`, `--ink-2` (supporting), `--ink-3` (meta, timestamps, hints) |
-| Lines | `--line` (borders, dividers) |
-| Accent | `--accent`, `--accent-ink` (text on accent), `--focus` |
+| Lines | `--line` (dividers), `--line-strong` (field edges, card edges in dark) |
+| Accent | `--accent`, `--accent-ink` (text on accent), `--focus` (the focus ring), `--selection` (selected text) |
 | Status | `--ok`, `--warn`, `--danger` |
+| Material (rule 18) | `--material-sidebar`, `--material-bar`, `--material-float`, `--edge-light` |
+| Depth | `--shadow-1` (cards in the chat, segments), `--shadow-2` (composer, floating side panels), `--shadow-3` (menus, palette, the teleprompter dialog), `--shadow-press` |
 
-- **One accent.** It marks the primary button, links, focus and the selected row. Nothing else.
+- **Depth instead of lines.** Layers come from material and shadow. A hairline only separates two things on the same
+  layer.
+- **One accent.** It marks the primary button, links, focus and progress. Nothing else. A selected row is neutral grey
+  (`--selected`), as in Finder and Mail. The highlighted item of a menu or the palette is the one place where a selection
+  is coloured.
 - **Hierarchy comes from ink and size,** not from extra colours.
 - **Status colours mean status.** `--danger` for errors and for money above the cap, never as decoration.
 - **Identities have no colours.** They are told apart by their two-letter mark and name (rule 13).
-- Text clears 4.5:1 on every surface it sits on, in both themes.
+- **Three layers in dark:** `--window` darkest, `--bg` and `--panel` in the middle, `--card` lighter. Raised means
+  lighter, not darker with more shadow. In dark the light hairline in `--shadow-*` carries the edge.
+- Text clears 4.5:1 on every surface it sits on, in both themes. On material the check uses the opaque fallback and the
+  translucent colour over `--window`. A token that fails gets more contrast; the rule does not get softer.
 
 ## 5. Type
 
-One family: **Inter** (SIL Open Font License, bundled through `@fontsource`). Numbers that change in place use
-`font-variant-numeric: tabular-nums`.
+**Inter** (SIL Open Font License, bundled through `@fontsource`) everywhere. On Apple devices the app uses the system
+font through `system-ui` (the class `is-apple` on `<html>`), so the browser takes the font that is already installed.
+No Apple font file goes into the repo or the image (`check:fonts`). Screenshots are made in CI on Linux, with Inter.
+Numbers that change in place use `font-variant-numeric: tabular-nums`.
 
-| Use | Size / line height | Weight | Ink |
-|---|---|---|---|
-| Episode title in the header | 20 / 28 | 600 | `--ink` |
-| Section and card title | 15 / 22 | 600 | `--ink` |
-| Chat text | 15 / 24 | 400 | `--ink` |
-| Rows, buttons, body | 13 / 20 | 400 or 500 | `--ink` or `--ink-2` |
-| Meta, hints, group labels | 12 / 16 | 400 (labels 500) | `--ink-3` |
+| Token | Use | Size / line height | Weight | Tracking | Ink |
+|---|---|---|---|---|---|
+| `--t-title` | The large episode title at the top of the chat | 20 / 26 | 600 | -0.015em | `--ink` |
+| `--t-figure` | The one big number of a card ("About 12 min") | 22 / 26 | 600 | -0.02em | `--ink` |
+| `--t-head` | Card title, section title, the title in the toolbar | 15 / 20 | 600 | -0.01em | `--ink` |
+| `--t-chat` | Chat text | 15 / 23 | 400 | -0.005em | `--ink` |
+| `--t-body` | Rows, buttons, body | 13 / 18 | 400 or 500 | 0 | `--ink` or `--ink-2` |
+| `--t-meta` | Meta, hints | 12 / 16 | 400 | 0 | `--ink-3` |
+| `--t-label` | Group labels ("Episodes", "Working now") | 11 / 14 | 600 | +0.02em | `--ink-3` |
 
 - Three weights: 400, 500, 600. No 700 or heavier.
-- Sentence case everywhere. No ALL CAPS labels, no Title Case.
+- Sentence case everywhere. No ALL CAPS labels, no Title Case. Group labels too.
 - No italics.
 - Titles and rows stay on one line and truncate; the full text is in `title` and in the opened view.
+- The two-letter marks use the rounded system font on Apple devices (`--font-rounded`), Inter elsewhere.
 
 ## 6. Shape
 
-| Element | Radius |
-|---|---|
-| Buttons, chips, marks | full |
-| Rows, inputs | 8 px |
-| Cards, menus | 12 px |
-| Composer | 16 px |
-| Window columns | 0 |
+| Token | Element | Radius |
+|---|---|---|
+| `--r-xs` | Small marks, chips, shortcut keycaps, tooltips | 6 px |
+| `--r-row` | Rows, fields, segments, identity marks | 8 px |
+| `--r-ctl` | Buttons with text that are not a capsule, previews, choice surfaces, menus | 10 px |
+| `--r-group` | Grouped lists (the running jobs) | 12 px |
+| `--r-card` | Cards | 14 px |
+| `--r-panel` | Floating surfaces: Episodes, the chat, Crew, palette, dialogs | 18 px |
+| `--r-composer` | Composer | 22 px |
+| `--r-full` | Primary button, round icon buttons, dots | full |
 
-A nested shape is smaller than its container. No in-between values.
+A nested shape is smaller than its container: inner radius = outer radius minus the distance to the edge. No in-between
+values. Where the browser supports `corner-shape: squircle`, panels and cards use it; elsewhere corners stay round.
 
 ## 7. Space and layout
 
-- 4 px grid. Paddings 8, 12, 16, 24, 32.
+- 4 px grid. Steps: 4, 8, 12, 16, 20, 24, 32, 40.
+- The three places are floating surfaces on `--window`, 8 px from the edge and from each other (at 1440 px: 272 px left,
+  320 px right). Cmd+B folds the Episodes panel, Cmd+Alt+B the Crew panel.
+- The chat runs under the toolbar and under the composer; neither cuts it off with a hard edge.
+
+| Measure | Value |
+|---|---|
+| Inset of the Episodes panel | 12 px |
+| Row height in the Episodes panel | 32 px (an episode row with two lines: 52 px) |
+| Toolbar height | 52 px |
+| Reading width of the chat | at most 720 px, centred |
+| Card padding | 16 px, 20 px from 1100 px window width |
+| Between messages / between a message and its card | 20 px / 12 px |
+| Composer | floats 16 px above the bottom edge, as wide as the chat |
+
 - One inset per surface: everything in a column starts and ends at the same edge.
 - Group with space before lines. A divider only between groups that space cannot separate.
 - No cards inside cards.
-- Design at 1440 x 900, check at 1100, 760 and 390.
+- Design at 1440 x 900, check at 1100, 760 and 390. The README image is 1600 x 1000 at twice the density.
 
 ## 8. Icons
 
-- `lucide-react` only, 16 px in rows and buttons, 14 px next to 12 px text. No emoji, no icon fonts.
+- `lucide-react` only, 16 px in rows and buttons, 14 px next to 12 px text, stroke width 1.75. No emoji, no icon
+  fonts, no SF Symbols.
 - Icons are bare: no tinted squares or circles. Identity marks are the only shapes with a plate.
 - Decorative icons get `aria-hidden="true"`; icon-only buttons get an `aria-label`.
 
 ## 9. Motion
 
-- Motion explains a change: a new message slides in (160 ms), a card appears (200 ms), a row in the Crew column fades
-  in (160 ms). Ease `cubic-bezier(0.22, 1, 0.36, 1)`. 300 ms is the ceiling.
-- The only loop is the thin progress line of a running job, and only while it runs.
-- Hover and press: 120 ms, colour and opacity only.
-- `prefers-reduced-motion` turns all of it off.
+- Motion explains a change. Everything that appears or moves uses a spring (`--spring-snappy`, 280 ms, or
+  `--spring-soft`, 420 ms; both from `web/scripts/springs.mjs`, at most 2.5 % overshoot). Colour and opacity changes are
+  short and linear (`--t-fast`, 120 ms).
+- 300 ms is the ceiling for timing curves. Springs may run to 420 ms, because they reach the target early and only
+  settle after that.
+
+| What | How | Time |
+|---|---|---|
+| Hover, colour, opacity | linear | 120 ms |
+| Button pressed | scale 0.97 and `--shadow-press` | 120 ms |
+| New message | 8 px up and fade in, `--spring-snappy` | 280 ms |
+| Card appears | scale 0.98 to 1 and fade in, `--spring-snappy` | 280 ms |
+| Card decided | folds to one line, `--spring-snappy` | 280 ms |
+| New row in the Crew column | height 0 to full, `--spring-snappy` | 280 ms |
+| Episodes or Crew panel in and out | width, `--spring-soft` | 420 ms |
+| Current step dot moves on | position, `--spring-soft` | 420 ms |
+| Palette, dialog | scale 0.96 to 1 from where it was opened, `--spring-snappy`; closing only fades | 280 / 120 ms |
+| Switching the episode | the content cross-fades, nothing moves | 160 ms |
+
+- Animate only `transform` and `opacity`; heights go through `grid-template-rows` (0fr to 1fr), panel widths through
+  `grid-template-columns`. Never width, height or position directly.
+- The only loop is the run shimmer: on the progress line of a running job, the active segment of a running episode and a
+  loading preview, only while that work runs. The loading spinner (rule 11, after 300 ms) is the one other repeating
+  animation.
+- Content that is already there when a chat opens does not animate; only what arrives later does.
+- `prefers-reduced-motion` turns all of it off, except cross-fades of 120 ms.
+- Nothing moves to draw attention to itself (rule 1.3).
 
 ## 10. Words
 
@@ -160,8 +217,11 @@ crew); narrow window; light and dark; the engine not logged in.
 ## 13. Identities
 
 - Each crew member has a name, a one-line role and a two-letter mark (`SR`, `SC`, `WR`, `ED`, `CR`, `DE`, `PU`, `BR`). The
-  mark sits on a neutral plate (`--sunken`, 1 px `--line`). No faces, no mascots, no speech-bubble personalities.
+  mark sits on a neutral plate (`--sunken`, a 0.5 px `--line-strong` edge, a rounded square like a small app icon). No faces, no mascots, no speech-bubble personalities.
 - In the chat a message from an identity starts with its mark and name. User messages have no mark.
+- Crew members may message each other directly in three narrow cases ([crew-talk.md](docs/crew-talk.md)). A finished
+  exchange is one quiet, collapsed line in the chat ("Critic and Editor · fix about review/cut-check-v001.json ·
+  2 messages"); opened, it lists who wrote to whom, the file and the text. No bubbles between crew members.
 - In the Crew column one row per running job: mark, name, "what it is doing" (one line), step, elapsed time, cost.
   Waiting jobs say what they wait for ("Waiting for your yes on the preview").
 
@@ -175,18 +235,41 @@ crew); narrow window; light and dark; the engine not logged in.
 ## 15. Accessibility
 
 - Keyboard first: Tab order follows the three places; Enter sends; Ctrl/Cmd+Enter accepts the open card in view.
-- Visible focus ring (`--focus`) everywhere.
-- The chat is an `aria-live="polite"` region; cards use `role="group"` with a label.
-- Targets are at least 32 px, 40 px on touch.
+- Every action can be reached without a mouse. Cmd+K (Ctrl+K outside the Mac) opens the command palette: episodes, views
+  and actions, filtered as you type. Its search field only picks from the list; it takes no values (rule 3).
+
+| Shortcut | Does |
+|---|---|
+| Cmd+K | Command palette |
+| Cmd+N | New episode (focus in the composer) |
+| Cmd+1 to Cmd+9 | Episode 1 to 9 |
+| Cmd+B | Episodes panel in and out |
+| Cmd+Alt+B | Crew panel in and out |
+| Cmd+Enter | Accept the open card in view |
+| Esc | Close the palette, menu or dialog |
+| / | Focus in the composer |
+| Arrow up and down | Move between episodes in the Episodes panel |
+
+- Shortcuts show in tooltips and in the palette as small keycaps: `⌘` on the Mac, "Ctrl" elsewhere. Some browsers keep
+  Cmd/Ctrl+N and Cmd/Ctrl+1 to 9 for themselves; the palette offers the same actions.
+- Visible focus ring everywhere: `box-shadow: 0 0 0 3px var(--focus)` with the radius of the element, on
+  `:focus-visible` only. Never `outline: none` without this ring. The composer shows the ring around its whole capsule. The search field of the palette is
+  the one field without a ring: while the palette is open, it always has the focus.
+- The chat is an `aria-live="polite"` region; cards use `role="group"` with a label. The step dots stay a list of ten
+  items with `aria-current="step"`.
+- Targets are at least 32 px, 40 px on touch. A 28 px icon button keeps a 32 px hit area.
 
 ## 16. What the checks enforce
 
 | Check | Rule |
 |---|---|
-| `npm run check:tokens` | no raw colour values outside `tokens.css` (4) |
-| `npm run check:forms` | the app has one text input (the composer) and no `<form>` with more than one field (1.2, 3) |
+| `npm run check:tokens` | no raw colour values outside `tokens.css`; radii, shadows and durations only from tokens (4, 6, 9) |
+| `npm run check:forms` | two text fields: the composer and the search field of the palette; no `<form>` with more than one field (1.2, 3, 15) |
 | `npm run check:words` | no emoji, no exclamation marks, no "Submit"/"OK" buttons in `src/` (8, 10) |
-| `npm run check:contrast` | every text token clears 4.5:1 on its surfaces in both themes (4) |
+| `npm run check:contrast` | every text token clears 4.5:1 on its surfaces in both themes, material counted as its opaque fallback and over `--window` (4, 18) |
+| `npm run check:fonts` | no font file in the repo or in `dist/` whose name or inner name contains "SF Pro", "SF Compact", "SFNS", "SF Mono" or "New York"; no `@font-face` with these names (5) |
+| `npm run check:materials` | every rule with `backdrop-filter` has an opaque background before it and sits in `@supports`; only the allowed surfaces use material; each has a reduced-transparency and a more-contrast fallback (18) |
+| `npm run check:motion` | every animation has a `prefers-reduced-motion` branch; no infinite animation except the run shimmer and the loading spinner; transitions and keyframes move only `transform`, `opacity` and grid tracks (9) |
 | `npm run test` | rendering of the empty, loading, error and long-content states (11) |
 
 ## 17. Before a release
@@ -195,3 +278,32 @@ crew); narrow window; light and dark; the engine not logged in.
 - [ ] The Taste skill's checker run over the screenshots or the built page; every FAIL fixed or waived with a reason.
 - [ ] Every state in rule 11 handled.
 - [ ] Screenshots use test data, never real accounts, names or messages.
+- [ ] Once by hand: the new image next to a native Mac app such as Mail or Notes. Does something lie over something
+  else? Is the selection neutral? Does content run under the toolbar? Is only one thing coloured? Would you share the
+  image?
+
+## 18. Material
+
+Material is a translucent surface: the background shows through, blurred (`backdrop-filter`). It is used in a few places
+only, because too much glass looks cheap and costs rendering time.
+
+| Surface | Token |
+|---|---|
+| Episodes panel | `--material-sidebar`, `--blur-sidebar` |
+| Toolbar of the chat, money row | `--material-bar`, `--blur-bar` |
+| Composer, palette, the teleprompter dialog | `--material-float`, `--blur-float` |
+| Teleprompter controls (on the phone) | `--prompter-material` |
+
+Cards, lists and the Crew panel stay opaque: they hold numbers that must read safely. Every material surface follows
+these five steps, in this order:
+
+1. an opaque colour (`--panel` or `--card`) as the base value;
+2. inside `@supports (backdrop-filter: blur(1px))` the translucent colour plus `backdrop-filter` and
+   `-webkit-backdrop-filter`;
+3. `box-shadow: inset 0 1px 0 var(--edge-light)` for the fine light edge;
+4. in `@media (prefers-reduced-transparency: reduce)` opaque again;
+5. in `@media (prefers-contrast: more)` opaque, with a `--line-strong` edge.
+
+Behind everything lies `--window` with a very faint, fixed gradient (two large blurred spots, at most 6 % opacity), so
+the glass has something to show. It never moves. No refraction effects. If you notice the effect, it is too strong.
+

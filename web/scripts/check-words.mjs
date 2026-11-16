@@ -11,7 +11,7 @@ const BANNED_LABELS = new Set(["ok", "okay", "submit", "yes"]);
 const problems = [];
 
 // In JSX attributes only these carry words a person reads; class names, roles and ids are code.
-const TEXT_ATTRIBUTES = new Set(["aria-label", "title", "placeholder", "alt", "label", "aria-description"]);
+const TEXT_ATTRIBUTES = new Set(["aria-label", "title", "placeholder", "alt", "label", "aria-description", "data-tip"]);
 
 function attributeName(node) {
   const p = node.parent;

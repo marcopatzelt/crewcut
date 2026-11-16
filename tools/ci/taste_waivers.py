@@ -23,8 +23,9 @@ def main(argv: list[str]) -> int:
     for f in fails:
         if f in waived:
             print(f"  waived {f}: {waived[f]}")
-    if not text:
-        print("  no report (the checker did not run)")
+    if not text.strip():
+        print("  no report: the checker did not run")
+        return 2
     return 1 if open_fails else 0
 
 

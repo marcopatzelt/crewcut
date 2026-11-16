@@ -74,11 +74,11 @@ export function onHashChange(): void {
 let stopLive: (() => void) | null = null;
 let bootSeq = 0;
 
-export async function boot(opts: { demo?: boolean } = {}): Promise<void> {
+export async function boot(opts: { demo?: boolean; play?: boolean } = {}): Promise<void> {
   const mine = (bootSeq += 1);
   setUi({ boot: "loading", bootError: null });
   if (opts.demo && !usingBackend()) {
-    setBackend(createDemoBackend());
+    setBackend(createDemoBackend({ play: opts.play }));
     setUi({ demo: "asked" });
   }
   let state: State;
@@ -324,6 +324,15 @@ export async function accept(card: Card, choice?: number): Promise<void> {
   upsertCard({ ...card, choice: choice ?? null, ...result, status: result?.status ?? "accepted" });
 }
 
+/**
+ * Declines a card with the user's words. Used only where the one button means "not this way": a spend card with
+ * "On this machine" chosen. Accepting a spend card means "rent", so the local way must never call accept.
+ */
+export async function decline(card: Card, reason: string): Promise<void> {
+  const result = await api.decline(card.id, reason);
+  upsertCard({ ...card, ...result, status: result?.status ?? "declined" });
+}
+
 let uploadSeq = 0;
 
 export async function uploadFiles(files: File[]): Promise<void> {
@@ -352,4 +361,83 @@ export async function uploadFiles(files: File[]): Promise<void> {
 
 export function setMenu(open: boolean): void {
   setUi({ menuOpen: open });
+}
+
+// ---------- keyboard and palette (DESIGN.md rule 15) ----------
+
+export function setPalette(open: boolean): void {
+  setUi({ paletteOpen: open, menuOpen: false });
+}
+
+export function setPrompter(open: boolean): void {
+  setUi({ prompterOpen: open });
+}
+
+export function toggleSide(): void {
+  if (typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(max-width: 759px)").matches) {
+    setUi((s) => ({ menuOpen: !s.menuOpen }));
+    return;
+  }
+  setUi((s) => ({ sideHidden: !s.sideHidden }));
+}
+
+export function toggleCrew(): void {
+  setUi((s) => ({ crewHidden: !s.crewHidden }));
+}
+
+export function focusComposer(): void {
+  const el = typeof document !== "undefined" ? document.getElementById("composer") : null;
+  if (el instanceof HTMLTextAreaElement) el.focus();
+}
+
+/** Cmd+N: no episode selected, so the next sentence starts one. */
+export function newEpisode(): void {
+  navigate({ kind: "new" });
+  setTimeout(focusComposer, 0);
+}
+
+/** Cmd+1 to Cmd+9. */
+export function openEpisodeAt(index: number): boolean {
+  const ep = getUi().state?.episodes[index];
+  if (!ep) return false;
+  navigate({ kind: "episode", id: ep.id });
+  return true;
+}
+
+function scrollToSoon(selector: string): void {
+  if (typeof document === "undefined") return;
+  let tries = 0;
+  const go = () => {
+    const el = document.querySelector<HTMLElement>(selector);
+    if (el) {
+      const smooth = typeof window.matchMedia === "function" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      el.scrollIntoView?.({ block: "center", behavior: smooth ? "smooth" : "auto" });
+      return;
+    }
+    tries += 1;
+    if (tries < 20) setTimeout(go, 100);
+  };
+  setTimeout(go, 0);
+}
+
+/** A waiting row in the Crew column jumps to the open card of its episode. Returns false when there is none. */
+export function jumpToOpenCard(episode: string | null): boolean {
+  if (!episode) return false;
+  const card = Object.values(getUi().cards).find((c) => c.episode === episode && c.status === "open");
+  if (!card) return false;
+  const v = getUi().view;
+  if (v.kind !== "episode" || v.id !== episode) navigate({ kind: "episode", id: episode });
+  scrollToSoon(`[data-open-card="${card.id}"]`);
+  return true;
+}
+
+/** A done step dot jumps to the card of that step in the chat, else to its first message. */
+export function jumpToStep(step: string): void {
+  if (typeof document === "undefined") return;
+  const chat = "[data-testid='chat-scroll']";
+  const cards = document.querySelectorAll<HTMLElement>(`${chat} [data-card-step="${step}"]`);
+  const target = cards[cards.length - 1] ?? document.querySelector<HTMLElement>(`${chat} [data-step="${step}"]`);
+  if (!target) return;
+  const smooth = typeof window.matchMedia === "function" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  target.scrollIntoView?.({ block: "center", behavior: smooth ? "smooth" : "auto" });
 }

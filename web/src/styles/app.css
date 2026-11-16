@@ -1,5 +1,5 @@
-/* Crewcut app styles. Colours come only from tokens.css (DESIGN.md rule 4).
-   Sizes follow rule 5 (type), 6 (shape) and 7 (4 px grid). */
+/* Crewcut app styles. Colours, radii, shadows and durations come only from tokens.css (DESIGN.md rules 4, 6, 9).
+   Sizes follow rule 5 (type) and 7 (4 px grid). Material follows rule 18; npm run check:materials reads this file. */
 
 *,
 *::before,
@@ -14,13 +14,22 @@ body,
   height: 100%;
 }
 
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
 body {
-  background: var(--bg);
+  background: var(--window);
   color: var(--ink);
-  font: 400 13px/20px var(--font);
+  font: 400 13px/18px var(--font);
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--selection);
 }
 
 button {
@@ -54,14 +63,21 @@ p {
   margin: 0;
 }
 
+/* The focus ring (rule 15): 3 px of --focus with the element's own radius. The transparent outline stays for
+   forced-colours modes, where shadows are not drawn. */
 :focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid transparent;
   outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--focus);
 }
 
 svg {
   display: block;
   flex: none;
+}
+
+svg.lucide {
+  stroke-width: 1.75;
 }
 
 .sr-only {
@@ -86,79 +102,107 @@ svg {
   color: var(--ink-3);
 }
 
-/* ---------- the three places ---------- */
-
-.app {
-  display: grid;
-  grid-template-columns: 272px minmax(0, 1fr) 320px;
-  height: 100vh;
-  height: 100dvh;
-  overflow: hidden;
+.group-label {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+  padding: 0 8px 6px;
 }
 
-.app > * {
-  min-height: 0;
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  flex: none;
+}
+
+.dot.warn {
+  background: var(--warn);
+}
+
+/* ---------- the window: three floating places on --window (rules 2 and 7) ---------- */
+
+.app {
+  --side-w: 272px;
+  --gap-l: 8px;
+  --gap-r: 8px;
+  --crew-w: 320px;
+  display: grid;
+  grid-template-columns: var(--side-w) var(--gap-l) minmax(0, 1fr) var(--gap-r) var(--crew-w);
+  grid-template-rows: minmax(0, 1fr);
+  height: 100vh;
+  height: 100dvh;
+  padding: 8px;
+  overflow: hidden;
+  /* Two large, faint, fixed spots, so the glass of the Episodes panel has something to show (rule 18). */
+  background:
+    radial-gradient(60% 55% at 12% 8%, var(--window-tint-2), transparent 70%),
+    radial-gradient(55% 60% at 88% 96%, var(--window-tint-1), transparent 70%),
+    var(--window);
+  transition: grid-template-columns var(--t-soft) var(--spring-soft);
+}
+
+.app.side-hidden {
+  --side-w: 0px;
+  --gap-l: 0px;
+}
+
+.app.crew-hidden {
+  --gap-r: 0px;
+  --crew-w: 0px;
 }
 
 /* ---------- left: episodes ---------- */
 
 .side {
-  background: var(--panel);
-  border-right: 1px solid var(--line);
+  grid-column: 1;
+  grid-row: 1;
+  width: 272px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 16px 12px;
-  overflow: hidden;
+  padding: 12px;
+  border-radius: var(--r-panel);
+  background: var(--panel);
+  box-shadow: var(--shadow-2), inset 0 1px 0 var(--edge-light);
+  transition:
+    opacity var(--t-fast) linear,
+    transform var(--t-soft) var(--spring-soft),
+    visibility 0s linear 0s;
+}
+
+.app.side-hidden .side {
+  visibility: hidden;
+  opacity: 0;
+  transform: translateX(-12px);
+  transition:
+    opacity var(--t-fast) linear,
+    transform var(--t-soft) var(--spring-soft),
+    visibility 0s linear var(--t-soft);
+}
+
+.side-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+  padding-left: 8px;
 }
 
 .wordmark {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 8px 16px;
-  font-size: 15px;
-  line-height: 22px;
+  font-size: 13px;
+  line-height: 18px;
   font-weight: 600;
-  letter-spacing: -0.01em;
 }
 
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 32px;
-  padding: 0 12px;
-  border-radius: var(--r-full);
-  border: 1px solid var(--line);
-  background: var(--card);
-  color: var(--ink);
-  font-weight: 500;
-  transition: background-color var(--t-press) var(--ease), opacity var(--t-press) var(--ease);
-}
-
-.pill:hover {
-  background: var(--hover);
-}
-
-a.pill:hover {
-  text-decoration: none;
-}
-
-.pill:active {
-  opacity: 0.8;
-}
-
-.side .pill {
-  display: flex;
-  margin: 0 4px 20px;
-}
-
-.group-label {
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 500;
-  color: var(--ink-3);
-  padding: 0 8px 8px;
+.side .group-label {
+  padding-top: 20px;
 }
 
 .ep-list {
@@ -166,17 +210,17 @@ a.pill:hover {
   min-height: 0;
   overflow-y: auto;
   margin: 0 -4px;
-  padding: 0 4px;
+  padding: 0 4px 4px;
 }
 
 .ep {
   display: block;
-  width: 100%;
-  padding: 8px;
-  border-radius: var(--r-row);
-  margin-bottom: 4px;
   position: relative;
-  transition: background-color var(--t-press) var(--ease);
+  width: 100%;
+  padding: 6px 8px 8px;
+  border-radius: var(--r-row);
+  margin-bottom: 2px;
+  transition: background-color var(--t-fast) linear;
 }
 
 .ep:hover {
@@ -190,7 +234,11 @@ a.pill:hover {
 .ep-title {
   display: block;
   font-weight: 500;
-  padding-right: 16px;
+  padding-right: 14px;
+}
+
+.ep[aria-current="page"] .ep-title {
+  font-weight: 600;
 }
 
 .ep-step {
@@ -198,34 +246,37 @@ a.pill:hover {
   font-size: 12px;
   line-height: 16px;
   color: var(--ink-3);
-  margin-top: 2px;
 }
 
+/* The one coloured thing in a row: the open card waits for the user. */
 .ep-dot {
   position: absolute;
-  right: 12px;
-  top: 14px;
-  width: 8px;
-  height: 8px;
+  right: 10px;
+  top: 12px;
+  width: 6px;
+  height: 6px;
   border-radius: var(--r-full);
   background: var(--accent);
 }
 
+/* The ten strokes: done --ink-3, current --accent, open --line-strong. */
 .bar {
   display: flex;
-  gap: 2px;
-  margin-top: 8px;
+  gap: 3px;
+  margin-top: 6px;
 }
 
 .bar i {
+  position: relative;
   flex: 1;
-  height: 3px;
+  height: 2px;
   border-radius: var(--r-full);
-  background: var(--line);
+  background: var(--line-strong);
+  overflow: hidden;
 }
 
 .bar i.done {
-  background: var(--ink-2);
+  background: var(--ink-3);
 }
 
 .bar i.working,
@@ -234,27 +285,38 @@ a.pill:hover {
 }
 
 .bar i.skipped {
-  background: transparent;
-  border-top: 1px dashed var(--line);
-  height: 0;
-  margin-top: 1px;
+  background: var(--line);
+}
+
+.bar i.working::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 50%;
+  background: linear-gradient(90deg, transparent, var(--shimmer), transparent);
+  animation: run var(--t-loop) linear infinite;
 }
 
 .side-empty {
-  padding: 0 8px;
+  padding: 4px 8px;
   color: var(--ink-3);
+}
+
+.side-foot {
+  padding-top: 12px;
 }
 
 .nav {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  padding: 8px;
+  min-height: 32px;
+  padding: 0 8px;
   border-radius: var(--r-row);
   color: var(--ink-2);
   font-weight: 500;
-  transition: background-color var(--t-press) var(--ease);
+  transition: background-color var(--t-fast) linear;
 }
 
 .nav:hover {
@@ -273,187 +335,32 @@ a.pill:hover {
   color: var(--ink-3);
 }
 
-/* ---------- center ---------- */
+/* ---------- center: the chat surface ---------- */
 
 .main {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  overflow: hidden;
+  grid-column: 3;
+  grid-row: 1;
   position: relative;
-}
-
-.topbar {
-  display: none;
+  z-index: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--bg);
+  border-radius: var(--r-panel);
+  box-shadow: var(--shadow-1);
+  container: main / size;
 }
 
 .view {
-  flex: 1;
-  min-height: 0;
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
+  animation: fade-in var(--t-fade) linear;
 }
 
-.head {
-  padding: 20px 40px 0;
-  border-bottom: 1px solid var(--line);
-  background: var(--bg);
-}
-
-.head-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  position: relative;
-}
-
-.head-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.head h1 {
-  font-size: 20px;
-  line-height: 28px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.head .sub {
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--ink-3);
-  margin-top: 2px;
-}
-
-.head.plain {
-  padding-bottom: 20px;
-}
-
-.text-button {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 32px;
-  padding: 0 12px;
-  border-radius: var(--r-full);
-  color: var(--ink-2);
-  font-weight: 500;
-  transition: background-color var(--t-press) var(--ease), color var(--t-press) var(--ease);
-}
-
-.text-button:hover {
-  background: var(--hover);
-  color: var(--ink);
-}
-
-.text-button[aria-expanded="true"] {
-  background: var(--selected);
-  color: var(--ink);
-}
-
-/* The ten steps: each step is as wide as its own text, the free space is shared out evenly between them
-   (space-between, at least 16 px), so gaps are equal and underlines never touch. When the header gets narrow, the
-   labels of the other steps fold away (numbers stay, the current step keeps its label); narrower still, the compact
-   "Step 6 of 10" line takes over. Container queries follow the header's own width, not the window's. */
-.head {
-  container-type: inline-size;
-  container-name: head;
-}
-
-.steps {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 16px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.step {
-  flex: none;
-  padding: 0 0 12px;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--ink-3);
-  border-bottom: 2px solid transparent;
-  white-space: nowrap;
-}
-
-.step .n {
-  margin-right: 4px;
-}
-
-@container head (max-width: 719px) {
-  .step:not(.now) .label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-  }
-
-  .step:not(.now) .n {
-    margin-right: 0;
-  }
-}
-
-@container head (max-width: 379px) {
-  .steps {
-    display: none;
-  }
-
-  .steps-compact {
-    display: block;
-    padding: 12px 0;
-  }
-
-  .steps-compact .bar {
-    margin-top: 4px;
-  }
-}
-
-.step.done {
-  color: var(--ink-2);
-}
-
-.step.now {
-  color: var(--ink);
-  font-weight: 500;
-  border-bottom-color: var(--accent);
-}
-
-.step.skipped {
-  border-bottom: 2px dashed var(--line);
-}
-
-.steps-compact {
-  display: none;
-}
-
-.notice {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 12px 40px 0;
-  padding: 8px 12px;
-  border-radius: var(--r-row);
-  background: var(--sunken);
-  color: var(--ink-2);
-}
-
-.notice.danger {
-  color: var(--danger);
-}
-
-.notice svg {
-  margin-top: 2px;
-}
-
-/* the transcript */
-
+/* The transcript runs under the toolbar (52 px) and under the floating composer (--dock-h). */
 .scroll {
   flex: 1;
   min-height: 0;
@@ -461,78 +368,399 @@ a.pill:hover {
   display: flex;
   flex-direction: column;
   overscroll-behavior: contain;
+  padding: 52px 0 calc(var(--dock-h, 88px) + 16px);
+  scroll-padding: 64px 0 calc(var(--dock-h, 88px) + 16px);
 }
 
-.scroll.faded {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, var(--ink) 48px);
-  mask-image: linear-gradient(to bottom, transparent 0, var(--ink) 48px);
-}
-
-.chat {
+.thread {
   margin: auto auto 0;
   width: 100%;
-  max-width: 880px;
-  padding: 24px 40px 8px;
+  max-width: 800px;
+  padding: 0 40px;
+}
+
+.large-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 0 20px;
+  min-width: 0;
+}
+
+.large-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.large-title h1 {
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.large-title .sub {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+/* ---------- the toolbar (rule 7): material, the chat runs under it ---------- */
+
+.toolbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 10px 0 20px;
+  background: var(--card);
+  box-shadow: inset 0 1px 0 var(--edge-light);
+  container: toolbar / inline-size;
+}
+
+.toolbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--line);
+  transform: scaleY(0.5);
+  transform-origin: bottom;
+  opacity: 0;
+  transition: opacity var(--t-fast) linear;
+}
+
+.toolbar.scrolled::after {
+  opacity: 1;
+}
+
+.menu-button {
+  display: none;
+}
+
+.tb-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity var(--t-fast) linear,
+    transform var(--t-snappy) var(--spring-snappy);
+}
+
+.tb-title.shown {
+  opacity: 1;
+  transform: none;
+}
+
+.tb-name {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.tb-sub {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-3);
+}
+
+.tb-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* The step strip: ten dots on a line, then "6 of 10 · Edit" (rule 2). */
+.strip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 auto;
+}
+
+.dots {
+  position: relative;
+}
+
+.dots ol {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  position: relative;
+  width: 22px;
+  height: 28px;
+}
+
+.step > button,
+.step > span {
+  width: 22px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-xs);
+}
+
+.step > button:hover i {
+  transform: scale(1.25);
+}
+
+.step i {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full);
+  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+  transition: transform var(--t-fast) linear;
+}
+
+.step.done i {
+  background: var(--ink-3);
+  box-shadow: none;
+}
+
+.step.working i,
+.step.waiting i {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.step.skipped i {
+  width: 4px;
+  height: 4px;
+  background: var(--line-strong);
+  box-shadow: none;
+}
+
+.step.now i {
+  opacity: 0;
+}
+
+.step + .step::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 13px;
+  width: 12px;
+  height: 1.5px;
+  border-radius: var(--r-full);
+  background: var(--line);
+}
+
+.step.done + .step::before {
+  background: var(--ink-3);
+}
+
+/* The accent dot that moves on to the next step (--spring-soft). */
+.now-dot {
+  position: absolute;
+  left: 6px;
+  top: 9px;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--r-full);
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus);
+  transform: translateX(calc(var(--now, 0) * 22px));
+  transition: transform var(--t-soft) var(--spring-soft);
+  pointer-events: none;
+}
+
+.strip-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.capsule {
+  display: none;
+  width: 48px;
+  height: 4px;
+  border-radius: var(--r-full);
+  background: var(--line);
+  overflow: hidden;
+}
+
+.capsule i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+}
+
+@container toolbar (max-width: 719px) {
+  .dots {
+    display: none;
+  }
+
+  .capsule {
+    display: block;
+  }
+}
+
+@container toolbar (max-width: 479px) {
+  .capsule {
+    display: none;
+  }
+
+  .strip-text {
+    font-size: 12px;
+    line-height: 16px;
+  }
+}
+
+/* Icon buttons: 28 px to the eye, 32 px to the hand (rule 15). */
+.icon-button {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-row);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-2);
+  flex: none;
+}
+
+.icon-button::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: var(--r-xs);
+  background: transparent;
+  transition: background-color var(--t-fast) linear;
+}
+
+.icon-button > svg {
+  position: relative;
+}
+
+.icon-button:hover::before,
+.icon-button[aria-expanded="true"]::before {
+  background: var(--hover);
+}
+
+.icon-button:hover,
+.icon-button[aria-expanded="true"] {
+  color: var(--ink);
+}
+
+/* Tooltips (rule 15): after 600 ms, on --card, with the shortcut in the text. */
+.tip {
+  position: relative;
+}
+
+.tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  z-index: 30;
+  padding: 4px 8px;
+  border-radius: var(--r-xs);
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow-2);
+  font: 400 12px/16px var(--font);
+  letter-spacing: 0;
+  white-space: pre;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -2px);
+  transition:
+    opacity var(--t-fast) linear,
+    transform var(--t-fast) linear;
+}
+
+.tip-end::after {
+  left: auto;
+  right: 0;
+  transform: translateY(-2px);
+}
+
+.tip:hover::after,
+.tip:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  transition-delay: var(--t-tip);
+}
+
+.tip-end:hover::after,
+.tip-end:focus-visible::after {
+  transform: none;
+}
+
+/* ---------- the transcript ---------- */
+
+.chat {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  padding-bottom: 8px;
 }
 
 .chat.dropping {
   outline: 1px dashed var(--ink-3);
-  outline-offset: -8px;
+  outline-offset: 8px;
   border-radius: var(--r-card);
+}
+
+.chat-empty {
+  color: var(--ink-2);
+  font-size: 15px;
+  line-height: 23px;
 }
 
 .msg {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   gap: 12px;
-  animation: slide-in var(--t-msg) var(--ease);
+}
+
+.msg.is-new,
+.user.is-new {
+  animation: msg-in var(--t-snappy) var(--spring-snappy) both;
 }
 
 .msg-main {
   min-width: 0;
 }
 
-.mark {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--r-full);
-  background: var(--sunken);
-  border: 1px solid var(--line);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  line-height: 12px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--ink-2);
-  flex: none;
-}
-
-.mark.big {
-  width: 40px;
-  height: 40px;
-  font-size: 12px;
-}
-
 .who {
   font-size: 12px;
-  line-height: 16px;
+  line-height: 18px;
   color: var(--ink-3);
 }
 
 .who b {
   color: var(--ink);
+  font-size: 13px;
   font-weight: 600;
   margin-right: 8px;
 }
 
 .txt {
   font-size: 15px;
-  line-height: 24px;
+  line-height: 23px;
+  letter-spacing: -0.005em;
   margin-top: 2px;
   overflow-wrap: anywhere;
 }
@@ -548,46 +776,18 @@ a.pill:hover {
   margin-top: 4px;
 }
 
+/* A user message: a bubble on --sunken, no accent (rule 4). */
 .user {
   align-self: flex-end;
-  max-width: 70%;
+  max-width: 75%;
   background: var(--sunken);
-  border-radius: var(--r-card);
-  padding: 8px 16px;
+  border-radius: var(--r-panel) var(--r-panel) var(--r-xs) var(--r-panel);
+  padding: 8px 14px;
   font-size: 15px;
-  line-height: 24px;
+  line-height: 23px;
+  letter-spacing: -0.005em;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  animation: slide-in var(--t-msg) var(--ease);
-}
-
-.folded {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--ink-3);
-  padding-left: 40px;
-  min-width: 0;
-}
-
-.folded .ok {
-  color: var(--ok);
-}
-
-.chat-empty {
-  color: var(--ink-3);
-  font-size: 15px;
-  line-height: 24px;
-  text-align: center;
-  padding: 32px 0;
-}
-
-.chat-empty strong {
-  display: block;
-  color: var(--ink);
-  font-weight: 600;
 }
 
 .line-item {
@@ -599,6 +799,7 @@ a.pill:hover {
   line-height: 16px;
   color: var(--ink-2);
   min-width: 0;
+  animation: fade-in var(--t-fade) linear;
 }
 
 .line-item.failed {
@@ -609,25 +810,175 @@ a.pill:hover {
   flex: none;
 }
 
-/* cards */
+/* A finished exchange between two crew members: one quiet line with a disclosure chevron. */
+.exchange {
+  padding-left: 40px;
+  min-width: 0;
+}
+
+.exchange-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 32px;
+  padding: 0 6px 0 2px;
+  margin-left: -2px;
+  border-radius: var(--r-row);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-3);
+  transition: background-color var(--t-fast) linear;
+}
+
+.exchange-line:hover {
+  background: var(--hover);
+}
+
+.exchange-chev {
+  transition: transform var(--t-fast) linear;
+}
+
+.exchange-line[aria-expanded="true"] .exchange-chev {
+  transform: rotate(90deg);
+}
+
+.exchange code,
+.exchange-who code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.exchange-list {
+  list-style: none;
+  margin: 4px 0 0 20px;
+  padding: 0 0 0 12px;
+  box-shadow: inset 1px 0 0 var(--line-strong);
+}
+
+.exchange-list li + li {
+  margin-top: 12px;
+}
+
+.exchange-who {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-3);
+}
+
+.exchange-who b {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.exchange-list p {
+  margin-top: 2px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- identity marks (rule 13): a rounded square like a small app icon ---------- */
+
+.mark {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-row);
+  background: var(--sunken);
+  box-shadow: inset 0 0 0 0.5px var(--line-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 600 11px/14px var(--font-rounded);
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+  flex: none;
+}
+
+.mark.small {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-xs);
+  letter-spacing: 0;
+}
+
+.mark.big {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-ctl);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.mark.is-working::after,
+.mark.is-waiting::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full);
+  box-shadow: 0 0 0 1px var(--card);
+}
+
+.mark.is-working::after {
+  background: var(--accent);
+}
+
+.mark.is-waiting::after {
+  background: var(--card);
+  box-shadow:
+    inset 0 0 0 1.5px var(--warn),
+    0 0 0 1px var(--card);
+}
+
+/* ---------- cards (rule 12) ---------- */
 
 .card {
   margin-left: 40px;
   background: var(--card);
-  border: 1px solid var(--line);
   border-radius: var(--r-card);
   padding: 16px;
-  animation: card-in var(--t-card) var(--ease);
+  /* the 2 px accent edge inside marks an open card; it replaces any blinking */
+  box-shadow:
+    inset 2px 0 0 var(--accent),
+    var(--shadow-1);
 }
 
-.card .who {
-  margin-bottom: 4px;
+.card.is-new {
+  animation: card-in var(--t-snappy) var(--spring-snappy) both;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-3);
+}
+
+.card-head b {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  flex: none;
+}
+
+.card-ask {
+  margin-left: auto;
+  flex: none;
 }
 
 .card h3 {
   font-size: 15px;
-  line-height: 22px;
+  line-height: 20px;
   font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 10px;
   overflow-wrap: anywhere;
 }
 
@@ -650,9 +1001,13 @@ a.pill:hover {
 .card-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
   margin-top: 16px;
+}
+
+.card-keys {
+  margin-left: auto;
 }
 
 .primary {
@@ -664,20 +1019,29 @@ a.pill:hover {
   border-radius: var(--r-full);
   background: var(--accent);
   color: var(--accent-ink);
-  font-weight: 500;
-  transition: opacity var(--t-press) var(--ease);
+  font-weight: 600;
+  transition:
+    transform var(--t-fast) linear,
+    box-shadow var(--t-fast) linear,
+    opacity var(--t-fast) linear;
 }
 
 .primary:hover {
-  opacity: 0.9;
+  opacity: 0.92;
 }
 
-.primary:active {
-  opacity: 0.8;
+.primary:active,
+.primary[data-pressed="true"] {
+  transform: scale(0.97);
+  box-shadow: var(--shadow-press);
 }
 
 .primary:disabled {
   opacity: 0.5;
+}
+
+.primary:focus-visible {
+  box-shadow: 0 0 0 3px var(--focus);
 }
 
 .quiet {
@@ -711,28 +1075,82 @@ a.pill:hover {
   color: var(--accent);
   font-weight: 500;
   min-height: 32px;
-  border-radius: var(--r-full);
+  border-radius: var(--r-row);
 }
 
 .link-button:hover {
   text-decoration: underline;
 }
 
-.ways {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.way {
-  border: 1px solid var(--line);
-  border-radius: var(--r-row);
-  padding: 12px 16px;
+/* A decided card: one line with a check in --ok. */
+.folded {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-3);
+  padding-left: 40px;
   min-width: 0;
 }
 
-.way.rec {
-  border-color: var(--ink-3);
+.folded.is-new {
+  animation: fold-in var(--t-snappy) var(--spring-snappy) both;
+}
+
+.folded .ok {
+  color: var(--ok);
+}
+
+/* The card that was just decided folds away: grid rows 1fr to 0fr, never height. */
+.fold-out {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  margin-bottom: -20px;
+  animation: fold-away var(--t-snappy) var(--spring-snappy);
+  pointer-events: none;
+}
+
+.fold-out > div {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The two ways of a spend card: a pair of choice surfaces. The chosen one is raised with an accent ring. */
+.ways {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.way {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 12px 16px;
+  border-radius: var(--r-ctl);
+  background: var(--sunken);
+  transition:
+    background-color var(--t-fast) linear,
+    box-shadow var(--t-fast) linear;
+}
+
+.way:hover {
+  background: var(--hover);
+}
+
+.way[aria-checked="true"] {
+  background: var(--card);
+  box-shadow:
+    0 0 0 1.5px var(--accent),
+    var(--shadow-1);
+}
+
+.way:focus-visible {
+  box-shadow:
+    0 0 0 1.5px var(--accent),
+    0 0 0 4.5px var(--focus);
 }
 
 .way .k {
@@ -742,9 +1160,10 @@ a.pill:hover {
 }
 
 .way .v {
-  font-size: 15px;
-  line-height: 22px;
+  font-size: 22px;
+  line-height: 26px;
   font-weight: 600;
+  letter-spacing: -0.02em;
   margin-top: 4px;
 }
 
@@ -752,13 +1171,13 @@ a.pill:hover {
   font-size: 12px;
   line-height: 16px;
   color: var(--ink-2);
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .options {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .option {
@@ -769,9 +1188,11 @@ a.pill:hover {
   min-height: 40px;
   padding: 8px 12px;
   border-radius: var(--r-row);
-  border: 1px solid var(--line);
+  box-shadow: inset 0 0 0 0.5px var(--line-strong);
   color: var(--ink);
-  transition: background-color var(--t-press) var(--ease), border-color var(--t-press) var(--ease);
+  transition:
+    background-color var(--t-fast) linear,
+    box-shadow var(--t-fast) linear;
 }
 
 .option:hover {
@@ -779,15 +1200,17 @@ a.pill:hover {
 }
 
 .option[aria-checked="true"] {
-  border-color: var(--accent);
-  background: var(--selected);
+  background: var(--card);
+  box-shadow:
+    0 0 0 1.5px var(--accent),
+    var(--shadow-1);
 }
 
 .option .tick {
   width: 16px;
   height: 16px;
   border-radius: var(--r-full);
-  border: 1px solid var(--ink-3);
+  box-shadow: inset 0 0 0 1px var(--ink-3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -795,8 +1218,8 @@ a.pill:hover {
 }
 
 .option[aria-checked="true"] .tick {
-  border-color: var(--accent);
   background: var(--accent);
+  box-shadow: none;
   color: var(--accent-ink);
 }
 
@@ -813,13 +1236,34 @@ a.pill:hover {
 }
 
 .rule-text {
-  border-left: 2px solid var(--line);
+  border-left: 2px solid var(--line-strong);
   padding: 4px 0 4px 12px;
   font-size: 15px;
-  line-height: 24px;
+  line-height: 23px;
 }
 
-/* previews */
+/* Shortcut keycaps. */
+.keys {
+  display: inline-flex;
+  gap: 2px;
+  flex: none;
+}
+
+.keys kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: var(--r-xs);
+  background: var(--sunken);
+  box-shadow: inset 0 0 0 0.5px var(--line-strong);
+  color: var(--ink-3);
+  font: 500 11px/14px var(--font);
+}
+
+/* ---------- previews ---------- */
 
 .preview {
   display: grid;
@@ -833,12 +1277,37 @@ a.pill:hover {
   grid-template-columns: minmax(0, 480px);
 }
 
-.media {
-  width: 100%;
+.media-box {
+  position: relative;
   aspect-ratio: 16 / 9;
-  border-radius: var(--r-row);
-  border: 1px solid var(--line);
+  border-radius: var(--r-ctl);
   background: var(--sunken);
+  overflow: hidden;
+}
+
+/* A 0.5 px edge on top of the picture, so a white image does not fray on a dark surface. */
+.media-box::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 0.5px var(--line-strong);
+  pointer-events: none;
+}
+
+.media-box[data-state="loading"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, var(--shimmer), transparent);
+  animation: run var(--t-loop) linear infinite;
+}
+
+.media {
+  position: relative;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   display: block;
 }
@@ -846,10 +1315,12 @@ a.pill:hover {
 .media-error {
   display: flex;
   align-items: center;
-  justify-content: center;
-  text-align: center;
+  flex-wrap: wrap;
+  gap: 8px;
   padding: 12px;
-  color: var(--ink-3);
+  border-radius: var(--r-ctl);
+  background: var(--sunken);
+  color: var(--ink-2);
   font-size: 12px;
   line-height: 16px;
 }
@@ -865,8 +1336,8 @@ a.pill:hover {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  border-bottom: 1px solid var(--line);
-  padding: 4px 0;
+  padding: 5px 0;
+  box-shadow: inset 0 -0.5px 0 var(--line-strong);
 }
 
 .facts dt,
@@ -879,19 +1350,59 @@ a.pill:hover {
   text-align: right;
 }
 
-/* composer */
+/* ---------- the dock: crew bar and composer, floating over the chat ---------- */
+
+.dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0 40px 16px;
+  pointer-events: none;
+  transition: transform var(--t-soft) var(--spring-soft);
+}
+
+.dock > * {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 720px;
+}
+
+.dock.narrow > * {
+  max-width: 560px;
+}
+
+/* First start: the composer sits under the sentence, then glides to its place at the bottom (--spring-soft).
+   Only the way down is animated; arriving in the centre on load is not. */
+.dock.centered {
+  transform: translateY(calc(100% + 24px - 50cqh));
+  transition: none;
+}
 
 .composer {
-  margin: 8px auto 20px;
-  max-width: 880px;
-  width: calc(100% - 80px);
-  background: var(--sunken);
-  border-radius: var(--r-composer);
-  padding: 12px 12px 12px 16px;
+  position: relative;
   display: flex;
   align-items: flex-end;
-  gap: 8px;
-  flex: none;
+  gap: 2px;
+  padding: 8px 8px 8px 18px;
+  border-radius: var(--r-composer);
+  background: var(--card);
+  box-shadow:
+    var(--shadow-2),
+    inset 0 1px 0 var(--edge-light);
+  transition: box-shadow var(--t-fast) linear;
+}
+
+.composer:focus-within {
+  box-shadow:
+    0 0 0 3px var(--focus),
+    var(--shadow-2),
+    inset 0 1px 0 var(--edge-light);
 }
 
 .composer textarea {
@@ -902,9 +1413,15 @@ a.pill:hover {
   outline: 0;
   background: transparent;
   color: var(--ink);
-  font: 400 15px/24px var(--font);
+  font: 400 15px/23px var(--font);
+  letter-spacing: -0.005em;
   padding: 4px 0;
-  max-height: 192px;
+  max-height: 146px;
+  overflow-y: auto;
+}
+
+.composer textarea:focus-visible {
+  box-shadow: none;
 }
 
 .composer textarea::placeholder {
@@ -912,77 +1429,116 @@ a.pill:hover {
   opacity: 1;
 }
 
-.composer:focus-within {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-
-.composer-error {
-  max-width: 880px;
-  width: calc(100% - 80px);
-  margin: 0 auto;
+.composer .mic.on {
   color: var(--danger);
-  font-size: 12px;
-  line-height: 16px;
 }
 
-.icon-button {
+/* The level of the microphone: five strokes, only while listening. */
+.level {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 31px;
+  margin-right: 8px;
+  flex: none;
+}
+
+.level i {
+  display: block;
+  width: 3px;
+  height: 16px;
+  border-radius: var(--r-full);
+  background: var(--danger);
+  transform: scaleY(0.25);
+  transition: transform var(--t-fast) linear;
+}
+
+.send {
   width: 32px;
   height: 32px;
+  padding: 2px;
   border-radius: var(--r-full);
+  background: var(--selected);
+  background-clip: content-box;
+  color: var(--ink-3);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--ink-2);
   flex: none;
-  transition: background-color var(--t-press) var(--ease), opacity var(--t-press) var(--ease);
+  transition:
+    background-color var(--t-fast) linear,
+    color var(--t-fast) linear,
+    transform var(--t-fast) linear;
 }
 
-.icon-button:hover {
-  background: var(--hover);
+.send.ready {
+  background-color: var(--accent);
+  color: var(--accent-ink);
 }
 
-.icon-button[aria-pressed="true"] {
-  background: var(--selected);
-  color: var(--accent);
+.send.ready:active {
+  transform: scale(0.94);
 }
 
-.icon-button.send {
-  background: var(--ink);
-  color: var(--bg);
+.composer-error {
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 16px;
+  padding: 0 18px;
 }
 
-.icon-button.send:disabled {
-  opacity: 0.4;
+/* ---------- notices: a slim line under the toolbar ---------- */
+
+.notice {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 32px);
+  padding: 6px 12px;
+  border-radius: var(--r-full);
+  background: var(--card);
+  box-shadow: var(--shadow-2);
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 16px;
+  transform: translateX(-50%);
+  animation: fade-in var(--t-fade) linear;
 }
 
-/* popover (teleprompter) */
+/* ---------- the teleprompter dialog (rule 18), opening from its icon ---------- */
 
 .popover {
   position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 20;
+  top: 56px;
+  right: 10px;
+  z-index: 8;
   width: 320px;
-  max-width: calc(100% - 32px);
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--r-card);
+  max-width: calc(100% - 20px);
   padding: 16px;
-  box-shadow: 0 8px 24px var(--shadow);
-  animation: card-in var(--t-card) var(--ease);
+  border-radius: var(--r-panel);
+  background: var(--card);
+  box-shadow:
+    var(--shadow-3),
+    inset 0 1px 0 var(--edge-light);
+  transform-origin: top right;
+  animation: pop-in var(--t-snappy) var(--spring-snappy);
 }
 
 .popover h2 {
   font-size: 15px;
-  line-height: 22px;
+  line-height: 20px;
   font-weight: 600;
+  margin-bottom: 4px;
 }
 
 .qr {
   margin: 12px 0;
   padding: 12px;
-  border-radius: var(--r-row);
+  border-radius: var(--r-group);
   background: var(--qr-plate);
   color: var(--qr-ink);
   display: flex;
@@ -1018,18 +1574,167 @@ a.pill:hover {
   margin-top: 12px;
 }
 
-/* read-only pages: profile, crew, job log */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-full);
+  background: var(--sunken);
+  box-shadow: inset 0 0 0 0.5px var(--line-strong);
+  color: var(--ink);
+  font-weight: 500;
+  transition: background-color var(--t-fast) linear;
+}
 
-.page {
+.pill:hover {
+  background: var(--hover);
+}
+
+a.pill:hover {
+  text-decoration: none;
+}
+
+/* ---------- the command palette (rule 15) ---------- */
+
+.palette-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 16vh 16px 16px;
+  transition: opacity var(--t-fast) linear;
+}
+
+.palette-layer.closing {
+  opacity: 0;
+}
+
+.palette {
+  width: 560px;
+  max-width: 100%;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-panel);
+  background: var(--card);
+  box-shadow:
+    var(--shadow-3),
+    inset 0 1px 0 var(--edge-light);
+  overflow: hidden;
+  transform-origin: top center;
+  animation: pop-in var(--t-snappy) var(--spring-snappy);
+}
+
+.palette-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  color: var(--ink-3);
+}
+
+.palette-field::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--line);
+  transform: scaleY(0.5);
+}
+
+.palette-field input {
   flex: 1;
-  min-height: 0;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: 400 15px/23px var(--font);
+  padding: 0;
+}
+
+.palette-field input:focus-visible {
+  box-shadow: none;
+}
+
+.palette-field input::placeholder {
+  color: var(--ink-3);
+  opacity: 1;
+}
+
+.palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
   overflow-y: auto;
 }
 
+.palette-group {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+  padding: 10px 10px 4px;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: var(--r-row);
+  cursor: pointer;
+}
+
+.palette-item > .one-line {
+  flex: 1;
+}
+
+.palette-meta {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-3);
+  flex: none;
+  max-width: 40%;
+}
+
+/* In a menu or the palette the highlight may be coloured, as in Mac menus (rule 4). */
+.palette-item.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.palette-item.active .palette-meta,
+.palette-item.active kbd {
+  color: var(--accent-ink);
+}
+
+.palette-item.active kbd {
+  background: transparent;
+  box-shadow: inset 0 0 0 0.5px var(--accent-ink);
+}
+
+.palette-empty {
+  padding: 12px 10px;
+  color: var(--ink-3);
+}
+
+/* ---------- read-only pages: profile, crew, job log ---------- */
+
 .doc {
-  max-width: 880px;
+  width: 100%;
+  max-width: 800px;
   margin: 0 auto;
-  padding: 24px 40px 32px;
+  padding: 0 40px 32px;
 }
 
 .section + .section {
@@ -1038,13 +1743,14 @@ a.pill:hover {
 
 .section h2 {
   font-size: 15px;
-  line-height: 22px;
+  line-height: 20px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   margin-bottom: 8px;
 }
 
 .rows {
-  border-top: 1px solid var(--line);
+  box-shadow: inset 0 0.5px 0 var(--line-strong);
 }
 
 .prow {
@@ -1053,7 +1759,7 @@ a.pill:hover {
   gap: 16px;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid var(--line);
+  box-shadow: inset 0 -0.5px 0 var(--line-strong);
 }
 
 .prow .label {
@@ -1077,7 +1783,7 @@ a.pill:hover {
   width: 16px;
   height: 16px;
   border-radius: var(--r-full);
-  border: 1px solid var(--line);
+  box-shadow: inset 0 0 0 0.5px var(--line-strong);
   flex: none;
 }
 
@@ -1091,7 +1797,7 @@ a.pill:hover {
 
 .rule-item {
   padding: 8px 0;
-  border-bottom: 1px solid var(--line);
+  box-shadow: inset 0 -0.5px 0 var(--line-strong);
 }
 
 .rule-item .meta {
@@ -1103,21 +1809,21 @@ a.pill:hover {
   color: var(--ink-3);
 }
 
+.engine-meta {
+  margin-bottom: 12px;
+}
+
 .person {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr);
   gap: 16px;
   padding: 16px 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.person:first-of-type {
-  border-top: 1px solid var(--line);
+  box-shadow: inset 0 -0.5px 0 var(--line-strong);
 }
 
 .person .name {
   font-size: 15px;
-  line-height: 22px;
+  line-height: 20px;
   font-weight: 600;
 }
 
@@ -1141,7 +1847,7 @@ a.pill:hover {
 .person dt {
   color: var(--ink-3);
   font-size: 12px;
-  line-height: 20px;
+  line-height: 18px;
 }
 
 .person dd {
@@ -1164,7 +1870,7 @@ a.pill:hover {
   margin: 0;
   padding: 12px 16px;
   background: var(--sunken);
-  border-radius: var(--r-card);
+  border-radius: var(--r-ctl);
   color: var(--ink-2);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -1174,51 +1880,193 @@ a.pill:hover {
   padding: 2px 0;
 }
 
+.text-button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-full);
+  color: var(--ink-2);
+  font-weight: 500;
+  transition:
+    background-color var(--t-fast) linear,
+    color var(--t-fast) linear;
+}
+
+.text-button:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
 .back {
   margin: 0 0 12px -12px;
 }
 
-/* ---------- right: crew ---------- */
+/* ---------- first start (onboarding) ---------- */
 
-.crew {
-  background: var(--panel);
-  border-left: 1px solid var(--line);
+.first-start .scroll {
+  padding-top: 0;
+}
+
+.hero {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: calc(50% + 8px);
   display: flex;
   flex-direction: column;
-  padding: 20px 16px 16px;
-  overflow: hidden;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  animation: fade-in var(--t-fade) linear;
 }
 
-.crew h2 {
-  font-size: 15px;
-  line-height: 22px;
+.hero-mark {
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.hero h1 {
+  font-size: 22px;
+  line-height: 26px;
   font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
-.crew .hint {
+.hero p {
+  color: var(--ink-2);
+}
+
+/* ---------- right: crew (opaque: it holds numbers that must read safely) ---------- */
+
+.crew {
+  grid-column: 5;
+  grid-row: 1;
+  justify-self: end;
+  position: relative;
+  width: 320px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 12px 0;
+  border-radius: var(--r-panel);
+  background: var(--panel);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+  transition:
+    opacity var(--t-fast) linear,
+    transform var(--t-soft) var(--spring-soft),
+    visibility 0s linear 0s;
+}
+
+.app.crew-hidden .crew {
+  visibility: hidden;
+  opacity: 0;
+  transform: translateX(12px);
+  transition:
+    opacity var(--t-fast) linear,
+    transform var(--t-soft) var(--spring-soft),
+    visibility 0s linear var(--t-soft);
+}
+
+.crew-title {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+  padding: 0 4px;
+}
+
+.crew .hint,
+.crew-sheet .hint {
   font-size: 12px;
   line-height: 16px;
   color: var(--ink-3);
-  margin: 4px 0 12px;
+  margin: 4px 0 0;
+  padding: 0 4px;
+}
+
+.engine-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-radius: var(--r-row);
+  background: var(--card);
+  box-shadow: var(--shadow-1);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-2);
+}
+
+.engine-line .dot {
+  transform: translateY(-1px);
 }
 
 .crew-list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  margin: 0 -16px;
-  padding: 0 16px;
+  margin: 0 -12px;
+  padding: 0 12px 88px;
+}
+
+/* The running jobs: one grouped list on a card, rows divided by inset hairlines. */
+.group {
+  margin-top: 12px;
+  border-radius: var(--r-group);
+  background: var(--card);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+
+.job-wrap {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
+.job-wrap > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.job-wrap.is-new {
+  animation: row-in var(--t-snappy) var(--spring-snappy) both;
 }
 
 .job {
+  position: relative;
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto;
-  gap: 4px 12px;
+  gap: 2px 10px;
   width: 100%;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--line);
-  animation: fade-in var(--t-msg) var(--ease);
-  transition: opacity var(--t-press) var(--ease);
+  padding: 10px 12px;
+  transition: background-color var(--t-fast) linear;
+}
+
+.job:hover {
+  background: var(--hover);
+}
+
+.job:focus-visible,
+.fin:focus-visible {
+  box-shadow: inset 0 0 0 3px var(--focus);
+}
+
+.job-wrap + .job-wrap .job::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50px;
+  right: 0;
+  height: 1px;
+  background: var(--line);
+  transform: scaleY(0.5);
+  transform-origin: top;
 }
 
 .job-main {
@@ -1231,25 +2079,19 @@ a.pill:hover {
   display: block;
 }
 
-.job:hover .job-name {
-  text-decoration: underline;
-  text-decoration-color: var(--ink-3);
-}
-
 .job-name {
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .job-doing {
   color: var(--ink-2);
-  margin-top: 2px;
 }
 
 .job-meta {
   font-size: 12px;
   line-height: 16px;
   color: var(--ink-3);
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .job-right {
@@ -1263,29 +2105,46 @@ a.pill:hover {
   display: block;
   font-weight: 500;
   font-size: 13px;
-  line-height: 20px;
+  line-height: 18px;
   color: var(--ink);
 }
 
+/* Progress: a 2 px line in --accent under the row, with the run shimmer while the job runs. */
 .prog {
   grid-column: 2 / 4;
   height: 2px;
-  background: var(--line);
+  margin-top: 6px;
   border-radius: var(--r-full);
+  background: var(--line);
   overflow: hidden;
-  margin-top: 4px;
 }
 
 .prog i {
+  position: relative;
   display: block;
   height: 2px;
   background: var(--accent);
-  transition: width var(--t-card) var(--ease);
+  transform-origin: left;
+  overflow: hidden;
+  transition: transform var(--t-soft) var(--spring-soft);
+}
+
+.prog i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, var(--shimmer), transparent);
+  animation: run var(--t-loop) linear infinite;
 }
 
 .prog.unknown i {
   width: 30%;
-  animation: run 1.6s var(--ease) infinite;
+  animation: run var(--t-loop) var(--ease-out) infinite;
+}
+
+.prog.unknown i::after {
+  content: none;
 }
 
 .later {
@@ -1293,7 +2152,7 @@ a.pill:hover {
 }
 
 .later .group-label {
-  padding: 0 0 4px;
+  padding: 0 4px 4px;
 }
 
 .fin {
@@ -1303,36 +2162,56 @@ a.pill:hover {
   gap: 12px;
   width: 100%;
   min-height: 32px;
+  padding: 0 4px;
+  border-radius: var(--r-row);
+  color: var(--ink-3);
   font-size: 12px;
   line-height: 16px;
-  color: var(--ink-3);
-  padding: 0;
+  transition: background-color var(--t-fast) linear;
 }
 
-.fin:hover span:first-child {
-  text-decoration: underline;
-  text-decoration-color: var(--ink-3);
+.fin:hover {
+  background: var(--hover);
 }
 
 .fin span:first-child {
   color: var(--ink-2);
+  font-size: 13px;
+  line-height: 18px;
 }
 
 .fin.failed span:first-child {
   color: var(--danger);
 }
 
+/* The money row (rule 14): a material bar at the foot of the Crew panel. */
 .money {
-  border-top: 1px solid var(--line);
-  padding-top: 12px;
-  margin-top: 12px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
   display: grid;
   grid-template-columns: auto auto 1fr;
   gap: 20px;
+  padding: 10px 16px 12px;
+  background: var(--panel);
+  box-shadow: inset 0 1px 0 var(--edge-light);
   font-size: 12px;
   line-height: 16px;
   color: var(--ink-3);
-  flex: none;
+}
+
+.money::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: var(--line);
+  transform: scaleY(0.5);
+  transform-origin: top;
 }
 
 .money b {
@@ -1340,28 +2219,51 @@ a.pill:hover {
   color: var(--ink);
   font-weight: 500;
   font-size: 13px;
-  line-height: 20px;
+  line-height: 18px;
+  animation: fade-in var(--t-fast) linear;
 }
 
-.money > span:last-child {
+.money.zero b {
+  color: var(--ink-3);
+}
+
+.money .month {
   text-align: right;
 }
 
-.money .warn {
+.money b.warn {
   color: var(--warn);
 }
 
-.money .danger {
+.money b.danger {
   color: var(--danger);
 }
 
-.crew-empty {
-  color: var(--ink-3);
-  padding: 12px 0;
+.cap {
+  display: block;
+  height: 3px;
+  margin-top: 4px;
+  border-radius: var(--r-full);
+  background: var(--line);
+  overflow: hidden;
 }
 
-/* the crew as a bar above the composer (below 1100 px) */
+.cap i {
+  display: block;
+  height: 100%;
+  background: var(--ink-3);
+  transform-origin: left;
+}
 
+.cap.warn i {
+  background: var(--warn);
+}
+
+.cap.danger i {
+  background: var(--danger);
+}
+
+/* The crew as a bar above the composer (below 1100 px). */
 .crewbar {
   display: none;
 }
@@ -1374,6 +2276,7 @@ a.pill:hover {
 
 .center-state {
   flex: 1;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1389,12 +2292,96 @@ a.pill:hover {
 }
 
 .spin {
-  animation: spin 900ms linear infinite;
+  animation: spin var(--t-spin) linear infinite;
 }
 
-/* ---------- motion ---------- */
+/* ---------- material (rule 18): opaque above, translucent where the browser can blur ---------- */
 
-@keyframes slide-in {
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .side {
+    background: var(--material-sidebar);
+    -webkit-backdrop-filter: var(--blur-sidebar);
+    backdrop-filter: var(--blur-sidebar);
+  }
+
+  .toolbar,
+  .money {
+    background: var(--material-bar);
+    -webkit-backdrop-filter: var(--blur-bar);
+    backdrop-filter: var(--blur-bar);
+  }
+
+  .composer,
+  .palette,
+  .popover {
+    background: var(--material-float);
+    -webkit-backdrop-filter: var(--blur-float);
+    backdrop-filter: var(--blur-float);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .side,
+  .money {
+    background: var(--panel);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .toolbar,
+  .composer,
+  .palette,
+  .popover {
+    background: var(--card);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .side,
+  .money {
+    background: var(--panel);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: 0 0 0 1px var(--line-strong);
+  }
+
+  .toolbar,
+  .composer,
+  .palette,
+  .popover {
+    background: var(--card);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: 0 0 0 1px var(--line-strong);
+  }
+
+  .composer:focus-within {
+    box-shadow:
+      0 0 0 3px var(--focus),
+      0 0 0 1px var(--line-strong);
+  }
+}
+
+/* Continuous corners where the browser has them; round corners elsewhere (rule 6). */
+@supports (corner-shape: squircle) {
+  .side,
+  .main,
+  .crew,
+  .card,
+  .composer,
+  .palette,
+  .popover,
+  .group,
+  .way {
+    corner-shape: squircle;
+  }
+}
+
+/* ---------- motion (rule 9): springs for what appears or moves, short fades for the rest ---------- */
+
+@keyframes msg-in {
   from {
     opacity: 0;
     transform: translateY(8px);
@@ -1408,11 +2395,55 @@ a.pill:hover {
 @keyframes card-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: scale(0.98);
   }
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fold-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fold-away {
+  from {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+  to {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
+@keyframes row-in {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  to {
+    grid-template-rows: 1fr;
+    opacity: 1;
   }
 }
 
@@ -1425,12 +2456,13 @@ a.pill:hover {
   }
 }
 
+/* The run shimmer: the one loop, only while work runs. */
 @keyframes run {
   from {
     transform: translateX(-100%);
   }
   to {
-    transform: translateX(340%);
+    transform: translateX(350%);
   }
 }
 
@@ -1440,12 +2472,29 @@ a.pill:hover {
   }
 }
 
+/* Reduced motion: nothing moves; things that appear only fade, in 120 ms. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation: none !important;
-    transition: none !important;
+    transition-property: opacity, color, background-color, box-shadow, visibility !important;
+    transition-duration: var(--t-fast) !important;
+    transition-timing-function: linear !important;
+  }
+
+  .view,
+  .msg.is-new,
+  .user.is-new,
+  .card.is-new,
+  .folded.is-new,
+  .job-wrap.is-new,
+  .palette,
+  .popover,
+  .notice,
+  .hero,
+  .line-item {
+    animation: fade-in var(--t-fast) linear !important;
   }
 }
 
@@ -1457,58 +2506,76 @@ a.pill:hover {
   .text-button,
   .link-button,
   .fin,
-  .nav {
+  .nav,
+  .palette-item {
     min-height: 40px;
   }
 
-  .icon-button {
+  .icon-button,
+  .send {
     width: 40px;
     height: 40px;
+  }
+
+  .send {
+    padding: 6px;
+  }
+
+  .card-keys {
+    display: none;
+  }
+}
+
+/* ---------- card padding from 1100 px (rule 7) ---------- */
+
+@media (min-width: 1100px) {
+  .card {
+    padding: 20px;
   }
 }
 
 /* ---------- narrow windows ---------- */
 
-
 @media (max-width: 1099px) {
   .app {
-    grid-template-columns: 272px minmax(0, 1fr);
+    --gap-r: 0px;
+    --crew-w: 0px;
   }
 
-  .app > .crew {
+  .app > .crew,
+  .tb-crew {
     display: none;
   }
 
   .crewbar {
     display: flex;
     align-items: center;
-    gap: 12px;
-    max-width: 880px;
-    width: calc(100% - 80px);
-    margin: 8px auto 0;
-    padding: 8px 12px;
+    gap: 10px;
     min-height: 40px;
-    border: 1px solid var(--line);
-    border-radius: var(--r-row);
-    background: var(--panel);
-    flex: none;
+    padding: 6px 14px 6px 8px;
+    border-radius: var(--r-full);
+    background: var(--card);
+    box-shadow: var(--shadow-2);
+    color: var(--ink-2);
   }
 
   .crewbar .summary {
     flex: 1;
     min-width: 0;
-    color: var(--ink-2);
   }
 
   .crewbar .marks {
     display: flex;
+    align-items: center;
     gap: 4px;
   }
 
-  .crewbar .marks .mark {
-    width: 24px;
-    height: 24px;
-    font-size: 9px;
+  .crewbar .chev {
+    transition: transform var(--t-snappy) var(--spring-snappy);
+  }
+
+  .crewbar .chev.down {
+    transform: rotate(180deg);
   }
 
   .crew-sheet {
@@ -1516,24 +2583,30 @@ a.pill:hover {
     flex-direction: column;
     position: absolute;
     left: 50%;
-    transform: translateX(-50%);
-    bottom: 128px;
-    width: calc(100% - 80px);
-    max-width: 880px;
-    max-height: 60%;
+    bottom: calc(var(--dock-h, 88px) + 8px);
     z-index: 15;
+    width: calc(100% - 80px);
+    max-width: 720px;
+    max-height: 60%;
+    padding: 16px 12px 0;
+    border-radius: var(--r-panel);
     background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: var(--r-card);
-    box-shadow: 0 8px 24px var(--shadow);
-    padding: 16px;
+    box-shadow: var(--shadow-3);
     overflow: hidden;
+    transform: translateX(-50%);
+    animation: fade-in var(--t-fade) linear;
+  }
+
+  .crew-sheet .crew-title {
+    font-size: 11px;
   }
 }
 
 @media (max-width: 759px) {
   .app {
-    grid-template-columns: minmax(0, 1fr);
+    --side-w: 0px;
+    --gap-l: 0px;
+    padding: 0;
   }
 
   .app > .side {
@@ -1543,49 +2616,56 @@ a.pill:hover {
   .app > .side.open {
     display: flex;
     position: fixed;
-    inset: 0 auto 0 0;
-    width: min(320px, 88vw);
-    z-index: 30;
-    box-shadow: 0 8px 24px var(--shadow);
+    top: 8px;
+    bottom: 8px;
+    left: 8px;
+    width: min(320px, calc(100vw - 48px));
+    z-index: 40;
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+    box-shadow: var(--shadow-3);
+    animation: pop-in var(--t-snappy) var(--spring-snappy);
+    transform-origin: top left;
   }
 
   .scrim {
     position: fixed;
     inset: 0;
-    z-index: 25;
-    background: var(--shadow);
+    z-index: 35;
+    background: var(--scrim);
+    animation: fade-in var(--t-fast) linear;
   }
 
-  .topbar {
-    display: flex;
-    align-items: center;
+  .main {
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .menu-button {
+    display: inline-flex;
+    margin-left: -6px;
+  }
+
+  .toolbar {
+    padding: 0 6px 0 12px;
     gap: 8px;
-    height: 48px;
-    padding: 0 8px;
-    border-bottom: 1px solid var(--line);
-    background: var(--panel);
-    flex: none;
   }
 
-  .topbar .wordmark {
-    padding: 0;
-    flex: 1;
+  .strip {
+    margin: 0 0 0 auto;
   }
 
-  .head {
-    padding: 16px 16px 0;
+  .thread,
+  .doc {
+    padding: 0 16px;
   }
 
-  .head.plain {
-    padding-bottom: 16px;
-  }
-
-  .notice {
-    margin: 12px 16px 0;
+  .doc {
+    padding-bottom: 32px;
   }
 
   .chat {
-    padding: 16px 16px 8px;
     gap: 16px;
   }
 
@@ -1597,12 +2677,13 @@ a.pill:hover {
   .msg > .mark {
     width: 24px;
     height: 24px;
-    font-size: 9px;
+    border-radius: var(--r-xs);
   }
 
   .card,
   .folded,
-  .line-item {
+  .line-item,
+  .exchange {
     margin-left: 0;
     padding-left: 0;
   }
@@ -1611,30 +2692,37 @@ a.pill:hover {
     padding: 16px;
   }
 
+  .card-keys {
+    display: none;
+  }
+
   .user {
     max-width: 85%;
   }
 
-  .ways {
-    grid-template-columns: 1fr;
-  }
-
+  .ways,
   .preview {
     grid-template-columns: 1fr;
   }
 
-  .composer,
-  .composer-error,
-  .crewbar,
-  .crew-sheet {
-    width: calc(100% - 32px);
+  .dock {
+    padding: 0 12px 12px;
   }
 
-  .composer {
-    margin: 8px auto 16px;
+  .crew-sheet {
+    width: calc(100% - 24px);
   }
 
   .icon-button,
+  .send {
+    width: 40px;
+    height: 40px;
+  }
+
+  .send {
+    padding: 6px;
+  }
+
   .primary,
   .pill,
   .text-button,
@@ -1642,18 +2730,8 @@ a.pill:hover {
     min-height: 40px;
   }
 
-  .icon-button {
-    width: 40px;
-    height: 40px;
-  }
-
-  .doc {
-    padding: 16px 16px 32px;
-  }
-
   .prow {
     grid-template-columns: minmax(0, 1fr);
     gap: 4px;
   }
-
 }

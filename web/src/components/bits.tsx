@@ -1,13 +1,29 @@
-// Small shared pieces: identity mark, delayed spinner, inline error, step bar, facts table, file preview.
-import { AlertCircle, LoaderCircle } from "lucide-react";
+// Small shared pieces: identity mark, delayed spinner, inline error, step bar, keycaps, facts table, file preview.
+import { AlertCircle, ImageOff, LoaderCircle } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api/client";
-import type { Fact, Identity, Step } from "../api/types";
+import { ONBOARDING, type Fact, type Identity, type Step } from "../api/types";
 import { mediaKind } from "../lib/format";
+import { keyLabels } from "../lib/platform";
 
-export function Mark({ mark, big }: { mark: string; big?: boolean }) {
+/**
+ * A two-letter mark on a neutral plate, a rounded square like a small app icon (DESIGN.md rule 13).
+ * "working" adds a small accent dot at the bottom right, "waiting" a ring in --warn. No colours per identity.
+ */
+export function Mark({
+  mark,
+  big,
+  small,
+  state,
+}: {
+  mark: string;
+  big?: boolean;
+  small?: boolean;
+  state?: "working" | "waiting";
+}) {
+  const cls = ["mark", big ? "big" : small ? "small" : null, state ? `is-${state}` : null].filter(Boolean).join(" ");
   return (
-    <span className={big ? "mark big" : "mark"} aria-hidden="true">
+    <span className={cls} aria-hidden="true">
       {mark}
     </span>
   );
@@ -42,11 +58,23 @@ export function ErrorLine({ text, onRetry, children }: { text: string; onRetry?:
   );
 }
 
+/** The ten strokes of an episode row: done in --ink-3, the current one in --accent, open ones in --line-strong. */
 export function StepBar({ steps, label }: { steps: Step[]; label?: string }) {
   return (
     <span className="bar" role="img" aria-label={label}>
       {steps.map((s) => (
         <i key={s.id} className={s.status} />
+      ))}
+    </span>
+  );
+}
+
+/** Shortcut keycaps: ⌘ on Apple devices, Ctrl elsewhere (rule 15). Decorative: the action has its own name. */
+export function Keys({ keys, className }: { keys: string[]; className?: string }) {
+  return (
+    <span className={className ? `keys ${className}` : "keys"} aria-hidden="true">
+      {keyLabels(keys).map((k, i) => (
+        <kbd key={`${i}-${k}`}>{k}</kbd>
       ))}
     </span>
   );
@@ -65,35 +93,76 @@ export function Facts({ facts }: { facts: Fact[] }) {
   );
 }
 
-/** A video or image from the episode folder, through /api/files. */
+/** Where a preview file lives, in the words of the studio folder. */
+function whereIs(episode: string, path: string): string {
+  if (path.startsWith("/") || episode === ONBOARDING) return path;
+  return `episodes/${episode}/${path}`;
+}
+
+/**
+ * A video or image from the episode folder, through /api/files. While it loads, a placeholder of the same size shows
+ * the run shimmer, but only after 300 ms (rule 11). A broken file says where it is and offers to try again.
+ */
 export function Media({ episode, path, label }: { episode: string; path: string; label: string }) {
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [slow, setSlow] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const url = api.fileUrl(episode, path);
-  useEffect(() => setFailed(false), [url]);
+
+  useEffect(() => {
+    setFailed(false);
+    setLoaded(false);
+    setSlow(false);
+    const t = setTimeout(() => setSlow(true), 300);
+    return () => clearTimeout(t);
+  }, [url, attempt]);
+
   if (failed) {
     return (
       <div className="media media-error" role="note">
-        Couldn't load {path}. It is still in the episode folder.
+        <ImageOff size={16} aria-hidden="true" />
+        <span>Couldn't load the preview. The file is at {whereIs(episode, path)}.</span>
+        <button type="button" className="link-button" onClick={() => setAttempt((n) => n + 1)}>
+          Try again
+        </button>
       </div>
     );
   }
   // Decide by the address the browser loads (the demo maps videos to still images).
   const kind = mediaKind(url) === "other" ? mediaKind(path) : mediaKind(url);
+  const state = loaded ? "ready" : slow ? "loading" : "waiting";
   if (kind === "video") {
     return (
-      <video
-        className="media"
-        src={url}
-        controls
-        preload="metadata"
-        playsInline
-        aria-label={label}
-        onError={() => setFailed(true)}
-      />
+      <div className="media-box" data-state={state} data-testid="media">
+        <video
+          key={attempt}
+          className="media"
+          src={url}
+          controls
+          preload="metadata"
+          playsInline
+          aria-label={label}
+          onLoadedMetadata={() => setLoaded(true)}
+          onError={() => setFailed(true)}
+        />
+      </div>
     );
   }
   if (kind === "image") {
-    return <img className="media" src={url} alt={label} loading="lazy" onError={() => setFailed(true)} />;
+    return (
+      <div className="media-box" data-state={state} data-testid="media">
+        <img
+          key={attempt}
+          className="media"
+          src={url}
+          alt={label}
+          loading="lazy"
+          onLoad={() => setLoaded(true)}
+          onError={() => setFailed(true)}
+        />
+      </div>
+    );
   }
   return (
     <a className="file-row" href={url} target="_blank" rel="noreferrer">

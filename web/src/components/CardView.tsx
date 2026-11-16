@@ -1,11 +1,12 @@
 // One card asks for one yes (DESIGN.md rules 1.4 and 12). Declining or changing is a sentence in the chat.
 import { Check, FileText, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Card, CardKind, Identity, Step } from "../api/types";
 import { api } from "../api/client";
 import { about, usd, versionOf, when } from "../lib/format";
-import { accept, messageOf } from "../store/actions";
-import { ErrorLine, Facts, identityOf, Media } from "./bits";
+import { reducedMotion } from "../lib/platform";
+import { accept, decline, messageOf } from "../store/actions";
+import { ErrorLine, Facts, identityOf, Keys, Mark, Media } from "./bits";
 
 const NOUN: Record<CardKind, string> = {
   topic: "Topic",
@@ -23,7 +24,13 @@ const NOUN: Record<CardKind, string> = {
   other: "Request",
 };
 
-export function acceptLabel(card: Card): string {
+/** The two ways of a spend card. Accepting a spend card means "rent"; the local way never calls accept. */
+export type Way = "local" | "rented";
+
+/** The words the local way sends with its decline, so the crew knows what the user chose. */
+export const LOCAL_REASON = "Local is fine. Render on this machine.";
+
+export function acceptLabel(card: Card, way: Way = "rented"): string {
   switch (card.kind) {
     case "topic":
       return "Use this topic";
@@ -42,6 +49,7 @@ export function acceptLabel(card: Card): string {
     case "publish":
       return card.data?.schedule ? `Publish on ${when(card.data.schedule)}` : "Publish now";
     case "spend": {
+      if (way === "local") return "Render on this machine";
       const amount = spendOf(card).amount;
       return typeof amount === "number" ? `Rent a GPU for ${usd(amount)}` : "Rent a GPU";
     }
@@ -59,17 +67,26 @@ export function acceptLabel(card: Card): string {
 /** One line for a decided card: "Title approved · I ran five local AI models". */
 export function foldedText(card: Card): string {
   const noun = NOUN[card.kind] ?? "Card";
+  const verb = card.status === "accepted" ? "approved" : card.status === "declined" ? "not taken" : "expired";
+  if (card.kind === "spend") {
+    const s = spendOf(card);
+    if (card.status === "declined") return `${noun} ${verb} · this machine renders`;
+    const bits = [
+      typeof s.rentedSeconds === "number" ? about(s.rentedSeconds).toLowerCase() : null,
+      typeof s.amount === "number" ? `for about ${usd(s.amount)}` : null,
+    ].filter(Boolean);
+    return `${noun} ${verb} · ${bits.length ? bits.join(" ") : card.title}`;
+  }
   const chosen =
     typeof card.choice === "number" && card.options ? card.options[card.choice] ?? null : null;
   const detail = chosen ?? versionOf(card.file) ?? card.title;
-  const verb = card.status === "accepted" ? "approved" : card.status === "declined" ? "not taken" : "expired";
   return `${noun} ${verb} · ${detail}`;
 }
 
-export function FoldedCard({ card }: { card: Card }) {
+export function FoldedCard({ card, fresh }: { card: Card; fresh?: boolean }) {
   const text = foldedText(card);
   return (
-    <div className="folded" title={text}>
+    <div className={fresh ? "folded is-new" : "folded"} title={text} data-card-step={card.step}>
       {card.status === "accepted" ? (
         <Check size={14} className="ok" aria-hidden="true" />
       ) : (
@@ -113,7 +130,17 @@ export function spendOf(card: Card) {
   };
 }
 
-function SpendWays({ card }: { card: Card }) {
+/**
+ * The honest first choice (DESIGN.md rule 12): the rented GPU only when it saves at least an hour.
+ * If the times are not known, this machine, because it costs nothing.
+ */
+export function suggestedWay(card: Card): Way {
+  const s = spendOf(card);
+  if (typeof s.localSeconds !== "number" || typeof s.rentedSeconds !== "number") return "local";
+  return s.localSeconds - s.rentedSeconds >= 3600 ? "rented" : "local";
+}
+
+function SpendWays({ card, way, onWay }: { card: Card; way: Way; onWay: (w: Way) => void }) {
   const s = spendOf(card);
   const gpu = [s.gpus ? `${s.gpus} ×` : null, s.gpuName].filter(Boolean).join(" ");
   const rentedBits = [
@@ -121,18 +148,27 @@ function SpendWays({ card }: { card: Card }) {
     typeof s.cap === "number" ? `cap ${usd(s.cap)}` : null,
     "deleted when done",
   ].filter(Boolean);
+  const ways: Array<{ id: Way; k: string; v: string; m: string }> = [
+    { id: "local", k: "On this machine", v: about(s.localSeconds), m: [s.localNote, usd(0)].filter(Boolean).join(" · ") },
+    { id: "rented", k: gpu ? `Rented GPU · ${gpu}` : "Rented GPU", v: about(s.rentedSeconds), m: rentedBits.join(", ") },
+  ];
   return (
-    <div className="ways">
-      <div className="way">
-        <div className="k">On this machine</div>
-        <div className="v">{about(s.localSeconds)}</div>
-        <div className="m">{[s.localNote, usd(0)].filter(Boolean).join(" · ")}</div>
-      </div>
-      <div className="way rec">
-        <div className="k">{gpu ? `Rented GPU · ${gpu}` : "Rented GPU"}</div>
-        <div className="v">{about(s.rentedSeconds)}</div>
-        <div className="m">{rentedBits.join(", ")}</div>
-      </div>
+    <div className="ways" role="radiogroup" aria-label="Where to render">
+      {ways.map((w) => (
+        <button
+          type="button"
+          key={w.id}
+          role="radio"
+          aria-checked={way === w.id}
+          className="way"
+          data-way={w.id}
+          onClick={() => onWay(w.id)}
+        >
+          <span className="k">{w.k}</span>
+          <span className="v">{w.v}</span>
+          <span className="m">{w.m}</span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -204,14 +240,18 @@ function CardPreview({
   card,
   chosen,
   onChoose,
+  way,
+  onWay,
 }: {
   card: Card;
   chosen: number;
   onChoose: (i: number) => void;
+  way: Way;
+  onWay: (w: Way) => void;
 }) {
   const facts = card.data?.facts;
   const parts = [];
-  if (card.kind === "spend") parts.push(<SpendWays key="ways" card={card} />);
+  if (card.kind === "spend") parts.push(<SpendWays key="ways" card={card} way={way} onWay={onWay} />);
   if (card.kind === "rule") {
     parts.push(
       <div key="rule">
@@ -241,20 +281,38 @@ function CardPreview({
   return <div className="card-preview">{parts}</div>;
 }
 
-export function OpenCard({ card, team, steps }: { card: Card; team: Identity[] | undefined; steps: Step[] | undefined }) {
+export function OpenCard({
+  card,
+  team,
+  steps,
+  fresh,
+  folding,
+  initialWay,
+}: {
+  card: Card;
+  team: Identity[] | undefined;
+  steps: Step[] | undefined;
+  fresh?: boolean;
+  /** A copy of a card that was just decided, folding away: not interactive, hidden from assistive tech. */
+  folding?: boolean;
+  initialWay?: Way;
+}) {
   const who = identityOf(team, card.identity);
   const step = steps?.find((s) => s.id === card.step);
   const [chosen, setChosen] = useState(typeof card.choice === "number" ? card.choice : 0);
+  const [way, setWay] = useState<Way>(() => initialWay ?? suggestedWay(card));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const referral = card.kind === "spend" ? spendOf(card).referral : null;
+  const spend = card.kind === "spend";
+  const referral = spend ? spendOf(card).referral : null;
 
   async function onAccept() {
-    if (busy) return;
+    if (busy || folding) return;
     setBusy(true);
     setError(null);
     try {
-      await accept(card, card.options?.length ? chosen : undefined);
+      if (spend && way === "local") await decline(card, LOCAL_REASON);
+      else await accept(card, card.options?.length ? chosen : undefined);
     } catch (e) {
       setError(`Couldn't send your yes. ${messageOf(e)}`);
       setBusy(false);
@@ -268,22 +326,37 @@ export function OpenCard({ card, team, steps }: { card: Card; team: Identity[] |
     host = "";
   }
 
+  const cls = ["card", fresh ? "is-new" : null].filter(Boolean).join(" ");
   return (
-    <section className="card" role="group" aria-label={card.title} data-open-card={card.id}>
-      <div className="who">
+    <section
+      className={cls}
+      role={folding ? undefined : "group"}
+      aria-label={folding ? undefined : card.title}
+      data-open-card={folding ? undefined : card.id}
+      data-card-step={card.step}
+    >
+      <div className="card-head">
+        <Mark mark={who.mark} small />
         <b>{who.name}</b>
-        {step ? `${step.label} · ` : ""}needs your yes
+        {step ? <span className="one-line">{step.label}</span> : null}
+        <span className="card-ask">needs your yes</span>
       </div>
       <h3>{card.title}</h3>
       {card.body && card.kind !== "rule" ? <p className="card-body">{card.body}</p> : null}
-      <CardPreview card={card} chosen={chosen} onChoose={setChosen} />
+      <CardPreview card={card} chosen={chosen} onChoose={setChosen} way={way} onWay={setWay} />
       <div className="card-actions">
-        <button type="button" className="primary" onClick={() => void onAccept()} disabled={busy} data-accept>
-          {acceptLabel(card)}
+        <button
+          type="button"
+          className="primary"
+          onClick={() => void onAccept()}
+          disabled={busy || folding}
+          data-accept
+          tabIndex={folding ? -1 : undefined}
+        >
+          {acceptLabel(card, way)}
         </button>
-        <span className="quiet">
-          Or say what to change.{card.kind === "spend" ? " “Local is fine” works too." : ""}
-        </span>
+        <span className="quiet">Or say what to change.</span>
+        <Keys keys={["mod", "enter"]} className="card-keys" />
       </div>
       {error ? <ErrorLine text={error} onRetry={() => void onAccept()} /> : null}
       {referral?.note ? (
@@ -292,7 +365,7 @@ export function OpenCard({ card, team, steps }: { card: Card; team: Identity[] |
           {host ? (
             <>
               {" "}
-              <a href={referral.url} target="_blank" rel="noreferrer">
+              <a href={referral.url} target="_blank" rel="noreferrer" tabIndex={folding ? -1 : undefined}>
                 {host}
               </a>
             </>
@@ -303,7 +376,51 @@ export function OpenCard({ card, team, steps }: { card: Card; team: Identity[] |
   );
 }
 
-export function CardItem({ card, team, steps }: { card: Card; team: Identity[] | undefined; steps: Step[] | undefined }) {
-  if (card.status === "open") return <OpenCard card={card} team={team} steps={steps} />;
-  return <FoldedCard card={card} />;
+/**
+ * An open card, or the one line it folds to once decided. When a card is decided while it is on screen, the open card
+ * folds away (grid rows 1fr to 0fr, --spring-snappy) while the line fades in (rule 9).
+ */
+export function CardItem({
+  card,
+  team,
+  steps,
+  fresh,
+}: {
+  card: Card;
+  team: Identity[] | undefined;
+  steps: Step[] | undefined;
+  fresh?: boolean;
+}) {
+  const open = card.status === "open";
+  const [wasOpen, setWasOpen] = useState(open);
+  const [folding, setFolding] = useState(false);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (wasOpen && !open && !reducedMotion()) setFolding(true);
+  }
+  useEffect(() => {
+    if (!folding) return;
+    const t = setTimeout(() => setFolding(false), 300);
+    return () => clearTimeout(t);
+  }, [folding]);
+
+  if (open) return <OpenCard card={card} team={team} steps={steps} fresh={fresh} />;
+  return (
+    <>
+      {folding ? (
+        <div className="fold-out" aria-hidden="true">
+          <div>
+            <OpenCard
+              card={{ ...card, status: "open" }}
+              team={team}
+              steps={steps}
+              folding
+              initialWay={card.status === "accepted" ? "rented" : "local"}
+            />
+          </div>
+        </div>
+      ) : null}
+      <FoldedCard card={card} fresh={fresh || folding} />
+    </>
+  );
 }

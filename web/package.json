@@ -15,7 +15,10 @@
     "check:forms": "node scripts/check-forms.mjs",
     "check:words": "node scripts/check-words.mjs",
     "check:contrast": "node scripts/check-contrast.mjs",
-    "check": "node scripts/check-tokens.mjs && node scripts/check-forms.mjs && node scripts/check-words.mjs && node scripts/check-contrast.mjs"
+    "check:fonts": "node scripts/check-fonts.mjs",
+    "check:materials": "node scripts/check-materials.mjs",
+    "check:motion": "node scripts/check-motion.mjs",
+    "check": "node scripts/check-tokens.mjs && node scripts/check-forms.mjs && node scripts/check-words.mjs && node scripts/check-contrast.mjs && node scripts/check-fonts.mjs && node scripts/check-materials.mjs && node scripts/check-motion.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "5.3.0",

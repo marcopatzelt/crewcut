@@ -6,16 +6,19 @@ import "./styles/app.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+import { applyPlatformClass, initTheme } from "./lib/platform";
 
 const params = new URLSearchParams(window.location.search);
-const theme = params.get("theme");
-if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+applyPlatformClass();
+initTheme(params.get("theme"));
 
+// ?demo=1 shows demo data as a still scene; with &play=1 the demo plays its short scripted sequence once.
+const demo = params.get("demo") === "1";
 const root = document.getElementById("root");
 if (root) {
   createRoot(root).render(
     <StrictMode>
-      <App demo={params.get("demo") === "1"} />
+      <App demo={demo} play={demo && params.get("play") === "1"} />
     </StrictMode>,
   );
 }

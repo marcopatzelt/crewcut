@@ -34,7 +34,7 @@ describe("empty", () => {
     expect(await screen.findByText("No episodes yet.")).toBeTruthy();
     expect(screen.getByText("No episodes yet. Say an idea below.")).toBeTruthy();
     const crew = screen.getByRole("complementary", { name: "Working now" });
-    expect(within(crew).getByText("Nobody is working right now.")).toBeTruthy();
+    expect(within(crew).getByText("Nobody is working. Nothing is running, nothing costs money.")).toBeTruthy();
     expect(within(crew).getByText("$0.00 of $20")).toBeTruthy();
   });
 
@@ -112,7 +112,8 @@ describe("error", () => {
   it("says when the engine is not logged in", async () => {
     mockApi({ "GET /api/state": state({ app: { ...state().app, engine_ok: false } }) });
     render(<App />);
-    expect(await screen.findByText(/The engine is not logged in/)).toBeTruthy();
+    const crew = screen.getByRole("complementary", { name: "Working now" });
+    expect(await within(crew).findByText(/Claude Code is not logged in\. Run claude setup-token/)).toBeTruthy();
   });
 });
 
