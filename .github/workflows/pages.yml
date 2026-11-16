@@ -11,6 +11,11 @@ on:
     branches: [main]
     paths: ["site/**", "docs/brand/**", "docs/readme/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
+    inputs:
+      ship_without_gate:
+        description: "Deploy at once without waiting for the Taste gate (only when the owner says so)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -88,7 +93,36 @@ jobs:
   deploy:
     name: Deploy to GitHub Pages (by hand, public repository only)
     needs: site
-    if: github.event_name == 'workflow_dispatch' && github.event.repository.private == false
+    if: github.event_name == 'workflow_dispatch' && github.event.repository.private == false && !inputs.ship_without_gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the page
+        run: |
+          sudo apt-get install -y -qq webp > /dev/null
+          sh site/build.sh
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/_site
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  # the owner's call: ship the page as it is, without waiting for the gate (the site job still runs and reports)
+  deploy-now:
+    name: Deploy to GitHub Pages at once (owner's call, gate not waited for)
+    if: github.event_name == 'workflow_dispatch' && github.event.repository.private == false && inputs.ship_without_gate
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
