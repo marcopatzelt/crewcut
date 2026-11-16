@@ -23,6 +23,26 @@ jobs:
       - run: ruff check .
       - run: pytest -q
 
+  media-debian:
+    name: Cut and render tests on the image's ffmpeg (Debian bookworm)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container: debian:bookworm-slim
+    steps:
+      - uses: actions/checkout@v4
+      - run: apt-get update -qq && apt-get install -y -qq --no-install-recommends ffmpeg python3 python3-venv > /dev/null
+      - run: python3 -m venv /tmp/v && /tmp/v/bin/pip install -q -e ".[dev]"
+      - run: ffmpeg -version | head -1
+      - run: /tmp/v/bin/pytest -q tests/cut tests/render
+      - name: On failure, show what ebur128 and the limiter do with a test signal
+        if: failure()
+        run: |
+          cd /tmp
+          ffmpeg -v error -y -f lavfi -i "aevalsrc=0.4*sin(2*PI*330*t)*between(mod(t\,1)\,0.2\,0.7):s=48000:d=3" -c:a pcm_s24le t.wav
+          ffmpeg -hide_banner -nostats -i t.wav -af ebur128=peak=true:framelog=quiet -f null - 2>&1 | tail -14
+          ffmpeg -v error -y -i t.wav -af "volume=-6dB,alimiter=limit=0.79:attack=5:release=50:level=false" -c:a pcm_s24le l.wav
+          ffmpeg -hide_banner -nostats -i l.wav -af ebur128=peak=true:framelog=quiet -f null - 2>&1 | tail -14
+
   web:
     name: Web UI checks, tests and build
     runs-on: ubuntu-24.04
