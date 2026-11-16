@@ -71,13 +71,15 @@ jobs:
         id: diff
         run: |
           set +e
-          python3 tools/ci/flag_diff.py engine/help/claude.txt out/claude.txt "Claude Code $(cat out/claude.version)" | tee out/diff.txt
+          python3 tools/ci/flag_diff.py engine/help/claude.txt out/claude.txt "Claude Code $(cat out/claude.version)" > out/diff.txt
           a=$?
-          python3 tools/ci/flag_diff.py engine/help/codex-exec.txt out/codex-exec.txt "Codex exec $(cat out/codex.version 2>/dev/null)" | tee -a out/diff.txt
+          python3 tools/ci/flag_diff.py engine/help/codex-exec.txt out/codex-exec.txt "Codex exec $(cat out/codex.version 2>/dev/null)" >> out/diff.txt
           b=$?
+          cat out/diff.txt
           cat out/diff.txt >> "$GITHUB_STEP_SUMMARY"
-          echo "changed=$([ $a -ne 0 ] || [ $b -ne 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "title=Engine changes: Claude Code $(cat out/claude.version | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          changed=false; if [ $a -ne 0 ] || [ $b -ne 0 ]; then changed=true; fi
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "title=Engine changes: Claude Code $(cut -d' ' -f1 out/claude.version), Codex $(awk '{print $2}' out/codex.version 2>/dev/null)" >> "$GITHUB_OUTPUT"
       - name: Open an issue for new or removed flags (once per version)
         if: steps.diff.outputs.changed == 'true'
         env:
