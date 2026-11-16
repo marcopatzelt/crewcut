@@ -13,5 +13,10 @@
     "check": "container-edges",
     "target": "h2#steps-h",
     "reason": "The brief (Marco, 16 Nov 2026) asks for bold centred headlines over big rounded cards; this h2 is centred on purpose, short (under half the container), and the card under it stands on the container lines."
+  },
+  {
+    "check": "off-grid",
+    "target": "ul.chips > li:nth-of-type(1)",
+    "reason": "On a phone the chips are pills: each pill's ground starts on the 24 px page margin and its words sit 12 px inside the pill's padding, which the check reads as the left edge."
   }
 ]
