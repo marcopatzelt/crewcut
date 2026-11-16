@@ -25,6 +25,11 @@ if ! grep -q '^CLAUDE_CODE_OAUTH_TOKEN=..*' .env && ! grep -q '^ANTHROPIC_API_KE
   token=""
 fi
 
+# The host helper's key: it signs the one request the helper accepts ("set up YouTube in my Chrome").
+if ! grep -q '^CREWCUT_HOST_TOKEN=..*' .env; then
+  set_env CREWCUT_HOST_TOKEN "$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+fi
+
 host=""
 case "$(uname -s)" in
   Darwin) host=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true) ;;
@@ -33,6 +38,15 @@ esac
 [ -n "$host" ] && set_env CREWCUT_LAN_HOST "$host"
 
 docker compose up -d
+
+# The host helper (host/crewcut-host.sh): one job, signed requests only, no network port. One copy at a time.
+studio_dir=$(grep '^CREWCUT_STUDIO_DIR=' .env | tail -1 | cut -d= -f2- || true)
+studio_dir="${studio_dir:-$PWD/studio}"
+mkdir -p "$studio_dir/.crewcut/host" "$studio_dir/.crewcut/logs"
+pidfile="$studio_dir/.crewcut/host/helper.pid"
+if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then kill "$(cat "$pidfile")" 2>/dev/null || true; fi
+CREWCUT_STUDIO_DIR="$studio_dir" nohup host/crewcut-host.sh > "$studio_dir/.crewcut/logs/host.log" 2>&1 &
+echo $! > "$pidfile"
 url="http://localhost:${CREWCUT_PORT:-4747}"
 echo "Crewcut is starting at $url (the first start installs the engine and takes a few minutes)."
 if command -v open >/dev/null 2>&1; then open "$url"; elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$url" >/dev/null 2>&1 || true; fi

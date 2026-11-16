@@ -226,6 +226,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     y = sub.add_parser("youtube", help="YouTube Data API: sign in, upload, status")
     ysub = y.add_subparsers(dest="ycmd", required=True)
+    yc = ysub.add_parser("connect", help="one card: Claude in Chrome sets up the YouTube API for you, then you sign in")
+    yc.add_argument("--episode")
+    yc.add_argument("--state", action="store_true", help="what is there: helper, Claude Code and Chrome on the computer")
     ysub.add_parser("auth")
     yu = ysub.add_parser("upload")
     yu.add_argument("--episode")

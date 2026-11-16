@@ -135,6 +135,8 @@ def create_app(start_worker: bool = True) -> FastAPI:
             app.state.worker.start_background()
             from ..conductor import inbox
             inbox.start_background()
+            from ..youtube import connect as youtube_connect
+            youtube_connect.start_background()
             try:
                 from ..compute import guard as compute_guard
                 compute_guard.start_background()

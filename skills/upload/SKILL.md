@@ -53,7 +53,9 @@ measures it after 48 hours. Before this step: the final cut is approved (`skills
 2. Card: `crewcut card propose --episode <id> --step upload --kind publish --title "Publish <day> <time>" --file
    export/upload.json --body "<title> · <visibility> · AI question: <answer>, <why>"`, then `crewcut card wait`.
    Declined: change what the user says, check again, new card.
-3. Upload: `crewcut youtube upload --episode <id> [--schedule <ISO time>]`. Then `crewcut youtube status` and tell the
+3. Upload: `crewcut youtube upload --episode <id> [--schedule <ISO time>]`. Not connected yet (`crewcut youtube
+   status`): `crewcut youtube connect --episode <id>`. It posts one card; on the user's yes Claude in Chrome sets up the
+   API on their computer and the chat gets the sign-in link. Uploads always go through the API, never the browser. Then `crewcut youtube status` and tell the
    user the link in one message.
 4. **Where YouTube has no API**, build everything and send the user to the right page with one sentence of what to
    click: the A/B test ("Test & compare": upload the variants under "A/B Testing" on the video's details page in

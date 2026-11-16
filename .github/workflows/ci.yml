@@ -51,7 +51,9 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - run: bash -n start.sh && bash -n docker/entrypoint.sh
+      - run: bash -n start.sh && bash -n docker/entrypoint.sh && bash -n host/crewcut-host.sh
+      - name: shellcheck of the host helper (it runs on the user's computer)
+        run: shellcheck -S warning host/crewcut-host.sh start.sh
       - run: for f in tools/*.js templates/2d/*.js; do if [ -f "$f" ]; then node --check "$f"; fi; done
 
   diagrams:

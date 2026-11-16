@@ -156,7 +156,12 @@ def checks(ci: bool = False, probe: bool = False) -> list[dict]:
         "Vast.ai key present" if os.environ.get("VAST_API_KEY") else "no Vast.ai key: everything runs locally")
     yt = paths.studio_root() / "config" / "youtube-client.json"
     add(OK if yt.is_file() else NOTE, "YouTube", "client file present" if yt.is_file() else
-        "not connected yet (see docs/youtube.md); upload needs it")
+        "not connected yet; say \"connect YouTube\" (Claude in Chrome sets it up) or follow docs/youtube.md")
+    if not yt.is_file():
+        from .youtube import connect
+        blocker = connect.why_not()
+        add(OK if not blocker else NOTE, "YouTube setup through Chrome", "ready: helper, Claude Code and Chrome found"
+            if not blocker else blocker)
     try:
         st = shutil.disk_usage(paths.studio_root() if paths.studio_root().exists() else os.getcwd())
         free_gb = st.free / 1e9

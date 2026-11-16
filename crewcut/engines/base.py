@@ -19,7 +19,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 SECRET_ENV = ("CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "CODEX_API_KEY", "VAST_API_KEY", "OPENAI_API_KEY",
-              "GEMINI_API_KEY", "YOUTUBE_API_KEY")
+              "GEMINI_API_KEY", "YOUTUBE_API_KEY", "CREWCUT_HOST_TOKEN")
+# Values the crew never gets in its environment: the host helper's key signs requests only from Crewcut's own server.
+SERVER_ONLY_ENV = ("CREWCUT_HOST_TOKEN",)
 _PATTERNS = [
     re.compile(r"sk-ant-[A-Za-z0-9_\-]{12,}"),
     re.compile(r"sk-[A-Za-z0-9_\-]{20,}"),
@@ -135,7 +137,7 @@ class Engine:
         ok, why = self.login_status()
         if not ok:
             return RunResult(False, 4, error=f"{self.label} is not logged in: {why}")
-        env = dict(os.environ)
+        env = {k: v for k, v in os.environ.items() if k not in SERVER_ONLY_ENV}
         env.update(self.env())
         env.update(task.env)
         env.setdefault("DISABLE_AUTOUPDATER", "1")

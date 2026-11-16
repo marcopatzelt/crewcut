@@ -130,6 +130,20 @@ def on_card_decided(card: dict) -> None:
     accepted = card["status"] == "accepted"
     if not episode:
         return
+    if kind == "other" and (card.get("data") or {}).get("connect") == "youtube":
+        if not accepted:
+            post(episode, "YouTube stays unconnected. Say \"connect YouTube\" when you want it.", card=card["id"])
+            return
+        from ..youtube import connect
+        try:
+            connect.request_setup()
+        except (RuntimeError, OSError) as e:
+            post(episode, f"Could not start the setup: {e}", card=card["id"], author="publisher")
+            return
+        db.kv_set("youtube_connect_episode", episode)
+        post(episode, "Claude opens in a window on your computer and sets up the YouTube API in your Chrome. Sign in to "
+             "Google there when it asks. I post the last step here.", card=card["id"], author="publisher")
+        return
     if episode == ONBOARDING:
         if kind == "profile" and accepted:
             db.kv_set("onboarded", "1")

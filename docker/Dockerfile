@@ -78,6 +78,7 @@ COPY config/ config/
 COPY tools/ tools/
 COPY examples/ examples/
 COPY tests/ tests/
+COPY host/ host/
 COPY docker/entrypoint.sh docker/entrypoint.sh
 COPY --from=web /web/dist web/dist
 

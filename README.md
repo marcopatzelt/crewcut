@@ -263,6 +263,11 @@ on the CPU or a rented GPU there. A test on a real Mac is still to come.
 **Is my data uploaded anywhere?** No account, no Crewcut server, no telemetry. Your studio folder stays on your computer.
 The crew uses your Claude login; uploads go to your YouTube channel only after your yes.
 
+**How does Crewcut connect to my channel?** Through the YouTube Data API, the only upload path. The one-time setup in
+the Google Cloud console is done for you: say "connect YouTube", press **Set it up in my Chrome**, and your own Claude
+Code with Claude in Chrome creates the project and the client while you watch; you only sign in and allow it. Details
+and the manual way: [docs/youtube.md](docs/youtube.md).
+
 **Can I use my own Claude Code setup?** Yes. Crewcut is a Claude Code plugin. Your `.claude/` settings, skills, agents
 and MCP servers keep working, and any Claude Code flag can be passed through.
 

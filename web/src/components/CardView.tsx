@@ -62,7 +62,8 @@ export function acceptLabel(card: Card, way: Way = "rented"): string {
     case "mix":
       return "Use this mix";
     default:
-      return "Approve this";
+      // a card may name its one action (e.g. "Set it up in my Chrome"); the words stay short and say what happens
+      return typeof card.data?.button === "string" && card.data.button ? card.data.button : "Approve this";
   }
 }
 

@@ -1,4 +1,4 @@
-"""`crewcut youtube auth | upload | status`."""
+"""`crewcut youtube connect | auth | upload | status`."""
 
 from __future__ import annotations
 
@@ -8,6 +8,19 @@ import os
 
 def main(a) -> int:
     from . import auth
+    if a.ycmd == "connect":
+        from . import connect
+        if auth.connected():
+            print("YouTube is connected already.")
+            return 0
+        if a.state:
+            print(json.dumps(connect.state(), indent=1))
+            return 0
+        episode = a.episode or os.environ.get("CREWCUT_EPISODE") or "_onboarding"
+        card = connect.propose(episode)
+        print(f"card #{card['id']} is open: {card['title']}" + (f" (before that: {connect.why_not()})"
+                                                               if connect.why_not() else ""))
+        return 0
     if a.ycmd == "auth":
         try:
             url = auth.start()
@@ -21,8 +34,9 @@ def main(a) -> int:
         print(url)
         return 0
     if a.ycmd == "status":
-        print("connected" if auth.connected() else "not connected (run `crewcut youtube auth`)")
-        print("client file: " + ("present" if auth.client_file().is_file() else "missing (see docs/youtube.md)"))
+        print("connected" if auth.connected() else "not connected (say \"connect YouTube\" or run `crewcut youtube connect`)")
+        print("client file: " + ("present" if auth.client_file().is_file() else "missing (crewcut youtube connect sets it "
+                                 "up through Claude in Chrome; by hand: docs/youtube.md)"))
         return 0
     if a.ycmd == "upload":
         from ..conductor import queue
