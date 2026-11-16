@@ -265,6 +265,11 @@ svg.lucide {
   color: var(--ink-3);
 }
 
+/* On the selected row the grey sits on the selection over the glass: one step darker keeps 4.5:1. */
+.ep[aria-current="page"] .ep-step {
+  color: var(--ink-2);
+}
+
 /* The one coloured thing in a row: the open card waits for the user. */
 .ep-dot {
   position: absolute;

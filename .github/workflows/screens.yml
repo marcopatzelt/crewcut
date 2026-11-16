@@ -70,8 +70,10 @@ jobs:
           node /tmp/taste/skills/taste-skill/scripts/consistency.mjs "http://localhost:8099/index.html?demo=1" \
             --page software --widths 1440,1100,390 --profile /tmp/taste-profile --out shots/taste --no-sweep \
             | tee shots/taste/report.txt
+          set -o pipefail   # the gate's own exit code, not tee's
           python3 tools/ci/taste_waivers.py shots/taste/report.txt .taste-skill/waivers.json | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: screens
           path: |
