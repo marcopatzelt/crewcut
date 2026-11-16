@@ -41,7 +41,7 @@ jobs:
       - name: Taste skill at the pinned commit (MIT)
         run: git clone -q https://github.com/Leonxlnx/taste-skill.git /tmp/taste && git -C /tmp/taste checkout -q "$TASTE_COMMIT"
       - name: Build the page
-        run: sh site/build.sh /tmp/taste
+        run: sh site/build.sh
       - name: Screenshots, 1440 and 390 px, light and dark
         run: |
           (cd site/_site && python3 -m http.server 8098 > /dev/null 2>&1 &)

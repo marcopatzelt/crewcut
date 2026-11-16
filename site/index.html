@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-type="software" data-radius="soft">
+<html lang="en" data-type="software" data-radius="round">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -8,8 +8,7 @@
 <meta name="page-type" content="software">
 <meta name="site-kind" content="software">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#1C1C1E" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0B5446">
 <link rel="icon" href="assets/brand/slate-icon-small.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/brand/slate-icon-180.png">
 <link rel="canonical" href="https://marcopatzelt.github.io/crewcut/">
@@ -24,24 +23,20 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
 <link rel="stylesheet" href="assets/site.css">
 <script>document.documentElement.classList.add('m-enter');setTimeout(()=>document.documentElement.classList.add('m-enter-done'),700)</script>
-<script>document.documentElement.classList.add('mo-js');setTimeout(()=>document.documentElement.classList.add('mo-safe'),2500)</script>
-<link rel="modulepreload" href="assets/moments/moments.js">
-<link rel="modulepreload" href="assets/moments/lib.js">
-<link rel="modulepreload" href="assets/moments/word-highlight/moment.js">
-<script type="module" src="assets/moments/moments.js"></script>
 </head>
 <body>
 <!-- Taste plan (tasteskill 2.5.1, pinned in CI).
-     Kind: software (an open-source app; it is sold to nobody, the main action is getting the code).
-     Look: the client's own, not dealt: Crewcut's tokens from DESIGN.md (green #0F6E5C, mint #34C3A4 in dark, the one
-     accent), the system font on Apple and Inter elsewhere, radius soft. Hero: centred, Slate waving as its picture
-     (set by the brief). Ground: the app's faint window light in the hero, else flat bg and surface. Effect: none
-     (DESIGN.md 1.3, nothing moves to draw attention). Moment: word-highlight, the one dealable moment the brief has
-     material for (no photographs, no proof figures). Screens at 1440x900: hero 1, app 1, statement 1, how 1, crew 1,
-     closing 1. Brand files come from docs/brand and the window from docs/readme, copied by build.sh, never redrawn. -->
+     Kind: software (an open-source app; nothing is sold, the main action is getting the code).
+     Look: the client's own, not dealt: Crewcut green #0F6E5C and mint #34C3A4 as the one accent, the system font on
+     Apple and Inter elsewhere, round radius; the layout follows Marco's brief  (16 Nov 2026): a full
+     gradient hero, the app window floating on a drawn landscape, sections as big rounded cards with centred headlines,
+     chips, the crew as large Slate tiles. Hero: centred, Slate's app icon over the headline. Effect: none. Moment:
+     none (Marco: no late animations; waived with that reason). Screens at 1440x900: hero 1, app 1, crew 1, steps 1,
+     features 1, closing 1. Brand files come from docs/brand and the window from docs/readme, copied by build.sh,
+     never redrawn. -->
 <header class="nav">
   <div class="wrap nav__bar">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -52,9 +47,9 @@
       </picture>
     </a>
     <nav class="nav__links" aria-label="Sections">
-      <a class="nav__link" href="#app">The app</a>
-      <a class="nav__link" href="#how">How it works</a>
       <a class="nav__link" href="#crew">The crew</a>
+      <a class="nav__link" href="#steps">How it works</a>
+      <a class="nav__link" href="#features">Features</a>
       <a class="nav__link" href="#quick-start">Quick start</a>
     </nav>
     <a class="btn btn--primary btn--sm" href="https://github.com/marcopatzelt/crewcut">Get Crewcut on GitHub</a>
@@ -65,128 +60,137 @@
   <section class="hero" id="top" data-enter aria-labelledby="hero-h">
     <div class="wrap">
       <div class="hero-text">
-        <p class="hero__notice">v0.1 pre-release · open source under MIT</p>
-        <h1 id="hero-h">Your Claude Code subscription, now a YouTube crew.</h1>
+        <img class="hero__icon" src="assets/brand/slate-icon.svg" alt="Slate, the Crewcut clapperboard" width="104" height="104">
+        <h1 id="hero-h"><span class="hero__l1">Your Claude Code subscription,</span> <span class="hero__l2">now a YouTube crew.</span></h1>
         <p class="hero__lead">Seven AI agents take your video from idea to upload. You record and say yes. Open source, one Docker container, on your own computer.</p>
         <div class="btn-row">
-          <a class="btn btn--primary" href="https://github.com/marcopatzelt/crewcut">Get Crewcut on GitHub</a>
-          <a class="btn btn--secondary" href="#quick-start">Read the quick start</a>
+          <a class="btn btn--primary" href="https://github.com/marcopatzelt/crewcut"><svg class="btn__icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Get Crewcut on GitHub</a>
+          <a class="btn btn--secondary" href="#quick-start">Quick start</a>
         </div>
-        <div class="hero__art">
-          <img src="assets/brand/states/wave.svg" alt="Slate, the Crewcut clapperboard, waving hello" width="300" height="256">
-        </div>
+        <p class="hero__facts">v0.1 pre-release <span aria-hidden="true">·</span> Open source under MIT <span aria-hidden="true">·</span> No API keys for the crew</p>
       </div>
     </div>
   </section>
 
-  <section class="section section--surface" id="app" aria-labelledby="app-h">
+  <section class="section" id="app" aria-label="The Crewcut app">
     <div class="wrap">
-      <div class="section-head">
-        <h2 id="app-h">The Crewcut app, on your computer</h2>
-        <p class="lead">Your episodes on the left, the chat with the crew in the middle, who works on what and what it costs on the right. Every decision is one card with one button.</p>
-      </div>
-      <div class="app-window">
+      <div class="scene">
         <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="assets/app/crewcut-dark-1200.webp 1200w, assets/app/crewcut-dark-1760.webp 1760w, assets/app/crewcut-dark-2400.webp 2400w" sizes="(min-width: 1360px) 1200px, calc(100vw - 48px)">
-          <img src="assets/app/crewcut-light-1760.webp" srcset="assets/app/crewcut-light-1200.webp 1200w, assets/app/crewcut-light-1760.webp 1760w, assets/app/crewcut-light-2400.webp 2400w" sizes="(min-width: 1360px) 1200px, calc(100vw - 48px)" alt="Crewcut: your episodes on the left; in the middle the chat with the crew and one card that waits for your yes; on the right the crew at work and what it cost" width="1760" height="1138" loading="lazy" decoding="async">
+          <source media="(prefers-color-scheme: dark)" srcset="assets/app/crewcut-dark-1200.webp 1200w, assets/app/crewcut-dark-1760.webp 1760w, assets/app/crewcut-dark-2400.webp 2400w" sizes="(min-width: 1360px) 960px, 92vw">
+          <img src="assets/app/crewcut-light-1760.webp" srcset="assets/app/crewcut-light-1200.webp 1200w, assets/app/crewcut-light-1760.webp 1760w, assets/app/crewcut-light-2400.webp 2400w" sizes="(min-width: 1360px) 960px, 92vw" alt="Crewcut: your episodes on the left; in the middle the chat with the crew and one card that waits for your yes; on the right the crew at work and what it cost" width="1760" height="1098" loading="lazy" decoding="async">
         </picture>
       </div>
     </div>
   </section>
 
-  <!-- word-highlight: one statement of 12 to 40 words in its own section, one strong word in <strong> -->
-  <section class="section statement" id="what" data-moment="word-highlight" aria-label="What the crew does">
-    <div class="wrap">
-      <p class="t-label">What the crew does</p>
-      <p class="mo-wh__text">You film yourself. The crew finds the topic, writes the script, cuts your takes, builds 2D and 3D graphics in your style, makes the thumbnail and uploads. Nothing is published, rented or paid for without <strong>your yes</strong>.</p>
-    </div>
-  </section>
-
-  <section class="section section--surface" id="how" aria-labelledby="how-h">
-    <div class="wrap">
-      <div class="section-head">
-        <h2 id="how-h">How the crew makes a video</h2>
-        <p class="lead">The crew works between the steps. You decide at each card, with one press.</p>
-      </div>
-      <div class="ui ui-flow">
-        <ol class="flow" aria-label="The steps of a video">
-          <li><img src="assets/brand/crew/scout.svg" alt="" width="72" height="72" loading="lazy"><b>Idea</b><span>Scout</span></li>
-          <li><img src="assets/brand/crew/writer.svg" alt="" width="72" height="72" loading="lazy"><b>Script</b><span>Writer</span></li>
-          <li><span class="flow__you" aria-hidden="true">You</span><b>Record</b><span>You, with the teleprompter</span></li>
-          <li><img src="assets/brand/crew/editor.svg" alt="" width="72" height="72" loading="lazy"><b>Cut</b><span>Editor</span></li>
-          <li><img src="assets/brand/crew/editor.svg" alt="" width="72" height="72" loading="lazy"><b>2D and 3D</b><span>Editor</span></li>
-          <li><img src="assets/brand/crew/designer.svg" alt="" width="72" height="72" loading="lazy"><b>Thumbnail</b><span>Designer</span></li>
-          <li><img src="assets/brand/crew/publisher.svg" alt="" width="72" height="72" loading="lazy"><b>Upload</b><span>Publisher</span></li>
-        </ol>
-        <div class="states">
-          <h3>Slate shows what the crew is doing</h3>
-          <ul class="states__list">
-            <li><img src="assets/brand/states/idle.svg" alt="" width="56" height="56" loading="lazy"><span>Asleep: waits its turn</span></li>
-            <li><img src="assets/brand/states/working.svg" alt="" width="56" height="56" loading="lazy"><span>Bar ticking: at work</span></li>
-            <li><img src="assets/brand/states/waiting.svg" alt="" width="56" height="56" loading="lazy"><span>A small sign: needs your yes</span></li>
-            <li><img src="assets/brand/states/done.svg" alt="" width="56" height="56" loading="lazy"><span>Bar shut, a check: done</span></li>
-          </ul>
-        </div>
-      </div>
-      <p class="note">Before the script, the Scout writes title and thumbnail text and runs the proof. Blog and the 48&#8209;hour results check are <em>planned</em>.</p>
-    </div>
-  </section>
-
   <section class="section" id="crew" aria-labelledby="crew-h">
     <div class="wrap">
-      <div class="section-head">
-        <h2 id="crew-h">A crew for one person on camera</h2>
-        <p class="lead">For people who make YouTube videos alone and appear in them.</p>
+      <div class="panel-card">
+        <div class="card-head">
+          <h2 id="crew-h">Meet the crew</h2>
+          <p class="lead">Eight Claude Code agents, each Slate with the tool of its role. You see who works on what, live.</p>
+        </div>
+        <ul class="ui ui-crew" aria-label="The crew">
+          <li><img src="assets/brand/crew/showrunner.svg" alt="" width="104" height="104" loading="lazy"><b>Showrunner</b><span>Runs the episode, talks to you</span></li>
+          <li><img src="assets/brand/crew/scout.svg" alt="" width="104" height="104" loading="lazy"><b>Scout</b><span>Topic, title and proof</span></li>
+          <li><img src="assets/brand/crew/writer.svg" alt="" width="104" height="104" loading="lazy"><b>Writer</b><span>The script, in your voice</span></li>
+          <li><img src="assets/brand/crew/editor.svg" alt="" width="104" height="104" loading="lazy"><b>Editor</b><span>Cut, 2D and 3D, sound</span></li>
+          <li><img src="assets/brand/crew/critic.svg" alt="" width="104" height="104" loading="lazy"><b>Critic</b><span>Checks every version</span></li>
+          <li><img src="assets/brand/crew/designer.svg" alt="" width="104" height="104" loading="lazy"><b>Designer</b><span>Thumbnail and variants</span></li>
+          <li><img src="assets/brand/crew/publisher.svg" alt="" width="104" height="104" loading="lazy"><b>Publisher</b><span>Uploads, with your yes</span></li>
+          <li><img src="assets/brand/crew/brand.svg" alt="" width="104" height="104" loading="lazy"><b>Brand</b><span>Your style pack</span></li>
+        </ul>
       </div>
-      <div class="cards">
-        <article class="card">
-          <ul class="ui ui-crew panel" aria-label="The crew">
-            <li><img src="assets/brand/crew/showrunner.svg" alt="" width="44" height="44" loading="lazy"><span>Showrunner</span></li>
-            <li><img src="assets/brand/crew/scout.svg" alt="" width="44" height="44" loading="lazy"><span>Scout</span></li>
-            <li><img src="assets/brand/crew/writer.svg" alt="" width="44" height="44" loading="lazy"><span>Writer</span></li>
-            <li><img src="assets/brand/crew/editor.svg" alt="" width="44" height="44" loading="lazy"><span>Editor</span></li>
-            <li><img src="assets/brand/crew/critic.svg" alt="" width="44" height="44" loading="lazy"><span>Critic</span></li>
-            <li><img src="assets/brand/crew/designer.svg" alt="" width="44" height="44" loading="lazy"><span>Designer</span></li>
-            <li><img src="assets/brand/crew/publisher.svg" alt="" width="44" height="44" loading="lazy"><span>Publisher</span></li>
-            <li><img src="assets/brand/crew/brand.svg" alt="" width="44" height="44" loading="lazy"><span>Brand</span></li>
+    </div>
+  </section>
+
+  <section class="section" id="steps" aria-labelledby="steps-h">
+    <div class="wrap">
+      <div class="panel-card">
+        <div class="card-head">
+          <h2 id="steps-h">From idea to upload</h2>
+          <p class="lead">Ten steps. The crew works between them; you decide at each card, with one press.</p>
+        </div>
+        <div class="ui ui-flow">
+          <ol class="steps" aria-label="The ten steps">
+            <li><b>1</b> Idea <span>Scout</span></li>
+            <li><b>2</b> Title <span>Scout</span></li>
+            <li><b>3</b> Proof <span>Scout</span></li>
+            <li><b>4</b> Script <span>Writer</span></li>
+            <li class="is-you"><b>5</b> Record <span>you</span></li>
+            <li><b>6</b> Edit <span>Editor and Critic</span></li>
+            <li><b>7</b> Thumbnail <span>Designer</span></li>
+            <li class="is-planned"><b>8</b> Blog <span>planned</span></li>
+            <li><b>9</b> Upload <span>Publisher</span></li>
+            <li class="is-planned"><b>10</b> Results <span>planned</span></li>
+          </ol>
+          <div class="states">
+            <h3>Slate shows what the crew is doing</h3>
+            <ul class="states__list">
+              <li><img src="assets/brand/states/idle.svg" alt="" width="72" height="72" loading="lazy"><span>Asleep: waits its turn</span></li>
+              <li><img src="assets/brand/states/working.svg" alt="" width="72" height="72" loading="lazy"><span>Bar ticking: at work</span></li>
+              <li><img src="assets/brand/states/waiting.svg" alt="" width="72" height="72" loading="lazy"><span>A small sign: needs your yes</span></li>
+              <li><img src="assets/brand/states/done.svg" alt="" width="72" height="72" loading="lazy"><span>Bar shut, a check: done</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="features" aria-labelledby="features-h">
+    <div class="wrap">
+      <div class="panel-card">
+        <div class="card-head">
+          <h2 id="features-h">What the crew brings</h2>
+          <p class="lead">For people who make YouTube videos alone and appear in them.</p>
+          <ul class="chips" aria-label="Built in">
+            <li>Teleprompter on your phone</li>
+            <li>Speaker cut</li>
+            <li>2D and 3D graphics</li>
+            <li>Thumbnails</li>
+            <li>Shorts</li>
+            <li>Humanizer pass</li>
+            <li>API upload</li>
+            <li>Monthly cost cap</li>
           </ul>
-          <h3>A crew of eight Claude Code agents</h3>
-          <p>Seven take your video from idea to upload, and Brand sets up your style.</p>
-        </article>
-        <article class="card">
-          <div class="ui ui-tree panel" role="img" aria-label="The style pack Brand writes from your links: brand.json, edit-style.json, channel.json, thumbnail.json, voice.md and your rules">
-            <span class="ui-tree__dir">brand/</span>
-            <span>brand.json</span>
-            <span>edit-style.json</span>
-            <span>channel.json</span>
-            <span>thumbnail.json</span>
-            <span>voice.md</span>
-            <span>rules/</span>
-          </div>
-          <h3>Your style, read from your links</h3>
-          <p>No forms: Brand reads your site and channel and names the source of every value.</p>
-        </article>
-        <article class="card">
-          <div class="ui ui-choice panel" role="img" aria-label="A card from the Editor: 9 scenes, about 3 hours on this machine or about 12 minutes for about $0.60 on a rented GPU">
-            <div class="ui-choice__ways">
-              <span class="ui-choice__way"><small>This machine</small><b>About 3 h</b></span>
-              <span class="ui-choice__way is-on"><small>Rented GPU</small><b>About 12 min</b></span>
+        </div>
+        <div class="features">
+          <article class="feature">
+            <div class="ui ui-tree panel" role="img" aria-label="The style pack Brand writes from your links: brand.json, edit-style.json, channel.json, thumbnail.json, voice.md and your rules">
+              <span class="ui-tree__dir">brand/</span>
+              <span>brand.json</span>
+              <span>edit-style.json</span>
+              <span>channel.json</span>
+              <span>thumbnail.json</span>
+              <span>voice.md</span>
+              <span>rules/</span>
             </div>
-            <span class="ui-choice__pill">Rent a GPU for $0.60</span>
-          </div>
-          <h3>Fast with a rented GPU, free without one</h3>
-          <p>Everything runs on your computer. For slow 3D, the Editor offers a rented GPU once.</p>
-        </article>
-        <article class="card">
-          <div class="ui ui-engines panel" role="img" aria-label="Two engines: Claude Code by default, Codex in beta">
-            <span class="ui-engines__row is-on"><b>Claude Code</b><small>default</small></span>
-            <span class="ui-engines__row"><b>Codex</b><small>beta</small></span>
-          </div>
-          <h3>Runs on your own Claude Code subscription</h3>
-          <p>The crew needs no API keys: it runs on the plan you already pay for. Codex is in beta.</p>
-        </article>
+            <h3>Your style, read from your links</h3>
+            <p>No forms: Brand reads your site and channel and names the source of every value.</p>
+          </article>
+          <article class="feature">
+            <div class="ui ui-choice panel" role="img" aria-label="A card from the Editor: 9 scenes, about 3 hours on this machine or about 12 minutes for about $0.60 on a rented GPU">
+              <div class="ui-choice__ways">
+                <span class="ui-choice__way"><small>This machine</small><b>About 3 h</b></span>
+                <span class="ui-choice__way is-on"><small>Rented GPU</small><b>About 12 min</b></span>
+              </div>
+              <span class="ui-choice__pill">Rent a GPU for $0.60</span>
+            </div>
+            <h3>Fast with a rented GPU, free without one</h3>
+            <p>Everything runs on your computer. For slow 3D, the Editor offers a rented GPU once.</p>
+          </article>
+          <article class="feature">
+            <div class="ui ui-engines panel" role="img" aria-label="Two engines: Claude Code by default, Codex in beta">
+              <span class="ui-engines__row is-on"><b>Claude Code</b><small>default</small></span>
+              <span class="ui-engines__row"><b>Codex</b><small>beta</small></span>
+            </div>
+            <h3>Runs on your own Claude Code subscription</h3>
+            <p>The crew needs no API keys: it runs on the plan you already pay for. Codex is in beta.</p>
+          </article>
+        </div>
+        <p class="note"><strong>Referral disclosure:</strong> Crewcut suggests Vast.ai through the author's referral link. The author earns 3% of your Vast spend as credit; it costs you nothing extra. Change or remove it in <code>config/compute.toml</code>. If you already have a Vast key, Crewcut does not show the link.</p>
       </div>
-      <p class="note"><strong>Referral disclosure:</strong> Crewcut suggests Vast.ai through the author's referral link. The author earns 3% of your Vast spend as credit; it costs you nothing extra. Change or remove it in <code>config/compute.toml</code>. If you already have a Vast key, Crewcut does not show the link.</p>
     </div>
   </section>
 </main>
@@ -198,7 +202,7 @@
         <h2 id="start-h">Start Crewcut in three commands</h2>
         <p class="lead">You need Docker and a Claude subscription with Claude Code.</p>
         <div class="btn-row">
-          <a class="btn btn--primary" href="https://github.com/marcopatzelt/crewcut">Get Crewcut on GitHub</a>
+          <a class="btn btn--primary" href="https://github.com/marcopatzelt/crewcut"><svg class="btn__icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Get Crewcut on GitHub</a>
           <a class="btn btn--secondary" href="https://github.com/marcopatzelt/crewcut/blob/main/docs/getting-started.md">Read the setup guide</a>
         </div>
       </div>

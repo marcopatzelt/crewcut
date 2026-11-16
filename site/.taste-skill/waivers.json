@@ -1,0 +1,22 @@
+[
+  {
+    "check": "moment-none",
+    "target": "(the page)",
+    "reason": "Marco asked on 16 Nov 2026 for no late, scroll-driven animations on this page (\"die Animationen kommen so spät, das ist unnötig\"); the dealt word-highlight was one, so the page carries no moment. Crewcut's DESIGN.md 1.3 says the same: nothing moves to draw attention."
+  },
+  {
+    "check": "container-edges",
+    "target": "h2#crew-h",
+    "reason": "The brief (Marco, 16 Nov 2026) asks for sections as big rounded cards with bold centred headlines; this h2 is centred in its card on purpose, short (under half the container), and its card stands on the container lines."
+  },
+  {
+    "check": "container-edges",
+    "target": "h2#steps-h",
+    "reason": "The brief (Marco, 16 Nov 2026) asks for sections as big rounded cards with bold centred headlines; this h2 is centred in its card on purpose, short (under half the container), and its card stands on the container lines."
+  },
+  {
+    "check": "container-edges",
+    "target": "h2#features-h",
+    "reason": "The brief (Marco, 16 Nov 2026) asks for sections as big rounded cards with bold centred headlines; this h2 is centred in its card on purpose, short (under half the container), and its card stands on the container lines."
+  }
+]
