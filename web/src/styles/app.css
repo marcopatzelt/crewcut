@@ -817,8 +817,9 @@ svg.lucide {
 }
 
 /* A finished exchange between two crew members: one quiet line with a disclosure chevron. */
+/* The chevron (14 px) and its gap (6 px) hang in the gutter, so the line's text starts on the message text column. */
 .exchange {
-  padding-left: 40px;
+  padding-left: 20px;
   min-width: 0;
 }
 

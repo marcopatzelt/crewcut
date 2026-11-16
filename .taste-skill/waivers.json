@@ -56,6 +56,10 @@
     {
       "check": "field-label",
       "reason": "The composer has a visually hidden label ('Message') linked with for/id and a placeholder that says what to do (rule 3: the only field of the app)."
+    },
+    {
+      "check": "one-heading",
+      "reason": "A chat holds several cards, each a labelled group with its own h2 title under the episode's h1; one heading per section is a landing-page rule."
     }
   ]
 }
