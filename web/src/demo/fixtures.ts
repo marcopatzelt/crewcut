@@ -238,7 +238,8 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
 
   const m012 = ep("012");
   const m015 = ep("015");
-  const thumbs012 = (m012?.thumbs ?? []).map((t) => ({ ...t, url: t.url_large ?? t.url }));
+  // Large variants for the episode view; the small ones where a picture is drawn small (cards, the rail, a phone).
+  const thumbs012 = (m012?.thumbs ?? []).map((t) => ({ ...t, small: t.url, url: t.url_large ?? t.url }));
   const scenes = m012?.scenes ?? m015?.scenes ?? [];
   const sceneUrl = (i: number) => (i === 0 ? scenes[0]?.url_large ?? scenes[0]?.url : scenes[i]?.url) ?? null;
 
@@ -264,7 +265,7 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
       card: 31,
       kind: "thumbnail",
       title: "Pick a thumbnail",
-      images: thumbs012.slice(0, 2).map((t) => t.url),
+      images: thumbs012.slice(0, 2).map((t) => t.small),
     },
   };
   const e015: Episode = {
@@ -280,7 +281,7 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
       card: 51,
       kind: "preview",
       title: "Pick the opening shot",
-      images: [sceneUrl(0), sceneUrl(2), sceneUrl(4)].filter((u): u is string => Boolean(u)),
+      images: [0, 2, 4].map((i) => scenes[i]?.url).filter((u): u is string => Boolean(u)),
     },
   };
   const long = (key: string, id: string, fallback: string, statuses: StepStatus[], step: string, updated: number, seconds: number | null): Episode => {
@@ -359,7 +360,7 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
       seconds: 68,
       cost_usd: 0,
       equiv_usd: 0.06,
-      preview: thumbs012[2]?.url ?? null,
+      preview: thumbs012[2]?.small ?? null,
     },
     {
       job: 43,
