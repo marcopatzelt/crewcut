@@ -916,17 +916,17 @@ svg.lucide {
   overflow: visible;
 }
 
-.avatar.small {
+.avatar.av-small {
   width: 20px;
   height: 20px;
 }
 
-.avatar.crew {
+.avatar.av-crew {
   width: 32px;
   height: 32px;
 }
 
-.avatar.big {
+.avatar.av-big {
   width: 44px;
   height: 44px;
 }
@@ -2830,10 +2830,15 @@ a.pill:hover {
 
   .card,
   .folded,
-  .line-item,
-  .exchange {
+  .line-item {
     margin-left: 0;
     padding-left: 0;
+  }
+
+  /* 24 px avatar + 8 px gap = 32 px; the chevron and its gap (20 px) hang left of the text. */
+  .exchange {
+    margin-left: 0;
+    padding-left: 12px;
   }
 
   .card {

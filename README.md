@@ -130,14 +130,14 @@ with a check when it is done.
 
 | | Crew member | What it does | May |
 |---|---|---|---|
-| <img src="docs/brand/crew/showrunner.svg" width="32" alt=""> | **Showrunner** | Runs the episode through the ten steps and answers you in the chat. Shows you nothing unchecked | |
-| <img src="docs/brand/crew/scout.svg" width="32" alt=""> | **Scout** | Finds the topic in data, writes title and thumbnail text, runs the proof | |
-| <img src="docs/brand/crew/writer.svg" width="32" alt=""> | **Writer** | Writes the script in your voice | |
-| <img src="docs/brand/crew/editor.svg" width="32" alt=""> | **Editor** | Ingests your recordings, cuts the speaker, builds 2D and 3D, sound and assembly | rent a GPU, with your card |
-| <img src="docs/brand/crew/critic.svg" width="32" alt=""> | **Critic** | Checks every version against your best video; never the one who built it | |
-| <img src="docs/brand/crew/designer.svg" width="32" alt=""> | **Designer** | Thumbnail and test variants | |
-| <img src="docs/brand/crew/publisher.svg" width="32" alt=""> | **Publisher** | Upload package and upload | publish, with your card |
-| <img src="docs/brand/crew/brand.svg" width="32" alt=""> | **Brand** | Onboarding: builds your style pack from your links and names the source of every value | |
+| <img src="docs/brand/crew/showrunner.svg" width="56" alt=""> | **Showrunner** | Runs the episode through the ten steps and answers you in the chat. Shows you nothing unchecked | |
+| <img src="docs/brand/crew/scout.svg" width="56" alt=""> | **Scout** | Finds the topic in data, writes title and thumbnail text, runs the proof | |
+| <img src="docs/brand/crew/writer.svg" width="56" alt=""> | **Writer** | Writes the script in your voice | |
+| <img src="docs/brand/crew/editor.svg" width="56" alt=""> | **Editor** | Ingests your recordings, cuts the speaker, builds 2D and 3D, sound and assembly | rent a GPU, with your card |
+| <img src="docs/brand/crew/critic.svg" width="56" alt=""> | **Critic** | Checks every version against your best video; never the one who built it | |
+| <img src="docs/brand/crew/designer.svg" width="56" alt=""> | **Designer** | Thumbnail and test variants | |
+| <img src="docs/brand/crew/publisher.svg" width="56" alt=""> | **Publisher** | Upload package and upload | publish, with your card |
+| <img src="docs/brand/crew/brand.svg" width="56" alt=""> | **Brand** | Onboarding: builds your style pack from your links and names the source of every value | |
 
 Each crew member is a real Claude Code agent (`crewcut:editor`, …) with a short identity in [`team/`](team/README.md) and
 the skills of its step in [`skills/`](skills/). Crewcut loads itself into Claude Code as a plugin, so your own

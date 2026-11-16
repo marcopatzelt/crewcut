@@ -36,7 +36,7 @@ export function Avatar({
 }) {
   const which = propOf(who);
   const html = useMemo(() => avatar(CSS_PALETTE, which, state ?? "plain"), [which, state]);
-  const cls = ["avatar", "slate", size ?? null, state && state !== "plain" ? `is-${state}` : null, still ? "is-still" : null].filter(Boolean).join(" ");
+  const cls = ["avatar", "slate", size ? `av-${size}` : null, state && state !== "plain" ? `is-${state}` : null, still ? "is-still" : null].filter(Boolean).join(" ");
   return <span className={cls} aria-hidden="true" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
@@ -48,6 +48,6 @@ export function AppIcon({ size = 20 }: { size?: number }) {
 /** Slate standing, for the empty states ("idle", "plain") and the welcome ("wave"). */
 export function SlateFigure({ state = "plain", size = 96 }: { state?: SlateState; size?: number }) {
   const html = useMemo(() => standing(CSS_PALETTE, state, { size }), [state, size]);
-  const cls = ["figure", "slate", state !== "plain" ? `is-${state}` : null].filter(Boolean).join(" ");
+  const cls = ["slate-figure", "slate", state !== "plain" ? `is-${state}` : null].filter(Boolean).join(" ");
   return <span className={cls} aria-hidden="true" dangerouslySetInnerHTML={{ __html: html }} />;
 }
