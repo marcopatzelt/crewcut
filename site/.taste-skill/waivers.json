@@ -3,5 +3,20 @@
     "check": "moment-none",
     "target": "(the page)",
     "reason": "Marco asked on 16 Nov 2026 for no late, scroll-driven reveals (\"die Animationen kommen so spät\"); the approved mock's own motion (the drum, the fogged glass, the drift) starts at load instead of a dealt Taste moment, and one button pauses it."
+  },
+  {
+    "check": "container-edges",
+    "target": "h2#start-h",
+    "reason": "The approved mock centres the closing call; it stands on a small glass card over the fogged glass, so its h2 is centred in the card on purpose, not on the container's left line."
+  },
+  {
+    "check": "off-grid",
+    "target": "ul.chips > li:nth-of-type(1)",
+    "reason": "The chips are pills: each pill's ground starts on the page margin and its words sit 14 px inside the pill's padding, which the check reads as the left edge."
+  },
+  {
+    "check": "card-layout",
+    "target": "ul.crew",
+    "reason": "The approved mock draws the eight crew members as one family of photo tiles on purpose: one role each, the same frame, so the eight read as one crew."
   }
 ]

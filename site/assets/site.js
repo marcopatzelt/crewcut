@@ -1,9 +1,10 @@
-/* Crewcut landing page: the little motion that CSS cannot do alone. Own code, no library.
+/* Crewcut landing page: the motion that CSS cannot do alone. Own code, no library.
    Everything starts at load; nothing waits for the scroll. One button pauses all motion;
-   prefers-reduced-motion keeps the fog still and the drum where it is. */
+   prefers-reduced-motion keeps the drum still and the fog from coming back. */
 (function () {
   const root = document.documentElement;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
   let paused = false;
 
   // one button pauses every animation on the page (WCAG 2.2.2) and plays it again
@@ -18,39 +19,80 @@
     });
   }
 
-  // the drum also turns with the scroll
-  const tilt = document.getElementById("tilt");
-  if (tilt && !reduce) {
-    addEventListener("scroll", () => { if (!paused) tilt.style.setProperty("--scroll-turn", (scrollY * -0.12) + "deg"); }, { passive: true });
+  // ---------------------------------------------------------------- the drum: twenty pictures on a turning cylinder
+  const drum = document.getElementById("drum");
+  if (drum && drum.getContext) {
+    const g = drum.getContext("2d");
+    const items = drum.dataset.items.split(";").map((s) => { const [src, kind] = s.split(" "); const im = new Image(); im.decoding = "async"; im.src = src; return { im, v: kind === "v" }; });
+    let w = 0, h = 0, dpr = 1, turn = 0, last = 0, scrollTurn = 0, visible = true;
+    const size = () => { dpr = Math.min(devicePixelRatio || 1, 2); w = drum.clientWidth; h = drum.clientHeight; drum.width = Math.round(w * dpr); drum.height = Math.round(h * dpr); };
+    function draw() {
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, w, h);
+      const phone = w < 600, k = phone ? 0.5 : 1;
+      const R = 800 * k, P = 3200 * k, cx = w / 2, cy = h * (phone ? 0.46 : 0.5);
+      const list = [];
+      items.forEach((it, i) => {
+        const a = (i * 18 + turn + scrollTurn) * Math.PI / 180, c = Math.cos(a);
+        if (c < 0.08 || !it.im.complete || !it.im.naturalWidth) return;
+        const z = R * c, s = P / (P - z);
+        const bw = (it.v ? 112 : 232) * k, bh = (it.v ? 199 : 130) * k;
+        list.push({ it, z, x: cx + R * Math.sin(a) * s, y: cy + z * 0.12 * k * s, dw: bw * s * c, dh: bh * s, c });
+      });
+      list.sort((p, q) => p.z - q.z);
+      for (const p of list) {
+        const x = p.x - p.dw / 2, y = p.y - p.dh / 2, r = 14 * k * (p.dh / (130 * k));
+        g.save();
+        g.globalAlpha = Math.min(1, 0.35 + p.c);
+        g.beginPath(); g.roundRect ? g.roundRect(x, y, p.dw, p.dh, Math.min(r, p.dw / 2)) : g.rect(x, y, p.dw, p.dh); g.clip();
+        const im = p.it.im, ir = im.naturalWidth / im.naturalHeight, br = p.dw / p.dh / p.c;
+        // cover the box, then squeeze it by the angle (the picture turns away from you)
+        let sw = im.naturalWidth, sh = im.naturalHeight, sx = 0, sy = 0;
+        if (ir > br) { sw = sh * br; sx = (im.naturalWidth - sw) / 2; } else { sh = sw / br; sy = (im.naturalHeight - sh) / 2; }
+        g.drawImage(im, sx, sy, sw, sh, x, y, p.dw, p.dh);
+        g.restore();
+      }
+    }
+    function frame(t) {
+      const dt = last ? Math.min(t - last, 100) : 0; last = t;
+      if (!reduce && !paused) turn -= dt * 360 / 80000;
+      if (visible) draw();
+      requestAnimationFrame(frame);
+    }
+    size(); draw();
+    for (const it of items) it.im.addEventListener("load", draw, { once: true });
+    addEventListener("resize", () => { size(); draw(); });
+    if (!reduce) addEventListener("scroll", () => { if (!paused) scrollTurn = scrollY * -0.12; }, { passive: true });
+    if ("IntersectionObserver" in window) new IntersectionObserver((e) => { visible = e[0].isIntersecting; }).observe(drum);
+    requestAnimationFrame(frame);
   }
 
-  // the closing section: condensation on glass over the landscape. A blurred copy of the wallpaper with drops is
-  // painted on a canvas; the pointer wipes it away, and the glass slowly fogs up again.
-  const sec = document.getElementById("start"), cv = document.getElementById("mist"), img = document.getElementById("finalbg");
-  if (!sec || !cv || !img || !cv.getContext) return;
-  const ctx = cv.getContext("2d");
-  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  // ---------------------------------------------------------------- the close: the word and the fogged glass
+  // A blurred copy of the wallpaper with drops is painted on a canvas over the word "Crewcut"; the pointer wipes it
+  // away, and the glass slowly fogs up again.
+  const sec = document.getElementById("start"), cv = document.getElementById("mist"), wordCv = document.getElementById("word"), img = document.getElementById("finalbg");
+  if (!sec || !cv || !wordCv || !img || !cv.getContext) return;
   if (dark && img.dataset.dark) img.src = img.dataset.dark;
-  const word = sec.querySelector(".final__word");
-  let W = 0, H = 0, dpr = Math.min(devicePixelRatio || 1, 2), fogged = null;
+  const ctx = cv.getContext("2d"), wctx = wordCv.getContext("2d");
+  const foot = sec.querySelector(".foot");
+  let W = 0, H = 0, dpr = Math.min(devicePixelRatio || 1, 2), fogged = null, fs = 0, base = 0;
   const cover = (iw, ih) => { const s = Math.max(W / iw, H / ih); return [(W - iw * s) / 2, (H - ih * s) / 2, iw * s, ih * s]; };
-  function paintFog(alpha) {
-    if (!fogged) return;
-    ctx.save(); ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = alpha; ctx.drawImage(fogged, 0, 0, W, H); ctx.restore();
+  function wordAt(c, blur, colour) {
+    c.save(); c.filter = blur ? "blur(" + blur + "px)" : "none"; c.fillStyle = colour;
+    c.font = "900 " + fs + "px 'Inter Tight', Inter, sans-serif"; c.textAlign = "center"; c.textBaseline = "alphabetic";
+    if ("letterSpacing" in c) c.letterSpacing = (-0.06 * fs) + "px";
+    c.fillText("Crewcut", W / 2, base); c.restore();
   }
+  function paintFog(alpha) { if (!fogged) return; ctx.save(); ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = alpha; ctx.drawImage(fogged, 0, 0, W, H); ctx.restore(); }
   function buildFog() {
     const off = document.createElement("canvas"); off.width = W; off.height = H;
     const o = off.getContext("2d");
     o.filter = "blur(" + Math.round(22 * dpr) + "px) saturate(0.75) brightness(1.12)";
     const [x, y, w, h] = cover(img.naturalWidth, img.naturalHeight);
     o.drawImage(img, x - 40, y - 40, w + 80, h + 80);
-    if (word) {
-      const fs = parseFloat(getComputedStyle(word).fontSize) * dpr, wr = word.getBoundingClientRect(), sr = sec.getBoundingClientRect();
-      o.filter = "blur(" + Math.round(10 * dpr) + "px)"; o.fillStyle = "rgba(255,255,255,0.9)";
-      o.font = "900 " + fs + "px 'Inter Tight', Inter, sans-serif"; o.textAlign = "center"; o.textBaseline = "bottom";
-      o.fillText("Crewcut", W / 2, (wr.bottom - sr.top) * dpr);
-    }
-    o.filter = "none"; o.fillStyle = dark ? "rgba(190,225,215,0.16)" : "rgba(235,248,243,0.28)"; o.fillRect(0, 0, W, H);
+    o.filter = "none";
+    wordAt(o, Math.round(10 * dpr), "rgba(255,255,255,0.9)");
+    o.fillStyle = dark ? "rgba(190,225,215,0.16)" : "rgba(235,248,243,0.28)"; o.fillRect(0, 0, W, H);
     let seed = 11; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     for (let i = 0; i < 2600; i++) {
       const px = r() * W, py = r() * H, rad = (0.6 + r() * r() * 3.2) * dpr;
@@ -59,19 +101,28 @@
     }
     fogged = off;
   }
-  function size() { W = Math.round(sec.clientWidth * dpr); H = Math.round(sec.clientHeight * dpr); cv.width = W; cv.height = H; buildFog(); paintFog(1); }
+  function size() {
+    W = Math.round(sec.clientWidth * dpr); H = Math.round(sec.clientHeight * dpr);
+    cv.width = wordCv.width = W; cv.height = wordCv.height = H;
+    // the word: as wide as the screen allows, standing on the footer row
+    fs = Math.min(300, Math.max(104, sec.clientWidth * 0.21)) * dpr;
+    const fr = foot ? foot.getBoundingClientRect() : null, sr = sec.getBoundingClientRect();
+    base = fr ? (fr.top - sr.top) * dpr - 14 * dpr : H - 90 * dpr;
+    wctx.clearRect(0, 0, W, H); wordAt(wctx, 0, "rgba(255,255,255,0.94)");
+    buildFog(); paintFog(1);
+  }
   function wipe(x, y, rad) {
     ctx.save(); ctx.globalCompositeOperation = "destination-out";
-    const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
-    g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(0.65, "rgba(0,0,0,0.9)"); g.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, rad, 0, 7); ctx.fill(); ctx.restore();
+    const gr = ctx.createRadialGradient(x, y, 0, x, y, rad);
+    gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(0.65, "rgba(0,0,0,0.9)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, rad, 0, 7); ctx.fill(); ctx.restore();
   }
   sec.addEventListener("pointermove", (e) => { const b = cv.getBoundingClientRect(); wipe((e.clientX - b.left) * dpr, (e.clientY - b.top) * dpr, 70 * dpr); });
   let t0 = 0;
   function frame(t) {
     // a finger trail draws through the word right away, so the glass is alive from the first frame
     const k = (t - t0) / 2200;
-    if (k < 1) for (let j = 0; j < 4; j++) { const kk = Math.min(1, k + j * 0.004); wipe(W * (0.12 + 0.76 * kk), H * (0.80 - 0.08 * Math.sin(kk * 3.1)), 42 * dpr); }
+    if (k < 1) for (let j = 0; j < 4; j++) { const kk = Math.min(1, k + j * 0.004); wipe(W * (0.12 + 0.76 * kk), base - fs * 0.32 - 0.06 * H * Math.sin(kk * 3.1), 42 * dpr); }
     if (!reduce && !paused) paintFog(0.0016);
     requestAnimationFrame(frame);
   }
