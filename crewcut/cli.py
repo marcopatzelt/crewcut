@@ -312,14 +312,16 @@ def _run(a) -> int:
                 print(f"No card {a.card}.", file=sys.stderr)
                 return 1
             if a.ccmd == "accept":
-                if card["kind"] in ("spend", "publish", "final"):
+                human = not os.environ.get("CREWCUT_IDENTITY")  # a person at the terminal, not a crew member
+                if not human and card["kind"] in ("spend", "publish", "final"):
                     print("This card needs the user's button (money, publishing or the final version).",
                           file=sys.stderr)
                     return 3
-                if _identity() != "showrunner":
+                if not human and _identity() != "showrunner":
                     print("Only the Showrunner records a yes the user gave in words.", file=sys.stderr)
                     return 3
-                approvals.decide(a.card, True, choice=a.choice, reason="the user said so in the chat")
+                approvals.decide(a.card, True, choice=a.choice,
+                                 reason="accepted at the terminal" if human else "the user said so in the chat")
             else:
                 approvals.decide(a.card, False, reason=a.reason or None)
             print(f"card #{a.card} {a.ccmd}ed")

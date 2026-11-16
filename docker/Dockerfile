@@ -93,6 +93,6 @@ ENV NVIDIA_VISIBLE_DEVICES=all \
     NVIDIA_DRIVER_CAPABILITIES=all
 # cuBLAS 12 and cuDNN 9 for faster-whisper (CTranslate2) on NVIDIA cards. Blender brings its own GPU kernels.
 RUN /opt/venv/bin/pip install "nvidia-cublas-cu12" "nvidia-cudnn-cu12==9.*" \
- && /opt/venv/bin/python -c "import os, nvidia.cublas.lib as a, nvidia.cudnn.lib as b; print(os.path.dirname(a.__file__)); print(os.path.dirname(b.__file__))" \
+ && /opt/venv/bin/python -c "import nvidia.cublas.lib as a, nvidia.cudnn.lib as b; print(list(a.__path__)[0]); print(list(b.__path__)[0])" \
     > /etc/ld.so.conf.d/crewcut-nvidia.conf \
  && ldconfig

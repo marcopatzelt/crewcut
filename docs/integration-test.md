@@ -15,7 +15,7 @@ read -rs VAST_API_KEY && export VAST_API_KEY          # paste the key, hidden
 .venv/bin/crewcut compute estimate --kind blender --frames 75 --json
 .venv/bin/crewcut compute rent --episode itest --gpus 1 --minutes 30 --max-usd 0.30   # exit 3: accept the spend card
 .venv/bin/crewcut card list --status open                                             # card id
-.venv/bin/python -c "from crewcut import approvals; approvals.decide(<card id>, True)"  # the yes, as the UI button does
+.venv/bin/crewcut card accept <card id>                       # the yes; at the terminal it counts as the user's button
 .venv/bin/crewcut compute rent --episode itest --gpus 1 --minutes 30 --max-usd 0.30   # prints the machine id
 .venv/bin/crewcut compute run <machine> --timeout 900 -- "/opt/blender/blender --version && nvidia-smi -L"
 .venv/bin/crewcut compute destroy --all-ours

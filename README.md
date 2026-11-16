@@ -25,10 +25,13 @@ or Codex (beta). Heavy rendering runs on your machine, or on a GPU you rent for 
 ## Demo
 
 <!-- Placeholder: a 60-second screen recording from the launch video goes here (no voice, English captions). -->
-![Crewcut main screen: episodes on the left, the chat with the Showrunner in the middle, the crew at work on the right](docs/mockup.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png">
+  <img alt="Crewcut main screen: episodes on the left, the chat with the Showrunner in the middle, the crew at work on the right" src="docs/screenshot.png">
+</picture>
 
-*The main screen (design mockup). Left: episodes with their ten steps. Middle: the chat with the Showrunner, with one
-card that needs your yes. Right: who is working on what, and the money you spent.*
+*The main screen with demo data (rendered in CI). Left: episodes with their ten steps. Middle: the chat with the
+Showrunner, with one card that needs your yes. Right: who is working on what, and the money you spent.*
 
 ## Features
 
@@ -37,7 +40,7 @@ card that needs your yes. Right: who is working on what, and the money you spent
 | **One command** | `docker compose up`, then `localhost` in the browser. Same image on Linux, macOS (Apple chips) and Windows | built; image tested in CI |
 | **The whole chain** | idea from data, title and thumbnail text before the script, proof test, script, teleprompter, speaker cut, 2D and 3D inserts, sound, checks, thumbnail, upload | built; not yet run end to end |
 | **Your subscription, two engines** | Claude Code (default) or Codex, picked once by saying it; one interface: start, live events, stop, resume | Claude Code built; Codex **beta** (not yet run on a real episode) |
-| **A crew with roles** | seven identities with their own skills and rights; only the Editor may rent, only the Publisher may publish; the Critic never checks its own work | built |
+| **A crew with roles** | seven crew members plus Brand for onboarding, each with its own skills and rights; only the Editor may rent, only the Publisher may publish; the Critic never checks its own work | built |
 | **No forms** | onboarding is "paste your links"; corrections are one sentence or voice; every decision is one card with one button | built |
 | **Your style, not ours** | a neutral default style; the Brand agent builds your style pack from your website and channel and shows a 10-second sample | built; not yet run on a real brand |
 | **Rules that learn** | a correction becomes a proposed rule with date and your words; one yes adds it to your pack | built |
