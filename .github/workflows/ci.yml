@@ -52,6 +52,24 @@ jobs:
       - run: bash -n start.sh && bash -n docker/entrypoint.sh
       - run: for f in tools/*.js templates/2d/*.js; do if [ -f "$f" ]; then node --check "$f"; fi; done
 
+  diagrams:
+    name: Mermaid diagrams parse
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Render every mermaid block of the README and the docs
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 > /dev/null
+          python3 tools/ci/extract_mermaid.py /tmp/mmd README.md docs/*.md
+          for f in /tmp/mmd/*.mmd; do
+            npx -y @mermaid-js/mermaid-cli@11.4.0 -q -i "$f" -o "${f%.mmd}.svg"
+          done
+          ls -la /tmp/mmd
+
   privacy:
     name: Secrets and personal data
     runs-on: ubuntu-24.04

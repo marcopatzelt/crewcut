@@ -2,113 +2,188 @@
 
 # Crewcut
 
-### Your YouTube channel, run by a crew of agents.
+### Your Claude Code subscription, now a YouTube crew.
 
-**From the idea to the upload, on your own computer. You record and say yes. The crew does the rest.**
+**Seven AI agents take your video from idea to upload. You record and say yes.<br>
+Open source, one Docker container, on your own computer.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![CI](https://img.shields.io/github/actions/workflow/status/marcopatzelt/crewcut/ci.yml?branch=main&style=flat-square&label=ci)](https://github.com/marcopatzelt/crewcut/actions/workflows/ci.yml)
-[![Image](https://img.shields.io/github/actions/workflow/status/marcopatzelt/crewcut/image.yml?branch=main&style=flat-square&label=image)](https://github.com/marcopatzelt/crewcut/actions/workflows/image.yml)
 ![Status](https://img.shields.io/badge/status-v0.1%20pre--release-orange?style=flat-square)
-![Engines](https://img.shields.io/badge/engines-Claude%20Code%20%C2%B7%20Codex%20(beta)-d97757?style=flat-square)
 
 <br>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/readme/crewcut-dark.png">
-  <img alt="Crewcut: episodes on the left, the chat with the Showrunner and a card that needs one yes in the middle, the crew at work and the money row on the right" src="docs/readme/crewcut-light.png" width="100%">
+  <img alt="Crewcut: your episodes on the left; in the middle the chat with the crew and one card that waits for your yes; on the right the crew at work and what it cost" src="docs/readme/crewcut-light.png" width="100%">
 </picture>
 
 </div>
 
-Seven crew members (Showrunner, Scout, Writer, Editor, Critic, Designer, Publisher) find the topic in data, write title
-and script, cut your recording, build 2D and 3D graphics in **your** style, make the thumbnail and upload through the
-YouTube API. You see who works on what, live, and every decision waits for one button: no forms, no settings dialogs.
-The crew runs on **your own subscription** (Claude Code by default, Codex in beta) and on **the newest Claude Code**:
-a new release is live in Crewcut at the next start, with an automatic way back if it breaks. Heavy rendering runs on your machine, or on a GPU you rent for cents, only when you say yes.
+**Crewcut is for people who make YouTube videos alone and appear in them.** You bring the idea and the recording. The
+crew does the rest: it finds the topic in data, writes title and script, cuts your takes, builds 2D and 3D graphics in
+your style, checks every version, makes the thumbnail and uploads through the YouTube API. It runs on the Claude Code
+subscription you already pay for; no API keys, no new account.
 
-> **Status: v0.1, pre-release.** Everything below is built and unit-tested; the image is built and smoke-tested in CI
-> for amd64 and arm64, including real 2D, 3D and assembly renders. A complete episode with real footage has **not** run
-> yet; that is the next step. What does not exist yet is marked *planned*.
+You see who works on what, live. Every decision is one card with one button: no forms, no settings dialogs. Nothing is
+published, rented or paid for without your yes.
 
-## See it move
+> **Status: v0.1, pre-release.** Everything in this README is built and unit-tested, and the image is built and
+> smoke-tested in CI for amd64 and arm64, with real 2D, 3D and assembly renders. A full episode with real footage has
+> **not** run yet; that is the next step. What does not exist yet is marked *planned*. The pictures show demo data.
 
-<img alt="A card appears, the choice switches from this machine to a rented GPU, one press, the card folds away and the Editor starts in the crew column" src="docs/readme/crewcut-demo.webp" width="100%">
+<img alt="A card asks whether to render nine 3D scenes on this machine or on a rented GPU; the choice switches, one press, the card folds away and the Editor starts in the crew column" src="docs/readme/crewcut-demo.webp" width="100%">
 
-*Demo data, rendered in CI. One card, one choice, one press: the crew column shows the work starting. The full demo
-video from the launch is coming.*
-
-## Features
-
-| | What it does | Status |
-|---|---|---|
-| **One command** | `docker compose up`, then `localhost` in the browser. Same image on Linux, macOS (Apple chips) and Windows | built; image tested in CI |
-| **The whole chain** | idea from data, title and thumbnail text before the script, proof test, script, teleprompter, speaker cut, 2D and 3D inserts, sound, checks, thumbnail, upload | built; not yet run end to end |
-| **Your subscription, two engines** | Claude Code (default) or Codex, picked once by saying it; one interface: start, live events, stop, resume | Claude Code built; Codex **beta** (not yet run on a real episode) |
-| **The engine is never held back** | newest Claude Code at every start (smoke test, automatic way back), every flag passed through, the crew as real Claude Code agents, Crewcut as a plugin, your own `.claude/` settings kept | built, unit-tested; nightly CI checks the newest versions |
-| **A crew with roles** | seven crew members plus Brand for onboarding, each with its own skills and rights; only the Editor may rent, only the Publisher may publish; the Critic never checks its own work | built |
-| **No forms** | onboarding is "paste your links"; corrections are one sentence or voice; every decision is one card with one button | built |
-| **Your style, not ours** | a neutral default style; the Brand agent builds your style pack from your website and channel and shows a 10-second sample | built; not yet run on a real brand |
-| **Rules that learn** | a correction becomes a proposed rule with date and your words; one yes adds it to your pack | built |
-| **Approve exactly what you saw** | a card stores the checksum of the file you saw; any change is a new version | built, tested |
-| **GPU on demand, never required** | estimate for both ways, approval, budget, cap, auto-delete, watchdog, cost book; everything also runs locally | built, tested against a fake provider; no real rental yet |
-| **Web teleprompter** | the script on your phone through a QR code, with a remote | built |
-| **Upload through the API** | resumable upload, thumbnail, captions, schedule, AI disclosure; no browser clicking | built; not yet run against a real channel |
-| Shorts, music generation, blog, A/B test results, 48-hour check | | *planned* |
+<p align="center"><sub>One card, one choice, one press. Demo data, rendered in CI from the current app.</sub></p>
 
 ## Quick start
 
+You need Docker and a Claude subscription with Claude Code.
+
 ```bash
 git clone https://github.com/marcopatzelt/crewcut.git && cd crewcut
-claude setup-token     # once, on any computer with a browser: prints your engine token
+claude setup-token     # once, on any computer with a browser: prints your token
 ./start.sh             # asks for the token once (hidden), writes .env, runs docker compose up
 ```
 
-Open **http://localhost:4747**, paste your links, then say your first idea. Details, Windows and GPUs:
-[docs/getting-started.md](docs/getting-started.md).
+Open **http://localhost:4747**, paste your links (website, channel), and say your first idea:
+
+> Next video: I ran five local AI models on a $900 laptop. Which one is worth it?
+
+The Scout comes back with a topic card. Details, Windows and GPUs: [docs/getting-started.md](docs/getting-started.md).
 
 ## How it works
 
+Ten steps. The crew works between them; you decide at each card.
+
 ```mermaid
-flowchart LR
-    you([You]) -- "one sentence, one yes" --> ui["Web UI<br/>localhost:4747"]
-    phone([Phone]) -- QR code --> tp["Teleprompter<br/>:4748"]
-    ui <--> cond["Conductor<br/>10 steps, job queue,<br/>cards, cost book"]
-    cond --> crew["The crew<br/>Claude Code or Codex,<br/>your subscription"]
-    crew --> skills["skills/<br/>know-how"]
-    crew --> pack["brand/<br/>your taste"]
-    crew --> tools["Tools<br/>ffmpeg, Chromium 2D,<br/>Blender 3D, whisper"]
-    tools -. "optional, with your yes" .-> gpu[("Rented GPU<br/>same image,<br/>no login data")]
-    crew --> yt["YouTube Data API"]
-    cond <--> studio[("Studio folder<br/>episodes/, brand/")]
+flowchart TB
+    subgraph before["Before you record"]
+        direction LR
+        s1["1 · Idea<br/>Scout"] --> s2["2 · Title<br/>Scout"] --> s3["3 · Proof<br/>Scout"] --> s4["4 · Script<br/>Writer"]
+    end
+    subgraph after["After you record"]
+        direction LR
+        s6["6 · Edit<br/>Editor, checked by the Critic"] --> s7["7 · Thumbnail<br/>Designer"] --> s8["8 · Blog<br/>planned"] --> s9["9 · Upload<br/>Publisher"] --> s10["10 · Results<br/>planned"]
+    end
+    s5(["5 · Record<br/>you, with the teleprompter"])
+    s4 --> s5 --> s6
+    classDef you fill:#0f7b5f,color:#ffffff,stroke:#0f7b5f
+    classDef planned stroke-dasharray: 4 4,color:#888888
+    class s5 you
+    class s8,s10 planned
 ```
 
-1. **The conductor** holds the order of the ten steps (idea, title, proof, script, record, edit, thumbnail, blog,
-   upload, results) and wakes the right crew member. It costs no tokens.
-2. **Each crew member** is a run of your Claude Code (or Codex) with a short identity ("how I work"), the skill of its step and
-   the state of the episode. It reports what it does in the Crew column and asks for decisions only with cards.
-3. **Skills** hold the know-how without taste. **Your style pack** (`brand/`) holds the taste: colours, fonts, logo,
-   pace, captions, loudness, your rules. Updates of the app never touch it.
-4. **Heavy work** (renders, transcription, assembly) runs one job at a time on your machine. For 3D and long jobs the
-   Editor estimates both ways and may suggest a rented GPU. Nothing is rented without your yes.
+| Step | What the crew does | What you decide |
+|---|---|---|
+| 1 Idea | The Scout looks at what works in your niche and ranks topics, title and thumbnail first | the topic |
+| 2 Title | Writes title and thumbnail text before a word of script exists | the title |
+| 3 Proof | Runs the test the title promises and collects the numbers that go into the video | what goes in |
+| 4 Script | The Writer writes in your voice, from your style pack | the script |
+| 5 Record | Puts the script on your phone as a teleprompter (QR code, with a remote) | you record |
+| 6 Edit | The Editor transcribes, cuts to the last full take of each sentence, builds 2D and 3D, mixes the sound; the Critic checks every version against your best video before you see it | the preview |
+| 7 Thumbnail | The Designer makes the thumbnail and test variants | the thumbnail |
+| 8 Blog | *planned* | |
+| 9 Upload | The Publisher uploads through the API: video, thumbnail, captions, schedule, YouTube's altered-or-synthetic-content answer | publish, every time |
+| 10 Results | *planned*: the 48-hour check | |
 
-More: [docs/architecture.md](docs/architecture.md), [docs/api.md](docs/api.md), [DESIGN.md](DESIGN.md).
+Every correction is one sentence, typed or spoken ("keep the part where I laugh", "no captions"). A correction that should
+last becomes a proposed rule with the date and your words; one yes adds it to your style pack.
 
-## The crew
+## Why it is different
 
-| Mark | Crew member | Role | Skills |
+These are rules in the code, not settings a prompt can talk around.
+
+- **You film yourself.** Crewcut makes no AI presenter and no AI voice. The video is your recording.
+- **You approve exactly what you saw.** A card stores the checksum of the file you looked at. Any change is a new version
+  and needs a new yes.
+- **Nothing is published or paid for without your card.** Only the Publisher may upload, only the Editor may rent, and
+  both still need your card. A monthly cap stops all spending (default $20).
+- **The builder never checks its own work.** The Critic checks every cut before you see it.
+- **Your recordings stay on your computer.** Only scene code and fonts go to a rented GPU, never your footage (unless you
+  approve it on a card), never your keys.
+- **Your taste is yours.** Skills hold the know-how; your style pack holds the taste. Updates of the app never touch it.
+- **The newest Claude Code, with a way back.** A new Claude Code release is live at the next start, after a smoke test.
+  If it fails twice, Crewcut goes back to the last good version and tells you. Every Claude Code flag passes through.
+
+## Meet the crew
+
+| | Crew member | What it does | May |
 |---|---|---|---|
-| SR | **Showrunner** | Runs the episode through the ten steps, answers you in the chat, shows nothing unchecked | `episode` |
-| SC | **Scout** | Finds the topic in data, writes title and thumbnail text, proves the promise | `idea`, `title` |
-| WR | **Writer** | Writes the script in your voice | `script` |
-| ED | **Editor** | Ingests recordings, cuts the speaker, builds 2D and 3D, sound and assembly; the only one who may rent | `edit`, `3d-scene` |
-| CR | **Critic** | Checks every version against your best video before you see it; never the builder | `cut-check` |
-| DE | **Designer** | Thumbnail and test variants | `thumbnail` |
-| PU | **Publisher** | Upload package and upload; the only one who may publish | `upload` |
-| BR | **Brand** | Onboarding and your style pack; names the source of every value | `onboarding` |
+| SR | **Showrunner** | Runs the episode through the ten steps and answers you in the chat. Shows you nothing unchecked | |
+| SC | **Scout** | Finds the topic in data, writes title and thumbnail text, runs the proof | |
+| WR | **Writer** | Writes the script in your voice | |
+| ED | **Editor** | Ingests your recordings, cuts the speaker, builds 2D and 3D, sound and assembly | rent a GPU, with your card |
+| CR | **Critic** | Checks every version against your best video; never the one who built it | |
+| DE | **Designer** | Thumbnail and test variants | |
+| PU | **Publisher** | Upload package and upload | publish, with your card |
+| BR | **Brand** | Onboarding: builds your style pack from your links and names the source of every value | |
 
-Identities live in [`team/`](team/README.md), one small file each. Every crew member has a short soul (how it works) that rides every run; the long
-knowledge stays in its skills.
+Each crew member is a real Claude Code agent (`crewcut:editor`, …) with a short identity in [`team/`](team/README.md) and
+the skills of its step in [`skills/`](skills/). Crewcut loads itself into Claude Code as a plugin, so your own
+`.claude/` settings, skills and MCP servers keep working.
+
+## Your style, from your links
+
+Crewcut starts with a calm neutral style: Inter, black and white, one accent, quiet cards and counters, captions as
+keywords. On the first start you paste your links. The Brand crew member reads them: logo, colours and fonts from your
+site's CSS, tone from your texts, patterns from your recent videos. It writes your style pack to `brand/` with the
+source of every value, renders a 10-second sample in your style and shows you one profile card.
+
+```
+brand/
+  brand.json        colours, fonts, logo, shape, motion, 3D stage
+  edit-style.json   pace, captions, music, loudness, speaker share
+  channel.json      niche, audience, language, tone, topics to avoid
+  thumbnail.json    layouts, face, max words, reference photo
+  voice.md          how you speak
+  rules/<step>.md   learned rules, with date and your words
+```
+
+Paid fonts are never downloaded from other sites; Brand picks a similar free font and says so. [`examples/striq/`](examples/striq/)
+is a real, dated style pack from the author's channel (rules and values only). See [docs/style-packs.md](docs/style-packs.md).
+
+## Fast with a rented GPU, free without one
+
+Everything runs on your computer. 2D graphics, cutting and sound need no GPU. 3D is the slow part: on a laptop CPU, a
+frame of the author's 3D style took about 144 seconds, so a three-second 3D insert takes about three hours. A rented
+RTX 4090 renders the same frame in about 20 to 70 seconds, at about $0.35 to $0.50 per hour.
+
+Before a heavy job the Editor estimates both ways and, only when renting saves a lot, asks once:
+
+> 9 scenes: about 3 h on this machine, or about 12 min for about $0.60 on a rented GPU. **[Rent a GPU]** · Local is fine too.
+
+Choose this machine and it does not ask again in that episode. Every rental has a budget, a monthly cap, a watchdog with
+a deadline on the machine, a local guard that deletes forgotten machines, and an entry in the cost book with proof that
+nothing is left running.
+
+**Referral disclosure:** Crewcut suggests Vast.ai through the author's referral link. The author earns 3% of your Vast
+spend as credit; it costs you nothing extra. Change or remove it in `config/compute.toml`. If you already have a Vast
+key, Crewcut does not show the link. Details: [docs/compute.md](docs/compute.md).
+
+## How Crewcut compares
+
+Other open-source video agents are good at other jobs. From each project's README on 16 November 2026:
+
+| | Starts from | The picture | Runs on |
+|---|---|---|---|
+| **Crewcut** | your idea and **your recording** | your takes, cut, with 2D and 3D graphics in your style | your Claude Code subscription (Codex in beta) |
+| [youtube-automation-agent](https://github.com/darkzOGx/youtube-automation-agent) | topics it researches for your channel | generated narration and visuals; a local slideshow by default, AI video providers optional | an API key for a text provider (Gemini, OpenAI, OpenRouter, DeepSeek and others) |
+| [OpenFilm](https://github.com/openfilm/openfilm) | a prompt to your coding agent | films written as web pages, with a local editor to change anything | Codex, Claude Code or any coding agent; your own keys for generated media |
+| [MoneyPrinterTurbo](https://github.com/harry0703/MoneyPrinterTurbo) | a topic or keyword | HD short videos from an automated workflow | API keys for model providers |
+
+Pick Crewcut when you stand in front of the camera yourself and want everything around the recording done. Corrections
+to this table are welcome.
+
+## Two engines
+
+| Engine | Status | Login |
+|---|---|---|
+| **Claude Code** | default | `claude setup-token` once; the token stays in the container's environment |
+| **Codex** | beta, not yet run on a real episode | say "use Codex": a sign-in link and a one-time code appear in the chat |
+
+Both run on your own subscription. Switch by saying it ("use Codex", "back to Claude"). Crewcut never pins the engine:
+each start brings the newest release, with a smoke test and a way back. Details: [docs/engine.md](docs/engine.md).
 
 ## Built on the playbooks of
 
@@ -127,112 +202,83 @@ applies one ("Scout: niche check after Vexian's growth stages").
 Crewcut is not affiliated with or endorsed by any of these creators. The skills contain our own summaries, not their
 content.
 
-## Style packs and onboarding
+## Under the hood
 
-Crewcut starts with a calm **neutral style** (`packs/neutral/`): Inter, black, white and one accent, quiet cards and
-counters, no logo, captions as keywords. On the first start you paste your links (website, channel, social). The Brand
-crew member reads them: logo and colours and fonts from your site's CSS, tone from your texts, patterns from your recent
-videos. It writes your pack to `studio/brand/` with the source of every value, renders a 10-second sample in your style
-and shows one profile card. If something is off, say it ("no captions", "logo smaller"); that sentence becomes your
-first rule.
-
-```
-brand/
-  brand.json        colours, fonts, logo, shape, motion, 3D stage
-  edit-style.json   pace, captions, music, loudness, mix limits, speaker share
-  channel.json      niche, audience, language, tone, topics to avoid
-  thumbnail.json    layouts, face, max words, reference photo
-  voice.md          how you speak
-  rules/<step>.md   learned rules with date and your words
+```mermaid
+flowchart LR
+    you([You]) -- "one sentence, one yes" --> ui["Web UI<br/>localhost:4747"]
+    phone([Phone]) -- QR code --> tp["Teleprompter<br/>:4748"]
+    ui <--> cond["Conductor<br/>10 steps, job queue,<br/>cards, cost book"]
+    cond --> crew["The crew<br/>Claude Code agents,<br/>your subscription"]
+    crew --> skills["skills/<br/>know-how"]
+    crew --> pack["brand/<br/>your taste"]
+    crew --> tools["Tools<br/>ffmpeg, Chromium 2D,<br/>Blender 3D, whisper"]
+    tools -. "optional, with your yes" .-> gpu[("Rented GPU<br/>same image,<br/>no login data")]
+    crew --> yt["YouTube Data API"]
+    cond <--> studio[("Studio folder<br/>episodes/, brand/")]
 ```
 
-Paid fonts are never downloaded from other sites; the Brand agent picks a similar free font and says so.
-[`examples/striq/`](examples/striq/) shows a real, dated style pack (the author's channel): rules and values only, no
-logo, no photos, no fonts. See [docs/style-packs.md](docs/style-packs.md).
+- **The conductor** holds the order of the steps and wakes the right crew member. It costs no tokens.
+- **Each crew member** is a run of your Claude Code with its identity, the skill of its step and the state of the
+  episode. It reports what it does in the crew column and asks for decisions only with cards.
+- **Heavy work** (renders, transcription, assembly) runs one job at a time, on your machine or, with your yes, on a
+  rented GPU from the same image.
+- **Configuration** is optional: defaults live in `config/*.toml`, your changes in `studio/config/`, secrets only in
+  `.env`. You can also just say it ("use the highest effort for the Critic").
 
-## Rented GPUs or your own machine
+More: [docs/architecture.md](docs/architecture.md), [docs/api.md](docs/api.md), [DESIGN.md](DESIGN.md).
 
-Everything runs without renting. On a laptop CPU, the 3D scenes of the author's style took about 144 seconds per frame;
-a three-second 3D insert is then about three hours. A rented RTX 4090 renders the same frame in roughly 20 to 70
-seconds at about $0.35 to $0.50 per hour, so a whole episode's 3D cost the author a few dollars. 2D graphics, cutting
-and sound need no GPU at all.
+## FAQ
 
-Before a heavy job the Editor estimates both ways and, only when renting saves a lot, suggests it once:
+**Does the AI film me or speak for me?** No. You record. Crewcut prepares script and teleprompter before, and does the
+rest after.
 
-> 9 scenes: about 3 h on this machine, or about 12 min for about $0.60 on a rented GPU. **[Rent a GPU]** · Local is fine too.
+**What does it cost?** Your Claude plan (or ChatGPT plan for Codex). Rented GPU time and paid image APIs only if you
+choose them; the money row in the app shows every cent, and there is a monthly cap.
 
-Nothing is rented without your yes. Every rental has a budget and a monthly cap, an on-machine watchdog with a deadline,
-a local guard that deletes forgotten machines, and a cost book entry with proof that no machine is left. Only scene code
-and fonts go to the rented machine, never your recordings (unless you approve it on a card) or keys.
+**Do I need a GPU or a Mac?** No. Any computer with Docker works: Linux, Windows, macOS on Apple chips. A GPU (your own
+NVIDIA card or a rented one) only makes 3D and transcription faster. Docker on macOS cannot use the Apple GPU, so 3D runs
+on the CPU or a rented GPU there. A test on a real Mac is still to come.
 
-**Referral disclosure:** Crewcut suggests Vast.ai through the author's referral link; the author earns 3% of your Vast
-spend as credit. Change or remove it in `config/compute.toml`. If you already have a Vast key, Crewcut does not show the
-link at all. Details: [docs/compute.md](docs/compute.md).
+**Is my data uploaded anywhere?** No account, no Crewcut server, no telemetry. Your studio folder stays on your computer.
+The crew uses your Claude login; uploads go to your YouTube channel only after your yes.
 
-## Configuration
+**Can I use my own Claude Code setup?** Yes. Crewcut is a Claude Code plugin. Your `.claude/` settings, skills, agents
+and MCP servers keep working, and any Claude Code flag can be passed through.
 
-You do not need to configure anything to start. Defaults live in `config/*.toml`; to change one, copy the key into the
-same file name under `studio/config/`. Secrets live only in `.env`.
-
-| File | What |
-|---|---|
-| `.env` | `CLAUDE_CODE_OAUTH_TOKEN` (for Claude Code), `VAST_API_KEY`, `OPENAI_API_KEY`, `YOUTUBE_API_KEY` (optional); Codex logs in through the chat |
-| `config/crewcut.toml` | engine and its models, parallel agents, heavy lane, monthly cap, ports |
-| `config/compute.toml` | provider, GPU preference, price limit, referral link |
-| `config/thumbnail.toml` | image way (Codex or image API), size, price estimate |
-| `config/speech.toml` | speech recognition model and device |
+**Can the crew members talk to each other?** Built, and off until it is measured: the Critic can send its findings
+straight to the Editor, with hard limits. See [docs/crew-talk.md](docs/crew-talk.md).
 
 ## Roadmap
 
 | Stage | Content | Status |
 |---|---|---|
-| 0, foundation | studio extracted from the author's setup, taste moved into style packs, neutral style, Docker image for amd64 and arm64, CI | done (this repository) |
-| 1, v0.1 | the 14 points of the MVP: one command, ten steps, cards, teleprompter, speaker cut, 2D, 3D local and rented, assembly and checks, thumbnail, API upload, learned rules, onboarding, the live crew column | built; first full episode next |
-| 2, whole chain | Shorts, music through rented GPUs, analytics and the 48-hour check, A/B variants with guidance, rule review, approval from the phone, style measured from your own videos, all crew identities | planned |
-| 3, for everyone | shareable style packs, your own 3D stage and models, data packs per language and niche, more GPU providers, Codex out of beta | planned |
-| 4, breadth | blog, Instagram output, a small Mac app that starts Docker for you (Apple speech recognition, SD card detection) | planned |
-
-## FAQ
-
-**Do I need a GPU or a Mac?** No. Any computer with Docker works. A GPU (your own NVIDIA card or a rented one) only
-makes 3D and transcription faster.
-
-**What does it cost?** Your Claude or ChatGPT plan (the crew runs on it) and, only if you choose, rented GPU time and paid image
-APIs. The money row in the app shows every cent; there is a monthly cap.
-
-**Does it work on Apple chips?** The image is built for arm64. Docker on macOS cannot use the Apple GPU, so 3D runs on a
-rented GPU there; a bridge to Blender on the Mac itself is planned. A test on a real Mac is still to come.
-
-**Does the AI film me?** No. You record. Crewcut prepares the script and teleprompter before, and does the rest after.
-
-**Is my data uploaded anywhere?** No account, no server, no telemetry. Your studio folder stays on your computer.
-Agents use your Claude login; uploads go to your YouTube channel only after your yes.
-
-**Which engines?** Exactly two, both on your own subscription: Claude Code (default) and Codex (beta). Say "use Codex"
-in the chat to switch. No API keys needed. Crewcut never pins or hides the engine: a new Claude Code release is live in
-Crewcut at the next start. Details: [docs/engine.md](docs/engine.md).
+| 0, foundation | studio extracted from the author's own setup, taste moved into style packs, Docker image for amd64 and arm64, CI | done |
+| 1, v0.1 | one command, ten steps, cards, teleprompter, speaker cut, 2D, 3D local and rented, checks, thumbnail, API upload, learned rules, onboarding, live crew column | built; first full episode next |
+| 2, whole chain | Shorts, music on rented GPUs, analytics and the 48-hour check, A/B variants, approval from the phone, style measured from your own videos | *planned* |
+| 3, for everyone | shareable style packs, your own 3D stage and models, more GPU providers, Codex out of beta | *planned* |
+| 4, breadth | blog, Instagram output, a small Mac app that starts Docker for you | *planned* |
 
 ## Documentation
 
-| Page | What |
-|---|---|
-| [Getting started](docs/getting-started.md) | install, first run, where your files are |
-| [Architecture](docs/architecture.md) | the two roots, commands, the ten steps, the edit plan, the database |
-| [Engines](docs/engine.md) | Claude Code and Codex: login, events, resume, known problems |
-| [Style packs](docs/style-packs.md) | every key of `brand/` and its neutral default |
-| [Recording and cut](docs/recording.md) | before you record, ingest, transcription, speaker cut |
-| [Rendering](docs/rendering.md) | 2D scenes, 3D local and rented, the preview |
-| [Compute](docs/compute.md) | rented GPUs: estimate, money rules, delete safeguards, privacy, the referral link |
-| [YouTube](docs/youtube.md) | connecting your channel, what the upload does, honest limits |
-| [Web UI](docs/ui.md) and [DESIGN.md](DESIGN.md) | the three places, demo mode, the design rules and their checks |
-| [HTTP API](docs/api.md) | what the UI talks to |
-| [First real episode](docs/first-real-episode.md) | bring earlier work, record, edit, thumbnail; where the work runs |
-| [Integration tests](docs/integration-test.md) | the tests that need real machines and a real login |
+[Getting started](docs/getting-started.md) ·
+[Architecture](docs/architecture.md) ·
+[Engines](docs/engine.md) ·
+[Style packs](docs/style-packs.md) ·
+[Recording and cut](docs/recording.md) ·
+[Rendering](docs/rendering.md) ·
+[Compute](docs/compute.md) ·
+[YouTube](docs/youtube.md) ·
+[Web UI](docs/ui.md) ·
+[Crew talk](docs/crew-talk.md) ·
+[HTTP API](docs/api.md) ·
+[First real episode](docs/first-real-episode.md) ·
+[Integration tests](docs/integration-test.md)
 
 ## Contributing
 
 Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md), [DESIGN.md](DESIGN.md) for UI work and
-[SECURITY.md](SECURITY.md) for reporting security problems. Please follow the [code of conduct](CODE_OF_CONDUCT.md).
+[SECURITY.md](SECURITY.md) for security problems. Please follow the [code of conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
