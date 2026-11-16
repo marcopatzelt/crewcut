@@ -304,7 +304,8 @@ main > section > .wrap, footer.closing > .wrap { flex: 1 0 auto; display: flex; 
   .hero__lead { margin-top: 20px; }
   .hero .btn-row { margin-top: 28px; width: 100%; flex-direction: column; }
   .hero .btn { width: 100%; }
-  .hero__facts { margin-top: 20px; }
+  .hero__facts { margin-top: 20px; flex-direction: column; align-items: center; gap: 2px; }
+  .hero__facts span + span::before { content: none; }
 }
 
 /* the entrance: once, at load, short and all at once (no stagger, no waiting for the scroll) */
@@ -442,6 +443,10 @@ footer.closing > .wrap { justify-content: space-between; gap: 64px; }
   .feature h3 { margin-top: 0; align-self: end; }
   .feature p { align-self: start; }
   #features { --h: 2; }
+}
+@media (max-width: 1023px) {
+  .section-head { align-items: flex-start; text-align: left; }
+  .chips { justify-content: flex-start; }
 }
 @media (min-width: 640px) and (max-width: 1023px) {
   .ui-crew { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
