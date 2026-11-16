@@ -59,9 +59,8 @@ jobs:
         run: |
           cp "$GITHUB_WORKSPACE/tools/ci/brand_png.mjs" /tmp/shots-tool/
           node /tmp/shots-tool/brand_png.mjs "$GITHUB_WORKSPACE/docs/brand" "$GITHUB_WORKSPACE/shots/brand"
-      - name: Taste gate (design check of the built app, report)
+      - name: Taste gate (design check of the built app; fails on any finding without a written waiver)
         if: hashFiles('web/package-lock.json') != ''
-        continue-on-error: true
         run: |
           # Ubuntu 24.04 runners restrict user namespaces, which Chrome's sandbox needs (Taste starts its own Chrome)
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 > /dev/null
