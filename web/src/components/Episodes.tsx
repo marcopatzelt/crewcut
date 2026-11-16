@@ -1,6 +1,6 @@
 // The left place: the brand and "New episode", one row per episode, then Profile and Crew (DESIGN.md rule 2).
 // A floating panel with material (rule 18). Arrow up and down move between episodes, Enter opens one (rule 15).
-import { Palette, Plus, Users } from "lucide-react";
+import { Palette, Plus, Users, RectangleVertical } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import type { Episode } from "../api/types";
 import { ariaKeys, keyText } from "../lib/platform";
@@ -28,6 +28,14 @@ function EpisodeRow({ episode, current }: { episode: Episode; current: boolean }
       {needsYou ? <span className="ep-dot" aria-hidden="true" /> : null}
       <span className="ep-title one-line">{episode.title}</span>
       <span className="ep-step">
+        {episode.kind === "short" ? (
+          <span className="ep-short">
+            <RectangleVertical size={14} aria-hidden="true" />
+            {episode.mode === "clip" && episode.source_episode
+              ? `Short from ${episode.source_episode.slice(0, 3)} · `
+              : "Short · "}
+          </span>
+        ) : null}
         {step ? `${step.n} ${step.label}` : episode.step}
         {needsYou ? <span className="sr-only">, needs your yes</span> : null}
       </span>

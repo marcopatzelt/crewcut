@@ -86,6 +86,8 @@ def build_parser() -> argparse.ArgumentParser:
     en = esub.add_parser("new")
     en.add_argument("title")
     en.add_argument("--source")
+    en.add_argument("--short", choices=["clip", "original"], help="a Short: a clip of a finished episode, or an original")
+    en.add_argument("--from", dest="from_", help="clip: the episode it comes from")
     es = esub.add_parser("status")
     es.add_argument("episode", nargs="?")
     es.add_argument("--json", action="store_true")
@@ -203,6 +205,16 @@ def build_parser() -> argparse.ArgumentParser:
     hzr.add_argument("--why", default="", help="the sections that applied, e.g. '§1 not X but Y; §6 lists of three'")
     hzr.add_argument("--json", action="store_true")
 
+    sh = sub.add_parser("shorts", help="Shorts: standing approval, the next free slot, results")
+    shsub = sh.add_subparsers(dest="shcmd", required=True)
+    shs = shsub.add_parser("standing", help="publish Shorts without a card: on, off or status (never the default)")
+    shs.add_argument("state", choices=["on", "off", "status"])
+    shl = shsub.add_parser("slot", help="the next free publishing time for a Short")
+    shl.add_argument("--episode")
+    shr = shsub.add_parser("results", help="48-hour numbers of a published Short, one row of studio/shorts.tsv")
+    shr.add_argument("--episode")
+    shsub.add_parser("table", help="all rows of studio/shorts.tsv")
+
     sk = sub.add_parser("skills", help="skills from other projects (Humanizer), always the newest version")
     sksub = sk.add_subparsers(dest="skcmd", required=True)
     sks = sksub.add_parser("status")
@@ -307,7 +319,12 @@ def _run(a) -> int:
         return 0
     if a.cmd == "episode":
         if a.ecmd == "new":
-            p = episodes.create(a.title, source=a.source)
+            try:
+                p = episodes.create(a.title, source=a.source, kind="short" if a.short else "episode", mode=a.short,
+                                    source_episode=a.from_)
+            except (ValueError, FileNotFoundError) as e:
+                print(f"crewcut episode new: {e}", file=sys.stderr)
+                return 2
             print(p["id"])
             return 0
         if a.ecmd == "status":
@@ -494,6 +511,40 @@ def _run(a) -> int:
             print(f"crewcut humanize: {e}", file=sys.stderr)
             return 1
         _print(rec if a.json else f"humanized {a.final}: {rec['count']} change(s), mode {rec['mode']}", a.json)
+        return 0
+    if a.cmd == "shorts":
+        from . import shorts
+        if a.shcmd == "standing":
+            if a.state == "on":
+                if os.environ.get("CREWCUT_IDENTITY"):
+                    # a crew member never switches it on itself: the user's yes on one card does
+                    card = approvals.propose(_env_episode(a) or "_onboarding", "upload", "other",
+                                             "Publish Shorts without asking?",
+                                             body="Only Shorts, only after the Critic's Short check found 0 errors, "
+                                                  "never with someone else's material, and not the first Short after "
+                                                  "your style changes. Each Short goes up private first, is read back, "
+                                                  "then goes public. Say \"ask me again for Shorts\" to switch it off.",
+                                             data={"standing": "shorts", "button": "Publish Shorts without asking"})
+                    print(f"card #{card['id']} is open: {card['title']}")
+                    return 0
+                approvals.grant_standing("shorts")
+            elif a.state == "off":
+                approvals.revoke_standing("shorts")
+            print(shorts.standing_line())
+            return 0
+        eid = _env_episode(a)
+        if a.shcmd == "table":
+            for r in shorts.table():
+                print("\t".join(str(r.get(k, "")) for k in shorts.TABLE_COLUMNS))
+            return 0
+        if not eid:
+            print("crewcut shorts: which Short? (--episode)", file=sys.stderr)
+            return 2
+        if a.shcmd == "slot":
+            print(shorts.next_slot(eid))
+            return 0
+        row = shorts.results(eid)
+        print(f"{eid}: {row['views']} views, {row['average_view_percentage']} % watched on average")
         return 0
     if a.cmd == "skills":
         from . import extskills

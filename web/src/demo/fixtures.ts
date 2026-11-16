@@ -33,6 +33,16 @@ export function steps(statuses: StepStatus[]): Step[] {
   return STEP_LABELS.map(([id, label], i) => ({ id, n: i + 1, label, status: statuses[i] ?? "open" }));
 }
 
+/** The steps of a Short: only those its mode has, numbered from 1. */
+export function shortSteps(ids: string[], statuses: StepStatus[]): Step[] {
+  return ids.map((id, i) => ({
+    id,
+    n: i + 1,
+    label: STEP_LABELS.find(([sid]) => sid === id)?.[1] ?? id,
+    status: statuses[i] ?? "open",
+  }));
+}
+
 export interface DemoData {
   /** The card and the waiting row the scripted sequence adds, then the row it starts after the yes. */
   playCard: Card | null;
@@ -186,6 +196,18 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     updated: ago(3 * H),
     open_cards: 1,
   };
+  // A Short: a clip of episode 003, with only the steps a clip has
+  const short5 = {
+    id: "005-short-five-models",
+    title: "Five local models, one $900 laptop",
+    step: "edit",
+    steps: shortSteps(["idea", "title", "edit", "thumbnail", "upload", "results"], ["done", "done", "working", "open", "open", "skipped"]),
+    updated: ago(1 * H),
+    open_cards: 0,
+    kind: "short" as const,
+    mode: "clip" as const,
+    source_episode: "003-local-llms",
+  };
   const ep2 = {
     id: "002-agent-memory",
     title: "Why my agents stopped forgetting things",
@@ -288,11 +310,11 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
   const state: State = {
     app: { version: "0.1.0", engine: "claude", engine_ok: true, gpu_local: false, onboarded: true },
     team: team.map(({ soul: _soul, sources: _sources, ...rest }) => rest),
-    episodes: [ep3, ep4, ep2],
+    episodes: [ep3, short5, ep4, ep2],
     activity,
     money: {
       today_usd: 0,
-      episode_usd: { [ep3.id]: 0.62, [ep4.id]: 0, [ep2.id]: 3.16 },
+      episode_usd: { [ep3.id]: 0.62, [short5.id]: 0, [ep4.id]: 0, [ep2.id]: 3.16 },
       month_usd: 3.78,
       cap_month_usd: 20,
     },
@@ -323,6 +345,11 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     [ep2.id]: {
       ...ep2,
       project: { id: ep2.id, title: ep2.title, created: ago(9 * D), format: "landscape", fps: 25 },
+      files: [],
+    },
+    [short5.id]: {
+      ...short5,
+      project: { id: short5.id, title: short5.title, created: ago(2 * H), format: "portrait", fps: 25 },
       files: [],
     },
   };
@@ -561,6 +588,24 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
         text: "Version 1 of the script is in progress. I start with the hosting bill, because that is the result.",
         card: null,
         cite: "Opening after your rule: result first, then how",
+      },
+    ],
+    [short5.id]: [
+      {
+        id: 160,
+        at: ago(2 * H),
+        author: "scout",
+        step: "idea",
+        text: "Three passages of episode 003 stand on their own. The ranking at 3:25 is the strongest: a result, a number and a clear end in 38 seconds.",
+        card: null,
+      },
+      {
+        id: 161,
+        at: ago(1 * H),
+        author: "editor",
+        step: "edit",
+        text: "Cutting the clip from the 4K original, 9:16 around your face. The ranking comes back as a portrait card.",
+        card: null,
       },
     ],
     [ep2.id]: [

@@ -2,7 +2,10 @@
   "schema": 1,
   "format": "landscape",
   "fps": 25,
-  "length_minutes": [3, 6],
+  "length_minutes": [
+    3,
+    6
+  ],
   "pace_cuts_per_minute": 8,
   "captions": "keywords",
   "keyword_max_words": 4,
@@ -14,7 +17,11 @@
   "duck": true,
   "loudness_lufs": -14.0,
   "true_peak_db": -1.5,
-  "graphics_mix": {"2d": 0.7, "3d": 0.0, "text": 0.3},
+  "graphics_mix": {
+    "2d": 0.7,
+    "3d": 0.0,
+    "text": 0.3
+  },
   "speaker_share_min": 0.4,
   "speaker_min_seconds": 2.0,
   "zoom_max": 1.15,
@@ -27,7 +34,42 @@
   "speech_speed": 1.0,
   "zoom_base": 1.0,
   "zoom_punch": 1.1,
-  "loudness_window_lu": [-2.0, 0.5],
-  "cut_words": {"fillers": [], "same_meaning": [], "transcript_noise": [], "same_spelling": {}, "end_card_cue": []},
-  "sources": {}
+  "loudness_window_lu": [
+    -2.0,
+    0.5
+  ],
+  "cut_words": {
+    "fillers": [],
+    "same_meaning": [],
+    "transcript_noise": [],
+    "same_spelling": {},
+    "end_card_cue": []
+  },
+  "sources": {},
+  "shorts": {
+    "length_s": [
+      30,
+      50
+    ],
+    "words": [
+      110,
+      170
+    ],
+    "layout": "full",
+    "captions": "keywords",
+    "max_still_s": 2.5,
+    "text_cards_max": 3,
+    "loudness_lufs": -14.0,
+    "limiter_headroom_db": 1.4,
+    "music_db": -15.0,
+    "music_hole_s": 0.5,
+    "end_tail_s": 1.0,
+    "right_free_frac": 0.18,
+    "min_mean_luma": 40,
+    "per_day_max": 2,
+    "publish_times": [
+      "12:00",
+      "18:00"
+    ]
+  }
 }

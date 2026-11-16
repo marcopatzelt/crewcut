@@ -53,6 +53,13 @@ def propose(episode: str | None, step: str | None, kind: str, title: str, body: 
         if not p.is_file():
             raise FileNotFoundError(f"card file not found: {file}")
         digest = sha256(p)
+    if kind == "publish" and episode and episode != "_onboarding" and not standing("shorts"):
+        from . import episodes
+        try:
+            if episodes.read(episode).get("kind") == "short":
+                data = {**(data or {}), "standing_offer": True}  # the quiet second button on a Short's card
+        except FileNotFoundError:
+            pass
     if episode and episode != "_onboarding":
         from . import humanize
         hz = humanize.for_card(paths.episode_dir(episode), kind, file)  # raises humanize.Missing for a script card
@@ -117,6 +124,8 @@ def decide(card_id: int, accepted: bool, choice: int | None = None, reason: str 
     card = get(card_id)
     if accepted and card["kind"] == "rule":
         _write_rule(card)
+    if accepted and card["kind"] == "publish" and choice == 1 and (card.get("data") or {}).get("standing_offer"):
+        grant_standing("shorts", card)
     if card.get("job"):
         j = db.get("jobs", card["job"])
         if j and j["status"] == "waiting":
@@ -138,6 +147,91 @@ def wait(card_id: int, timeout: float | None = None, every: float = 2.0) -> str:
         return c["status"] if c and c["status"] != "open" else None
     st = db.wait_until(check, timeout=timeout, every=every)
     return st or "expired"
+
+
+# ---- standing approval (Shorts only, never the default) -------------------------------------------------------------
+# The user may say once "publish Shorts without asking" (or press the second button on a Short's publish card). It
+# covers only Shorts, only after the Critic's Short check found 0 errors, only without third-party material, and not
+# the first Short after the style pack changed. Every Short still goes up private first, is read back, and only then
+# becomes public or scheduled. Each use is logged as an accepted publish card with the package checksum.
+STANDING_KEY = "standing:{scope}"
+
+
+def pack_fingerprint() -> str:
+    h = hashlib.sha256()
+    base = paths.brand_dir()
+    for p in sorted(base.glob("*.json")):
+        h.update(p.name.encode())
+        h.update(p.read_bytes())
+    return h.hexdigest()[:16]
+
+
+def standing(scope: str = "shorts") -> dict | None:
+    import json
+    raw = db.kv_get(STANDING_KEY.format(scope=scope))
+    try:
+        return json.loads(raw) if raw else None
+    except ValueError:
+        return None
+
+
+def grant_standing(scope: str, card: dict | None = None) -> dict:
+    import json
+    s = {"scope": scope, "since": db.now(), "card": (card or {}).get("id"), "pack": pack_fingerprint()}
+    db.kv_set(STANDING_KEY.format(scope=scope), json.dumps(s))
+    events.emit("log", text=f"Standing approval for {scope} switched on")
+    return s
+
+
+def revoke_standing(scope: str = "shorts") -> None:
+    db.kv_set(STANDING_KEY.format(scope=scope), "")
+    events.emit("log", text=f"Standing approval for {scope} switched off")
+
+
+def standing_covers(episode: str, pkg: dict) -> tuple[bool, str]:
+    """(covered, why not) for publishing this Short under the standing approval."""
+    from . import episodes
+    s = standing("shorts")
+    if not s:
+        return False, "no standing approval"
+    p = episodes.read(episode)
+    if p.get("kind") != "short":
+        return False, "only Shorts are covered; long videos always need a card"
+    if pkg.get("third_party"):
+        return False, "the Short contains material or a person from someone else"
+    if s.get("pack") != pack_fingerprint():
+        return False, "the style pack changed since the standing approval: this first Short needs a card"
+    check = short_check_result(episode)
+    if check is None:
+        return False, "the Critic's Short check has not run on this version"
+    if check:
+        return False, f"the Critic's Short check found {check} error(s)"
+    return True, ""
+
+
+def short_check_result(episode: str) -> int | None:
+    """Errors in the newest Short check report (review/short-check-*.json), or None when there is none."""
+    import json
+    rev = paths.episode_dir(episode) / "review"
+    reps = sorted(rev.glob("short-check*.json"), key=lambda q: q.stat().st_mtime) if rev.is_dir() else []
+    if not reps:
+        return None
+    try:
+        d = json.loads(reps[-1].read_text(encoding="utf-8"))
+    except ValueError:
+        return None
+    errs = d.get("errors")
+    return len(errs) if isinstance(errs, list) else int(errs or 0)
+
+
+def accept_under_standing(episode: str, package_rel: str) -> dict:
+    """Record a publish under the standing approval as an accepted card for exactly this package (for the log)."""
+    p = _resolve_file(episode, package_rel)
+    card = propose(episode, "upload", "publish", "Published under your standing approval", file=package_rel,
+                   data={"standing": True}, identity="publisher")
+    db.update("cards", card["id"], status="accepted", decided_at=db.now(),
+              reason="standing approval for Shorts", sha256=sha256(p) if p else None)
+    return get(card["id"])
 
 
 # ---- rules ---------------------------------------------------------------------------------------------------------

@@ -144,6 +144,15 @@ def on_card_decided(card: dict) -> None:
         post(episode, "Claude opens in a window on your computer and sets up the YouTube API in your Chrome. Sign in to "
              "Google there when it asks. I post the last step here.", card=card["id"], author="publisher")
         return
+    if kind == "other" and (card.get("data") or {}).get("standing") == "shorts":
+        if accepted:
+            from .. import approvals
+            approvals.grant_standing("shorts", card)
+            post(episode, "Shorts are now published without asking, after the Critic's check. Say \"ask me again for "
+                 "Shorts\" to switch it off.", card=card["id"])
+        else:
+            post(episode, "Shorts keep asking for your yes.", card=card["id"])
+        return
     if episode == ONBOARDING:
         if kind == "profile" and accepted:
             db.kv_set("onboarded", "1")

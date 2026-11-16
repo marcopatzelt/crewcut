@@ -298,7 +298,14 @@ def create_app(start_worker: bool = True) -> FastAPI:
         pack = brand.load()
         prev = paths.user_brand_dir() / "preview.mp4"
         rules = [{"step": step, **r} for step, rs in pack.all_rules().items() for r in rs]
-        return {"source": "neutral" if pack.is_neutral else "brand", "rows": brand.profile_rows(pack),
+        from .. import approvals, shorts, voice
+        rows = brand.profile_rows(pack)
+        n_voice = len(voice.samples())
+        rows.append({"label": "Voice sample", "value": f"{n_voice} of your own videos" if n_voice else
+                     "none yet", "kind": "text", "source": "brand/voice/"})
+        rows.append({"label": "Shorts", "value": shorts.standing_line(), "kind": "text",
+                     "source": "your yes on a card" if approvals.standing("shorts") else "Crewcut default"})
+        return {"source": "neutral" if pack.is_neutral else "brand", "rows": rows,
                 "preview": f"/api/files/{flow.ONBOARDING}/brand/preview.mp4" if prev.is_file() else None,
                 "rules": rules}
 

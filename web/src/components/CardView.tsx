@@ -33,6 +33,8 @@ export type Way = "local" | "rented";
 export const LOCAL_REASON = "Local is fine. Render on this machine.";
 
 export function acceptLabel(card: Card, way: Way = "rented"): string {
+  // a card may name its one action ("This really happened", "Set it up in my Chrome"); money cards never do
+  if (card.kind !== "spend" && typeof card.data?.button === "string" && card.data.button) return card.data.button;
   switch (card.kind) {
     case "topic":
       return "Use this topic";
@@ -62,8 +64,7 @@ export function acceptLabel(card: Card, way: Way = "rented"): string {
     case "mix":
       return "Use this mix";
     default:
-      // a card may name its one action (e.g. "Set it up in my Chrome"); the words stay short and say what happens
-      return typeof card.data?.button === "string" && card.data.button ? card.data.button : "Approve this";
+      return "Approve this";
   }
 }
 
@@ -309,12 +310,13 @@ export function OpenCard({
   const spend = card.kind === "spend";
   const referral = spend ? spendOf(card).referral : null;
 
-  async function onAccept() {
+  async function onAccept(standing = false) {
     if (busy || folding) return;
     setBusy(true);
     setError(null);
     try {
       if (spend && way === "local") await decline(card, LOCAL_REASON);
+      else if (standing) await accept(card, 1);
       else await accept(card, card.options?.length ? chosen : undefined);
     } catch (e) {
       setError(`Couldn't send your yes. ${messageOf(e)}`);
@@ -359,7 +361,19 @@ export function OpenCard({
         >
           {acceptLabel(card, way)}
         </button>
-        <span className="quiet">Or say what to change.</span>
+        {card.kind === "publish" && card.data?.standing_offer ? (
+          <button
+            type="button"
+            className="quiet-action"
+            onClick={() => void onAccept(true)}
+            disabled={busy || folding}
+            tabIndex={folding ? -1 : undefined}
+          >
+            Publish this and all future Shorts without asking
+          </button>
+        ) : (
+          <span className="quiet">Or say what to change.</span>
+        )}
         <Keys keys={["mod", "enter"]} className="card-keys" />
       </div>
       {error ? <ErrorLine text={error} onRetry={() => void onAccept()} /> : null}

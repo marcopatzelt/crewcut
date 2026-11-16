@@ -39,6 +39,11 @@ export interface Episode {
   steps: Step[];
   updated: string;
   open_cards: number;
+  /** "short" for a Short (portrait, fewer steps); absent or "episode" for a long video */
+  kind?: "episode" | "short";
+  mode?: "clip" | "original";
+  /** a clip: the episode it comes from */
+  source_episode?: string | null;
 }
 
 export interface FileEntry {

@@ -23,6 +23,13 @@ STEPS = [
     {"id": "results", "n": 10, "label": "Results", "owner": "publisher", "card": None, "planned": True},
 ]
 STEP_IDS = [s["id"] for s in STEPS]
+# A Short is its own small episode with fewer steps (docs/shorts.md): a clip comes from a finished episode, an original
+# is recorded for itself. Steps that a mode does not have are not shown.
+SHORT_STEPS = {
+    "clip": ["idea", "title", "edit", "thumbnail", "upload", "results"],
+    "original": ["idea", "title", "proof", "script", "record", "edit", "thumbnail", "upload", "results"],
+}
+KINDS = ("episode", "short")
 STATUSES = ("open", "working", "waiting", "done", "skipped")
 FOLDERS = ("brief", "originals", "work", "audio", "broll", "graphics", "edit", "render", "review", "export")
 
@@ -69,9 +76,20 @@ def write(episode: str, project: dict) -> None:
     events.emit("episode", episode=episode, data=summary(episode, project))
 
 
-def create(title: str, source: str | None = None, fmt: str | None = None) -> dict:
+def create(title: str, source: str | None = None, fmt: str | None = None, kind: str = "episode",
+           mode: str | None = None, source_episode: str | None = None) -> dict:
     from . import brand
     pack = brand.load()
+    if kind not in KINDS:
+        raise ValueError(f"kind must be one of {', '.join(KINDS)}")
+    if kind == "short":
+        if mode not in SHORT_STEPS:
+            raise ValueError("a Short is a clip (from a finished episode) or an original: --mode clip|original")
+        if mode == "clip":
+            if not source_episode:
+                raise ValueError("a clip names the episode it comes from: --from <episode>")
+            read(source_episode)  # it must exist
+        fmt = "portrait"
     fmt = fmt or pack.value("edit_style.format", "landscape")
     eid = f"{_next_number():03d}-{slug(title)}"
     d = paths.episode_dir(eid)
@@ -79,12 +97,21 @@ def create(title: str, source: str | None = None, fmt: str | None = None) -> dic
     for f in FOLDERS:
         (d / f).mkdir()
     steps = {s["id"]: {"status": "skipped" if s.get("planned") else "open"} for s in STEPS}
+    step_ids = SHORT_STEPS[mode] if kind == "short" and mode else None
+    if step_ids:
+        for sid in STEP_IDS:
+            if sid not in step_ids:
+                steps[sid] = {"status": "skipped", "absent": True}
     steps["idea"]["status"] = "working"
     project = {
         "id": eid, "title": title, "created": db.now(), "format": fmt, "fps": int(pack.value("edit_style.fps", 25)),
         "source": source, "step": "idea", "steps": steps, "next_action": "Scout looks for the idea and the data behind it.",
-        "open_items": [], "prompter_token": secrets.token_urlsafe(12),
+        "open_items": [], "prompter_token": secrets.token_urlsafe(12), "kind": kind,
     }
+    if kind == "short":
+        project.update(mode=mode, source_episode=source_episode, step_ids=step_ids)
+        project["next_action"] = ("Scout picks the passages of the source episode." if mode == "clip" else
+                                  "Scout proposes three ideas with a proof from the user's own work.")
     (d / "brief" / "BRIEF.md").write_text(f"# {title}\n\nSource: {source or 'the user, in one sentence'}\n",
                                           encoding="utf-8")
     write(eid, project)
@@ -120,13 +147,18 @@ def summary(episode: str, project: dict | None = None) -> dict:
         open_cards = c.execute("SELECT COUNT(*) AS n FROM cards WHERE episode = ? AND status = 'open'",
                                (episode,)).fetchone()["n"]
     st = p.get("steps", {})
-    return {
+    shown = [s for s in STEPS if not st.get(s["id"], {}).get("absent")]
+    out = {
         "id": p["id"], "title": p.get("title", p["id"]), "step": p.get("step"), "format": p.get("format"),
-        "steps": [{"id": s["id"], "n": s["n"], "label": s["label"], "status": st.get(s["id"], {}).get("status", "open")}
-                  for s in STEPS],
+        "kind": p.get("kind", "episode"),
+        "steps": [{"id": s["id"], "n": i + 1, "label": s["label"], "status": st.get(s["id"], {}).get("status", "open")}
+                  for i, s in enumerate(shown)],
         "updated": max([v.get("at", "") for v in st.values()] + [p.get("created", "")]),
         "open_cards": int(open_cards), "next_action": p.get("next_action"),
     }
+    if out["kind"] == "short":
+        out.update(mode=p.get("mode"), source_episode=p.get("source_episode"))
+    return out
 
 
 def files(episode: str) -> list[dict]:

@@ -297,6 +297,39 @@ svg.lucide {
   animation: run var(--t-loop) linear infinite;
 }
 
+/* A Short in the episode list: a portrait sign and, for a clip, the episode it comes from. */
+.ep-short {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ep-short svg {
+  flex: none;
+}
+
+/* The second, quiet choice on a Short's publish card: the user's own standing approval for Shorts. */
+.quiet-action {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-3);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+  min-height: 32px;
+  padding: 0 4px;
+  border-radius: var(--r-row);
+  transition: color var(--t-fast) linear;
+}
+
+.quiet-action:hover {
+  color: var(--ink-2);
+}
+
+.quiet-action:focus-visible {
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
 .side-empty {
   display: flex;
   flex-direction: column;
