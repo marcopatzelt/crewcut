@@ -27,6 +27,12 @@ extra_args = []
 config = []                # -c key=value pairs passed to every run, e.g. ['model_verbosity="low"']
 env = {}
 
+[crew.talk]
+enabled = false            # crew members message each other directly (fix, question, notice); off until measured
+max_rounds = 2             # rounds (message and answer) per topic, then the Showrunner decides
+max_fix_rounds = 3         # fix rounds between the Critic and the builder per piece of work
+max_per_episode = 20       # crew messages per episode
+
 [queue]
 heavy_parallel = 1         # heavy jobs (render, transcription, assembly) at the same time
 

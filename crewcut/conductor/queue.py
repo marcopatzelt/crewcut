@@ -138,7 +138,16 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
         resume=resume.get("session") if resume.get("engine") == eng.name else None,
         timeout_s=int(cfg.get("agent_timeout_minutes", 60)) * 60, log_path=paths.logs_dir() / f"job-{j['id']}.log",
         extra_dirs=[str(paths.app_root())], engine_options=opts,
-        name=f"{ident.get('name')} · {j['episode'] or 'studio'} · {j['step'] or 'chat'}")
+        name=None)
+    from .. import crewtalk
+    task.name = crewtalk.session_name(j["identity"], j["episode"])
+    if eng.name == "claude" and j["episode"] and crewtalk.settings()["enabled"]:
+        # reachable for Claude Code's own cross-session messages while it runs; notes kept for this start come along
+        opts["settings"] = {"crossSessionInbound": "accept"}
+        notes = crewtalk.collected_for(j["episode"], j["identity"])
+        if notes:
+            task.prompt += "\n\nNotes from the crew since your last run:\n" + "\n".join(
+                f"- from {n['sender']} about `{n['about']}`: {n['text']}" for n in notes)
     return task
 
 

@@ -17,7 +17,7 @@ STEP_DONE = {"topic": "idea", "title": "title", "proof": "proof", "script": "scr
 
 def post(episode: str, text: str, author: str = "showrunner", cite: str | None = None, card: int | None = None,
          job: int | None = None, step: str | None = None, preview: str | None = None,
-         facts: list[dict] | None = None) -> int:
+         facts: list[dict] | None = None, exchange: dict | None = None) -> int:
     if step is None and job:
         step = (db.get("jobs", job) or {}).get("step")
     if step is None and episode and not episode.startswith("_") and author != "user":
@@ -25,7 +25,7 @@ def post(episode: str, text: str, author: str = "showrunner", cite: str | None =
             step = episodes.read(episode).get("step")
         except (FileNotFoundError, ValueError):
             step = None
-    extra = {k: v for k, v in (("preview", preview), ("facts", facts)) if v}
+    extra = {k: v for k, v in (("preview", preview), ("facts", facts), ("exchange", exchange)) if v}
     mid = db.insert("messages", at=db.now(), episode=episode, author=author, text=text, cite=cite, card=card, job=job,
                     step=step, data=extra or None)
     events.emit("message", episode=episode, identity=None if author == "user" else author, text=text,
@@ -38,7 +38,7 @@ def message(mid: int) -> dict:
     out = {"id": m["id"], "at": m["at"], "episode": m["episode"], "author": m["author"], "text": m["text"],
            "cite": m.get("cite"), "card": m.get("card"), "step": m.get("step")}
     extra = m.get("data") if isinstance(m.get("data"), dict) else {}
-    out.update({k: extra[k] for k in ("preview", "facts") if extra.get(k)})
+    out.update({k: extra[k] for k in ("preview", "facts", "exchange") if extra.get(k)})
     return out
 
 

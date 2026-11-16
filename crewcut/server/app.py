@@ -215,6 +215,11 @@ def create_app(start_worker: bool = True) -> FastAPI:
             flow.on_upload(eid, [s["path"] for s in saved])
         return saved
 
+    @app.get("/api/episodes/{eid}/crew")
+    def crew_messages(eid: str):
+        from .. import crewtalk
+        return {"enabled": crewtalk.settings()["enabled"], "messages": [crewtalk.view(m) for m in crewtalk.messages(eid)]}
+
     @app.get("/api/episodes/{eid}/prompter")
     def prompter_info(eid: str):
         try:

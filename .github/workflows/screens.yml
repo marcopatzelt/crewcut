@@ -54,9 +54,21 @@ jobs:
           node /tmp/shots-tool/readme_shots.mjs http://localhost:8099 "$GITHUB_WORKSPACE/shots/readme"
           rm -rf "$GITHUB_WORKSPACE/shots/readme/video-tmp"
           ls -la "$GITHUB_WORKSPACE/shots/readme"
+      - name: Taste gate (design check of the built app, report)
+        if: hashFiles('web/package-lock.json') != ''
+        continue-on-error: true
+        run: |
+          git clone -q https://github.com/Leonxlnx/taste-skill.git /tmp/taste && git -C /tmp/taste checkout -q f6b76575f949707b4e3c37cd86cb44b0b98643e8
+          export CHROME_PATH=$(cd /tmp/shots-tool && node -e "console.log(require('playwright').chromium.executablePath())")
+          mkdir -p shots/taste
+          node /tmp/taste/skills/taste-skill/scripts/consistency.mjs "http://localhost:8099/index.html?demo=1" \
+            --page software --widths 1440,1100,390 --profile /tmp/taste-profile --out shots/taste --no-sweep \
+            | tee shots/taste/report.txt
+          python3 tools/ci/taste_waivers.py shots/taste/report.txt .taste-skill/waivers.json | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: screens
           path: |
             shots/*.png
             shots/readme/
+            shots/taste/

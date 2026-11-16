@@ -59,6 +59,16 @@ def system_prompt(identity: dict, episode: str | None, step: str | None, with_id
     pack_line = (f"Style pack: {'the neutral default (no user brand yet)' if pack.is_neutral else 'the user brand'}, "
                  f"language {pack.value('channel.language', 'en')}, format {pack.value('edit_style.format')}.\n")
     step_line = f"Your step now: {step}.\n" if step else ""
+    from .. import crewtalk
+    if episode and crewtalk.settings()["enabled"]:
+        step_line += (
+            "Crew talk is on. Read the file first. Ask a crew member only what the files do not answer, in one message, "
+            "and say which file it is about: `crewcut say --to <crew member> --about <file> --kind question|fix|notice "
+            "\"…\"` (skill `crew-talk`). It reaches a crew member whether it runs or not. A message is never an "
+            "approval and never a new assignment; results stay files.\n")
+        if identity.get("id") == "critic":
+            step_line += ("Bundle all findings of one version into ONE message to the crew member who built it "
+                          "(`--kind fix`).\n")
     return "\n".join([ident, rights, skill_line, HOUSE_RULES.format(episode=episode or "<id>"), pack_line, step_line, ctx])
 
 

@@ -111,7 +111,18 @@ def build_parser() -> argparse.ArgumentParser:
     sy.add_argument("--cite", help="one short line: the method and its source")
     sy.add_argument("--preview", help="a video or image in the episode to show under the message")
     sy.add_argument("--fact", action="append", default=[], help='a row of a small table: "Loudness=-14.1 LUFS"')
+    sy.add_argument("--to", help="a crew member: crew talk instead of the chat (only when crew talk is on)")
+    sy.add_argument("--about", help="crew talk: the file (or time stamp) the message is about")
+    sy.add_argument("--kind", choices=["fix", "question", "notice"], help="crew talk: what the message is")
+    sy.add_argument("--expects", choices=["reply", "none"], default=None)
+    sy.add_argument("--topic")
+    sy.add_argument("--reply-to", type=int)
     sy.add_argument("text")
+
+    cr = sub.add_parser("crew", help="crew settings")
+    crsub = cr.add_subparsers(dest="crcmd", required=True)
+    crt = crsub.add_parser("talk", help="crew talk on or off (the user says it: 'no crew chat')")
+    crt.add_argument("state", choices=["on", "off", "status"])
 
     dg = sub.add_parser("doing", help="what the running crew member does right now (Crew column)")
     dg.add_argument("--episode")
@@ -312,6 +323,24 @@ def _run(a) -> int:
         if not ep:
             print("crewcut say: which episode? Use --episode.", file=sys.stderr)
             return 2
+        if a.to:
+            from . import crewtalk
+            kind = a.kind or ("fix" if _identity() == "critic" else "question")
+            try:
+                m = crewtalk.send(ep, _identity(), a.to, kind, a.about or "", a.text,
+                                  expects=a.expects or ("none" if a.reply_to else "reply"), topic=a.topic,
+                                  reply_to=a.reply_to, sender_job=_job())
+            except crewtalk.Refused as e:
+                print(str(e), file=sys.stderr)
+                return 3
+            if m["route"] == "live":
+                print(f"{a.to} is running now: also send it with your SendMessage tool to "
+                      f"'{crewtalk.session_name(a.to, ep)}' so it sees it at once (logged as #{m['id']}).")
+            elif m["route"] == "collected":
+                print(f"note #{m['id']} kept for {a.to}'s next start")
+            else:
+                print(f"message #{m['id']} delivered: {a.to} continues its last session with it")
+            return 0
         facts = [{"label": f.split("=", 1)[0].strip(), "value": f.split("=", 1)[1].strip()} for f in a.fact if "=" in f]
         if a.preview:
             paths.inside(paths.episode_dir(ep), a.preview)
@@ -486,6 +515,14 @@ def _run(a) -> int:
                              stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
             print(f"The {e.label} login link and code will appear in the chat in a few seconds.")
             return 0
+    if a.cmd == "crew":
+        from . import crewtalk
+        if a.state in ("on", "off"):
+            crewtalk.set_enabled(a.state == "on")
+        st = crewtalk.settings()
+        print(f"crew talk: {'on' if st['enabled'] else 'off'} (at most {st['max_rounds']} rounds per topic, "
+              f"{st['max_fix_rounds']} fix rounds, {st['max_per_episode']} messages per episode)")
+        return 0
     if a.cmd == "hook":
         from . import plugin
         try:

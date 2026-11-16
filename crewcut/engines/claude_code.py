@@ -137,6 +137,8 @@ class ClaudeCode(Engine):
             layer2 += ["--add-dir", d]
         if task.name:
             layer2 += ["--name", task.name]
+        if opts.get("settings"):
+            layer2 += ["--settings", json.dumps(opts["settings"])]
         for flag in opts.get("flags") or []:          # switches without a value, e.g. --forward-subagent-text
             layer2.append(flag)
         if opts.get("skip_permissions", True):

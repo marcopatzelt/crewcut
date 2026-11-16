@@ -10,6 +10,7 @@ setting that a user or another plugin can change.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -45,8 +46,9 @@ def agent_markdown(ident: dict, model: str | None = None) -> str:
 
 
 def hooks() -> dict:
-    return {"hooks": {"PreToolUse": [{"matcher": "Bash",
-                                      "hooks": [{"type": "command", "command": "crewcut hook pre-tool"}]}]}}
+    guard = [{"type": "command", "command": "crewcut hook pre-tool"}]
+    return {"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": guard},
+                                     {"matcher": "SendMessage", "hooks": guard}]}}
 
 
 def build(dest: Path | None = None) -> Path:
@@ -92,6 +94,11 @@ GUARDED = [
 
 def guard_decision(payload: dict, env_identity: str | None) -> tuple[bool, str]:
     """(allowed, reason) for one PreToolUse event. Which crew member runs comes from the hook's agent_type."""
+    if payload.get("tool_name") == "SendMessage":
+        from . import crewtalk
+        episode = os.environ.get("CREWCUT_EPISODE") or None
+        sender = str(payload.get("agent_type") or "").split(":")[-1] or env_identity
+        return crewtalk.log_live(payload, episode, sender)
     if payload.get("tool_name") != "Bash":
         return True, ""
     cmd = " ".join(str((payload.get("tool_input") or {}).get("command", "")).split())

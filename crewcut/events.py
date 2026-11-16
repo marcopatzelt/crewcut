@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from . import db
 
-KINDS = ("activity", "message", "card", "cost", "episode", "log")
+KINDS = ("activity", "message", "card", "cost", "episode", "log", "crew")
 
 
 def emit(kind: str, episode: str | None = None, identity: str | None = None, text: str = "", data: dict | None = None) -> int:
