@@ -48,7 +48,10 @@ if(!fs.existsSync(scene))fail(2,'Scene not found: '+scene);
 (async()=>{
   fs.mkdirSync(out,{recursive:true});
   const browser=await chromium().launch({executablePath:process.env.CHROMIUM_PATH||undefined,
-    args:['--font-render-hinting=none','--disable-lcd-text','--force-color-profile=srgb']});
+    // --disable-dev-shm-usage: Docker's small /dev/shm crashes Chromium on big pages. CREWCUT_CHROMIUM_ARGS adds flags,
+    // e.g. "--no-zygote --single-process --disable-gpu" under CPU emulation (QEMU) in CI.
+    args:['--font-render-hinting=none','--disable-lcd-text','--force-color-profile=srgb','--disable-dev-shm-usage',
+      ...(process.env.CREWCUT_CHROMIUM_ARGS||'').split(/\s+/).filter(Boolean)]});
   const close=async(code,msg)=>{if(msg)console.error(msg);await browser.close().catch(()=>{});process.exit(code);};
   const page=await browser.newPage({viewport:{width:W,height:H},deviceScaleFactor:1,locale:'en-US'});
   const errors=[];

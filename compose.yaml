@@ -21,6 +21,7 @@ services:
     volumes:
       - ${CREWCUT_STUDIO_DIR:-./studio}:/studio
       - engine:/opt/engine
+    shm_size: "1gb"            # Chromium renders the 2D graphics; Docker's default 64 MB is too small for big frames
     restart: unless-stopped
 
 volumes:

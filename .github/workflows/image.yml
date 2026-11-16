@@ -54,7 +54,7 @@ jobs:
       - name: render every 2D scene, a 3D still on the CPU, and the 10-second preview
         run: |
           mkdir -p ci-out && chmod 777 ci-out
-          docker run --rm --entrypoint "" -v "$PWD/ci-out:/out" crewcut:ci bash /app/tests/smoke/render.sh /out
+          docker run --rm --shm-size=1g --entrypoint "" -v "$PWD/ci-out:/out" crewcut:ci bash /app/tests/smoke/render.sh /out
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -87,7 +87,9 @@ jobs:
       - name: one 2D frame under emulation
         run: |
           mkdir -p ci-out && chmod 777 ci-out
-          docker run --rm --platform linux/arm64 --entrypoint "" -v "$PWD/ci-out:/out" crewcut:ci-arm64 bash /app/tests/smoke/render.sh /out --quick
+          docker run --rm --platform linux/arm64 --shm-size=1g --entrypoint "" \
+            -e CREWCUT_CHROMIUM_ARGS="--no-zygote --single-process --disable-gpu" \
+            -v "$PWD/ci-out:/out" crewcut:ci-arm64 bash /app/tests/smoke/render.sh /out --quick
       - uses: actions/upload-artifact@v4
         if: always()
         with:
