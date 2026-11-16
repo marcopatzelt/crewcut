@@ -23,7 +23,7 @@ Open source, one Docker container, on your own computer.**
 **Crewcut is for people who make YouTube videos alone and appear in them.** You bring the idea and the recording. The
 crew does the rest: it finds the topic in data, writes title and script, cuts your takes, builds 2D and 3D graphics in
 your style, checks every version, makes the thumbnail and uploads through the YouTube API. It runs on the Claude Code
-subscription you already pay for; no API keys, no new account.
+subscription you already pay for, so the crew needs no API keys.
 
 You see who works on what, live. Every decision is one card with one button: no forms, no settings dialogs. Nothing is
 published, rented or paid for without your yes.
