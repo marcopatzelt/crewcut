@@ -167,7 +167,8 @@ crew); narrow window; light and dark; the engine not logged in.
 
 ## 14. Money
 
-- One fixed line at the bottom of the Crew column: "Today $0.00 · Episode $0.62 · Month $3.78 of $20".
+- One fixed row at the bottom of the Crew column with three figures: today, this episode, this month against the cap
+  ("Month $3.78 of $20").
 - Real money only (rented GPUs, paid APIs). Subscription runs show their API equivalent in the job log, not in the line.
 - Above 80 % of the cap the month figure uses `--warn`; at the cap `--danger`, and renting stops.
 

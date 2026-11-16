@@ -53,6 +53,7 @@ body{background:var(--bg);color:var(--ink);font:400 13px/20px Inter,system-ui,-a
 .step.skip{color:var(--ink-3);opacity:.6}
 .chat{flex:1;min-height:0;overflow:hidden;padding:24px 40px 8px;display:flex;flex-direction:column;justify-content:flex-end;gap:18px;max-width:880px;width:100%;margin:0 auto}
 .chat>*{flex:none}
+.chat{-webkit-mask-image:linear-gradient(transparent 0,#000 56px);mask-image:linear-gradient(transparent 0,#000 56px)}
 .msg{display:grid;grid-template-columns:28px 1fr;gap:12px}
 .mark{width:28px;height:28px;border-radius:999px;background:var(--sunken);border:1px solid var(--line);display:flex;align-items:center;
   justify-content:center;font-size:10px;font-weight:600;letter-spacing:.02em;color:var(--ink-2)}
@@ -107,10 +108,11 @@ body{background:var(--bg);color:var(--ink);font:400 13px/20px Inter,system-ui,-a
 .crew .grow{flex:1}
 .later{margin-top:22px}
 .later .label{padding:0 0 6px}
-.done{display:flex;justify-content:space-between;font-size:12px;line-height:16px;color:var(--ink-3);padding:5px 0}
-.done span:first-child{color:var(--ink-2)}
-.money{border-top:1px solid var(--line);padding-top:12px;font-size:12px;line-height:16px;color:var(--ink-2)}
-.money b{color:var(--ink);font-weight:500}
+.fin{display:flex;justify-content:space-between;font-size:12px;line-height:16px;color:var(--ink-3);padding:5px 0}
+.fin span:first-child{color:var(--ink-2)}
+.money{border-top:1px solid var(--line);padding-top:12px;display:grid;grid-template-columns:auto auto 1fr;gap:20px;font-size:12px;line-height:16px;color:var(--ink-3)}
+.money b{display:block;color:var(--ink);font-weight:500;font-size:13px;line-height:20px}
+.money span:last-child{text-align:right}
 svg{display:block}
 </style>
 </head>
@@ -233,13 +235,13 @@ svg{display:block}
 
     <div class="later">
       <div class="label">Done today</div>
-      <div class="done"><span>Critic · cut check v1</span><span>3:48</span></div>
-      <div class="done"><span>Editor · speaker cut v1</span><span>11:20</span></div>
-      <div class="done"><span>Editor · transcription, 41 min</span><span>9:02</span></div>
+      <div class="fin"><span>Critic · cut check v1</span><span>3:48</span></div>
+      <div class="fin"><span>Editor · speaker cut v1</span><span>11:20</span></div>
+      <div class="fin"><span>Editor · transcription, 41 min</span><span>9:02</span></div>
     </div>
 
     <div class="grow"></div>
-    <div class="money">Today <b>$0.00</b> · Episode <b>$0.62</b> · Month <b>$3.78</b> of $20</div>
+    <div class="money"><span>Today<b>$0.00</b></span><span>Episode<b>$0.62</b></span><span>Month<b>$3.78 of $20</b></span></div>
   </aside>
 </div>
 </body>
