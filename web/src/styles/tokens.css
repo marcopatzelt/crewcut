@@ -6,8 +6,8 @@
 :root[data-theme="light"] {
   color-scheme: light;
   --window: #ECECEA;
-  --window-tint-1: rgba(0, 0, 0, 0.04);
-  --window-tint-2: rgba(15, 110, 92, 0.06);
+  --window-tint-1: rgba(52, 195, 164, 0.10);
+  --window-tint-2: rgba(15, 110, 92, 0.12);
   --bg: #FFFFFF;
   --panel: #F5F5F4;
   --card: #FFFFFF;
@@ -57,8 +57,8 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --window: #121213;
-  --window-tint-1: rgba(255, 255, 255, 0.04);
-  --window-tint-2: rgba(52, 195, 164, 0.06);
+  --window-tint-1: rgba(52, 195, 164, 0.07);
+  --window-tint-2: rgba(26, 144, 120, 0.12);
   --bg: #1C1C1E;
   --panel: #232325;
   --card: #2A2A2D;
@@ -108,8 +108,8 @@
   :root:not([data-theme="light"]) {
     color-scheme: dark;
     --window: #121213;
-    --window-tint-1: rgba(255, 255, 255, 0.04);
-    --window-tint-2: rgba(52, 195, 164, 0.06);
+    --window-tint-1: rgba(52, 195, 164, 0.07);
+    --window-tint-2: rgba(26, 144, 120, 0.12);
     --bg: #1C1C1E;
     --panel: #232325;
     --card: #2A2A2D;

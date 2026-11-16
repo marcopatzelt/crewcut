@@ -44,6 +44,8 @@ export interface Episode {
   mode?: "clip" | "original";
   /** a clip: the episode it comes from */
   source_episode?: string | null;
+  /** URL of the newest thumbnail image, the episode's cover in the grid */
+  cover?: string | null;
 }
 
 export interface FileEntry {

@@ -5,6 +5,7 @@ import type { Card, EpisodeDetail, Message, State } from "../api/types";
 export type View =
   | { kind: "episode"; id: string } // a real episode or the onboarding chat
   | { kind: "new" } // no episode selected: the composer starts one
+  | { kind: "episodes" } // all episodes and Shorts as cards
   | { kind: "profile" }
   | { kind: "crew" }
   | { kind: "job"; id: number };

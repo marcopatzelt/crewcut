@@ -187,6 +187,7 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     steps: steps(["done", "done", "done", "done", "done", "waiting", "open", "skipped", "open", "open"]),
     updated: ago(6 * MIN),
     open_cards: 1,
+    cover: "demo/cover-003.svg",
   };
   const ep4 = {
     id: "004-subscription-website",
@@ -204,6 +205,7 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     steps: shortSteps(["idea", "title", "edit", "thumbnail", "upload", "results"], ["done", "done", "working", "open", "open", "skipped"]),
     updated: ago(1 * H),
     open_cards: 0,
+    cover: "demo/cover-005.svg",
     kind: "short" as const,
     mode: "clip" as const,
     source_episode: "003-local-llms",
@@ -215,6 +217,7 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     steps: steps(["done", "done", "done", "done", "done", "done", "done", "skipped", "done", "done"]),
     updated: ago(2 * D),
     open_cards: 0,
+    cover: "demo/cover-002.svg",
   };
 
   const activity: Activity[] = [

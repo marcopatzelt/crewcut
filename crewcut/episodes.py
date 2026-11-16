@@ -158,7 +158,20 @@ def summary(episode: str, project: dict | None = None) -> dict:
     }
     if out["kind"] == "short":
         out.update(mode=p.get("mode"), source_episode=p.get("source_episode"))
+    out["cover"] = cover(p["id"])
     return out
+
+
+def cover(episode: str) -> str | None:
+    """The newest thumbnail image of an episode, as the URL the UI shows on its card; None when there is none."""
+    d = paths.episode_dir(episode) / "graphics" / "thumbnail"
+    if not d.is_dir():
+        return None
+    imgs = [f for f in d.rglob("*") if f.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp") and f.is_file()]
+    if not imgs:
+        return None
+    newest = max(imgs, key=lambda f: f.stat().st_mtime)
+    return f"/api/files/{episode}/{newest.relative_to(paths.episode_dir(episode)).as_posix()}"
 
 
 def files(episode: str) -> list[dict]:

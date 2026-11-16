@@ -9,40 +9,65 @@ import { join } from "node:path";
 
 const [base, out] = process.argv.slice(2);
 mkdirSync(out, { recursive: true });
-const W = 1600, H = 1000, PAD = 80;
+const W = 1600, H = 1000, PAD = 80, TITLE = 38;
 
-function framePage(theme, query) {
-  const bg = theme === "dark"
-    ? "radial-gradient(1200px 700px at 20% 10%, #23302d 0%, transparent 60%), radial-gradient(900px 600px at 90% 100%, #1d2226 0%, transparent 60%), #111214"
-    : "radial-gradient(1200px 700px at 20% 10%, #e3ece8 0%, transparent 60%), radial-gradient(900px 600px at 90% 100%, #e8e8ee 0%, transparent 60%), #f3f3f1";
-  const shadow = theme === "dark"
-    ? "0 0 0 0.5px rgba(255,255,255,.14), 0 30px 80px rgba(0,0,0,.65), 0 8px 24px rgba(0,0,0,.4)"
-    : "0 0 0 0.5px rgba(0,0,0,.10), 0 30px 80px rgba(0,0,0,.22), 0 8px 24px rgba(0,0,0,.10)";
+// A calm, self-made wallpaper (no photos): sky and three soft hills in Crewcut's greens.
+function wallpaper(theme) {
+  const c = theme === "dark"
+    ? { sky1: "#0d1715", sky2: "#18302a", h1: "#1e3d35", h2: "#17594a", h3: "#0f6e5c" }
+    : { sky1: "#d7f1e8", sky2: "#f5f2ea", h1: "#a8e2cd", h2: "#5fbf9f", h3: "#2e9a7c" };
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 1160" preserveAspectRatio="xMidYMid slice">
+    <defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c.sky1}"/>
+    <stop offset="1" stop-color="${c.sky2}"/></linearGradient></defs>
+    <rect width="1760" height="1160" fill="url(#s)"/>
+    <path d="M0 760 C320 640 620 700 900 760 S1460 660 1760 720 V1160 H0Z" fill="${c.h1}"/>
+    <path d="M0 880 C360 780 760 900 1080 860 S1560 800 1760 860 V1160 H0Z" fill="${c.h2}"/>
+    <path d="M0 1010 C420 940 900 1040 1300 990 S1640 960 1760 990 V1160 H0Z" fill="${c.h3}"/>
+  </svg>`;
+  return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") center / cover no-repeat`;
+}
+
+// The app as a macOS window: a title bar with the three traffic lights, a large soft shadow, on the wallpaper.
+function framePage(theme, query, hash = "") {
+  const dark = theme === "dark";
+  const shadow = dark
+    ? "0 0 0 0.5px rgba(255,255,255,.16), 0 40px 90px rgba(0,0,0,.6), 0 10px 30px rgba(0,0,0,.4)"
+    : "0 0 0 0.5px rgba(0,0,0,.14), 0 40px 90px rgba(10,40,32,.30), 0 10px 30px rgba(10,40,32,.14)";
+  const bar = dark ? "rgba(38,38,40,.92)" : "rgba(246,246,244,.92)";
+  const ink = dark ? "#c7c7cc" : "#55555a";
   return `<!doctype html><html><head><meta charset="utf-8"><style>
-    html,body{margin:0;width:${W + 2 * PAD}px;height:${H + 2 * PAD}px;background:${bg};overflow:hidden}
-    .win{position:absolute;left:${PAD}px;top:${PAD}px;width:${W}px;height:${H}px;border-radius:18px;overflow:hidden;
-      box-shadow:${shadow}}
-    iframe{width:100%;height:100%;border:0;display:block}
-  </style></head><body><div class="win"><iframe src="${base}/index.html?demo=1&theme=${theme}${query}"></iframe></div>
+    html,body{margin:0;width:${W + 2 * PAD}px;height:${H + 2 * PAD + TITLE}px;background:${wallpaper(theme)};overflow:hidden}
+    .win{position:absolute;left:${PAD}px;top:${PAD}px;width:${W}px;height:${H + TITLE}px;border-radius:12px;overflow:hidden;
+      box-shadow:${shadow};display:flex;flex-direction:column}
+    .bar{height:${TITLE}px;flex:none;background:${bar};display:flex;align-items:center;position:relative;
+      box-shadow:inset 0 -0.5px 0 ${dark ? "rgba(255,255,255,.10)" : "rgba(0,0,0,.10)"}}
+    .lights{display:flex;gap:8px;padding-left:16px}
+    .lights i{width:12px;height:12px;border-radius:50%;display:block;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.18)}
+    .title{position:absolute;left:0;right:0;text-align:center;font:600 13px/1 -apple-system,"Inter",system-ui,sans-serif;
+      color:${ink};letter-spacing:-.01em}
+    iframe{width:100%;flex:1;border:0;display:block}
+  </style></head><body><div class="win"><div class="bar"><div class="lights"><i style="background:#ff5f57"></i>
+  <i style="background:#febc2e"></i><i style="background:#28c840"></i></div><div class="title">Crewcut</div></div>
+  <iframe src="${base}/index.html?demo=1&theme=${theme}${query}${hash}"></iframe></div>
   </body></html>`;
 }
 
-async function still(browser, theme) {
+async function still(browser, theme, hash = "", name = "crewcut") {
   const page = await browser.newPage({
-    viewport: { width: W + 2 * PAD, height: H + 2 * PAD }, deviceScaleFactor: 2, colorScheme: theme,
+    viewport: { width: W + 2 * PAD, height: H + 2 * PAD + TITLE }, deviceScaleFactor: 2, colorScheme: theme,
   });
-  await page.setContent(framePage(theme, ""), { waitUntil: "load" });
+  await page.setContent(framePage(theme, "", hash), { waitUntil: "load" });
   await page.frames()[1].waitForLoadState("networkidle");
   await page.waitForTimeout(2500);
-  await page.screenshot({ path: join(out, `crewcut-${theme}.png`) });
+  await page.screenshot({ path: join(out, `${name}-${theme}.png`) });
   await page.close();
 }
 
 async function animation(browser) {
   const dir = join(out, "video-tmp");
   const ctx = await browser.newContext({
-    viewport: { width: W + 2 * PAD, height: H + 2 * PAD }, colorScheme: "light",
-    recordVideo: { dir, size: { width: W + 2 * PAD, height: H + 2 * PAD } },
+    viewport: { width: W + 2 * PAD, height: H + 2 * PAD + TITLE }, colorScheme: "light",
+    recordVideo: { dir, size: { width: W + 2 * PAD, height: H + 2 * PAD + TITLE } },
   });
   const page = await ctx.newPage();
   await page.setContent(framePage("light", "&play=1"), { waitUntil: "load" });
@@ -68,6 +93,8 @@ async function animation(browser) {
 const browser = await chromium.launch();
 await still(browser, "light");
 await still(browser, "dark");
+await still(browser, "light", "#/episodes", "crewcut-episodes");
+await still(browser, "dark", "#/episodes", "crewcut-episodes");
 await animation(browser);
 await browser.close();
 console.log("README images in", out);

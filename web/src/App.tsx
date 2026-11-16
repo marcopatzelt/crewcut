@@ -23,6 +23,7 @@ import {
 import { getUi, useUi } from "./store/store";
 import { EpisodeView, NewEpisodeView } from "./views/EpisodeView";
 import { JobLogView, ProfileView, TeamView } from "./views/ReadOnlyViews";
+import { EpisodesGrid } from "./views/EpisodesGrid";
 
 /** Ctrl/Cmd+Enter accepts the open card in view (rule 15): the lowest open card visible in the chat. */
 function acceptCardInView(): boolean {
@@ -119,6 +120,8 @@ function Center() {
   switch (view.kind) {
     case "episode":
       return <EpisodeView key={view.id} id={view.id} />;
+    case "episodes":
+      return <EpisodesGrid />;
     case "profile":
       return <ProfileView />;
     case "crew":

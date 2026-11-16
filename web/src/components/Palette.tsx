@@ -45,6 +45,7 @@ function useCommands(): Command[] {
       };
     });
     list.push(
+      { id: "v-episodes", group: "Views", label: "Show all episodes", run: () => navigate({ kind: "episodes" }) },
       { id: "v-profile", group: "Views", label: "Show profile", run: () => navigate({ kind: "profile" }) },
       { id: "v-crew", group: "Views", label: "Show the crew", run: () => navigate({ kind: "crew" }) },
       { id: "a-new", group: "Actions", label: "New episode", keys: ["mod", "N"], run: newEpisode },

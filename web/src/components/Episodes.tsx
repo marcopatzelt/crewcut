@@ -1,6 +1,6 @@
 // The left place: the brand and "New episode", one row per episode, then Profile and Crew (DESIGN.md rule 2).
 // A floating panel with material (rule 18). Arrow up and down move between episodes, Enter opens one (rule 15).
-import { Palette, Plus, Users, RectangleVertical } from "lucide-react";
+import { LayoutGrid, Palette, Plus, RectangleVertical, Users } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import type { Episode } from "../api/types";
 import { ariaKeys, keyText } from "../lib/platform";
@@ -80,8 +80,20 @@ export function Episodes() {
           <Plus size={16} aria-hidden="true" />
         </button>
       </div>
-      <div className="group-label" id="episodes-label">
-        Episodes
+      <div className="group-row">
+        <div className="group-label" id="episodes-label">
+          Episodes
+        </div>
+        <button
+          type="button"
+          className={view.kind === "episodes" ? "icon-button small tip tip-end on" : "icon-button small tip tip-end"}
+          aria-label="All episodes as cards"
+          aria-current={view.kind === "episodes" ? "page" : undefined}
+          data-tip="All episodes"
+          onClick={() => navigate({ kind: "episodes" })}
+        >
+          <LayoutGrid size={14} aria-hidden="true" />
+        </button>
       </div>
       <nav className="ep-list" aria-labelledby="episodes-label" onKeyDown={moveFocus}>
         {episodes.map((e) => (

@@ -49,17 +49,20 @@ function BackToChat() {
 }
 
 /** A read-only page: the toolbar, the large title that scrolls under it, then the content. */
-function Page({
+export function Page({
   label,
   title,
   sub,
   lead,
+  wide,
   children,
 }: {
   label: string;
   title: string;
   sub: string;
   lead?: ReactNode;
+  /** grids use the width of the window, text pages keep a reading width */
+  wide?: boolean;
   children: ReactNode;
 }) {
   const { scroller, large, scrolled, showTitle, update } = useScrollChrome();
@@ -69,7 +72,7 @@ function Page({
         <div className="strip" />
       </Toolbar>
       <div className="scroll" ref={scroller} onScroll={update}>
-        <div className="doc">
+        <div className={wide ? "doc wide" : "doc"}>
           <LargeTitle innerRef={large} title={title} sub={sub} lead={lead} />
           {children}
         </div>
@@ -235,11 +238,19 @@ export function TeamView() {
   if (error) content = <ErrorLine text={`Couldn't load the crew. ${error}`} onRetry={retry} />;
   else if (!data) content = <Loading label="Loading the crew" />;
   else if (!data.length) content = <p className="meta">No crew members found. Check the team folder of the app.</p>;
-  else content = data.map((p) => <Person key={p.id} p={p} />);
+  else
+    content = (
+      <div className="people">
+        {data.map((p) => (
+          <Person key={p.id} p={p} />
+        ))}
+      </div>
+    );
   const anySources = data?.some((p) => p.sources?.length);
 
   return (
     <Page
+      wide
       label="Crew"
       title="Crew"
       sub="Who works on your episodes, what they may do, and whose know-how their skills distil."

@@ -45,6 +45,12 @@ The app has three places. New things go into one of them; there is no fourth.
 - An open card shows as a small dot on its episode row. That is the only "needs you" mark.
 - Profile, rules and crew details open in the center place as read-only views. They have no edit controls: a change is a
   sentence to the agent.
+- **All episodes** (the grid button next to "Episodes", `#/episodes`) opens in the center place too: every video and
+  Short as a large card with its cover (the newest thumbnail, else Slate on its tile), grouped by time (Today, This
+  week, Earlier), with filter pills on top (All, Long videos, Shorts, Needs you, In work, Published; a pill shows its
+  count, empty ones hide). The selected pill is filled with `--ink`, not with the accent. Where items are many and
+  alike, a grid replaces a list: the episodes, the crew.
+- Headlines in the window are large and bold (30/36, 700, tight tracking), never italic; emphasis comes from weight.
 - Below 1100 px the Crew column folds into a bar above the composer; below 760 px the Episodes list becomes a menu.
 
 ## 3. Input
@@ -318,8 +324,8 @@ these five steps, in this order:
 4. in `@media (prefers-reduced-transparency: reduce)` opaque again;
 5. in `@media (prefers-contrast: more)` opaque, with a `--line-strong` edge.
 
-Behind everything lies `--window` with a very faint, fixed gradient (two large blurred spots, at most 6 % opacity), so
-the glass has something to show. It never moves. No refraction effects. If you notice the effect, it is too strong.
+Behind everything lies `--window` with a soft, fixed gradient in Crewcut's green and mint (two large blurred spots, at
+most 12 % opacity), so the glass has something to show. It never moves. No refraction effects. If you notice the effect, it is too strong.
 
 Text that scrolls under the toolbar fades out (`--under-bar-fade` on the scroll area): the material may blur what lies
 behind it, but it never shows the chat as a second, ghost title.

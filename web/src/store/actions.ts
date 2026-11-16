@@ -17,6 +17,8 @@ export function viewToHash(v: View): string {
       return v.id === ONBOARDING ? "#/onboarding" : `#/e/${encodeURIComponent(v.id)}`;
     case "new":
       return "#/new";
+    case "episodes":
+      return "#/episodes";
     case "profile":
       return "#/profile";
     case "crew":
@@ -33,6 +35,7 @@ export function hashToView(hash: string): View | null {
   if (head === "e" && rest) return { kind: "episode", id: decodeURIComponent(rest) };
   if (head === "onboarding") return { kind: "episode", id: ONBOARDING };
   if (head === "new") return { kind: "new" };
+  if (head === "episodes") return { kind: "episodes" };
   if (head === "profile") return { kind: "profile" };
   if (head === "crew") return { kind: "crew" };
   if (head === "job" && /^\d+$/.test(rest)) return { kind: "job", id: Number(rest) };
