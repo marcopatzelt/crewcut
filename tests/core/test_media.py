@@ -56,7 +56,9 @@ def _fields(body: str) -> dict:
 
 
 def ts(name: str) -> dict:
-    """The fields of `export interface <name>` in web/src/api/types.ts."""
+    """The fields of `export interface <name>` in web/src/api/types.ts (the image ships only the built UI: skip there)."""
+    if not TYPES.is_file():
+        pytest.skip("web/src/api/types.ts is not here (inside the image only web/dist is shipped)")
     text = TYPES.read_text(encoding="utf-8")
     m = re.search(rf"export interface {name}\b[^{{]*\{{", text)
     assert m, f"interface {name} not in types.ts"
