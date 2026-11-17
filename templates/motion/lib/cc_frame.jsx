@@ -98,6 +98,13 @@ var CC = (function () {
   C.mg = function () { return C.ctx().brand.mg; };
   // content colours in order; i = 0 is the accent (only for the one thing that matters)
   C.color = function (i) { var p = C.mg().palette; return p[((i || 0) % p.length + p.length) % p.length]; };
+  // the i-th content colour that reads as type on the full-frame ground (luminance apart by 0.3 at least); colours
+  // that do not (a yellow on a light ground) are skipped in order; the ink when none reads
+  C.textColor = function (i) {
+    var p = C.mg().palette, g = C.luma(C.ground()), n = p.length, k = ((i || 0) % n + n) % n;
+    for (var j = 0; j < n; j++) { var col = p[(k + j) % n]; if (Math.abs(C.luma(col) - g) >= 0.3) return col; }
+    return C.ink();
+  };
   C.pastel = function (i) { var p = C.mg().pastels; return p[((i || 0) % p.length + p.length) % p.length]; };
   C.ground = function () { return C.mg().ground; };
   C.ink = function () { return C.mg().ink || C.brand().colors.ink || "#111111"; };
@@ -390,7 +397,7 @@ var CC = (function () {
     o = o || {};
     var F = C.frame();
     if (F.transparent) return null;
-    var g = C.ground(), k = o.strength === undefined ? 0.3 : o.strength, D = F.duration, W = F.W, H = F.H;
+    var g = o.color || C.ground(), k = o.strength === undefined ? 0.3 : o.strength, D = F.duration, W = F.W, H = F.H;
     var id = EC.solid(c, { name: o.name || "ground", color: g, w: Math.round(W * 1.3), h: Math.round(H * 1.3) });
     EC.set(c, id, "transform/position", [W / 2, H / 2]);
     var out = [id];
