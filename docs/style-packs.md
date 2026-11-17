@@ -36,7 +36,7 @@ Keys marked "(new)" came with the cut checks of 16 Nov 2026.
 |---|---|---|
 | `captions` | `"keywords"` | `none`, `keywords` (single words or numbers over the speaker) or `full` |
 | `keyword_max_words` | 4 | words per keyword (style check `keyword-words`, ERROR above) |
-| `keywords_max` (new) | 8 | keywords per video (style check `keyword-count`, CHECK above) |
+| `keywords_max` (new) | 8 | keywords per video, 2D `keyword` and motion `keyword_pop` together (style check `keyword-count`, CHECK above; `render plan` warns) |
 | `text_cards_max` | 3 | different text sources (headline, post) per video (CHECK above) |
 | `text_share_max` (new) | 0.4 | share of full-screen inserts that are text cards (ERROR above) |
 | `italics` | false | false: italic type in the scene templates is an ERROR |
@@ -45,7 +45,7 @@ Keys marked "(new)" came with the cut checks of 16 Nov 2026.
 | `music_db`, `duck` | -16.0, true | music bed level under the voice, and ducking while someone speaks |
 | `loudness_lufs`, `true_peak_db` | -14.0, -1.5 | export target and true-peak limit |
 | `loudness_window_lu` (new) | [-2.0, 0.5] | allowed loudness relative to the target (style check `loudness`) |
-| `graphics_mix` | 2d 0.7, 3d 0.0, text 0.3 | target share of insert kinds (NOTE only) |
+| `graphics_mix` | motion 0.4, 2d 0.4, 3d 0.0, text 0.2 | target share of insert kinds (NOTE only); `motion` = motion graphics |
 | `pace_cuts_per_minute` | 8 | shots per minute (NOTE only) |
 | `speaker_min_seconds` | 2.0 | speaker never shorter than this between two full-screen parts (ERROR) |
 | `speaker_open_close_seconds` (new) | 3.0 | speaker at least this long at the start and in the last 30 s (ERROR) |
@@ -54,6 +54,29 @@ Keys marked "(new)" came with the cut checks of 16 Nov 2026.
 | `zoom_base`, `zoom_punch` (new), `zoom_max` | 1.0, 1.1, 1.15 | speaker zoom: normal, punch-in, never more than |
 | `end_card` | true | the video ends with an end card |
 | `cut_words` (new) | all empty | language data for the cut checks, see below |
+
+`motion` holds the motion graphics rules (`crewcut render plan` warns when a plan breaks one; see
+[motion.md](motion.md)). "Full frame" is a motion insert that covers the picture, an overlay lies on the speaker:
+
+| Key | Neutral default | Meaning |
+|---|---|---|
+| `insert_s` | [3, 6] | shortest and longest full-frame motion insert, seconds |
+| `insert_s_long` | ranking 8 | templates that may run longer (template: longest seconds) |
+| `overlay_min_s` | 1.5 | shortest overlay; nothing enters and leaves within 1 s |
+| `prefer` | `"motion"` | `"motion"`: with the engine present the motion templates (`number_roll`, `keyword_pop`) are the default over the 2D `counter` and `keyword`; `"2d"` keeps the 2D scenes first |
+| `heroes` | big_claim, card_gallery, ranking | hero templates: each at most `hero_each_max` per video |
+| `long` | see below | limits of a long-form video |
+| `short` | see below | limits of a Short (portrait plan) |
+
+| Limit | `long` | `short` | Meaning |
+|---|---|---|---|
+| `per_sentence_max` | 1 | 1 | motion graphics starting in one sentence (needs the words file) |
+| `big_max` | 5 | 2 | full-frame motion inserts per video |
+| `big_per_minute_max` | 1 | - | long videos: at most one per minute (the higher of the two caps counts) |
+| `all_per_minute_max` | 2 | - | all motion, overlays included, per minute on average (at least 1 minute counted) |
+| `all_max` | - | 5 | all motion per Short |
+| `min_gap_s` | 6 | null | never two motion graphics starting this close together |
+| `hero_each_max`, `heroes_max` | 1, 2 | 1, 1 | each hero template, and all hero templates together |
 
 `cut_words` holds the word lists of the channel's language; code never contains them, the neutral pack has none:
 
@@ -98,6 +121,30 @@ Read by `skills/3d-scene/scripts/measure_frame.py` (with `stage3d.background` an
 | `dark_share_max` | 0.10 | share of dark pixels outside the accent |
 | `object_height_min` | 0.30 | the main object fills at least this share of the frame height (checked by eye) |
 | `word_height_max` | 0.18 | the word is at most this share of the frame height (checked by eye) |
+
+## brand.json motion_graphics: motion graphics
+
+Read by the motion graphics workbench (`crewcut render motion`), which hands the resolved block to every template as
+`CC_CTX.brand.mg` (see `templates/motion/README.md`), and by the skill `motion`. All keys are optional; a pack that
+leaves the block out gets the values below.
+
+| Key | Neutral default | Meaning |
+|---|---|---|
+| `palette` | null | content colours, 3 to 5 `#RRGGBB`, the first is the accent. null: derived from `colors.accent`: the accent, its complement and its two neighbours at +-40 degrees of hue, all at the accent's lightness and chroma in OKLCH (chroma lowered only where sRGB cannot show the colour). The neutral accent gives #E4572E, #009CB7, #B87E00, #DD508E |
+| `pastels` | true | true: a light version of each palette colour (OKLCH lightness 0.93) for grounds and gradients; a list: one `#RRGGBB` per palette colour; false: none (templates get the ground) |
+| `ground` | `"soft"` | full-frame ground: a pack colour name or `#RRGGBB`; `"ink"` for a dark pack |
+| `ink` | null | text on the ground: a colour name or `#RRGGBB`; null: `colors.ink`, or `colors.paper` when the ground is `"ink"` |
+| `glass` | true | the frosted plate (`prompt_bar`) is allowed |
+| `enter_s`, `exit_s` | 0.4, 0.25 | entrance and exit, seconds |
+| `ease` | `"expo"` | entrance ease, one of `EC.EASES` (linear, easy, smooth, strong, out, expo, in, expoIn, soft, snap) |
+| `drift_pct_per_s` | 2.0 | push per second while a picture holds |
+| `blur` | shutter 180, samples 16 | motion blur of every comp (8 samples with `--draft`) |
+| `plate3d` | glossy, bevel 0.05, extrude 0.2 | material of Blender plates (`big_claim`) |
+
+Fonts come from `fonts.display` and `fonts.body` as for 2D: templates get family and weight, never a font name of
+their own. The pack's font `files` are copied into a font folder for every motion render and EffectCraft finds them
+through `EFFECTCRAFT_FONT_DIRS`, so a pack font needs no install. The look tokens (`colors`, `fonts`, `shape`,
+`motion_graphics`) are part of every motion insert's cache key: change one and every motion insert renders again.
 
 ## rules/edit.md, rules/cut.md, rules/3d.md, rules/thumbnail.md
 
