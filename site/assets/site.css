@@ -332,14 +332,14 @@ footer.closing > .wrap { justify-content: space-between; gap: 32px; }
   .stage { padding-top: 56px; background-size: cover; background-position: 50% 100%; animation: none; }
   .stage__frame { flex: none; display: block; }
   .stage__phone { display: none !important; }
-  .stage__shot { width: 100%; height: auto; max-height: none; border-radius: 16px; -webkit-mask-image: none; mask-image: none; }
+  .stage__shot { width: 100%; height: auto; max-height: none; border-radius: 16px; -webkit-mask-image: linear-gradient(180deg, #000 88%, transparent); mask-image: linear-gradient(180deg, #000 88%, transparent); }
   .workcard { display: none; }
   .lead, .sh .lead { font-size: 16.5px; }
   .sh { margin-bottom: 26px; }
-  .drum { height: 300px; }
+  .drum { height: 250px; }
   .chips .chip { height: 30px; font-size: 13px; padding: 0 11px; }
   .scene { flex: none; border-radius: 28px; padding: 22px 14px 0; }
-  .scene img { height: auto; }
+  .scene img { height: auto; -webkit-mask-image: linear-gradient(180deg, #000 86%, transparent); mask-image: linear-gradient(180deg, #000 86%, transparent); }
   .band { --h: 1; --hm: 2; }
   main > section.g2.band > .wrap { display: flex; flex-direction: column; gap: var(--gutter); }
   .bento { height: auto; grid-template-columns: 1fr 1fr; }
