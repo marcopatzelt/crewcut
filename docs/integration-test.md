@@ -30,7 +30,7 @@ machine when the cap is reached and say so.
 Proves: the image runs outside CI, `doctor --probe` with a real `CLAUDE_CODE_OAUTH_TOKEN`, one short episode
 (a 30-second recording of test speech) through idea, title, script, ingest, transcription, speaker cut, 2D, preview.
 
-1. Push the images (private package while the repo is private): `gh workflow run image.yml -f push=true`.
+1. The images: every push to main publishes `:edge` and `:<sha>`, a version tag `v*` `:<version>` and `:latest`; a manual run (`gh workflow run image.yml -f push=true`) publishes `:latest`.
 2. Rent a Docker-capable VM (not a container host): an amd64 VM with an NVIDIA GPU and an arm64 VM (any cloud with
    arm64 Linux). Install Docker and the NVIDIA Container Toolkit on the GPU VM.
 3. `docker login ghcr.io` with a read-only package token, clone the repo, `./start.sh` (the token goes in hidden),

@@ -2,17 +2,23 @@ name: image
 
 # Builds the Docker image on GitHub's runners (never on a developer laptop):
 #   base for linux/amd64 (with smoke tests and renders) and linux/arm64 (native arm64 runner, free for public repos),
-#   and the gpu variant for linux/amd64. Pushing to GHCR only on a manual run with push = true.
+#   and the gpu variant for linux/amd64. After the tests pass it pushes to ghcr.io (public packages):
+#     every push to main     :edge and :<sha>                       (gpu: :edge-gpu)
+#     a version tag v1.2.3   :1.2.3, :latest and :<sha>             (gpu: :1.2.3-gpu, :gpu, :latest-gpu)
+#     a manual run, push on  :latest and :<sha>                     (gpu: :gpu, :latest-gpu)
+#   The desktop app pulls the image whose tag is its own version; a development build follows :edge.
+#   Tags and releases are made by the owner only.
 # The motion engine comes in as a finished binary from ghcr.io/<owner>/crewcut-effectcraft (effectcraft.yml builds it);
 # every job logs in first because that package can be private.
 on:
   push:
     branches: [main]
-    paths-ignore: ["**.md", "docs/**"]
+    tags: ["v*"]
+    paths-ignore: ["**.md", "docs/**", "site/**", "desktop/**"]
   workflow_dispatch:
     inputs:
       push:
-        description: "Push the images to ghcr.io (the package stays private while the repo is private)"
+        description: "Push the images to ghcr.io as :latest"
         type: boolean
         default: false
 
@@ -20,9 +26,10 @@ permissions:
   contents: read
   packages: write
 
+# A newer push to main replaces a running one; a manual run and a version tag are never cancelled by it.
 concurrency:
-  group: image-${{ github.ref }}
-  cancel-in-progress: true
+  group: image-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
 jobs:
   base-amd64:
@@ -137,8 +144,8 @@ jobs:
         run: docker run --rm --entrypoint "" crewcut:ci-gpu bash -c "ldconfig -p | grep -E 'libcublas|libcudnn' | head -4"
 
   push:
-    name: push to ghcr.io (manual)
-    if: github.event_name == 'workflow_dispatch' && inputs.push
+    name: push to ghcr.io
+    if: github.event_name == 'push' || inputs.push
     needs: [base-amd64, base-arm64, gpu-amd64]
     runs-on: ubuntu-24.04
     timeout-minutes: 240
@@ -151,6 +158,21 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tags for this run
+        id: tags
+        run: |
+          R="ghcr.io/${GITHUB_REPOSITORY,,}"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            V="${GITHUB_REF#refs/tags/v}"
+            echo "base=$R:$V,$R:latest,$R:$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+            echo "gpu=$R:$V-gpu,$R:gpu,$R:latest-gpu" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_EVENT_NAME" = push ]; then
+            echo "base=$R:edge,$R:$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+            echo "gpu=$R:edge-gpu" >> "$GITHUB_OUTPUT"
+          else
+            echo "base=$R:latest,$R:$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+            echo "gpu=$R:gpu,$R:latest-gpu" >> "$GITHUB_OUTPUT"
+          fi
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -158,9 +180,7 @@ jobs:
           target: base
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+          tags: ${{ steps.tags.outputs.base }}
           cache-from: |
             type=gha,scope=base-amd64
             type=gha,scope=base-arm64
@@ -171,9 +191,7 @@ jobs:
           target: gpu
           platforms: linux/amd64
           push: true
-          tags: |
-            ghcr.io/${{ github.repository }}:gpu
-            ghcr.io/${{ github.repository }}:latest-gpu
+          tags: ${{ steps.tags.outputs.gpu }}
           cache-from: |
             type=gha,scope=base-amd64
             type=gha,scope=gpu-amd64
