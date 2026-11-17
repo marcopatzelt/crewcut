@@ -32,19 +32,23 @@
   show();
 })();
 
-/* The meadow (hero and close): the poster paints first. Once the page has loaded, an 8 s loop of the launch film's
-   meadow fades in over it: day in light mode, dusk in dark mode, a 540 x 960 crop on phones, VP9 WebM where the
-   browser plays it, else H.264 MP4. Each loop plays only while it is near the view. With reduced motion or Save-Data
-   nothing loads and the poster stays. A change of colour scheme, width or motion setting is followed at once. */
+/* The meadow (hero and close): the poster paints first. Once the page has loaded, a seamless 8 s loop of the web
+   meadow (rendered for the page at 3840 x 2160, the same in light and dark mode) fades in over it. AV1 where the
+   browser plays it (3840 px when the screen needs it, else 2560), else H.264 at 2560; phones get a 1080 x 1920 crop.
+   Each loop plays only while it is near the view. With reduced motion or Save-Data nothing loads and the poster stays.
+   A change of width or motion setting is followed at once. */
 (function () {
   const layers = Array.from(document.querySelectorAll(".meadow"));
   const probe = document.createElement("video");
   if (!layers.length || !probe.canPlayType) return;
-  const ext = probe.canPlayType('video/webm; codecs="vp9"') ? "webm" : probe.canPlayType('video/mp4; codecs="avc1.640028"') ? "mp4" : "";
-  if (!ext) return;
-  const reduce = matchMedia("(prefers-reduced-motion: reduce)"), dark = matchMedia("(prefers-color-scheme: dark)"), phone = matchMedia("(max-width: 760px)");
+  const can = (t) => probe.canPlayType(t) !== "";
+  const av1 = can('video/mp4; codecs="av01.0.12M.08"'), avc = can('video/mp4; codecs="avc1.640032"');
+  if (!av1 && !avc) return;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)"), phone = matchMedia("(max-width: 760px)");
   const saveData = !!(navigator.connection && navigator.connection.saveData);
-  const url = () => new URL("media/meadow/meadow-" + (dark.matches ? "dusk" : "day") + "-" + (phone.matches ? "phone" : "1920") + "." + ext, document.baseURI).href;
+  // the hero's meadow covers about 1.45 times the window's width; 3840 px only where that many device pixels show
+  const size = () => phone.matches ? "phone" : av1 && innerWidth * 1.45 * (devicePixelRatio || 1) > 2700 ? "3840" : "2560";
+  const url = () => new URL("media/meadow/meadow-day-" + size() + (av1 ? ".av1" : ".h264") + ".mp4", document.baseURI).href;
   const loops = layers.map((el) => ({ el, v: el.querySelector("video"), near: false })).filter((l) => l.v);
   let ready = false;
   function apply(l) {
@@ -64,7 +68,7 @@
     }, { rootMargin: "200px 0px" });
     loops.forEach((l) => io.observe(l.el));
   } else loops.forEach((l) => { l.near = true; });
-  [reduce, dark, phone].forEach((m) => { if (m.addEventListener) m.addEventListener("change", all); });
+  [reduce, phone].forEach((m) => { if (m.addEventListener) m.addEventListener("change", all); });
   const go = () => setTimeout(() => { ready = true; all(); }, 0);
   if (document.readyState === "complete") go(); else addEventListener("load", go, { once: true });
 })();
@@ -86,7 +90,7 @@
   const S = 4;                                   // fog and mask at a quarter of the canvas resolution
   fctx.filter = "blur(1px)"; const hasFilter = fctx.filter === "blur(1px)"; fctx.filter = "none";
   let q = 1, W = 0, H = 0, w = 0, h = 0, fs = 0, base = 0, ready = false, near = false, queued = false, last = 0, ticks = 0, t0 = 0;
-  const wash = () => (dark.matches ? "rgba(190,225,215,0.16)" : "rgba(235,248,243,0.28)");
+  const wash = () => "rgba(235,248,243,0.28)";        // the same daylight glass in light and dark mode
   function wordAt(c, k, blur, colour) {
     c.save(); c.filter = blur ? "blur(" + blur + "px)" : "none"; c.fillStyle = colour;
     c.font = "900 " + fs * k + "px 'Inter Tight', Inter, sans-serif"; c.textAlign = "center"; c.textBaseline = "alphabetic";

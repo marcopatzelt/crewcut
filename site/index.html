@@ -56,9 +56,9 @@
 <body>
 <!-- Built from the approved design mock (content-suite-plan/design-mock/landing.html, 16 Nov 2026), checked with the
      Taste skill (tasteskill 2.5.1, pinned in CI). Kind: software. Look: the client's own (Crewcut green and mint, the
-     wallpapers, Inter and Inter Tight 800). Hero: centred over the launch film's meadow (an 8 s loop, the grass moving
-     in the wind; day in light mode, dusk in dark mode; the poster paints first, the loop fades in after the page has
-     loaded). Section heads start on the container's left line (Taste's rule; the mock centred them); the close sits
+     wallpapers, Inter and Inter Tight 800). Hero: centred over a meadow rendered for the page (a seamless 8 s loop at
+     3840 x 2160, the grass moving in the wind; the same daylight meadow with dark type in light and dark mode; the poster paints
+     first, the loop fades in after the page has loaded). Section heads start on the container's left line (Taste's rule; the mock centred them); the close sits
      on a glass card behind fogged glass with rain drops, over the same meadow moving (wipe it). Motion: all own code, no library; reduced motion shows the posters only.
      Sections: hero, the app, film, one window, crew, rendering, steps, closing. The film loads only when it
      comes near the view, plays muted and in a loop; sound only on the button; reduced motion shows the poster. -->
@@ -84,17 +84,15 @@
 <main id="main">
   <section class="hero" id="top" data-enter aria-labelledby="hero-h">
     <div class="meadow meadow--hero" aria-hidden="true">
-      <picture>
-        <source media="(max-width: 760px) and (prefers-color-scheme: dark)" type="image/webp" srcset="media/meadow/meadow-dusk-phone.webp" width="540" height="960">
-        <source media="(max-width: 760px) and (prefers-color-scheme: dark)" srcset="media/meadow/meadow-dusk-phone.jpg" width="540" height="960">
-        <source media="(max-width: 760px)" type="image/webp" srcset="media/meadow/meadow-day-phone.webp" width="540" height="960">
-        <source media="(max-width: 760px)" srcset="media/meadow/meadow-day-phone.jpg" width="540" height="960">
-        <source media="(prefers-color-scheme: dark)" type="image/webp" srcset="media/meadow/meadow-dusk-1920.webp">
-        <source media="(prefers-color-scheme: dark)" srcset="media/meadow/meadow-dusk-1920.jpg">
-        <source type="image/webp" srcset="media/meadow/meadow-day-1920.webp">
-        <img class="meadow__poster" src="media/meadow/meadow-day-1920.jpg" alt="" width="1920" height="1080" fetchpriority="high" decoding="async">
-      </picture>
-      <video class="meadow__video" muted loop playsinline disablepictureinpicture disableremoteplayback preload="none"></video>
+      <div class="meadow__frame">
+        <picture>
+          <source media="(max-width: 760px)" type="image/webp" srcset="media/meadow/meadow-day-phone.webp" width="1080" height="1920">
+          <source media="(max-width: 760px)" srcset="media/meadow/meadow-day-phone.jpg" width="1080" height="1920">
+          <source type="image/webp" srcset="media/meadow/meadow-day-1920.webp 1920w, media/meadow/meadow-day-2560.webp 2560w, media/meadow/meadow-day-3840.webp 3840w" sizes="100vw">
+          <img class="meadow__poster" src="media/meadow/meadow-day-2560.jpg" alt="" width="3840" height="2160" fetchpriority="high" decoding="async">
+        </picture>
+        <video class="meadow__video" muted loop playsinline disablepictureinpicture disableremoteplayback preload="none"></video>
+      </div>
     </div>
     <div class="wrap">
       <div class="hero-text">
@@ -147,7 +145,6 @@
       </div>
       <div class="scene">
         <picture>
-          <source media="(max-width: 760px) and (prefers-color-scheme: dark)" srcset="media/app/episodes-dark-phone.webp" width="720" height="927">
           <source media="(max-width: 760px)" srcset="media/app/episodes-light-phone.webp" width="720" height="927">
           <source media="(prefers-color-scheme: dark)" srcset="media/app/episodes-dark-1200.webp 1200w, media/app/episodes-dark-1760.webp 1760w, media/app/episodes-dark-2400.webp 2400w" sizes="(min-width: 1360px) 1072px, calc(100vw - 64px)">
           <img src="media/app/episodes-light-1760.webp" srcset="media/app/episodes-light-1200.webp 1200w, media/app/episodes-light-1760.webp 1760w, media/app/episodes-light-2400.webp 2400w" sizes="(min-width: 1360px) 1072px, calc(100vw - 64px)" alt="The Crewcut home: two episodes that need your yes, every video and Short with its thumbnail, and the crew at work with what it costs" width="1760" height="1222" loading="lazy" decoding="async">
@@ -222,17 +219,15 @@
 
 <footer class="closing" id="start" aria-labelledby="start-h">
   <div class="meadow meadow--foot" aria-hidden="true">
-    <picture>
-      <source media="(max-width: 760px) and (prefers-color-scheme: dark)" type="image/webp" srcset="media/meadow/meadow-dusk-phone.webp" width="540" height="960">
-      <source media="(max-width: 760px) and (prefers-color-scheme: dark)" srcset="media/meadow/meadow-dusk-phone.jpg" width="540" height="960">
-      <source media="(max-width: 760px)" type="image/webp" srcset="media/meadow/meadow-day-phone.webp" width="540" height="960">
-      <source media="(max-width: 760px)" srcset="media/meadow/meadow-day-phone.jpg" width="540" height="960">
-      <source media="(prefers-color-scheme: dark)" type="image/webp" srcset="media/meadow/meadow-dusk-1920.webp">
-      <source media="(prefers-color-scheme: dark)" srcset="media/meadow/meadow-dusk-1920.jpg">
-      <source type="image/webp" srcset="media/meadow/meadow-day-1920.webp">
-      <img class="meadow__poster" src="media/meadow/meadow-day-1920.jpg" alt="" width="1920" height="1080" loading="lazy" decoding="async">
-    </picture>
-    <video class="meadow__video" muted loop playsinline disablepictureinpicture disableremoteplayback preload="none"></video>
+    <div class="meadow__frame">
+      <picture>
+        <source media="(max-width: 760px)" type="image/webp" srcset="media/meadow/meadow-day-phone.webp" width="1080" height="1920">
+        <source media="(max-width: 760px)" srcset="media/meadow/meadow-day-phone.jpg" width="1080" height="1920">
+        <source type="image/webp" srcset="media/meadow/meadow-day-1920.webp 1920w, media/meadow/meadow-day-2560.webp 2560w, media/meadow/meadow-day-3840.webp 3840w" sizes="100vw">
+        <img class="meadow__poster" src="media/meadow/meadow-day-2560.jpg" alt="" width="3840" height="2160" loading="lazy" decoding="async">
+      </picture>
+      <video class="meadow__video" muted loop playsinline disablepictureinpicture disableremoteplayback preload="none"></video>
+    </div>
   </div>
   <canvas class="layer final__word" id="word" aria-hidden="true"></canvas>
   <canvas class="layer final__mist" id="mist" aria-hidden="true"></canvas>

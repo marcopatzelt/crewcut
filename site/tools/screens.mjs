@@ -33,10 +33,10 @@ for (const scheme of ['light', 'dark']) {
     await ctx.close();
   }
 }
-// The meadow loops with motion on (hero and close, 1440 and 390 px): the first screen and the close once the video
-// plays over the poster, and one line per loop with the file it chose and how far it played.
+// The meadow loops with motion on (hero and close at 2560 x 1080, 1440 and 390 px): the first screen and the close once
+// the video plays over the poster, and one line per loop with the file it chose and how far it played.
 for (const scheme of ['light', 'dark']) {
-  for (const [w, h] of [[1440, 900], [390, 844]]) {
+  for (const [w, h] of [[2560, 1080], [1440, 900], [390, 844]]) {
     const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, colorScheme: scheme, reducedMotion: 'no-preference' });
     const page = await ctx.newPage();
     await page.goto(url, { waitUntil: 'load' });
