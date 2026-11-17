@@ -165,7 +165,19 @@
    "transparent": false,
    "backdrop": null,
    "sound": true,
-   "data": {}
+   "data": {
+    "value": "131",
+    "unit": "commits",
+    "label": "in one night"
+   },
+   "cues": {
+    "landAt": {
+     "word": "machine",
+     "after": 20.0
+    }
+   },
+   "beat": 2,
+   "column": "a"
   },
   {
    "id": "m2",
@@ -182,7 +194,14 @@
    },
    "transparent": true,
    "sound": true,
-   "data": {}
+   "data": {
+    "words": [
+     "one",
+     "word"
+    ]
+   },
+   "beat": 4,
+   "column": "a"
   }
  ],
  "sound": {
