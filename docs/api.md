@@ -280,7 +280,9 @@ Code: `crewcut/motion/views.py`, `library.py`, `ratchet.py`. Read-only.
 A shelf row: `{"name", "origin": "app" | "pack" | "episode", "title", "description", "kind": "full" | "overlay",
 "formats", "version", "versions", "params", "path", "samples": {"landscape", "portrait", "poster"} (URLs, each
 optional), "made_from", "approved" (`null` until the template card's yes), "needs_plates", "notes"}`; app rows have
-`overridden` (the pack has its own copy); episode rows have `episode`, `insert`, `promoted_as` and `header_ok`.
+`overridden` (the pack has its own copy); episode rows have `episode`, `insert`, `promoted_as` and `header_ok`. Pack
+and app rows also carry `uses`: the videos whose newest edit plan has a motion insert with this `scene` (or
+`scene@N`), as `[{"episode", "plan", "insert", "version"}]` (`version` is the pin, else `null`).
 
 ## Team, activity and logs
 

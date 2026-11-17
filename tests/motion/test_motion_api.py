@@ -58,6 +58,12 @@ def test_motion_view_for_the_ui(studio, client, tmp_path):
     assert pieces["handoff"]["brief"] == "Four jobs leave the laptop."
     lib = client.get("/api/motion/library").json()["templates"]
     assert {t["name"] for t in lib} >= {"number_roll", "keyword_pop", f"{eid}/handoff"}
+    # the shelf names the videos that use each template (the newest edit plan of each episode)
+    rows = {t["name"]: t for t in lib}
+    assert [(u["episode"], u["insert"]) for u in rows["number_roll"]["uses"]] == [(eid, "m1")]
+    assert rows["keyword_pop"]["uses"] == [] and "uses" not in rows[f"{eid}/handoff"]
+    (ep / "edit" / "plan-v002.json").write_text(json.dumps({"inserts": []}))
+    assert {t["name"]: t for t in client.get("/api/motion/library").json()["templates"]}["number_roll"]["uses"] == []
     rat = client.get("/api/motion/ratchet").json()
     assert rat["bar"] is None and rat["lessons"] == [] and rat["references"] == []
     assert client.get("/api/motion/app/samples/../../../etc/passwd").status_code in (403, 404)

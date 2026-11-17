@@ -39,11 +39,31 @@ Short in clip mode from this episode, and the Scout's job appears in Working now
 or cards change. A server without the endpoint (404) counts as "no media yet"; an error shows one line with "Try
 again".
 
+**Motion graphics** of an episode come from `GET /api/episodes/{id}/motion` (`src/views/EpisodeMotion.tsx`), loaded
+like the media and again when one of its cards changes (a struck row points the plan card at a new version). Each
+motion insert is a tile under the film strip of the cut, in the order it plays: its loop (or its poster or style
+frame), its state on a tag (planned, style frame, building, in review, done), where it sits ("0:41", "on “offline”")
+and what it is; a custom piece shows the first line of its brief. A quiet band on the waveform marks where each insert
+with a start in seconds plays. The **Motion** panel below the cut shows the plan's three columns compact and
+read-only (a strike happens on the card; "Show the card" scrolls the chat to the open one), density and budget with
+the cap in one line, and after the build the motion report's three lines (better, behind, next), its verdict and the
+retention hint. Without a cut the tiles sit in the Motion panel. A 404 counts as "no motion yet"; an error shows one
+line with "Try again" and leaves the other media alone.
+
 Cmd+B folds the sidebar and Cmd+Alt+B the right column (a spring on the grid columns). Below 900 px the window fills
 the screen, the parts stack in one scrolling column and the sidebar opens as a menu from the title bar.
 
 Style pack, Crew, GPU and renders and a job log open in the main column as read-only pages. They have no edit
 controls; each ends with "To change something, say it in the chat."
+
+The style pack has a **Motion** shelf (`src/views/MotionShelf.tsx`, `GET /api/motion/library` and
+`GET /api/motion/ratchet`): one line about the bar and the lessons, then a grid of the pack's templates and the app's
+(these with a small "Crewcut" mark; an app template the pack overrides is left out), each a muted sample loop that
+plays while pointed at or focused, its title, its format marks, its version and "made for 013". A template still
+waiting for its card's yes says so on its picture. Opened (a button with `aria-expanded`), a template shows its params
+with their defaults (without `comp`), the videos that use it (each opens its episode), its older versions and the
+newest review notes. Pieces made for one video and not kept are listed below the grid. A server without the motion
+routes (404) shows no shelf.
 
 ### Views in the URL
 
@@ -93,6 +113,28 @@ Dropping files on an episode chat uploads them with `POST /api/episodes/{id}/upl
 Cards have one primary button (`POST /api/cards/{id}/accept`, with `choice` for options). Ctrl/Cmd+Enter accepts the
 lowest open card that is visible in the chat. Decided cards fold to one line ("Title approved · …"); a card decided
 while it is on screen folds away with a spring first.
+
+The four motion cards (`src/components/MotionCards.tsx`) put the media first:
+
+- **motion-plan** ("Build this motion plan"): the three columns, stacked in the narrow chat and side by side when the
+  card is wide: (a) what we have that fits, a loop of each shelf piece with its time, name and purpose; (b) what we
+  build new for this video, the brief's line with effort, plates, cost and its cap; (c) what makes this video clearly
+  better than the last one, each upgrade with its reason (lesson, reference, behind the bar, retention). Upgrades not
+  chosen show as "For a later video" and are not tappable. Density and budget stand in one line with the cap per
+  video ("GPU about $0.30, cap $2 for this video", "cap $0.50 for this Short"). Each row is a toggle button ("Not
+  this one: 0:06 Number roll, believe the price", `aria-pressed` when struck): a tap calls
+  `POST /api/cards/{id}/strike` and the same card shows the next plan version in place; a second tap brings the row
+  back. A refusal (409, for example the only chosen upgrade) shows the server's sentence without "Try again".
+- **style-frame** ("Build from this frame"): per format, our frame next to the reference, the bar's frame or the
+  sentence for no reference, with the hue check under the pair. A note back is a sentence in the chat.
+- **template** ("Keep it in the library"): the sample loops per format, the params with their defaults, where it was
+  made, its version and the one it replaces, the format marks.
+- **baseline** ("Raise the bar to 003", or "Make 003 the bar" when there is none): the bar now and this video side
+  by side, each with a frame and its named strengths, what is better and against which strength, and the measured
+  values ("5 to 6").
+
+Sample loops are muted, have no controls, play only while at least half of them is in view (on the shelf while
+pointed at), and show only their poster with reduced motion.
 
 A spend card shows both ways as two choice surfaces. The first choice is honest: the rented GPU only when it saves at
 least an hour, else this machine (also when a time is not known). The button follows the choice: "Rent a GPU for $0.60"
@@ -182,6 +224,14 @@ episode in work, four published ones and nine Shorts. Episode 012 shows variants
 differently). Chats, jobs and money are made up. Nothing runs; a sentence gets a
 reply that says so.
 
+Motion graphics in the demo (`src/demo/motion.ts`): the commercial (015) has a cut from its five 3D shots, its motion
+plan open (version 2, one row struck; striking works and refuses the only chosen upgrade as the server does), the
+style frame of its one new piece next to the bar's frame, and three tiles (done, in review, style frame); 013 shows
+the finished loop (pieces done, the report's three lines, the decided motion cards); the style pack's shelf holds two
+templates of the pack, the app's five and one piece made for one video. Their pictures are small posters drawn with
+plain shapes (`public/demo/motion/*.svg`, outside the folder `build_media.py` rebuilds); the demo has no loops. Both
+motion cards sit in 015, which already needs a yes, so the home keeps its two "Needs you" cards.
+
 When the demo starts on its own, Working now says "Demo data. Crewcut is not running at this address." With
 `?demo=1` it says "Demo data. Nothing here is real."
 
@@ -248,7 +298,7 @@ npm run dev                   # http://localhost:5173, forwards /api to :4747 an
 | Command | What it checks |
 |---|---|
 | `npm run typecheck` | TypeScript, strict |
-| `npm run test` | vitest + Testing Library: loading (spinner after 300 ms), empty, error with retry, long content (90-character title, 4,000-word message, 30 jobs), the engine not logged in, demo fallback, card accept (options, Ctrl+Enter, spend card, error), the composer (Enter, Shift+Enter, new episode, onboarding, failed send), the teleprompter; the states table above, the step dots, the spend card's two ways (local declines, never accepts), the waiting row jumping to its card, the palette and shortcuts, crew talk (collapsed and opened), the still demo and the scripted sequence; the media of an episode (thumbnails, cut, scenes, GPU), the thumbnail pick, the GPU card's Stop, the media's empty, pending and error states, the home's sections and filters |
+| `npm run test` | vitest + Testing Library: loading (spinner after 300 ms), empty, error with retry, long content (90-character title, 4,000-word message, 30 jobs), the engine not logged in, demo fallback, card accept (options, Ctrl+Enter, spend card, error), the composer (Enter, Shift+Enter, new episode, onboarding, failed send), the teleprompter; the states table above, the step dots, the spend card's two ways (local declines, never accepts), the waiting row jumping to its card, the palette and shortcuts, crew talk (collapsed and opened), the still demo and the scripted sequence; the media of an episode (thumbnails, cut, scenes, GPU), the thumbnail pick, the GPU card's Stop, the media's empty, pending and error states, the home's sections and filters; the four motion cards (columns, the strike call and its refusal, the cap per video and per Short, posters only with reduced motion, accessible names), the motion tiles on the strip and the Motion panel (order, states, report lines, 404, error), the Motion shelf (hover to play, opened details, one-off pieces, no shelf) and motion in the demo |
 | `npm run check:tokens` | no raw colour values in `src/` outside `src/styles/tokens.css`; radii, shadows, durations and curves only from tokens (rules 4, 6, 9) |
 | `npm run check:forms` | two text fields, the composer and the palette's search field, and no `<form>` with more than one field (rules 1.2, 3, 15) |
 | `npm run check:words` | no emoji, no exclamation marks in user-facing text (tooltips too), no "OK", "Submit" or "Yes" labels (rules 8, 10) |
