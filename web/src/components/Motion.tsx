@@ -408,7 +408,7 @@ export function PlanColumns({
             <li key={r.row}>
               <Row
                 struck={r.struck}
-                name={`${r.time} ${name}, ${r.purpose ?? ""}`}
+                name={[`${r.time} ${name}`, r.purpose].filter(Boolean).join(", ")}
                 tip={r.picture ?? name}
                 onToggle={toggle(r.row, r.struck)}
                 busy={busy === r.row}

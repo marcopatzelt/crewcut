@@ -55,19 +55,19 @@ export function MotionPlanPreview({ card, folding }: { card: Card; folding: bool
   }
 
   const quiet = plan.quiet.filter((q) => q.time).map((q) => q.time);
+  const hint = [
+    quiet.length ? `Without motion: ${quiet.join(", ")}.` : null,
+    open ? "Tap a row to strike it." : null,
+    plan.bar ? `The bar is ${epShort(plan.bar)}.` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const line = planLine(plan);
   return (
     <div className="mp">
-      <p className="mp-line">{planLine(plan)}</p>
+      {line ? <p className="mp-line">{line}</p> : null}
       <PlanColumns plan={plan} onStrike={open ? (row, struck) => void onStrike(row, struck) : undefined} busy={busy} />
-      <p className="meta mp-hint">
-        {[
-          quiet.length ? `Without motion: ${quiet.join(", ")}.` : null,
-          open ? "Tap a row to strike it." : null,
-          plan.bar ? `The bar is ${epShort(plan.bar)}.` : null,
-        ]
-          .filter(Boolean)
-          .join(" ")}
-      </p>
+      {hint ? <p className="meta mp-hint">{hint}</p> : null}
       {error ? <ErrorLine text={error.text} onRetry={error.retry} /> : null}
     </div>
   );
