@@ -258,6 +258,26 @@ def _rows_ok(rows: list[dict]) -> bool:
     return all(r.get("frames_ok") and r.get("clip_ok") is not False for r in rows)
 
 
+# ---- Blender plates of motion inserts ------------------------------------------------------------------------------
+def render_plates(plan: Plan, ids: list[str] | None = None, probe: bool = False, mode: str | None = None,
+                  max_usd: float | None = None, compute=None, runner: media.Runner = media.run,
+                  log: Callable = print) -> dict:
+    from . import plates
+    try:
+        return plates.render_plates(plan, ids, probe, mode, compute=compute, max_usd=max_usd, runner=runner, log=log)
+    except Exception as e:
+        c = compute
+        if c is None:
+            try:
+                c = load_compute()
+            except ImportError:
+                raise e from None
+        mapped = _compute_error(c, e)
+        if mapped:
+            raise mapped from e
+        raise
+
+
 # ---- behind the speaker: the person matte (rented GPU only) ------------------------------------------------------
 def render_matte(plan: Plan, ids: list[str] | None = None, max_usd: float | None = None, compute=None,
                  runner: media.Runner = media.run, log: Callable = print) -> dict:
@@ -303,6 +323,13 @@ def render_all(plan: Plan, mode: str | None = None, gpus: int = 2, samples: int 
         log("2D inserts failed; not cutting")
         return out
     skipped: list[str] = []
+    from . import plates as _plates
+    if _plates.all_plates(plan):
+        out["plates"] = render_plates(plan, None, False, mode, max_usd, compute, runner=runner, log=log)
+        if not all(r["ok"] for r in out["plates"]["rows"]):
+            log("Blender plates are not complete; not cutting")
+            return out
+        plan = Plan(plan.path, pack=plan.pack, episode_dir=plan.episode_dir)   # plate paths are in the context
     out["matte"] = matte_step(plan, compute, runner=runner, log=log)
     if out["matte"] and out["matte"].get("rented"):
         plan = Plan(plan.path, pack=plan.pack, episode_dir=plan.episode_dir)   # the decisions change the motion hashes

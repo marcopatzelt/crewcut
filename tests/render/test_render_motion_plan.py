@@ -13,7 +13,7 @@ from crewcut import doctor
 from crewcut.render.plan import Plan, PlanError, motion_context
 
 README_KEYS = {"format", "size", "fps", "duration", "transparent", "face", "backdrop", "draft", "right_free", "layer",
-               "brand"}
+               "plates", "brand"}
 
 
 def roll(**over) -> dict:

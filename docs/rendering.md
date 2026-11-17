@@ -377,3 +377,14 @@ listen.
 Untested here (by rule, nothing renders on the author's laptop): real Chromium renders, real Blender renders, real
 ffmpeg runs, real rented machines. The CI image renders the 2D samples and the preview; the first real 3D probe
 decides whether the 3D scripts need fixes for the Blender 5.0 API.
+
+### Blender plates of motion inserts
+
+A motion insert may list `plates` (Blender scripts that render image sequences the comp lays in: a heavy 3D word,
+a logo that catches light). `crewcut render plates <plan> [--probe]` renders every missing plate into
+`render/plates/<insert>-<plate>-<hash>/0001.png …`: on a computer with its own NVIDIA GPU here, otherwise on one
+rented RTX 4090 after a spend card (only the plate scripts, their arguments and the pack's font files go up). A plate
+script takes `--out DIR --frames A-B` plus its own arguments, with times in the comp's seconds (frame `f` shows comp
+time `t0 + (f - 1) / fps`). The hash covers the script, its arguments, the look tokens and the fonts. The comp reads
+the plates from `CC_CTX.plates` (`{id: {"first", "frames", "ready"}}`); `render all` renders plates before the motion
+inserts. Code: `crewcut/render/plates.py`.

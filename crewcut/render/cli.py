@@ -84,6 +84,13 @@ def parser() -> argparse.ArgumentParser:
     g.add_argument("--local", action="store_true", help="render here (needs effectcraft-cli)")
     g.add_argument("--rented", action="store_true", help="render on one rented machine (asks for a yes first)")
     p.add_argument("--max-usd", type=float, help="money cap for this rented run (default $2 a video, $0.50 a Short)")
+    p = plan_cmd("plates", "Blender plates of the motion inserts: here with an own GPU, else one rented RTX 4090")
+    p.add_argument("--ids", help="only the plates of these inserts, comma separated")
+    p.add_argument("--probe", action="store_true", help="one half-size still per plate first")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--local", action="store_true", help="render here")
+    g.add_argument("--rented", action="store_true", help="render on one rented GPU (asks for a yes first)")
+    p.add_argument("--max-usd", type=float, help="money cap (default $2 a video, $0.50 a Short)")
     p = plan_cmd("matte", "person matte for overlays behind the speaker, on a rented GPU (asks for a yes first)")
     p.add_argument("--ids", help="only these inserts, comma separated")
     p.add_argument("--max-usd", type=float, help="money cap (default $2 a video, $0.50 a Short)")
@@ -239,6 +246,13 @@ def run(a: argparse.Namespace, out: dict) -> int:
         if not a.json:
             _print_rows("motion", r["rows"])
         return 0 if _rows_ok(r["rows"]) else 1
+    if a.cmd == "plates":
+        r = workbench.render_plates(plan, _ids(a.ids), a.probe, mode, max_usd=a.max_usd, log=log)
+        out.update(r)
+        if not a.json:
+            for row in r["rows"]:
+                print(f"plate {row['insert']}/{row['plate']}: {'ok' if row['ok'] else 'failed'}  {row['dir']}")
+        return 0 if all(row["ok"] for row in r["rows"]) else 1
     if a.cmd == "matte":
         r = workbench.render_matte(plan, _ids(a.ids), max_usd=a.max_usd, log=log)
         out.update(r)

@@ -155,7 +155,15 @@ def motion_context(plan: Plan, ins: Insert, draft: bool = False, backdrop: str |
     return {"format": ins.format or plan.format, "size": [size[0], size[1]], "fps": plan.fps,
             "duration": round(ins.frames / plan.fps, 6), "transparent": ins.transparent, "face": face,
             "backdrop": backdrop, "draft": bool(draft), "right_free": plan.right_free,
-            "layer": plan.layer_for(ins), "brand": brand_context(plan.tokens)}
+            "layer": plan.layer_for(ins), "plates": _plates(plan, ins), "brand": brand_context(plan.tokens)}
+
+
+def _plates(plan: Plan, ins: Insert) -> dict:
+    """CC_CTX.plates: the Blender plates of the insert ({id: {"first", "frames", "ready"}}), see render/plates.py."""
+    if not ins.plates:
+        return {}
+    from .plates import context_plates
+    return context_plates(plan, ins)
 
 
 def brand_context(tokens: dict) -> dict:

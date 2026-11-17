@@ -349,6 +349,11 @@ def stage_remote(plan: Plan, inserts: list[Insert], draft: bool = False) -> Path
         own = ins.template.parent / "assets"
         shutil.copytree(own if own.is_dir() else mtemplates.assets_dir(), d / "ec_assets")
         ctx = motion_context(plan, ins, draft=draft)
+        for pid, pl in (ctx.get("plates") or {}).items():          # Blender plates go up with the comp
+            src = Path(pl["first"]).parent
+            if src.is_dir():
+                shutil.copytree(src, d / "plates" / pid)
+            pl["first"] = f"{REMOTE}/{ins.id}/plates/{pid}/{Path(pl['first']).name}"
         code, _ = mtemplates.program_path(ins.template, params, context=ctx, assets=f"{REMOTE}/{ins.id}/ec_assets")
         (d / "script.jsx").write_text(code, encoding="utf-8")
         comp = comp_params(plan, ins, draft)
