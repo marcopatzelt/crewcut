@@ -29,6 +29,7 @@ from datetime import UTC, datetime
 from itertools import pairwise
 from pathlib import Path
 
+from ..motion import sfx
 from . import html, media
 from .plan import Insert, Plan, PlanError
 
@@ -39,6 +40,8 @@ SFX = (  # name, plan list key, default dB, default length (s), pre-roll (ms)
     ("typing", "typing", -14.0, 1.0, 0),
     ("whoosh", "whooshes", -16.0, 0.8, 120),
 )
+# the sound kit's file for each SFX row when neither the plan nor the pack names one (crewcut.motion.sfx)
+KIT_SOUND = {"hit": "hit", "typing": "typing", "whoosh": "whoosh"}
 STEREO = "aformat=sample_rates=48000:channel_layouts=stereo"
 
 
@@ -320,8 +323,29 @@ def _sound_file(plan: Plan, rel: str | None, pack_key: str | None) -> Path | Non
     return None
 
 
+def _sfx_file(plan: Plan, sound: dict, name: str, notes: list[str], count: int) -> Path | None:
+    """The file of one SFX row: the plan's `<name>_file`, else the pack's `sounds.<name>`, else the sound kit's file
+    (made by code at first use). A file the plan or the pack names but that is missing is skipped with a note."""
+    rel = sound.get(f"{name}_file")
+    if rel:
+        f = _sound_file(plan, rel, None)
+    else:
+        rel = plan.pack.value(f"edit_style.sounds.{name}")
+        f = _sound_file(plan, None, f"edit_style.sounds.{name}") if rel else None
+    if f:
+        return f
+    if rel:
+        notes.append(f"{count} {name} sound(s) skipped: file not found: {rel}")
+        return None
+    f = sfx.kit_path(KIT_SOUND[name])
+    notes.append(f"{count} {name} sound(s) from Crewcut's sound kit ({f.name}, made by code); set sound.{name}_file "
+                 f"in the plan or sounds.{name} in the pack's edit-style.json for your own")
+    return f
+
+
 def audio_graph(plan: Plan, end: int) -> AudioGraph:
-    """The ffmpeg inputs and filter graph of the sound. Pure apart from checking that files exist."""
+    """The ffmpeg inputs and filter graph of the sound. Pure apart from checking that files exist and making the
+    sound kit (crewcut.motion.sfx) at first use when a sound has no file of its own."""
     fps = plan.fps
     T = end / fps
     sound = plan.p.get("sound") or {}
@@ -378,11 +402,8 @@ def audio_graph(plan: Plan, end: int) -> AudioGraph:
         entries = sound.get(key) or []
         if not entries:
             continue
-        f = _sound_file(plan, sound.get(f"{name}_file"), None) if sound.get(f"{name}_file") else \
-            _sound_file(plan, None, f"edit_style.sounds.{name}")
+        f = _sfx_file(plan, sound, name, notes, len(entries))
         if not f:
-            notes.append(f"{len(entries)} {name} sound(s) skipped: no file (set sound.{name}_file in the plan or "
-                         f"sounds.{name} in the pack's edit-style.json)")
             continue
         k = add(f)
         db = float(sound.get(f"{name}_db", db_default))

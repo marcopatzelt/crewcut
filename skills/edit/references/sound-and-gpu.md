@@ -33,6 +33,10 @@ as a compute job):
   the assembly encodes the sound first, measures the peak, and limits lower if needed.
 - A hit only at strong spots, typing under counters, a short gap in the music before the most important number
   (`sound.gaps`, `sound.hits`, `sound.typing`, `sound.whooshes`).
+- Sound effect files are made by code: when neither the plan (`hit_file`, `typing_file`, `whoosh_file`) nor the
+  pack (`edit-style.json` `sounds`) names a file, the cut uses Crewcut's sound kit (`studio/.crewcut/sfx/`, made at
+  first use; no audio file in the repo). Nobody has heard the kit yet: put its sounds on the listening list
+  (`docs/sfx-listening.md`). No riser in a talk segment, and no effect on top of a speech peak.
 
 ## C. Rented GPUs
 
