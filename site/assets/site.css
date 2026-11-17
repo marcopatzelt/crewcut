@@ -158,6 +158,7 @@ main > section.g2 > .wrap > .group { min-height: 0; display: flex; flex-directio
 @keyframes enter-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 .stage__frame { position: relative; flex: 1 1 0; min-height: 0; display: flex; align-items: flex-start; }
+.stage__frame picture { display: contents; }
 .stage__shot { width: 100%; height: auto; max-height: 100%; object-fit: cover; object-position: 50% 0; border-radius: 16px; box-shadow: 0 60px 120px -40px rgba(0, 25, 20, 0.7), 0 20px 60px -20px rgba(0, 25, 20, 0.5); -webkit-mask-image: linear-gradient(180deg, #000 82%, transparent); mask-image: linear-gradient(180deg, #000 82%, transparent); }
 .workcard { position: absolute; left: 24px; bottom: 130px; width: 290px; z-index: 3; border-radius: 20px; padding: 14px; background: rgba(8, 22, 19, 0.74); -webkit-backdrop-filter: blur(24px) saturate(1.5); backdrop-filter: blur(24px) saturate(1.5); color: #EAF5F1; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 40px 70px -30px rgba(0, 0, 0, 0.7); }
 .workcard__h { font: 700 15px var(--display); margin-bottom: 10px; }
@@ -327,14 +328,15 @@ footer.closing > .wrap { justify-content: space-between; gap: 32px; }
   .hero__lead { font-size: 16.5px; margin-top: 18px; }
   .hero .btn-row { flex-direction: column; align-items: stretch; width: 100%; margin-top: 26px; }
   .hero__facts { line-height: 38px; }
-  .stage__frame { flex: none; display: flex; flex-direction: column; gap: 20px; }
-  .stage__shot { height: auto; border-radius: 10px; -webkit-mask-image: none; mask-image: none; }
+  .hero { background-size: 100% 100%, 100% 100%, cover; background-position: 0 0, 0 0, 50% 100%; animation: none; }
+  .stage { padding-top: 56px; background-size: cover; background-position: 50% 100%; animation: none; }
+  .stage__frame { flex: none; display: block; }
+  .stage__phone { display: none !important; }
+  .stage__shot { width: 100%; height: auto; max-height: none; border-radius: 16px; -webkit-mask-image: none; mask-image: none; }
   .workcard { display: none; }
-  .stage__phone { position: relative; right: auto; bottom: auto; width: 190px; margin: 0 auto; }
-  .stage__phone .phone__lines { font-size: 15px; }
   .lead, .sh .lead { font-size: 16.5px; }
   .sh { margin-bottom: 26px; }
-  .drum { height: 320px; }
+  .drum { height: 300px; }
   .chips .chip { height: 30px; font-size: 13px; padding: 0 11px; }
   .scene { flex: none; border-radius: 28px; padding: 22px 14px 0; }
   .scene img { height: auto; }

@@ -29,8 +29,8 @@
     function draw() {
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
       g.clearRect(0, 0, w, h);
-      const phone = w < 600, k = phone ? 0.58 : 0.9;
-      const R = 800 * k, P = 3200 * k, cx = w / 2, cy = h * (phone ? 0.46 : 0.5);
+      const phone = w < 600, k = phone ? 0.95 : 0.9;
+      const R = 800 * k, P = 3200 * k, cx = w / 2, cy = h * 0.5;
       const list = [];
       items.forEach((it, i) => {
         const a = (i * 18 + turn + scrollTurn) * Math.PI / 180, c = Math.cos(a);
