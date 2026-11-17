@@ -25,6 +25,9 @@ Taste checks (values from edit-style.json and brand.json of the style pack):
   logo        a logo in the logo corner of every full-screen 2D insert (only when brand.json has a logo)
   end-card    the last full-screen part starts at the sentence with an end-card cue word (cut_words.end_card_cue)
   mix, pace   3D share and shots per minute against graphics_mix and pace_cuts_per_minute (NOTE only)
+  motion-*    motion density (plans with "kind": "motion" inserts): lengths, big moments, motion per minute, 6 s
+              gaps, one per sentence, heroes, sounds, first and last seconds (edit-style.json motion, else neutral);
+              keywords_max counts keyword and keyword_pop together
 The rules in rules/cut.md of the style pack are printed as the manual list.
 
 Writes review/cut-check-vNNN.json. Exit 0 = no ERROR, 1 = at least one ERROR, 2 = usage.
@@ -101,17 +104,35 @@ def cue_frames(insert: dict, words: list[dict], fps: float) -> dict:
     return out
 
 
+def seconds(v, words: list[dict], after: float = 0.0) -> float | None:
+    """A plan time in seconds: a number, or a word anchor {"word", "offset" (s), "after"} (motion inserts)."""
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        return float(v)
+    if isinstance(v, dict) and "word" in v:
+        t = word_time(words, v["word"], float(v["after"]) if v.get("after") is not None else after)
+        return None if t is None else t + float(v.get("offset") or 0.0)
+    if isinstance(v, dict) and "time" in v:
+        return float(v["time"]) + float(v.get("offset") or 0.0)
+    return None
+
+
 def plan_inserts(plan: dict, words: list[dict], fps: float) -> list[dict]:
+    """Inserts with frames. An insert whose start or end word cannot be found is left out (the motion check
+    names it)."""
     out = []
     for e in plan.get("inserts", []):
-        s, t = round(e["start"] * fps), round(e["end"] * fps)
+        a = seconds(e.get("start"), words)
+        b = seconds(e.get("end"), words, a or 0.0)
+        if a is None or b is None:
+            continue
+        s, t = round(a * fps), round(b * fps)
         out.append(
             {
                 **e,
                 "start_f": s,
                 "end_f": t,
                 "frames": t - s,
-                "cue_f": cue_frames(e, words, fps),
+                "cue_f": cue_frames({**e, "start": a}, words, fps),
                 "full": not e.get("transparent"),
             }
         )
@@ -157,7 +178,14 @@ def open_close(runs: list[tuple[int, int]], total_f: int, fps: float) -> tuple[f
 
 
 def keyword_texts(insert: dict) -> list[str]:
+    """Keywords of an overlay: each chip of a 2D keyword; a motion keyword_pop is one keyword of its words; other
+    motion overlays have none."""
     d = insert.get("data") or {}
+    if insert.get("kind") == "motion":
+        if insert.get("scene") != "keyword_pop":
+            return []
+        ws = [w["text"] if isinstance(w, dict) else str(w) for w in d.get("words") or []]
+        return [" ".join(ws) if ws else str(d.get("text") or "")]
     out = [d["text"]] if isinstance(d.get("text"), str) else []
     for w in d.get("words") or []:
         out.append(w["text"] if isinstance(w, dict) else str(w))
@@ -566,6 +594,8 @@ def check(plan_path: Path, video: Path | None, pack, rep: cl.Report, media: bool
                 "end-card",
                 f"Last full-screen part starts {off:+.1f} s from the end-card sentence (allowed -1.5 to +0.5)",
             )
+    if any(e.get("kind") == "motion" for e in plan.get("inserts") or []):
+        motion_density(plan, ep, pack, rep, P, total_s)
     grade = list((ep / "review").glob("grade*")) if (ep / "review").is_dir() else []
     rep.add(
         P,
@@ -699,6 +729,25 @@ def check(plan_path: Path, video: Path | None, pack, rep: cl.Report, media: bool
                 f"Sound left {lv[0]} dB, right {lv[1]} dB",
             )
         rep.add(OUT, "NOTE", "length", f"{total_f} frames, {cl.tc(total_s)}")
+
+
+def motion_density(plan: dict, ep: Path, pack, rep: cl.Report, area: str, total_s: float) -> None:
+    """The motion density counts (crewcut.motion.density) as findings. keyword-count above already counts
+    keyword_pop, so the density's own keyword line is left out here."""
+    md = cl.app_module("crewcut.motion.density")
+    raw = json.loads((ep / plan["words"]).read_text(encoding="utf-8")) if plan.get("words") and (
+        ep / plan["words"]).is_file() else []
+    tmpl = {}
+    try:
+        tp = cl.app_module("crewcut.motion.templates")
+        tmpl = {n: len(h.get("sounds") or []) for n, h in tp.discover().items()}
+    except (ImportError, OSError):
+        pass
+    es = dict(pack.value("edit_style", {}) or {})
+    res = md.count(plan, md.norm_words(raw), md.limits(es), tmpl, total_s=total_s or None)
+    for f in res["findings"]:
+        if f["id"] != "motion-keywords":
+            rep.add(area, f["level"], f["id"], f["text"], f["time"], f["fix"])
 
 
 def main(argv=None):
