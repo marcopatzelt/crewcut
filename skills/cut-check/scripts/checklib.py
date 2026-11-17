@@ -30,6 +30,17 @@ def load_pack(pack_dir: str | None = None):
     return brand.load(pack_dir) if pack_dir else brand.load()
 
 
+def app_module(name: str):
+    """A module of the app (``crewcut.motion.review``), also when the script runs outside the installed package."""
+    import importlib
+
+    try:
+        return importlib.import_module(name)
+    except ImportError:
+        sys.path.insert(0, str(APP_ROOT))
+        return importlib.import_module(name)
+
+
 def tc(t: float | None) -> str:
     """Seconds as m:ss.s, the way people name a spot in a video."""
     if t is None:
