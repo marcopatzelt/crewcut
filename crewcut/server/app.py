@@ -38,6 +38,11 @@ class OnboardIn(BaseModel):
     text: str | None = None
 
 
+class StrikeIn(BaseModel):
+    row: str
+    struck: bool = True
+
+
 def _allowed_hosts() -> set[str]:
     extra = {h.strip() for h in os.environ.get("CREWCUT_ALLOWED_HOSTS", "").split(",") if h.strip()}
     return LOCAL_HOSTS | extra
@@ -304,6 +309,17 @@ def create_app(start_worker: bool = True) -> FastAPI:
             return _card_view(approvals.decide(cid, False, reason=(body.reason if body else None)))
         except KeyError:
             raise HTTPException(404, "No such card.") from None
+
+    @app.post("/api/cards/{cid}/strike")
+    def strike(cid: int, body: StrikeIn):
+        """Tap to strike (or bring back) one row of an open motion plan card; writes the next plan version."""
+        from ..motion import director
+        try:
+            return _card_view(director.strike(cid, body.row, body.struck))
+        except KeyError:
+            raise HTTPException(404, "No such card.") from None
+        except ValueError as e:
+            raise HTTPException(409, str(e)) from None
 
     # ---- crew and jobs ------------------------------------------------------------------------------------------------
     @app.get("/api/team")

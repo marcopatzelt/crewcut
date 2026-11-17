@@ -647,6 +647,8 @@ def needs(episode: str) -> dict | None:
             images = [i["url"] for i in (sc or {}).get("items", []) if i["url"]]
     except (OSError, ValueError, KeyError):
         images = []
+    if not images and isinstance(card.get("data"), dict) and isinstance(card["data"].get("images"), list):
+        images = [u for u in card["data"]["images"] if isinstance(u, str)]   # motion cards name their pictures
     if not images:
         images = [u for u in (_image_of(episode, card.get("preview")) or _image_of(episode, card.get("file")),) if u]
     return {"card": int(card["id"]), "kind": card["kind"], "title": card["title"], "images": images[:3]}

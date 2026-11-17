@@ -1,0 +1,163 @@
+{
+ "schema": 1,
+ "kind": "motion-plan",
+ "episode": "demo",
+ "version": 1,
+ "format": "landscape",
+ "short": false,
+ "title": "Crewcut render demo",
+ "words": "work/words-v001.json",
+ "script": null,
+ "duration_s": 20.02,
+ "bar": null,
+ "last_video": null,
+ "lessons": [],
+ "references": [],
+ "marks": [],
+ "shelf": [
+  {
+   "name": "keyword_pop",
+   "origin": "app",
+   "kind": "overlay",
+   "formats": [
+    "landscape",
+    "portrait"
+   ],
+   "version": 1,
+   "title": "keyword pop",
+   "loop": null,
+   "poster": null
+  },
+  {
+   "name": "number_roll",
+   "origin": "app",
+   "kind": "full",
+   "formats": [
+    "landscape",
+    "portrait",
+    "stage"
+   ],
+   "version": 1,
+   "title": "number roll",
+   "loop": null,
+   "poster": null
+  }
+ ],
+ "beats": [
+  {
+   "n": 1,
+   "start": 0.4,
+   "end": 6.6,
+   "says": "This demo runs offline on your machine. A small team shipped it in a third of the time.",
+   "purpose": "know what this is: it runs here, offline",
+   "picture": "the speaker alone; the first seconds are the face",
+   "column": "-",
+   "piece": "",
+   "params": {},
+   "at": null,
+   "length_s": null,
+   "overlay": null,
+   "cost_usd": 0.0,
+   "wish": null,
+   "struck": false
+  },
+  {
+   "n": 2,
+   "start": 6.6,
+   "end": 14.6,
+   "says": "One million tokens cost about thirty cents. Commits over one night: one hundred thirty-one.",
+   "purpose": "believe the price",
+   "picture": "the price rolls up and lands on thirty as the word is said, then settles and carries the cut back",
+   "column": "a",
+   "piece": "number_roll",
+   "params": {
+    "value": "30",
+    "unit": "cents",
+    "label": "1 million tokens",
+    "landAt": 1.6
+   },
+   "at": 6.4,
+   "length_s": 3.6,
+   "overlay": null,
+   "cost_usd": 0.0,
+   "wish": null,
+   "struck": false
+  },
+  {
+   "n": 3,
+   "start": 14.6,
+   "end": 19.53,
+   "says": "One GPU serves about a hundred people. Someone posted it took eight hours.",
+   "purpose": "hear the proof from someone else",
+   "picture": "the speaker, a slow punch-in; the post is said, not shown",
+   "column": "-",
+   "piece": "",
+   "params": {},
+   "at": null,
+   "length_s": null,
+   "overlay": null,
+   "cost_usd": 0.0,
+   "wish": null,
+   "struck": false
+  }
+ ],
+ "new": [],
+ "upgrades": [
+  {
+   "id": "u1",
+   "upgrade": "The number lands on the spoken word, 2 frames early, and the exit is caused by the roll settling instead of a hard cut",
+   "source": {
+    "kind": "baseline",
+    "ref": "the 2D version of this demo cuts hard out of the counter",
+    "why": "the bar of this demo is its own 2D cut"
+   },
+   "effort": "S",
+   "cost_usd": 0.0,
+   "chosen": true,
+   "struck": false
+  },
+  {
+   "id": "u2",
+   "upgrade": "One GPU serving a hundred people as a custom grid that fills seat by seat",
+   "source": {
+    "kind": "baseline",
+    "ref": "the 2D grid of this demo is a static chart"
+   },
+   "effort": "M",
+   "cost_usd": 0.0,
+   "chosen": false,
+   "struck": false
+  }
+ ],
+ "cap_usd": 2.0,
+ "density": {
+  "line": "full-frame 1 of max 5 · all motion 1 in 0:20 (max 0) · heroes 0",
+  "counts": {
+   "motion": 1,
+   "big": 1,
+   "overlays": 0,
+   "heroes": {}
+  },
+  "max": {
+   "big": 5,
+   "motion": 0,
+   "heroes": 2
+  },
+  "findings": [
+   {
+    "level": "ERROR",
+    "id": "motion-rate",
+    "text": "1 motion moments in 0.3 min = 3.0 per minute (at most 2 on average)",
+    "time": null,
+    "fix": "Cut motion where the speaker already carries it"
+   }
+  ]
+ },
+ "budget": {
+  "line": "GPU none, cap $2",
+  "estimate_usd": 0.0,
+  "cap_usd": 2.0
+ },
+ "based_on": null,
+ "struck_rows": []
+}

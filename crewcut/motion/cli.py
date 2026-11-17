@@ -21,6 +21,11 @@ snapshot undo. ``--json`` gives machine output; ``--dry-run`` runs a mutation in
     crewcut motion session status|undo|redo|history
     crewcut motion exec ID --params JSON [--read-only] | batch steps.json | script file.jsx [--with-lib] | commands
 
+The motion workflow (no engine; docs/motion-workflow.md):
+
+    crewcut motion plan EPISODE [--short] | --check [--file F] [--card]
+    crewcut motion library [--no-episodes]
+
 Exit codes: 0 ok, 1 error, 2 usage, 3 `render palette` found one hue above the limit (plain output only).
 """
 
@@ -1027,6 +1032,71 @@ def session_redo(app: App):
 @handle_error
 def session_history(app: App, last):
     out(app, app.session.data.get("history", [])[-last:])
+
+
+# ── the motion workflow: plan, shelf, custom pieces, library, ratchet ───
+# These commands need no engine. Files live in the user's studio (episodes/<id>/, brand/), never in the app.
+
+def _exit(code: int) -> None:
+    click.get_current_context().exit(code)
+
+
+@cli.command("plan")
+@click.argument("episode")
+@click.option("--short", is_flag=True, help="The short form for a Short (format portrait, cap $0.50).")
+@click.option("--check", "check_", is_flag=True,
+              help="Validate the newest plan (or --file), compute density and budget, write the Markdown.")
+@click.option("--file", "file_", default=None, help="edit/motion-plan-vNNN.json to check (default: the newest).")
+@click.option("--card", is_flag=True, help="Check, then open the motion-plan card (one per video).")
+@click.pass_obj
+@handle_error
+def plan_cmd(app: App, episode, short, check_, file_, card):
+    """The motion pass: a plan skeleton from the words and the Writer's marks, or --check / --card a finished one."""
+    from .. import paths
+    from . import director as dr
+    from . import library as lib
+    if not check_ and not card:
+        p = dr.skeleton(episode, short=short or None)
+        plan = dr.load(p)
+        ep_dir = paths.episode_dir(episode)
+        rel = p.relative_to(ep_dir).as_posix()
+        shelf = lib.entries(include_episodes=False)
+        human = [f"{rel}: {len(plan['beats'])} beats, {len(plan['marks'])} Writer mark(s), cap ${plan['cap_usd']:g}.",
+                 f"bar: {(plan.get('bar') or {}).get('episode') or 'none yet'} · lessons: {len(plan['lessons'])} · "
+                 f"references: {len(plan['references'])}",
+                 "Per beat: purpose, picture, column (a, b, c, or - for none; most beats get none). Then "
+                 f"`crewcut motion plan {episode} --check --card`.", "shelf:"]
+        human += [f"  {lib.line(r)}" for r in shelf] or ["  empty"]
+        out(app, {"plan": rel, "md": dr.md_of(p).relative_to(ep_dir).as_posix(), "beats": len(plan["beats"]),
+                  "marks": plan["marks"], "shelf": plan["shelf"]}, "\n".join(human))
+        return
+    ep_dir = paths.episode_dir(episode)
+    p, errors, warns = dr.run_check(episode, ep_dir / file_ if file_ else None)
+    plan = dr.load(p)
+    data = {"plan": p.relative_to(ep_dir).as_posix(), "errors": errors, "warnings": warns,
+            "density": plan["density"]["line"], "budget": plan["budget"]["line"]}
+    if card and not errors:
+        c = dr.propose_card(episode, p)
+        data["card"] = c["id"]
+    human = [f"{data['plan']}: {len(errors)} error(s), {len(warns)} warning(s)",
+             f"  {data['density']} · {data['budget']}"]
+    human += [f"  error: {e}" for e in errors] + [f"  warning: {w}" for w in warns]
+    if data.get("card"):
+        human.append(f"card #{data['card']} is open: motion plan v{int(plan['version']):03d}")
+    out(app, data, "\n".join(human))
+    if errors:
+        _exit(1)
+
+
+@cli.command("library")
+@click.option("--no-episodes", is_flag=True, help="Only the app's and your pack's templates.")
+@click.pass_obj
+@handle_error
+def library_cmd(app: App, no_episodes):
+    """The shelf: the app's templates, your pack's own, and the custom pieces of your episodes."""
+    from . import library as lib
+    rows = lib.entries(include_episodes=not no_episodes)
+    out(app, rows, "\n".join(lib.line(r) for r in rows) or "the shelf is empty")
 
 
 def main(argv: list[str] | None = None) -> int:

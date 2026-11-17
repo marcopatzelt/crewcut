@@ -11,7 +11,8 @@ from pathlib import Path
 from . import brand, config, db, events, ledger, paths
 
 KINDS = ("topic", "title", "proof", "script", "mix", "preview", "final", "thumbnail", "publish", "spend", "rule",
-         "profile", "other")
+         "profile", "other", "motion-plan", "style-frame", "template", "baseline")
+MOTION_KINDS = ("motion-plan", "style-frame", "template", "baseline")   # what a yes does: crewcut/motion/cards.py
 
 
 class RightsError(PermissionError):
@@ -119,11 +120,17 @@ def decide(card_id: int, accepted: bool, choice: int | None = None, reason: str 
                              "not see; the agent makes a new version and a new card.")
     if accepted and card["options"] and choice is not None and not 0 <= choice < len(card["options"]):
         raise ValueError("choice out of range")
+    if accepted and card["kind"] in MOTION_KINDS:
+        from .motion import cards as motion_cards
+        motion_cards.precheck(card)
     db.update("cards", card_id, status="accepted" if accepted else "declined", choice=choice, reason=reason,
               decided_at=db.now())
     card = get(card_id)
     if accepted and card["kind"] == "rule":
         _write_rule(card)
+    if card["kind"] in MOTION_KINDS:
+        from .motion import cards as motion_cards
+        motion_cards.on_decided(card)
     if accepted and card["kind"] == "publish" and choice == 1 and (card.get("data") or {}).get("standing_offer"):
         grant_standing("shorts", card)
     if card.get("job"):

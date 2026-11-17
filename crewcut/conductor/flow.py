@@ -162,6 +162,9 @@ def on_card_decided(card: dict) -> None:
                       f"{card.get('reason') or 'see the latest chat messages in _onboarding'}. Change the pack, make a "
                       "new preview, then a new profile card.")
         return
+    if ((kind in ("motion-plan", "style-frame", "template", "baseline") or (card.get("data") or {}).get("motion_merge"))
+            and _motion_card(episode, card, accepted)):
+        return
     if not accepted and kind == "spend":
         # "Render on this machine": local is fine for this episode; the crew carries on locally and does not ask again
         try:
@@ -218,6 +221,43 @@ def on_card_decided(card: dict) -> None:
     elif kind == "rule":
         d = card.get("data") or {}
         post(episode, f"Rule added for {d.get('step')}: {d.get('rule')}", card=card["id"])
+
+
+def _motion_card(episode: str, card: dict, accepted: bool) -> bool:
+    """The answer to a motion card (crewcut/motion/cards.py). True when handled here; a no on a motion plan or a style
+    frame goes the usual way (a new version that answers it)."""
+    kind, d = card["kind"], card.get("data") or {}
+    if d.get("motion_merge"):
+        if accepted:
+            queue.add(episode, "critic", "edit",
+                      f"The user agreed to merge the motion lessons (card #{card['id']}). Merge duplicates in "
+                      "brand/rules/motion.md: keep every id a plan cites, keep the evidence, keep the user's words "
+                      "verbatim. Show the merged file in the chat before it replaces the old one.")
+        return True
+    if kind == "motion-plan" and accepted:
+        mp = d.get("motion_plan") or {}
+        queue.add(episode, card.get("identity") or "editor", "edit",
+                  f"The user approved the motion plan (card #{card['id']}, {mp.get('file')}). Build columns (b) and "
+                  f"(c) now: each new piece with `crewcut motion new {episode} <insert-id> --from <brief.md>`, then "
+                  "its style frame card before anything animated. Every motion insert in the edit plan keeps its "
+                  '"beat" and "column".', data=_resume_of(card))
+        return True
+    if kind == "style-frame" and accepted:
+        queue.add(episode, card.get("identity") or "editor", "edit",
+                  f"The user approved the style frame of {d.get('insert')} (card #{card['id']}). Build the animation "
+                  "now; the Critic reviews it before anyone sees it.", data=_resume_of(card))
+        return True
+    if kind == "template":
+        t = d.get("template") or {}
+        post(episode, f"'{t.get('title') or t.get('name')}' is in your library now." if accepted else
+             f"'{t.get('title') or t.get('name')}' stays a one-off in this episode.", card=card["id"], author="editor")
+        return True
+    if kind == "baseline":
+        new = (d.get("new") or {}).get("episode")
+        post(episode, f"The motion bar is now {new}. The next video has to beat it." if accepted else
+             "The motion bar stays where it was.", card=card["id"], author="critic")
+        return True
+    return False
 
 
 def after_job(job: dict, res) -> None:

@@ -267,10 +267,12 @@ def count(plan: dict, words: list[dict], L: dict, template_sounds: dict[str, int
     # all motion
     if short:
         lo, hi = L["shorts"]["total"]
+        motion_max = int(hi)
         lvl = "ERROR" if len(motion) > hi else ("NOTE" if len(motion) < lo else "OK")
         add(lvl, "motion-total", f"{len(motion)} motion moments in this Short (pack: {lo} to {hi})")
     else:
         limit = L["per_minute_max"] * minutes
+        motion_max = int(limit + 1e-9)
         rate = len(motion) / minutes if minutes else 0.0
         add("ERROR" if len(motion) > limit + 1e-9 else "OK", "motion-rate",
             f"{len(motion)} motion moments in {minutes:.1f} min = {rate:.1f} per minute "
@@ -377,6 +379,7 @@ def count(plan: dict, words: list[dict], L: dict, template_sounds: dict[str, int
         "counts": {"motion": len(motion), "big": len(big), "overlays": len(overlays), "heroes": heroes,
                    "per_minute": round(len(motion) / minutes, 2) if minutes else None, "keywords": kw,
                    "sounds": sounds, "motion_share_of_full": round(share, 3)},
+        "max": {"big": big_max, "motion": motion_max, "heroes": hmax},
         "moments": [{"id": x["id"], "scene": x["scene"], "source": x["source"], "start": round(x["start"], 3),
                      "end": round(x["end"], 3), "full": x["full"]} for x in motion],
         "lengths": lengths, "gaps": gaps, "sentences": per_sentence, "speaker_between": between,
