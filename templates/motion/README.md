@@ -236,3 +236,77 @@ and the frame closes. A short list wraps around, so the reel always travels at l
 
 Cues: `cueAt` (the frame lands on the word). Sounds: `reel_tick` at `rollAt`, `click` at `landAt`. Limits: lists of
 three or fewer show only one neighbour on each side; words over ~14 letters shrink toward `minSize`.
+
+### `chapter_card` (full, 3.0 s)
+
+A chapter opener caused by a motion: on the pack ground a short soft flash marks a point, a disc grows from it over
+the frame (it reveals the next ground, a pastel of the palette with its own light, through a matte) with two thin
+rings in palette colours running ahead of it; then the chapter number (accent, half size) and the title rise out of
+their baselines. The camera pushes in slowly while it holds and pushes through (+8 %) at the end while the type
+sinks.
+
+| Param | Default | Meaning |
+|---|---|---|
+| `number`, `title` | `2`, `"Run it offline"` | the number (shown as `02`) and the title; the title breaks into two balanced lines when it does not fit |
+| `index` | `null` | which pastel is the next ground (default `number - 1`, so chapters take the palette in order) |
+| `point` | `[0.5, 0.5]` | where the disc starts (fractions of the frame), e.g. where a click or a gesture was |
+| `size`, `minSize` | `140`, `96` | title size and its floor |
+| `growAt`, `outAt` | `0.0`, `null` | the disc starts; the type sinks and the camera pushes through |
+
+Sounds: `whoosh` on the entrance. Limits: titles of more than two lines shrink toward `minSize`.
+
+### `quote` (full, 5.0 s, min 4)
+
+A quote set large and dim (35 %) on the pack ground, line by line out of the baselines, with a hanging opening mark
+in the second palette colour. A light runs along the key words letter by letter, brings them to full strength with
+a short accent window on its front, and an accent stroke draws itself under them; the source rises below. The cut in
+lands on a camera settle (104 % to 100 %), then the slow push; at the end the strokes retract and the lines sink.
+
+| Param | Default | Meaning |
+|---|---|---|
+| `text`, `key`, `source` | a 10-word quote, its last 6 words, `"From the comments"` | the quote, the words the light brings up (a substring; empty = all), the source line |
+| `size`, `minSize`, `dim` | `84`, `56`, `35` | type size (wrapped by measured words, at most 4 lines), its floor, the dim opacity |
+| `lightAt`, `lightS` | `0.9`, `0.05` | the light run starts and its speed in seconds per letter |
+| `mark` | `true` | the hanging opening mark |
+| `outAt` | `null` | the exit |
+
+Sounds: `whoosh` at `lightAt`. Limits: about 60 words at most; the key must be written exactly as in the text.
+
+### `versus` (full, 5.0 s)
+
+Two things side by side. Their names rise in, each in a palette colour that reads on the ground (`CC.textColor`), a
+short line draws itself between them, and per row (2 to 3 at most, the label centred between the columns) the two
+values count up like meters (`CC.meter`) and land together. Then the winner grows by 5 % (a spring under 4 %), an
+accent stroke draws under its name, and every layer of the other side dims to 38 %. The cut in lands on a camera
+settle; at the end everything sinks or rolls away.
+
+| Param | Default | Meaning |
+|---|---|---|
+| `left`, `right` | `"Laptop"`, `"Rented GPU"` | the two names |
+| `rows` | two rows | `[{"label", "left", "right", "better": "lower" or "higher"}]`, at most 3 |
+| `winner` | `"auto"` | `"left"`, `"right"`, `null` (no decision), or `"auto"` = the side better in more rows |
+| `size`, `minSize`, `nameSize`, `labelSize` | `120`, `72`, `72`, `42` | values, their floor, names, row labels (never under 40) |
+| `countAt`, `count`, `decideAt` | `0.45`, `1.2`, `null` | the count, its length, the decision (default 0.3 s after the landing) |
+| `outAt` | `null` | the exit |
+
+Cues: `decideAt`. Sounds: `reel_tick` at `countAt`. Limits: values are whole numbers or decimals as written; a
+winner column grown by 5 % sits a few pixels off the row line far from the middle.
+
+### `callout` (overlay, 2.5 s)
+
+A hand-drawn pointer at something in the picture: an optional word rises out of its baseline, a curved accent line
+draws itself from the word to the thing (tapered start, round end) and a two-stroke arrow head snaps open where it
+arrives; everything pushes in around the target; at the end the line retracts into the target, the head closes and
+the word sinks. The word is placed above or below the target toward the middle of the frame, kept in the safe box
+and moved off the face box when it would touch it.
+
+| Param | Default | Meaning |
+|---|---|---|
+| `target` | `[0.80, 0.62]` | what it points at (fractions of the frame) |
+| `word`, `wordAt` | `"this one"`, `null` | the word (empty = a bare arrow) and where it sits (default: automatic) |
+| `size`, `minSize` | `96`, `60` | word size; long words shrink to 42 % of the safe width |
+| `bend`, `arrow` | `0.28`, `true` | the curve's bend and the head |
+| `drawAt`, `outAt` | `0.0`, `null` | the start and the exit |
+
+Sounds: `whoosh` at `drawAt`. Limits: one target; the plan has to know where the thing is (no tracking); a target
+inside the face box is allowed (pointing at a gesture), the word is not.
