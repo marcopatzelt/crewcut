@@ -28,6 +28,9 @@ The motion workflow (no engine; docs/motion-workflow.md):
     crewcut motion new EPISODE INSERT_ID --from brief.md
     crewcut motion style-frame EPISODE INSERT_ID --ours F [--ours F] [--ref F] [--natural]
     crewcut motion promote EPISODE INSERT_ID --name NAME [--title T]
+    crewcut motion report EPISODE --skeleton | --from F
+    crewcut motion lessons
+    crewcut motion reference add LINK_OR_FILE --reason R [--by user|scout] [--episode E] | from-chat | list
 
 Exit codes: 0 ok, 1 error, 2 usage, 3 `render palette` found one hue above the limit (plain output only).
 """
@@ -1157,6 +1160,98 @@ def promote_cmd(app: App, episode, insert_id, name, title):
     e = lib.promote(episode, insert_id, name, _sample_renderer(), title=title)
     out(app, e, f"{name} v{e['version']} is in your pack (brand/templates/motion/{name}.jsx), waiting for your yes "
         f"on card #{e.get('card')}.")
+
+
+@cli.command("report")
+@click.argument("episode")
+@click.option("--from", "from_", default=None, help="The Critic's filled form (JSON).")
+@click.option("--skeleton", is_flag=True, help="Write the form to fill: review/motion-report-input.json.")
+@click.pass_obj
+@handle_error
+def report_cmd(app: App, episode, from_, skeleton):
+    """The motion report of a finished video against the bar; appends the lessons (at least one)."""
+    from .. import paths
+    from . import ratchet
+    ep_dir = paths.episode_dir(episode)
+    if skeleton or not from_:
+        p = ep_dir / "review" / "motion-report-input.json"
+        if p.exists():
+            out(app, {"form": str(p)}, f"review/{p.name} exists already; fill it, then --from review/{p.name}")
+            return
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(ratchet.skeleton(episode), ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        out(app, {"form": str(p)}, f"review/{p.name}: fill it (better, behind, upgrades, lessons with evidence), "
+            f"then `crewcut motion report {episode} --from review/{p.name}`.")
+        return
+    src = ep_dir / from_ if not os.path.isabs(from_) and (ep_dir / from_).is_file() else from_
+    data = parse_json_opt(f"@{src}", "--from")
+    r = ratchet.report(episode, data if isinstance(data, dict) else {})
+    human = [f"{r['file']}: {r['verdict_text']}", f"  better: {r['summary']['better']}",
+             f"  behind: {r['summary']['behind']}", f"  next:   {r['summary']['next']}",
+             "  lessons: " + ", ".join(x["id"] for x in r["lessons"])]
+    if r.get("baseline_card"):
+        human.append(f"card #{r['baseline_card']} asks whether this video becomes the bar")
+    out(app, r, "\n".join(human))
+
+
+@cli.command("lessons")
+@click.pass_obj
+@handle_error
+def lessons_cmd(app: App):
+    """The channel's motion lessons (brand/rules/motion.md) and the bar."""
+    from . import lessons as ls
+    from . import ratchet
+    b = ratchet.bar()
+    rows = ls.read()
+    human = [f"bar: {b['episode']} (since {b.get('since')})" if b else "bar: none yet (the first approved video)"]
+    human += [f"  {x['id'] or '-'}  {x['rule']}" for x in rows] or ["  no lessons yet"]
+    if ls.needs_merge():
+        human.append(f"  {len(rows)} lessons: above {ls.MERGE_ABOVE}, the Critic proposes a merge")
+    out(app, {"bar": b, "lessons": rows}, "\n".join(human))
+
+
+@cli.group("reference")
+def reference_grp():
+    """Motion references: reels and videos to learn timing and look from (they stay on this computer)."""
+
+
+@reference_grp.command("add")
+@click.argument("source")
+@click.option("--reason", required=True, help="What to learn from it (the user's own sentence when they sent it).")
+@click.option("--by", type=click.Choice(["user", "scout"]), default="user")
+@click.option("--episode", default=None, help="The episode it was found for (the Scout: required).")
+@click.option("--tag", "tags", multiple=True)
+@click.option("--no-download", is_flag=True, help="Keep only the link.")
+@click.pass_obj
+@handle_error
+def reference_add(app: App, source, reason, by, episode, tags, no_download):
+    """File a link or a local clip or still."""
+    from . import references as rf
+    e = rf.add(source, reason, by=by, episode=episode or os.environ.get("CREWCUT_EPISODE") or None, tags=list(tags),
+               download=None if no_download else rf.default_download)
+    out(app, e, f"{e['id']}: {e.get('link') or e.get('file')} ({'file kept here' if e.get('file') else 'link only'})")
+
+
+@reference_grp.command("from-chat")
+@click.option("--episode", default=None)
+@click.option("--text", required=True, help="The user's message with the link(s).")
+@click.pass_obj
+@handle_error
+def reference_from_chat(app: App, episode, text):
+    """The Showrunner files what the user dropped in the chat: each link, with the user's sentence as the reason."""
+    from . import references as rf
+    rows = rf.from_message(episode or os.environ.get("CREWCUT_EPISODE") or None, text)
+    out(app, rows, "\n".join(f"{e['id']}: {e['link']} - {e['reason']}" for e in rows) or "no link in the message")
+
+
+@reference_grp.command("list")
+@click.pass_obj
+@handle_error
+def reference_list(app: App):
+    from . import references as rf
+    rows = rf.read()
+    out(app, rows, "\n".join(f"{e['id']}  {e.get('by'):<5} {e.get('link') or e.get('file')}  {e.get('reason')}"
+                             for e in rows) or "no references yet")
 
 
 def main(argv: list[str] | None = None) -> int:
