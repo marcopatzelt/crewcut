@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { CODE_RE, deviceAllowed, signInAllowed, Steps, type Step } from "./connect";
 import { bytesWords, checkDocker, docker, dockerEnv, dockerSocket, imageExists, pullImage } from "./docker";
 import { IMAGE, imageTag, RELEASES } from "./release";
-import { deleteToken, getToken, keychainAvailable, setToken } from "./secrets";
+import { deleteToken, getToken, keychainAvailable, loginProblem, setToken } from "./secrets";
 import { SettingsFile } from "./settings";
 import * as stack from "./stack";
 import { startUpdates } from "./updater";
@@ -23,7 +23,19 @@ const SHOTS = process.env.CREWCUT_DESKTOP_SHOTS || "";
 const res = (name: string) => (app.isPackaged ? join(process.resourcesPath, name) : join(__dirname, "..", "build", name));
 const ICON = res("icon.png");
 
-if (!app.requestSingleInstanceLock()) app.quit();
+// `crewcut --help` / `--version` from a shell: print and leave, without Docker and without a window.
+if (process.argv.some((a) => a === "--help" || a === "-h")) {
+  process.stdout.write("Crewcut desktop app. Start it from the app menu; it runs Crewcut in Docker and opens it.\n" +
+    "  --version   print the version\n  --help      this text\n");
+  app.exit(0);
+}
+if (process.argv.includes("--version")) {
+  process.stdout.write(`${app.getVersion()}\n`);
+  app.exit(0);
+}
+// One app at a time: a second start only brings the running window to the front.
+const firstInstance = app.requestSingleInstanceLock();
+if (!firstInstance) app.exit(0);
 // CI's virtual machines have no GPU; the pictures of the pages are then drawn in software
 if (SHOTS) app.disableHardwareAcceleration();
 
@@ -181,7 +193,19 @@ function createMain(): void {
 
 // ---------- the steps: Docker, studio folder, image, stack ----------
 
-async function startStack(): Promise<{ ok: boolean; text?: string }> {
+const LOGIN_PROBLEM = {
+  "no-keychain": "Your Claude login could not be read: Crewcut cannot reach your system's keychain (start it from the " +
+    "app menu, not a terminal). The login is kept; connect again, or restart Crewcut from the menu.",
+  unreadable: "Your Claude login could not be read; connect again. The old one is kept until then.",
+} as const;
+
+async function startStack(): Promise<{ ok: boolean; text?: string; login?: string }> {
+  const problem = loginProblem();
+  const login = problem ? LOGIN_PROBLEM[problem] : undefined;
+  if (await stack.health(PORT)) { // Crewcut already runs: never pull or restart a healthy stack on start
+    stackStarted = true;
+    return { ok: true, login };
+  }
   const d = await checkDocker();
   if (!d.cli || !d.running) return { ok: false, text: "Docker is not running." };
   if (!d.compose) return { ok: false, text: `Docker Compose ${d.composeVersion ?? "(none)"} is too old; 2.24 or newer is needed.` };
@@ -238,7 +262,7 @@ async function startStack(): Promise<{ ok: boolean; text?: string }> {
   if (ready !== true) return { ok: false, text: ready };
   settings.set({ image: ref });
   send("stack:progress", { phase: "ready", text: "Crewcut is ready." });
-  return { ok: true };
+  return { ok: true, login };
 }
 
 /** Watches the container while Crewcut starts: when its start fails and Docker starts it over, say so with the
@@ -389,6 +413,7 @@ function registerIpc(): void {
     const s = settings.get();
     return { studioDir: s.studioDir, keepRunning: s.keepRunning, onboarded: s.onboarded, claude: s.claude ?? null,
       codex: s.codex ?? null, claudeConnected: Boolean(getToken()) || s.claude?.where === "engine volume",
+      loginProblem: (() => { const p = loginProblem(); return p ? LOGIN_PROBLEM[p] : null; })(),
       keychain: keychainAvailable() };
   });
   own("settings:keep-running", (_e, on: boolean) => {
@@ -475,7 +500,7 @@ app.on("window-all-closed", () => {
   if (!settings?.get().keepRunning) app.quit();
 });
 
-void app.whenReady().then(() => {
+if (firstInstance) void app.whenReady().then(() => {
   settings = new SettingsFile(join(app.getPath("userData"), "settings.json"), homedir());
   if (SHOTS) settings.set({ onboarded: false });
   buildMenu();

@@ -17,6 +17,14 @@ export function keychainAvailable(): boolean {
   return true;
 }
 
+/** Why a stored login cannot be used: "no-keychain" (the app runs without the desktop's keychain, e.g. started from a
+ *  terminal outside the desktop session) or "unreadable" (the keychain did not decrypt it). null: fine or none. */
+export function loginProblem(): "no-keychain" | "unreadable" | null {
+  if (!existsSync(file())) return null;
+  if (!keychainAvailable()) return "no-keychain";
+  return getToken() ? null : "unreadable";
+}
+
 export function getToken(): string | null {
   try {
     if (!existsSync(file()) || !keychainAvailable()) return null;

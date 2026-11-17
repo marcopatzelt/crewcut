@@ -47,7 +47,7 @@ module.exports = {
   },
   nsis: { oneClick: true, perMachine: false },
   linux: {
-    executableName: "crewcut",
+    executableName: "crewcut-desktop", // `crewcut` is the command line of the Python package
     icon: "build/icon.png",
     category: "AudioVideo",
     target: ["AppImage", "deb"],

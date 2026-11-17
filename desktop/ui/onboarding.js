@@ -174,7 +174,7 @@ async function startStep() {
     return;
   }
   const s = await D.settings();
-  if (!s.claudeConnected) return connectStep(false);
+  if (r.login || !s.claudeConnected) return connectStep(r.login || "");
   await D.openCrewcut();
 }
 
@@ -252,13 +252,14 @@ function codexBlock(onDone, label = "Connect Codex (beta) instead") {
   return { box, status, start };
 }
 
-function connectStep() {
+function connectStep(problem) {
   const finish = () => setTimeout(() => void D.openCrewcut(), 900);
   const claude = connectBlock(finish);
   const codex = codexBlock(finish);
   show(
     slate("wave"),
     h("h1", {}, "Connect Claude."),
+    problem ? h("p", { class: "error", role: "alert" }, problem) : null,
     h("p", {}, "Crewcut runs on your own Claude plan. Claude's page opens in your browser; sign in and paste the code it shows. The login stays in your system's keychain."),
     claude.box,
     claude.status,
@@ -276,13 +277,14 @@ async function settingsView(preview) {
   view.className = "view settings";
   const close = (connected) => (preview ? undefined : D.closeSettings({ connected }));
 
+  const problemLine = s.loginProblem ? h("p", { class: "error", role: "alert" }, s.loginProblem) : null;
   const claudeLine = h("p", {}, s.claudeConnected
     ? `Connected${s.claude && s.claude.email ? ` as ${s.claude.email}` : ""}. ${s.claude && s.claude.where === "keychain"
       ? "The login is in your system's keychain." : "The login is in Crewcut's engine volume."}`
     : "Not connected. Nothing can run until Claude or Codex is connected.");
   const claude = connectBlock(() => close(true));
   const claudeCard = h("section", { class: "card", "aria-label": "Claude" },
-    h("h2", {}, "Claude"), claudeLine,
+    h("h2", {}, "Claude"), problemLine, claudeLine,
     s.claudeConnected
       ? h("div", { class: "row" }, h("button", { class: "secondary", onclick: async (e) => {
         e.target.disabled = true;

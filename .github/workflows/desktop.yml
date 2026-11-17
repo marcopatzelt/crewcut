@@ -147,7 +147,7 @@ jobs:
               export DISPLAY=:99
               sleep 2
               screen() { xwd -root -silent -display :99 | convert xwd:- "$CREWCUT_DESKTOP_SHOTS/screen.png"; }
-              set -- release/linux-unpacked/crewcut --no-sandbox --disable-gpu ;;
+              set -- release/linux-unpacked/crewcut-desktop --no-sandbox --disable-gpu ;;
             macOS)
               dir=release/mac-arm64; [ "$(uname -m)" = x86_64 ] && dir=release/mac
               screen() { screencapture -x "$CREWCUT_DESKTOP_SHOTS/screen.png"; }
