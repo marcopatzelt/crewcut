@@ -1,0 +1,88 @@
+From d5c189d08ce3c165e6ce786180a8769f258c99dc Mon Sep 17 00:00:00 2001
+From: Marco Patzelt <68855238+marcopatzelt@users.noreply.github.com>
+Date: Tue, 17 Nov 2026 09:41:51 +0100
+Subject: [PATCH] keys.setEase: accept timeBase (layer|comp) like prop.addKey
+ and keys.set
+
+A script that keys in comp time had to subtract the layer start itself before
+setting an ease; on an offset layer the ease otherwise landed on the wrong key.
+The default stays layer time.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+---
+ crates/engine/src/cmd/anim.rs       | 11 ++++++++--
+ crates/engine/src/tests/key_time.rs | 32 +++++++++++++++++++++++++++++
+ 2 files changed, 41 insertions(+), 2 deletions(-)
+
+diff --git a/crates/engine/src/cmd/anim.rs b/crates/engine/src/cmd/anim.rs
+index e23fc736..c10cf773 100644
+--- a/crates/engine/src/cmd/anim.rs
++++ b/crates/engine/src/cmd/anim.rs
+@@ -359,7 +359,14 @@ fn nearest_key(keys: &[Keyframe], t: Tick) -> Option<usize> {
+ /// Set one side's temporal ease of a key (Graph Editor handle drags, scripting).
+ fn set_ease(s: &mut Session, p: &Value) -> Result<Value> {
+     let (cid, lid, uid) = prop_ref(s, p, "keys.setEase")?;
+-    let t = Tick::from_seconds_f64(f_p(p, "time").ok_or_else(|| bad("keys.setEase", "missing `time`"))?);
++    // Layer time by default, as before; `timeBase: "comp"` matches prop.addKey and keys.set, so a
++    // script that keys in comp time does not have to subtract the layer's start itself.
++    let base = KeyTimeBase::from_params(p, "keys.setEase")?;
++    let t = {
++        let comp = s.project.comp(cid).ok_or(EngineError::NoComp)?;
++        let layer = comp.layer(lid).ok_or(EngineError::NoComp)?;
++        key_time(layer, comp.frame_rate, p, "time", base, "keys.setEase", false)?.ok_or_else(|| bad("keys.setEase", "missing `time`"))?
++    };
+     let out = match str_p(p, "side") {
+         Some("in") => false,
+         Some("out") => true,
+@@ -587,7 +594,7 @@ pub fn specs() -> Vec<CommandSpec> {
+             "Set Keyframe Ease",
+             [],
+             None,
+-            "{layer?, path|prop, time (layer s), side: in|out, dim?, speed?, influence? %, merge?}",
++            "{layer?, path|prop, time (layer s by default), timeBase?: layer|comp, side: in|out, dim?, speed?, influence? %, merge?}",
+             has_comp,
+             set_ease
+         ),
+diff --git a/crates/engine/src/tests/key_time.rs b/crates/engine/src/tests/key_time.rs
+index b5ec3a15..1557deec 100644
+--- a/crates/engine/src/tests/key_time.rs
++++ b/crates/engine/src/tests/key_time.rs
+@@ -150,3 +150,35 @@ fn explicit_base_on_static_property_reports_timing_without_enabling_animation()
+     assert_eq!(reply["value"], 25.0);
+     assert!(prop(&s, layer, "transform/opacity").keys.is_empty());
+ }
++
++/// `keys.setEase` takes `timeBase` like `prop.addKey` and `keys.set`: a comp time finds the key an
++/// offset or stretched layer stores at another layer time, and the default stays layer time.
++#[test]
++fn set_ease_finds_the_key_by_comp_time_on_offset_and_stretched_layers() {
++    use effectcraft_keyframe::Interp;
++    for stretch in [100.0, 200.0] {
++        let (mut s, layer) = offset_layer(10.5, stretch);
++        for (time, value) in [(15.3, 0), (16.0, 100)] {
++            s.execute("prop.addKey", json!({"layer": layer, "path": "transform/opacity", "time": time, "timeBase": "comp", "value": value})).unwrap();
++        }
++        // Checked: the schema accepts the parameter. Read as layer time, 15.3 s would be nearest
++        // to the second key.
++        s.execute_checked("keys.setEase", json!({"layer": layer, "path": "transform/opacity", "time": 15.3, "timeBase": "comp", "side": "out", "speed": 0, "influence": 60}))
++            .unwrap();
++        let p = prop(&s, layer, "transform/opacity");
++        assert_eq!(p.keys[0].out_interp, Interp::Bezier, "stretch {stretch}: the key at comp 15.3 s is eased");
++        assert!((p.keys[0].out_ease[0].influence - 0.6).abs() < 1e-9, "stretch {stretch}");
++        assert_eq!(p.keys[1].out_interp, Interp::Linear, "stretch {stretch}: the later key is untouched");
++        s.execute("edit.undo", json!({})).unwrap();
++        assert_eq!(prop(&s, layer, "transform/opacity").keys[0].out_interp, Interp::Linear);
++        // The default base is unchanged: layer seconds.
++        let layer_time = (16.0 - 10.5) * 100.0 / stretch;
++        s.execute("keys.setEase", json!({"layer": layer, "path": "transform/opacity", "time": layer_time, "side": "in", "speed": 0, "influence": 90})).unwrap();
++        let p = prop(&s, layer, "transform/opacity");
++        assert_eq!(p.keys[1].in_interp, Interp::Bezier, "stretch {stretch}");
++        assert_eq!(p.keys[0].out_interp, Interp::Linear, "stretch {stretch}");
++        let before = prop(&s, layer, "transform/opacity");
++        assert!(s.execute("keys.setEase", json!({"layer": layer, "path": "transform/opacity", "time": 0, "timeBase": "seconds", "side": "in"})).is_err());
++        assert_eq!(prop(&s, layer, "transform/opacity"), before);
++    }
++}
+-- 
+2.53.0
+
