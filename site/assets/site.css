@@ -190,7 +190,7 @@ main > section.g2 > .wrap > .group { min-height: 0; display: flex; flex-directio
 /* ---------------------------------------------------------------- the crew: photo tiles with Slate */
 .crew { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gutter); }
 .role { position: relative; border-radius: 24px; overflow: hidden; height: 252px; background: #0E1C18; color: #fff; display: flex; flex-direction: column; }
-.role__bg { width: 100%; height: 132px; flex: none; object-fit: cover; }
+.role__bg { width: 100%; height: 132px; flex: none; object-fit: contain; background: #0E1C18; }
 .role__head { display: flex; align-items: center; gap: 10px; }
 .role__av { width: 36px; height: 36px; flex: none; }
 .role__tx { padding: 14px 16px 16px; }
@@ -311,7 +311,7 @@ footer.closing > .wrap { justify-content: space-between; gap: 32px; }
   .crew-sec { --hm: 2; }
   .crew { grid-template-columns: 1fr 1fr; gap: var(--gutter); }
   .role { border-radius: 20px; height: auto; }
-  .role__bg { height: 96px; object-position: 0 0; }
+  .role__bg { height: auto; aspect-ratio: 576 / 264; }
   .role__av { width: 28px; height: 28px; }
   .role__head { gap: 6px; }
   .role__tx { padding: 10px 10px 12px; }
