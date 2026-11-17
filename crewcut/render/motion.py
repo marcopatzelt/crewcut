@@ -198,8 +198,12 @@ def backdrop_cmd(plan: Plan, ins: Insert, out: Path) -> list[str]:
     if ins.size and tuple(ins.size) != (W, H):         # proof-top stage: the part of the frame the stage shows
         vf += f"scale={ins.size[0]}:{ins.size[1]}:force_original_aspect_ratio=increase:flags=lanczos," \
               f"crop={ins.size[0]}:{ins.size[1]},"
+    # BT.709, limited range, and tagged as such: EffectCraft reads untagged HD footage as BT.709, ffmpeg as BT.601,
+    # which shifted saturated colours by up to 40 levels (image CI, 17 Nov 2026). Explicit on both sides.
     return [media.ffmpeg(), "-y", "-loglevel", "error", *src, "-an",
-            "-vf", f"{vf}fps={fps},setsar=1,tpad=stop_mode=clone:stop_duration=1,format=yuv422p10le",
+            "-vf", f"{vf}fps={fps},setsar=1,tpad=stop_mode=clone:stop_duration=1,"
+                   "scale=out_color_matrix=bt709:out_range=tv,format=yuv422p10le",
+            "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv",
             "-frames:v", str(n), "-c:v", "prores_ks", "-profile:v", "3", str(out)]
 
 
