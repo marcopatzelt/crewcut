@@ -109,6 +109,14 @@ export const api = {
   prompter: (id: string) => request<PrompterLink>("GET", `/api/episodes/${enc(id)}/prompter`),
   /** What the episode view shows first: thumbnails, the cut, 3D scenes, the rented GPU. */
   media: (id: string) => request<EpisodeMedia>("GET", `/api/episodes/${enc(id)}/media`),
+  /** The GPU card's Stop: deletes the machines of that render now; the frames that came home stay. */
+  stopGpu: (id: string, rental: number) =>
+    request<{ stopped: number; rentals: number[]; cost_usd: number }>(
+      "POST",
+      `/api/episodes/${enc(id)}/gpu/${rental}/stop`,
+    ),
+  /** "Make a Short": a Short in clip mode from this episode; the Scout starts on the passages. */
+  makeShort: (id: string) => request<{ episode: string; job: number }>("POST", `/api/episodes/${enc(id)}/shorts`),
 
   async upload(episode: string, files: File[]): Promise<UploadResult[]> {
     if (backend) return backend.upload(episode, files);

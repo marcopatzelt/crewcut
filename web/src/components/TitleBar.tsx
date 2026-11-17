@@ -8,12 +8,13 @@ import { useState } from "react";
 import { ONBOARDING } from "../api/types";
 import { episodeNumber } from "../lib/format";
 import { ariaKeys, keyText } from "../lib/platform";
-import { messageOf, navigate, sayTo, setMenu, setPalette, toggleCrew } from "../store/actions";
+import { api } from "../api/client";
+import { messageOf, navigate, refreshState, setMenu, setPalette, toggleCrew } from "../store/actions";
 import { EMPTY, useUi } from "../store/store";
 import { PrompterButton } from "./PrompterPopover";
 
-/** The sentence "Make a Short" sends: the same as typing it in the chat (rule 3). */
-export const MAKE_SHORT = "Make a Short from this episode.";
+/** What the title bar says after "Make a Short" started one. */
+export const SHORT_STARTED = "Short started. The Scout looks for passages.";
 
 function Crumbs() {
   const view = useUi((s) => s.view);
@@ -65,9 +66,10 @@ function AtWork() {
   );
 }
 
-/** "Make a Short": one sentence to the chat; the Showrunner picks the passage. Errors stay next to the button. */
+/** "Make a Short": a Short in clip mode from this episode; the Scout's job appears in Working now. */
 function MakeShort({ episode }: { episode: string }) {
   const [error, setError] = useState<string | null>(null);
+  const [started, setStarted] = useState<string | null>(null);
   return (
     <>
       {error ? (
@@ -75,18 +77,25 @@ function MakeShort({ episode }: { episode: string }) {
           {error}
         </span>
       ) : null}
+      {started ? (
+        <button type="button" className="tb-done" role="status" onClick={() => navigate({ kind: "episode", id: started })}>
+          {SHORT_STARTED}
+        </button>
+      ) : null}
       <Button
         label="Make a Short"
         variant="secondary"
         size="sm"
         icon={<Plus size={16} aria-hidden="true" />}
-        tooltip="Asks the crew in the chat"
+        tooltip="Starts a Short from this episode; the Scout picks the passages"
         clickAction={async () => {
           setError(null);
           try {
-            await sayTo(episode, MAKE_SHORT);
+            const r = await api.makeShort(episode);
+            setStarted(r.episode);
+            refreshState();
           } catch (e) {
-            setError(`Couldn't ask. ${messageOf(e)}`);
+            setError(`Couldn't start it. ${messageOf(e)}`);
           }
         }}
       />

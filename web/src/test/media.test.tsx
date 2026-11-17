@@ -5,8 +5,8 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { App } from "../App";
 import type { EpisodeMedia } from "../api/types";
-import { STOP_GPU, choiceFor, wavePath } from "../views/EpisodeMedia";
-import { card, episode, episodeRoutes, job, message, mockApi, openAt, Reply, resetApp, state } from "./helpers";
+import { choiceFor, stoppedText, wavePath } from "../views/EpisodeMedia";
+import { card, episode, episodeRoutes, job, mockApi, openAt, Reply, resetApp, state } from "./helpers";
 
 beforeEach(() => resetApp());
 
@@ -45,6 +45,8 @@ const media: EpisodeMedia = {
     progress: 0.78,
     delete_note: "Deleted when done, frames come home",
     session: 7,
+    price_per_hour: 0.45,
+    cap_per_gpu_hour: 0.6,
   },
 };
 
@@ -117,27 +119,29 @@ describe("the episode's media", () => {
     await waitFor(() => expect(screen.queryByRole("button", { name: "Use A" })).toBeNull());
   });
 
-  it("asks the crew in the chat to stop the rented GPU", async () => {
+  it("stops the rented GPU for real, after one more press inside the card", async () => {
     const calls = mockApi({
       "GET /api/state": state({ episodes: [ep] }),
       ...episodeRoutes(ep, [], []),
       [`GET /api/episodes/${ep.id}/media`]: { ...media, thumbnails: [] },
-      [`POST /api/episodes/${ep.id}/messages`]: (c: { body: unknown }) =>
-        message({ id: 60, author: "user", text: (c.body as { text: string }).text }),
+      [`POST /api/episodes/${ep.id}/gpu/7/stop`]: { stopped: 1, rentals: [7], cost_usd: 0.31 },
     });
     openAt(ep.id);
     render(<App />);
     const gpu = await screen.findByRole("region", { name: "Rented RTX 4090" });
+    expect(within(gpu).getByText(/an hour · never above \$0\.60 per GPU-hour/)).toBeTruthy();
     await userEvent.click(within(gpu).getByRole("button", { name: "Stop" }));
+    expect(calls.some((c) => c.method === "POST")).toBe(false);          // the first press only asks
+    const ask = within(gpu).getByRole("group", { name: "Stop the rented GPU" });
+    await userEvent.click(within(ask).getByRole("button", { name: "Keep it running" }));
+    expect(within(gpu).queryByRole("group", { name: "Stop the rented GPU" })).toBeNull();
+    await userEvent.click(within(gpu).getByRole("button", { name: "Stop" }));
+    await userEvent.click(within(gpu).getByRole("button", { name: "Stop and delete" }));
     await waitFor(() =>
-      expect(calls.find((c) => c.method === "POST")).toEqual({
-        method: "POST",
-        path: `/api/episodes/${ep.id}/messages`,
-        body: { text: STOP_GPU },
-      }),
+      expect(calls.find((c) => c.method === "POST")?.path).toBe(`/api/episodes/${ep.id}/gpu/7/stop`),
     );
-    expect(await within(gpu).findByText(/Asked the crew to stop it/)).toBeTruthy();
-    expect(await screen.findByText(STOP_GPU)).toBeTruthy();
+    expect(await within(gpu).findByText(stoppedText(1, 0.31))).toBeTruthy();
+    expect(within(gpu).queryByRole("button", { name: "Stop" })).toBeNull();
   });
 
   it("says so honestly when an episode has no pictures yet, also on a server without the media route", async () => {

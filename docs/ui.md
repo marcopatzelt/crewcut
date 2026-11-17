@@ -32,9 +32,10 @@ opens that episode and uploads the files into its chat.
 radio group; the recommended one chosen with a mint ring; "Use A" accepts the open thumbnail card with that choice; the
 chosen one in a phone-size feed), the cut (frames, waveform from `peaks`, the Critic's markers, the style facts, the
 time axis), the 3D scenes (one large, four small, render tiles on the one in work) and the rented GPU (time left, so
-far, cap, progress, the delete note, Stop). Stop and "Make a Short" send one sentence to the chat, exactly as typing it
-would ("Stop the rented GPU now. Keep the frames that are done.", "Make a Short from this episode."): the API has no
-endpoint to stop a machine. The media load again every 4 s while a job of the episode runs, and at once when its jobs
+far, cap, progress, the price per hour with the cap per GPU-hour, the delete note, Stop). **Stop** asks once more
+inside the card (no dialog), then `POST /api/episodes/{id}/gpu/{rental}/stop` deletes the machines of that render; the
+frames that came home stay, and the card says what it cost. **Make a Short** calls `POST /api/episodes/{id}/shorts`: a
+Short in clip mode from this episode, and the Scout's job appears in Working now. The media load again every 4 s while a job of the episode runs, and at once when its jobs
 or cards change. A server without the endpoint (404) counts as "no media yet"; an error shows one line with "Try
 again".
 

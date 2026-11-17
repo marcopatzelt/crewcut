@@ -190,3 +190,10 @@ Separate port (`4748` by default), reachable from a phone in the same network. E
 | `GET /p/{token}` | the teleprompter page |
 | `GET /p/{token}/script` | `{"title", "mode": "full" or "points", "blocks": [{"text", "points": ["…"]}]}` |
 | `GET /p/{token}/control`, `POST /p/{token}/control` | `{"playing": bool, "speed": 1.0, "position": 0.0, "mirror": false, "size": 1.0}` (a second phone or the desktop can be the remote) |
+
+## Stop a rented GPU, make a Short
+
+| Method and path | Body | Answer |
+|---|---|---|
+| `POST /api/episodes/{id}/gpu/{rental}/stop` | none | `{stopped, rentals: [ids], cost_usd}`: every machine of that render (its compute session) is deleted now; frames that came home stay. 404 when the machine is not of this episode. Never spends money. |
+| `POST /api/episodes/{id}/shorts` | none | `{episode, job}`: a new Short in clip mode from this long episode, and the Scout's queued job (it shows in `/api/jobs` and Working now). 400 on a Short, 404 for an unknown episode. |

@@ -2,7 +2,7 @@
 // It answers the calls from docs/api.md with the fixtures and never runs anything.
 import { ApiError, type Backend, type EventHandler, type EventKind } from "../api/client";
 import type { Activity, Card, Episode, EpisodeMedia, Message, UploadResult } from "../api/types";
-import { DEMO_FILES, makeDemo, steps } from "./fixtures";
+import { DEMO_FILES, makeDemo, shortSteps, steps } from "./fixtures";
 
 const REPLY =
   "This is the demo. Nothing runs here, so nobody picks this up. Start Crewcut with Docker to work on a real episode.";
@@ -99,6 +99,51 @@ export function createDemoBackend(opts: { latency?: number; play?: boolean } = {
         }
       }
       if (method === "GET" && c === "prompter") return out(data.prompter);
+      if (method === "POST" && c === "gpu" && parts[5] === "stop") {
+        const media = data.media[b];
+        const gpu = media?.gpu;
+        if (!media || !gpu || String(gpu.session) !== parts[4]) throw notFound(path);
+        media.gpu = null;
+        emit("message", addMessage(b, "editor", `Stopped the rented GPU: 1 machine(s) deleted, $${gpu.so_far_usd.toFixed(2)} in all. The frames that came home stay.`));
+        for (const x of data.state.activity) {
+          if (x.episode === b && /rented/i.test(x.doing ?? "")) {
+            x.status = "done";
+            x.doing = "Stopped by you: the frames that came home stay";
+            emit("activity", x);
+          }
+        }
+        return out({ stopped: 1, rentals: [gpu.session], cost_usd: gpu.so_far_usd });
+      }
+      if (method === "POST" && c === "shorts") {
+        const src = data.state.episodes.find((x) => x.id === b);
+        if (!src) throw notFound(path);
+        if (src.kind === "short") throw new ApiError(400, "This is a Short already; make Shorts from a long episode.");
+        const n = String((nextEpisode += 1)).padStart(3, "0");
+        const ep: Episode = {
+          id: `${n}-short-${b.slice(4, 24)}`,
+          title: `Short from ${src.title}`.slice(0, 90),
+          step: "idea",
+          steps: shortSteps(["idea", "title", "edit", "thumbnail", "upload", "results"], ["working", "open", "open", "open", "open", "skipped"]),
+          updated: new Date().toISOString(),
+          open_cards: 0,
+          kind: "short",
+          mode: "clip",
+          source_episode: b,
+        };
+        data.state.episodes.unshift(ep);
+        data.details[ep.id] = { ...ep, project: { id: ep.id, title: ep.title, created: ep.updated, format: "portrait" }, files: [] };
+        data.messages[ep.id] = [];
+        const job = Math.max(0, ...data.state.activity.map((x) => x.job)) + 1;
+        const row: Activity = {
+          job, episode: ep.id, identity: "scout", step: "idea", doing: "Finding passages that stand on their own",
+          progress: null, status: "running", started: ep.updated, seconds: 0, cost_usd: 0, equiv_usd: null,
+        };
+        data.state.activity.unshift(row);
+        emit("message", addMessage(b, "showrunner", `Started a Short from this episode (${ep.id}). The Scout looks for passages that stand on their own.`));
+        emit("episode", ep);
+        emit("activity", row);
+        return out({ episode: ep.id, job });
+      }
       if (method === "GET" && c === "media") {
         if (!data.details[b]) throw notFound(path);
         const none: EpisodeMedia = { thumbnails: [], cut: null, scenes: null, gpu: null };

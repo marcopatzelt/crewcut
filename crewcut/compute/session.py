@@ -651,3 +651,26 @@ def session(episode: str | None = None, step: str | None = None, purpose: str = 
     """A compute session for `with`. See the module text."""
     episode = episode if episode is not None else (os.environ.get("CREWCUT_EPISODE") or None)
     return Session(episode, step, purpose, cap_usd, **kw)
+
+
+def stop_rental(rental_id: int, reason: str = "stopped by the user", provider=None) -> dict:
+    """The user's Stop on the GPU card: stop the session this machine belongs to and delete its machines now.
+
+    Frames that already came home stay in the episode; the render workbench sees the stop, ends its batches and keeps
+    what is done. Returns {stopped, rentals: [ids], cost_usd}. Stopping never spends money."""
+    row = rentals.get(int(rental_id))
+    if row is None:
+        raise ComputeError(f"no rented machine {rental_id}")
+    sid = rentals.detail(row).get("session")
+    if sid and state.get_session(sid):
+        s = Session.attach(sid, provider=provider)
+        ids = [r["id"] for r in s.live_rows()]
+        s.stop(reason)
+        if not s.closed:
+            s.close(reason)
+    else:
+        ids = [row["id"]] if row["status"] not in ("destroyed", "failed") else []
+        for rid in ids:
+            rentals.destroy(rid, reason, provider)
+    cost = sum(rentals.cost_so_far(rentals.get(rid)) for rid in ids if rentals.get(rid))
+    return {"stopped": len(ids), "rentals": ids, "cost_usd": round(cost, 4)}

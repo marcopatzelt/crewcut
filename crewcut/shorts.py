@@ -137,6 +137,21 @@ def results(episode: str, analytics=None) -> dict:
     return row
 
 
+def start_clip(source: str) -> dict:
+    """"Make a Short" on an episode: a new Short in clip mode from it, and the Scout's job to find the passages.
+    Returns {episode, job}. The job shows up in Working now like any other."""
+    from .conductor import queue
+    src = episodes.read(source)
+    if src.get("kind") == "short":
+        raise ValueError("this is a Short already; make Shorts from a long episode")
+    title = f"Short from {src.get('title') or source}"
+    short = episodes.create(title[:90], kind="short", mode="clip", source_episode=source)
+    task = (f"Make a Short in clip mode from episode {source} (skills/shorts, \"Clip\"). Find stand-alone passages with "
+            f"`crewcut cut candidates {source}`, then propose the best three on one card.")
+    jid = queue.add(short["id"], "scout", "idea", task)
+    return {"episode": short["id"], "job": jid}
+
+
 def standing_line() -> str:
     s = approvals.standing("shorts")
     if not s:

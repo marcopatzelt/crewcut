@@ -176,6 +176,37 @@ def create_app(start_worker: bool = True) -> FastAPI:
             raise HTTPException(404, "No such episode.") from None
         return media.episode_media(eid)
 
+    @app.post("/api/episodes/{eid}/gpu/{rental}/stop")
+    def stop_gpu(eid: str, rental: int):
+        """The GPU card's Stop: delete the rented machines of this render now; frames that are home stay."""
+        from ..compute import rentals as crentals
+        from ..compute.errors import ComputeError
+        from ..compute.session import stop_rental
+        row = crentals.get(rental)
+        if row is None or row.get("episode") != eid:
+            raise HTTPException(404, "No such rented machine in this episode.")
+        try:
+            res = stop_rental(rental, "stopped by you on the GPU card")
+        except ComputeError as e:
+            raise HTTPException(502, f"Couldn't stop it: {e}") from None
+        flow.post(eid, f"Stopped the rented GPU: {res['stopped']} machine(s) deleted, ${res['cost_usd']:.2f} in all. "
+                  "The frames that came home stay.", author="editor")
+        return res
+
+    @app.post("/api/episodes/{eid}/shorts")
+    def make_short(eid: str):
+        """"Make a Short": a Short in clip mode from this episode; the Scout starts on the passages."""
+        from .. import shorts
+        try:
+            res = shorts.start_clip(eid)
+        except FileNotFoundError:
+            raise HTTPException(404, "No such episode.") from None
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from None
+        flow.post(eid, f"Started a Short from this episode ({res['episode']}). The Scout looks for passages that stand "
+                  "on their own.", author="showrunner")
+        return res
+
     @app.post("/api/episodes")
     def post_episode(body: TextIn):
         text = body.text.strip()

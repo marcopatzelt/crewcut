@@ -204,6 +204,11 @@ function withState(s: UiState, change: (st: State) => Partial<State>): Partial<U
 
 let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
+/** Fetch the state again soon, e.g. after starting a job (the new row shows in Working now). */
+export function refreshState(): void {
+  refreshSoon();
+}
+
 /** Fetch the state again soon (several events in a row cause one fetch). */
 function refreshSoon(): void {
   if (refreshTimer) return;

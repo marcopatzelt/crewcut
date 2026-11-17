@@ -11,12 +11,14 @@ import { api, ApiError } from "../api/client";
 import type { Card, EpisodeMedia, MediaCut, MediaGpu, MediaScenes, MediaThumb } from "../api/types";
 import { ErrorLine, Loading } from "../components/bits";
 import { clock, usd } from "../lib/format";
-import { accept, messageOf, sayTo, upsertCard } from "../store/actions";
+import { accept, messageOf, upsertCard } from "../store/actions";
 import { EMPTY, useUi } from "../store/store";
 import { Avatar, SlateFigure } from "../slate/Slate";
 
-/** The sentence the GPU card's Stop sends: the crew stops the machine and keeps what is done (rule 3). */
-export const STOP_GPU = "Stop the rented GPU now. Keep the frames that are done.";
+/** What the GPU card says after Stop: the machines are deleted, what came home stays. */
+export function stoppedText(n: number, cost: number): string {
+  return `Stopped. ${n === 1 ? "The machine is" : `${n} machines are`} deleted, ${usd(cost)} in all. The frames that came home stay.`;
+}
 
 const EMPTY_MEDIA: EpisodeMedia = { thumbnails: [], cut: null, scenes: null, gpu: null };
 const POLL_MS = 4000;
@@ -367,8 +369,22 @@ function hm(iso: string): string {
 }
 
 export function GpuCard({ gpu, episode, frame }: { gpu: MediaGpu; episode: string; frame: string | null }) {
-  const [state, setState] = useState<"idle" | "asked" | "error">("idle");
+  // Stop is a real stop: one press asks in the card itself (no dialog), the second deletes the machines.
+  const [state, setState] = useState<"idle" | "confirm" | "stopping" | "stopped" | "error">("idle");
   const [error, setError] = useState("");
+  const [result, setResult] = useState("");
+  async function stop() {
+    setState("stopping");
+    setError("");
+    try {
+      const r = await api.stopGpu(episode, gpu.session);
+      setResult(stoppedText(r.stopped, r.cost_usd));
+      setState("stopped");
+    } catch (e) {
+      setError(messageOf(e));
+      setState("error");
+    }
+  }
   const progress = typeof gpu.progress === "number" ? Math.round(Math.min(1, Math.max(0, gpu.progress)) * 100) : null;
   const started = hm(gpu.started);
   return (
@@ -384,6 +400,12 @@ export function GpuCard({ gpu, episode, frame }: { gpu: MediaGpu; episode: strin
         <div>
           <h2 id="gpu-heading">Rented {gpu.name}</h2>
           {started ? <p className="gpu-sub">Running since {started}</p> : null}
+          {typeof gpu.price_per_hour === "number" ? (
+            <p className="gpu-sub">
+              {usd(gpu.price_per_hour)} an hour
+              {typeof gpu.cap_per_gpu_hour === "number" ? ` · never above ${usd(gpu.cap_per_gpu_hour)} per GPU-hour` : ""}
+            </p>
+          ) : null}
         </div>
       </div>
       <dl className="gpu-nums">
@@ -407,29 +429,46 @@ export function GpuCard({ gpu, episode, frame }: { gpu: MediaGpu; episode: strin
         value={progress ?? undefined}
         isIndeterminate={progress === null}
       />
-      <div className="gpu-foot">
-        <span className="dot mint" aria-hidden="true" />
-        <span className="gpu-note">{state === "asked" ? "Asked the crew to stop it. The frames that are done come home." : gpu.delete_note}</span>
-        {state !== "asked" ? (
-          <Button
-            label="Stop"
-            size="sm"
-            variant="secondary"
-            className="gpu-stop"
-            tooltip="Asks the crew in the chat to stop the machine"
-            clickAction={async () => {
-              try {
-                await sayTo(episode, STOP_GPU);
-                setState("asked");
-              } catch (e) {
-                setError(messageOf(e));
-                setState("error");
-              }
-            }}
-          />
-        ) : null}
-      </div>
-      {state === "error" ? <ErrorLine text={`Couldn't ask the crew. ${error}`} /> : null}
+      {state === "confirm" || state === "stopping" ? (
+        <div className="gpu-confirm" role="group" aria-label="Stop the rented GPU">
+          <p className="gpu-note">Stop now and delete the machine? The frames that came home stay; the rest is lost.</p>
+          <div className="gpu-confirm-actions">
+            <Button
+              label={state === "stopping" ? "Stopping…" : "Stop and delete"}
+              size="sm"
+              variant="primary"
+              className="gpu-stop"
+              isDisabled={state === "stopping"}
+              clickAction={stop}
+            />
+            <Button
+              label="Keep it running"
+              size="sm"
+              variant="secondary"
+              isDisabled={state === "stopping"}
+              clickAction={() => setState("idle")}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="gpu-foot">
+          <span className="dot mint" aria-hidden="true" />
+          <span className="gpu-note" role={state === "stopped" ? "status" : undefined}>
+            {state === "stopped" ? result : gpu.delete_note}
+          </span>
+          {state === "idle" || state === "error" ? (
+            <Button
+              label="Stop"
+              size="sm"
+              variant="secondary"
+              className="gpu-stop"
+              tooltip="Stops the render and deletes the machine; asks once more first"
+              clickAction={() => setState("confirm")}
+            />
+          ) : null}
+        </div>
+      )}
+      {state === "error" ? <ErrorLine text={`Couldn't stop it. ${error}`} onRetry={() => void stop()} /> : null}
     </section>
   );
 }

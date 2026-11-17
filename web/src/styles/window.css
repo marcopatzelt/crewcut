@@ -193,6 +193,25 @@
   color: var(--danger);
 }
 
+/* "Make a Short" started one: a quiet line that opens the new Short. */
+.tb-done {
+  min-height: 28px;
+  padding: 0 8px;
+  border-radius: var(--r-row);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-2);
+  transition: background-color var(--t-fast) linear;
+}
+
+.tb-done:hover {
+  background: var(--hover);
+}
+
+.tb-done:focus-visible {
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
 .menu-button {
   display: none;
 }
@@ -1893,6 +1912,23 @@
 
 .gpu-bar .astryx-progress-bar-fill {
   background: var(--gpu-mint);
+}
+
+/* Stop asks once more inside the card itself: no dialog (DESIGN.md rule 12). */
+.gpu-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--gpu-ink-2);
+}
+
+.gpu-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .gpu-foot {
