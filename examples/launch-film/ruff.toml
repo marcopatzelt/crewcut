@@ -1,0 +1,6 @@
+# The film's scripts keep the dense one-line style they were written and measured in (Blender scene scripts, the
+# sound generator, small Pillow helpers). The repository's other lint rules still apply here.
+extend = "../../pyproject.toml"
+
+[lint]
+ignore = ["E501", "E401", "E402", "E701", "E702", "E731", "E741", "B007", "B905", "F841", "I001"]
