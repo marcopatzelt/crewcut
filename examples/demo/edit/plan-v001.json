@@ -4,7 +4,7 @@
  "words": "work/words-v001.json",
  "base": {
   "color": "soft",
-  "seconds": 20
+  "seconds": 34
  },
  "base_until": null,
  "voice": null,
@@ -15,6 +15,7 @@
   0.38
  ],
  "speaker": [],
+ "motion_without_engine": "skip",
  "inserts": [
   {
    "id": "k1",
@@ -150,6 +151,38 @@
     ],
     "date": "23:50, 9 Nov 2026"
    }
+  },
+  {
+   "id": "m1",
+   "kind": "motion",
+   "scene": "number_roll",
+   "start": {
+    "word": "this",
+    "after": 20.0,
+    "offset": -0.2
+   },
+   "end": 25.5,
+   "transparent": false,
+   "backdrop": null,
+   "sound": true,
+   "data": {}
+  },
+  {
+   "id": "m2",
+   "kind": "motion",
+   "scene": "keyword_pop",
+   "start": {
+    "word": "word",
+    "after": 20.0,
+    "offset": -0.2
+   },
+   "end": {
+    "word": "you",
+    "offset": 0.6
+   },
+   "transparent": true,
+   "sound": true,
+   "data": {}
   }
  ],
  "sound": {

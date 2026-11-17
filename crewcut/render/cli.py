@@ -2,11 +2,12 @@
 
     crewcut render plan    <plan.json>
     crewcut render 2d      <plan.json> [--ids a,b] [--images-only]
+    crewcut render motion  <plan.json> [--ids a,b] [--draft] [--local | --rented] [--max-usd X]
     crewcut render 3d      <plan.json> [--local | --rented] [--gpus N] [--ids a,b] [--samples N] [--draft] [--max-usd X]
     crewcut render probe   <plan.json> [<id>,<id>] [--frame N[,N]] [--local | --rented] [--samples N]
     crewcut render cut     <plan.json>
     crewcut render shown   <plan.json>
-    crewcut render all     <plan.json> [--local | --rented] [--gpus N]
+    crewcut render all     <plan.json> [--local | --rented] [--gpus N]     (2d, motion, 3d, cut)
     crewcut render measure <image.png> [--pack DIR]
     crewcut render samples [--out DIR] [--formats landscape,portrait] [--frame -1] [--pack DIR]
     crewcut render capture <episode> --url URL | --html FILE | --terminal FILE [--seconds S] [--scroll KEYS]
@@ -29,7 +30,8 @@ from .. import brand
 from . import assemble, capture, measure, music, workbench
 from .plan import Plan, PlanError
 
-COMMANDS = ("plan", "2d", "3d", "probe", "cut", "shown", "all", "measure", "samples", "capture", "music-bed")
+COMMANDS = ("plan", "2d", "motion", "3d", "probe", "cut", "shown", "all", "measure", "samples", "capture",
+            "music-bed")
 
 
 def _ids(s: str | None) -> list[str] | None:
@@ -75,6 +77,13 @@ def parser() -> argparse.ArgumentParser:
     p = plan_cmd("2d", "render the 2D inserts with Chromium")
     p.add_argument("--ids", help="only these inserts, comma separated")
     p.add_argument("--images-only", action="store_true", help="PNG frames only, no encoding")
+    p = plan_cmd("motion", "render the motion graphics inserts with EffectCraft")
+    p.add_argument("--ids", help="only these inserts, comma separated")
+    p.add_argument("--draft", action="store_true", help="8 motion blur samples, into its own folder (never cut)")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--local", action="store_true", help="render here (needs effectcraft-cli)")
+    g.add_argument("--rented", action="store_true", help="render on one rented machine (asks for a yes first)")
+    p.add_argument("--max-usd", type=float, help="money cap for this rented run (default $2 a video, $0.50 a Short)")
     p = plan_cmd("3d", "render the 3D inserts with Blender")
     p.add_argument("--ids", help="only these inserts, comma separated")
     way(p)
@@ -84,7 +93,7 @@ def parser() -> argparse.ArgumentParser:
     way(p)
     plan_cmd("cut", "the finished video with sound")
     plan_cmd("shown", "lock the output after someone has seen it")
-    p = plan_cmd("all", "2d, 3d and cut")
+    p = plan_cmd("all", "2d, motion, 3d and cut")
     way(p)
     p = sub.add_parser("measure", help="measure a still against the style pack")
     p.add_argument("image")
@@ -145,10 +154,17 @@ def _print_plan(s: dict) -> None:
     print(f"Plan {s['plan']}  format {s['format']}  {s['fps']} fps  episode {s['episode']}")
     for x in s["inserts"]:
         cues = ", ".join(f"{k} {v}" for k, v in x["cues"].items()) or "-"
-        print(f"  {x['id']:<10} {x['kind']:<4} {str(x['scene']):<12} {x['start']:7.2f}-{x['end']:7.2f} s "
-              f"{x['frames']:4d} frames  cues {cues}  missing {x['missing']}{'  (overlay)' if x['transparent'] else ''}")
+        scene = str(x["scene"]) + (f"@{x['version']}" if x.get("version") else "")
+        more = "".join(f"  ({w})" for w in (
+            "overlay" if x["transparent"] else None, x.get("source") and f"comp {x['source']}",
+            x.get("backdrop") and f"backdrop {x['backdrop']}", x.get("layer") and f"layer {x['layer']}",
+            x.get("sound") and "sound", x.get("format") == "stage" and "stage") if w)
+        print(f"  {x['id']:<10} {x['kind']:<6} {scene:<14} {x['start']:7.2f}-{x['end']:7.2f} s "
+              f"{x['frames']:4d} frames  cues {cues}  missing {x['missing']}{more}")
     for w in s["warnings"]:
         print(f"  warning: {w}")
+    for n in s.get("notes") or []:
+        print(f"  note: {n}")
     print(f"Output {s['output']}{'  (shown, locked)' if s['shown'] else ''}")
 
 
@@ -202,6 +218,7 @@ def run(a: argparse.Namespace, out: dict) -> int:
     mode = "local" if getattr(a, "local", False) else ("rented" if getattr(a, "rented", False) else None)
     if a.cmd == "plan":
         s = plan.summary()
+        s["notes"] = workbench.motion_notes(plan)
         out.update(s)
         if not a.json:
             _print_plan(s)
@@ -212,6 +229,12 @@ def run(a: argparse.Namespace, out: dict) -> int:
         if not a.json:
             _print_rows("2d", rows)
         return 0 if all(r["frames_ok"] for r in rows) and (a.images_only or _rows_ok(rows)) else 1
+    if a.cmd == "motion":
+        r = workbench.render_motion(plan, _ids(a.ids), a.draft, mode, max_usd=a.max_usd, log=log)
+        out.update(r)
+        if not a.json:
+            _print_rows("motion", r["rows"])
+        return 0 if _rows_ok(r["rows"]) else 1
     if a.cmd == "3d":
         r = workbench.render_3d(plan, mode, a.gpus, _ids(a.ids), a.samples, a.draft, a.max_usd, log=log)
         out.update(r)
@@ -239,20 +262,11 @@ def run(a: argparse.Namespace, out: dict) -> int:
             print(f"Locked: {r['output']}  sha256 {r['sha256'][:16]}")
         return 0
     if a.cmd == "all":
-        rows2 = workbench.render_2d(plan, log=log)
-        if not _rows_ok(rows2):
-            out["2d"] = rows2
-            log("2D inserts failed; not cutting")
-            return 1
-        r3 = workbench.render_3d(plan, mode, a.gpus, None, a.samples, a.draft, a.max_usd, log=log)
-        out.update({"2d": rows2, "3d": r3})
-        if not _rows_ok(r3["rows"]):
-            log("3D inserts are not complete; not cutting")
-            return 1
-        out["cut"] = workbench.cut(Plan(a.plan), log=log)
-        if not a.json:
+        r = workbench.render_all(plan, mode, a.gpus, a.samples, a.draft, a.max_usd, log=log)
+        out.update({k: v for k, v in r.items() if k != "ok"})
+        if r["ok"] and not a.json:
             print(f"Cut: {out['cut']['output']}")
-        return 0
+        return 0 if r["ok"] else 1
     return 2
 
 

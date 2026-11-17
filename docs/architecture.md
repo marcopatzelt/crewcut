@@ -196,22 +196,59 @@ the onboarding preview use it). Values left `null` come from the style pack (`ed
 cue `value` in insert `s1`. After the user has seen an output, `crewcut render shown` writes `<output>.shown` (time and
 sha256) and the workbench refuses to overwrite it: every change is a new plan version.
 
-Scene names and their data keys are documented in `templates/2d/BLOCKS.md` and `templates/3d/README.md`. Skills point there
-instead of repeating them.
+`start` and `end` of an insert may also be word anchors: `{"word": "costs", "offset": -0.6, "after": 10.0}` (offset in
+seconds; an end anchor looks from the start on).
+
+Motion graphics (`"kind": "motion"`, rendered by EffectCraft, see [rendering.md](rendering.md#motion-graphics-effectcraft-here-or-rented)
+and [motion.md](motion.md)):
+
+```json
+{"id": "m1", "kind": "motion", "scene": "number_roll", "start": {"word": "costs", "offset": -0.6}, "end": 14.2,
+ "cues": {"landAt": {"word": "thirty"}}, "data": {"value": "30", "unit": "cents", "label": "1 million tokens"},
+ "transparent": false, "backdrop": null, "sound": true, "beat": 4, "column": "a"}
+{"id": "m2", "kind": "motion", "scene": "keyword_pop@1", "start": 20.0, "end": 22.0, "transparent": true,
+ "layer": "behind", "data": {"words": ["runs", "offline"]}}
+{"id": "m3", "kind": "motion", "source": "motion/m3/comp.jsx", "start": 41.0, "end": 47.5,
+ "cues": {"handoff": {"word": "GPU"}}, "data": {"jobs": 4},
+ "plates": [{"id": "gpu", "script": "motion/m3/plates/gpu3d.py", "args": {"t0": 0.0, "tin": 1.2}, "frames": 120}]}
+```
+
+| Field | Meaning |
+|---|---|
+| `scene` | a library template (`templates/motion/<name>.jsx`; the pack's `brand/templates/motion/` wins). `"name@N"` pins version N: `<name>.jsx` when its `@version` is N (no `@version` counts as 1), else `<name>.vN.jsx` in the same folder |
+| `source` | instead of `scene`: a comp in the episode folder (custom motion). Exactly one of the two |
+| `data` | template params; a param the template's header does not declare is refused. Image and footage paths (relative to the episode) become absolute paths, and their files are part of the hash |
+| `cues` | template params in seconds local to the insert (0 = its first frame); a cue must be a declared param and must not also be in `data`. Cue forms as above (a number is a frame inside the insert) |
+| `transparent` | true: an overlay (RGBA frames, MOV with alpha); left out: the template's `@kind` decides |
+| `backdrop` | null or `"speaker"` (full frame only): the comp gets the speaker piece of this span as footage |
+| `layer` | null or `"behind"` (overlays only): meant to sit behind the speaker; rendered as an overlay until the matte step composites it |
+| `plates` | Blender plates the comp needs: `[{"id", "script", "args", "frames"}]`; only their shape is checked for now |
+| `sound` | true: the template's `@sounds` become `hits`, `whooshes` or `typing` events of the cut (one per insert) |
+| `beat`, `column` | the row of the approved motion plan this insert comes from (for the Critic) |
+| `place`, `fit`, `anchor` | as for every full-frame insert; with `place` top in proof-top the comp renders at the stage size (format `"stage"`, 1080 x 960) |
+
+Plan-level keys for motion: `motion_cap_usd` (lowers the rented cap: $2 a video, $0.50 a Short) and
+`motion_without_engine` (`"fail"`, the default, or `"skip"`: `render all` leaves the motion inserts out where
+`effectcraft-cli` is missing). `face` may be `[x, y]`, `[x, y, w, h]` or `{"x", "y", "w", "h"}` (fractions of the frame;
+the box size defaults to 0.32 x 0.28); motion overlays keep text off that box. A template whose `@formats` lacks the
+insert's format is an error.
+
+Scene names and their data keys are documented in `templates/2d/BLOCKS.md`, `templates/3d/README.md` and
+`templates/motion/README.md`. Skills point there instead of repeating them.
 
 ## Style pack files
 
 ```
 brand/  (or packs/neutral/)
-  brand.json        colors, fonts, logo, shape, motion, 3D stage, sources
-  edit-style.json   pace, captions, music, loudness, mix limits, speaker share, text limits
+  brand.json        colors, fonts, logo, shape, motion, motion_graphics, 3D stage, sources
+  edit-style.json   pace, captions, music, loudness, mix limits, motion limits, speaker share, text limits
   channel.json      niche, audience, language, country, tone, reference channels, topics to avoid, closing line
   thumbnail.json    layouts, face, max words, colors, reference photo
   voice.md          how the user speaks: words to use and to avoid
   rules/<step>.md   learned rules, one per line block: date, rule, source (the user's words)
   references/       1 to 3 sample videos or links and measured values
   baseline.json     the user's best own video: the bar
-  templates/        optional copies of 2D scenes rebuilt for this brand (never edit the app's templates)
+  templates/        optional copies of 2D scenes and motion templates rebuilt for this brand (never edit the app's)
 ```
 
 Every value can carry its source in a `sources` map (`"colors.accent": "from your website, 16 Nov 2026"`). The profile view

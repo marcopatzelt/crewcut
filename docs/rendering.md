@@ -7,11 +7,12 @@ finished cut:
 ```
 crewcut render plan  <plan.json>            show inserts, frames, cues and what is already rendered
 crewcut render 2d    <plan.json>            2D inserts with Chromium
+crewcut render motion <plan.json>           motion graphics with EffectCraft: here, or on one rented machine
 crewcut render probe <plan.json> <id>,<id>  still frames at half size, to look at before the big render
 crewcut render 3d    <plan.json>            3D inserts with Blender: here, or on rented GPUs after a yes
 crewcut render cut   <plan.json>            the finished video with sound
 crewcut render shown <plan.json>            lock the output right after someone has seen it
-crewcut render all   <plan.json>            2d, 3d, cut
+crewcut render all   <plan.json>            2d, motion, 3d, cut
 crewcut render measure <still.png>          a 3D still against the style pack
 crewcut render samples [--out DIR]          one frame of every 2D scene, both formats (screenshots, docs)
 crewcut render capture <episode> --url URL  a web page or terminal recorded upright, for a Short (broll/)
@@ -25,7 +26,8 @@ open) or refused (cap reached), 4 missing key.
 Nothing is rendered twice: every insert lives in `render/inserts/<id>-<hash>/` (PNG frames) plus `<id>-<hash>.mp4`
 (or `.mov` for overlays). The hash covers the insert's data, the scene file and its shared files, and the look tokens
 of the style pack. Change a number in the plan and only that insert renders again. Change the accent colour and
-every insert renders again. Loudness and other edit-style values do not touch the hash.
+every insert renders again. Loudness and other edit-style values do not touch the hash. Motion graphics add the
+template's context, the engine pin and the pack's font files to it (see below).
 
 ## The plan in short
 
@@ -63,7 +65,9 @@ every insert renders again. Loudness and other edit-style values do not touch th
 - `sound.music_source` says where the music comes from and its rights; the workbench passes it into
   `<output>.cut.json` and the style check requires it whenever there is music.
 - `plan` warns about overlapping full-frame inserts, cues outside their insert and more text cards than the pack
-  allows (`text_cards_max`).
+  allows (`text_cards_max`); with motion graphics also about their lengths and density (see below).
+- `start` and `end` of any insert may be a word anchor too: `{"word": "costs", "offset": -0.6, "after": 10.0}`, the
+  offset here in seconds (a cue's offset is in frames). An end anchor looks from the start on.
 
 ## 2D: Chromium, one frame after the other
 
@@ -93,6 +97,80 @@ templates are never edited for one brand.
 Encoding: full-frame inserts become H.264 MP4 (CRF 14), overlays QuickTime Animation MOV with alpha.
 
 Speed: Chromium needs no GPU. Time per insert is not measured yet; by the way it works it is seconds to a few minutes.
+
+## Motion graphics: EffectCraft, here or rented
+
+A motion insert (`"kind": "motion"`, schema in [architecture.md](architecture.md#edit-plan-episodesideditplan-vnnnjson))
+is an EffectCraft comp: a library template from `templates/motion/` (the pack's `brand/templates/motion/` wins) or a
+comp in the episode folder. User guide: [motion.md](motion.md). `crewcut render motion <plan> [--ids a,b] [--draft]
+[--local | --rented] [--max-usd X]` renders every motion insert with missing frames:
+
+1. A work folder `render/motion-work/<id>-<hash>/` holds the project: one comp "Main" at the insert's size (1920 x
+   1080, 1080 x 1920, or the 1080 x 960 stage of a proof-top insert with `place` top), the plan's fps, the insert's
+   length plus 2 frames, the pack's ground colour (`motion_graphics.ground`; none for overlays), motion blur 180
+   degrees with 16 samples.
+2. The template runs with its params and the insert's context (`CC_CTX`: format, size, fps, duration, transparent,
+   face, backdrop, draft, right_free, brand) in one engine process. `script.jsx` stays in the work folder.
+3. PNG frames in chunks of 1 second, one engine process per chunk (EffectCraft keeps a whole chunk in memory), cores
+   / 4 of them at a time (at least 1; a container's CPU limit counts), into `render/inserts/<id>-<hash>/` as
+   `0000.png`, `0001.png`, ... like 2D. The first chunk is timed and the log says how long the rest should take.
+4. The 2D encoder: H.264 CRF 14, or QuickTime Animation MOV with alpha for overlays.
+
+Fonts: the pack's font files (`fonts.<role>.files`) are copied into `render/motion-work/fonts/` for every run, and
+every engine process gets `EFFECTCRAFT_FONT_DIRS` pointing there (folders the user set stay after it). A pack font
+needs no install.
+
+Cache: the hash covers the params, the context (the speaker backdrop by what it is made of: the base file, the span,
+the zoom), the `.jsx`, every lib file (`lib/ec_lib.jsx`, `lib/cc_frame.jsx`), the look tokens `colors`, `fonts`,
+`shape` and `motion_graphics`, the engine pin (`third_party/effectcraft/PIN` and the patch count) and the font files'
+sizes and times. Change an episode's own `comp.jsx` and only that insert renders again; update the engine and every
+motion insert does.
+
+`--draft` renders with 8 blur samples into its own folder (the context says `draft`, so the hash differs): drafts
+are for looking, the cut never uses one.
+
+`"backdrop": "speaker"`: the workbench cuts the speaker piece of exactly the insert's span from the base (the graded
+speaker cut) with the zoom the cut shows at the insert's start, as picture-only ProRes 422 HQ
+(`render/motion-work/<id>-<hash>/backdrop.mov`), and hands its path to the comp as `CC_CTX.backdrop`. The comp's first
+frame is the speaker frame, so the join is invisible. The voice is untouched.
+
+`"layer": "behind"` (overlays only): the overlay renders like any overlay. After its clip is encoded the workbench
+calls the hook `crewcut.render.motion.behind_hook`, which hands the insert to `crewcut.motion.matte.composite_behind`
+once the matte step has one ([motion-matte.md](motion-matte.md)); until then the overlay lies over the speaker.
+
+Sounds: with `"sound": true` the template's `@sounds` become sound events of the cut: `"in"` at the insert's start,
+`"out"` at its end minus `motion_graphics.exit_s`, a param name at the start plus that param's seconds. `whoosh` goes
+to `whooshes`; `hit`, `pop`, `click` and `bell` to `hits`; `tick`, `reel_tick` and `typing` to `typing`. One sound per
+motion graphic (the first that maps), none on a `keyword_pop` right after a `keyword_pop`.
+
+### Where: `render.location`
+
+`config/crewcut.toml` (a studio's own `config/crewcut.toml` wins):
+
+```toml
+[render]
+location = "local"         # or "rented"
+```
+
+`--local` and `--rented` win for one run; `render all` passes its flag on.
+
+- **local**: this computer's CPU. Needs `effectcraft-cli` (the Crewcut image has it at `/usr/local/bin`). Without it
+  `render motion` stops with one sentence (exit 1); only motion inserts are affected.
+- **rented**: one machine through `crewcut.compute` ([compute.md](compute.md)): the spend card first (exit 3 while it
+  is open), a session cap of $2 for a video and $0.50 for a Short (`"motion_cap_usd"` in the plan may lower it,
+  `--max-usd` sets it), one GPU (`limits.build_max_gpus`), destroyed when the session ends, also after an error. Only
+  the generated script, the project settings, the chunk commands, the pack's font files, images the params name and
+  the template's assets go up (`render/motion-remote/motion/` becomes `/work/motion`); never footage or keys. The
+  machine runs `effectcraft-cli` from the Crewcut GPU image; on the fallback CUDA image this computer sends its own
+  binary when it is amd64, else the run stops with one sentence. Inserts with a speaker backdrop (they need the
+  recording) and params that name footage are refused there before anything is rented.
+
+### `render all` without the engine
+
+`render all` runs 2d, motion, 3d, cut. A plan whose motion inserts cannot render here stops with the one sentence,
+like `render motion`. A plan that says `"motion_without_engine": "skip"` (the demo does) goes on: the cut leaves those
+inserts out (the speaker or background shows instead, their sound events go too) and `<output>.cut.json` names them
+in its notes.
 
 ## 3D: Blender, here or rented
 
@@ -255,8 +333,11 @@ rendering again. Default output: `studio/.crewcut/preview/preview.mp4`.
 
 ## Try it: the demo
 
-`examples/demo/` is a small episode in the neutral style with a generated background, a words file and six 2D
-inserts (no media files, no 3D). Copy it into the studio and render it there (renders never go into the repository):
+`examples/demo/` is a small episode in the neutral style with a generated background, a words file, six 2D inserts
+and two motion graphics (`number_roll` full frame and a `keyword_pop` overlay, both with sound; no media files, no
+3D). Without `effectcraft-cli` the demo still renders and leaves the two motion graphics out (it says
+`"motion_without_engine": "skip"`). Copy it into the studio and render it there (renders never go into the
+repository):
 
 ```
 cp -r examples/demo studio/episodes/000-demo
@@ -268,7 +349,8 @@ crewcut render all  studio/episodes/000-demo/edit/plan-v001.json --local
 
 System: `ffmpeg` (with libx264, AAC, qtrle and the ebur128, loudnorm, sidechaincompress, alimiter filters), Node.js 20
 or newer, Chromium through `npx playwright@1.50.1 install --with-deps chromium` (or a system Chromium in
-`CHROMIUM_PATH`), the Inter font (`fonts-inter`), Blender 5.0.1 on amd64 (`blender` on `PATH`, or `CREWCUT_BLENDER`).
+`CHROMIUM_PATH`), the Inter font (`fonts-inter`), Blender 5.0.1 on amd64 (`blender` on `PATH`, or `CREWCUT_BLENDER`),
+`effectcraft-cli` for motion graphics (`EFFECTCRAFT_CLI` or `PATH`; pinned in `third_party/effectcraft`).
 npm: `playwright-core` 1.50.1 in `tools/` (`npm ci` there). Python: Pillow and NumPy (already in `pyproject.toml`).
 
 ## Status
@@ -280,6 +362,13 @@ runs through every frame against a stand-in for Blender. Shorts: the capture's a
 the terminal page through every frame in a DOM, the colour range (white stays 255) and the stacked proof-top pieces
 with the real ffmpeg on tiny generated clips, and one real music bed of sine waves (level under the voice, ducking,
 hole, loudness).
+
+Motion graphics: the plan (templates, versions, word anchors, cues in seconds, cache key, checks, sound events)
+and every engine argument list with a fake engine, the chunks and frame names, the font folder and its variable, the
+speaker backdrop's ffmpeg command, and the rented run with a fake compute session. With the real engine, only in the
+image: `tests/render/test_motion_engine.py` (a pack font changes the glyphs, a backdrop's first frame equals the
+speaker frame, an overlay MOV has alpha) and the motion part of `tests/smoke/render.sh`. No motion graphics speed is
+measured yet.
 
 Not tested here: the capture's browser part (`tools/capture_page.js` with Chromium, its clock, CSS-speed and video
 handling) runs only in CI or on a real machine; how a real voice and real music sound together needs a person to

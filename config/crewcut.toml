@@ -36,6 +36,11 @@ max_per_episode = 20       # crew messages per episode
 [queue]
 heavy_parallel = 1         # heavy jobs (render, transcription, assembly) at the same time
 
+[render]
+location = "local"         # where motion graphics render: "local" (this computer, needs effectcraft-cli; the image has
+                           # it) or "rented" (one rented machine after a spend card: $2 a video, $0.50 a Short at most).
+                           # `crewcut render motion --local / --rented` wins for one run. See docs/motion.md.
+
 [humanizer]
 # Every script draft goes through Humanizer (blader/humanizer, MIT) before its card, in the "Embedded" mode with your
 # own spoken words from brand/voice/ as the sample. Say "no humanizer" to switch it off.

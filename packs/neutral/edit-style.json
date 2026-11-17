@@ -18,9 +18,28 @@
   "loudness_lufs": -14.0,
   "true_peak_db": -1.5,
   "graphics_mix": {
-    "2d": 0.7,
+    "motion": 0.4,
+    "2d": 0.4,
     "3d": 0.0,
-    "text": 0.3
+    "text": 0.2
+  },
+  "motion": {
+    "prefer": "motion",
+    "insert_s": [3.0, 6.0],
+    "insert_long_s": 8.0,
+    "overlay_min_s": 1.5,
+    "template_min_s": {"keyword_pop": 1.5, "lower_third": 3.0, "number_roll": 3.0, "prompt_bar": 3.0,
+                       "word_reel": 3.0, "quote": 4.0},
+    "template_max_s": {"prompt_bar": 6.0, "ranking": 8.0},
+    "per_sentence_max": 1,
+    "big_moments": [3, 5],
+    "big_per_minute_max": 1.0,
+    "per_minute_max": 2.0,
+    "min_gap_s": 6.0,
+    "heroes": ["big_claim", "card_gallery", "ranking"],
+    "heroes_max": 2,
+    "sounds_per_motion_max": 1,
+    "shorts": {"big_max": 2, "total": [3, 5], "heroes_max": 1}
   },
   "speaker_share_min": 0.4,
   "speaker_min_seconds": 2.0,
