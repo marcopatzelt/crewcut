@@ -69,10 +69,7 @@ only sends a command line and fetches PNG files. The pin:
 | Python packages | `torch==2.5.1`, `torchvision==0.20.1` (CUDA 12.4 index), `numpy==1.26.4`, `av==12.3.0`, `pims==0.7`, `tqdm==4.67.1` |
 
 **Settings.** Variant `resnet50`: the larger model, which RVM describes as slightly better than `mobilenetv3`; on an
-RTX 4090 the speed difference does not matter for short inserts. Downsample ratio from RVM's guide for portrait
-(head-and-shoulders) shots: the first model stage sees about 480 px on the long side, so **0.25 at 1920x1080** (and
-1080x1920), 0.375 at 1280x720, 0.125 at 3840x2160; the second stage refines at full resolution. A higher ratio is for
-full-body shots and is not better here. `--seq-chunk 12` (RVM's example value). Input is a PNG sequence that ffmpeg
+RTX 4090 the speed difference does not matter for short inserts. Downsample ratio: the first model stage sees 768 px on the long side, so **0.4 at 1920x1080** (and 1080x1920), 0.6 at 1280x720, 0.2 at 3840x2160; the second stage refines at full resolution. RVM's guide suggests about 480 px (0.25 at 1080p) for head-and-shoulders shots; on a real 1080p shot with curly hair in front of a light wall (17 Nov 2026) 0.25 left small dark specks outside the shoulder edge, 0.4 removed them and kept finer strands at the same flicker. `--seq-chunk 12` (RVM's example value). Input is a PNG sequence that ffmpeg
 decodes on the machine, so RVM's video reader (PyAV, pims) is only imported, not used.
 
 ### The remote commands
@@ -87,7 +84,7 @@ decodes on the machine, so RVM's video reader (PyAV, pims) is only imported, not
 
    ```
    /opt/rvm/venv/bin/python inference.py --variant resnet50 --checkpoint /opt/rvm/rvm_resnet50.pth --device cuda \
-     --input-source /work/matte/frames/<shot> --downsample-ratio 0.25 --output-type png_sequence \
+     --input-source /work/matte/frames/<shot> --downsample-ratio 0.4 --output-type png_sequence \
      --output-alpha /work/matte/out/<shot>/pha --output-foreground /work/matte/out/<shot>/fgr --seq-chunk 12 \
      --disable-progress
    ```
@@ -186,3 +183,19 @@ traffic separately on some hosts.
 - The gate's limits on real RVM mattes of real speakers (hair against bright walls, glasses, hands, a desk edge in
   front of the speaker: a straight desk edge fails "frame edges" and sends the graphic beside).
 - Frame alignment between the speaker picture in the cut and the matte on sources with a variable frame rate.
+
+## First real test (17 Nov 2026)
+
+One 6-second 1080p25 head-and-shoulders shot (curly hair, light wall, hands moving), RTX 4090, RVM resnet50, 174
+frames in under a minute on the GPU (setup with the torch download about 3 minutes).
+
+| Ratio | Halo (worst, limit 0.10) | Hard edge | Frame edges | Flicker (mean, limit 0.05) | Gate |
+|---|---|---|---|---|---|
+| 0.25 | 0.006 | 0.0 | pass | 0.0502 | beside (flicker) |
+| 0.4 | 0.004 | 0.0004 | pass | 0.0499 | behind |
+
+At 200 % the shoulders are clean at 0.4; the hair over a graphic shows no bright rim, but over a flat test ground
+(the crops of `edges-200.jpg`, made from the original picture) a faint light fringe from the bright background
+stays in the finest strands. The flicker value sits on the limit for both ratios: the limit is calibrated on drawn
+pictures and one real shot. It needs more real shots (and a person looking at the 200 % crops) before it can be
+called right; until then the gate decides close cases with little margin.

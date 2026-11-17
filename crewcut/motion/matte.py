@@ -220,12 +220,18 @@ def read_meta(clip: Path) -> dict:
 
 
 # ---- 2. the rented run -------------------------------------------------------------------------------------------
+FIRST_STAGE_PX = 768               # long side the first model stage sees (measured, see downsample_ratio)
+
+
 def downsample_ratio(width: int, height: int) -> float:
-    """RVM's own guide for portrait shots (head and shoulders): the first model stage should see about 480 px on the
-    long side, i.e. 0.25 at 1920x1080 (and 1080x1920), 0.375 at 1280x720, 0.125 at 3840x2160. The second stage then
-    refines at full resolution. A higher ratio is for full-body shots and is not better here."""
+    """The share of the picture RVM's first model stage sees; the second stage refines at full resolution.
+
+    RVM's guide suggests about 480 px on the long side for head and shoulders (0.25 at 1080p). On a real 1080p
+    head-and-shoulders shot with curly hair in front of a light wall (17 Nov 2026), 0.25 left small dark specks outside
+    the shoulder edge and coarser hair; 0.4 (768 px) removed the specks and kept finer strands at the same flicker.
+    So 768 px: 0.4 at 1920x1080 and 1080x1920, 0.6 at 1280x720, 0.2 at 3840x2160."""
     long_side = max(int(width), int(height), 1)
-    return round(min(1.0, 480 / long_side), 4)
+    return round(min(1.0, FIRST_STAGE_PX / long_side), 4)
 
 
 def _bash(script: str) -> str:
@@ -810,7 +816,8 @@ def _judge(per_frame: list[dict], pairs: list[dict], th: dict, size) -> dict:
     checks["flicker"] = {"passed": mean is None or mean <= th["flicker"], "mean": mean,
                          "worst": max(vals) if vals else None, "pairs": len(vals), "limit": th["flicker"],
                          "reason": f"temporal flicker: the alpha changes by {mean:.3f} on average where the picture "
-                                   f"stands still (limit {th['flicker']})" if mean is not None else ""}
+                                   f"stands still (limit {th['flicker']})"
+                                   if mean is not None and mean > th["flicker"] else ""}
     lo, hi = th["coverage"]
     cov = [f["coverage"] for f in per_frame]
     bad = [f for f in per_frame if not lo <= f["coverage"] <= hi]

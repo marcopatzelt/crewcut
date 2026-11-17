@@ -414,10 +414,10 @@ def test_remote_commands_refuse_unsafe_ids_and_ratios():
 
 
 def test_downsample_ratio_follows_rvm_portrait_guide():
-    assert matte.downsample_ratio(1920, 1080) == 0.25
-    assert matte.downsample_ratio(1080, 1920) == 0.25
-    assert matte.downsample_ratio(1280, 720) == 0.375
-    assert matte.downsample_ratio(3840, 2160) == 0.125
+    assert matte.downsample_ratio(1920, 1080) == 0.4
+    assert matte.downsample_ratio(1080, 1920) == 0.4
+    assert matte.downsample_ratio(1280, 720) == 0.6
+    assert matte.downsample_ratio(3840, 2160) == 0.2
     assert matte.downsample_ratio(400, 300) == 1.0
 
 
