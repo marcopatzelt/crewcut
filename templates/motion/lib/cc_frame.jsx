@@ -406,7 +406,10 @@ var CC = (function () {
       // pools just outside the corners, drifting a little inward: colour index, start and end centre (frame fractions)
       var pools = [[1, [-0.10, -0.06], [-0.05, -0.02]], [2, [1.10, -0.04], [1.05, 0.00]], [3, [1.06, 1.10], [1.01, 1.05]], [0, [-0.06, 1.10], [-0.02, 1.05]]];
       for (var i = 0; i < pools.length; i++) {
-        var col = C.mix(g, C.color(pools[i][0]), pools[i][0] === 0 ? k * 0.8 : k);
+        // a pool in the ground's own hue (o.skip: its palette index) would make that hue take the whole frame:
+        // that pool is a light one instead
+        var pn = C.mg().palette.length, own = o.skip !== undefined && ((o.skip % pn) + pn) % pn === pools[i][0];
+        var col = own ? C.mix(g, "#FFFFFF", 0.45) : C.mix(g, C.color(pools[i][0]), pools[i][0] === 0 ? k * 0.8 : k);
         var e = EC.shape(c, { kind: "ellipse", size: [d, d * 0.75], fill: col, name: (o.name || "ground") + " light " + i });
         EC.fx(c, e, "Gaussian Blur", { blurriness: 0.26 * m });
         EC.keys(c, e, "transform/position", [[0, [pools[i][1][0] * W, pools[i][1][1] * H]], [D, [pools[i][2][0] * W, pools[i][2][1] * H]]], "linear");
