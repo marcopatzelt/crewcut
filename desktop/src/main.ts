@@ -24,6 +24,8 @@ const res = (name: string) => (app.isPackaged ? join(process.resourcesPath, name
 const ICON = res("icon.png");
 
 if (!app.requestSingleInstanceLock()) app.quit();
+// CI's virtual machines have no GPU; the pictures of the pages are then drawn in software
+if (SHOTS) app.disableHardwareAcceleration();
 
 let settings: SettingsFile;
 let main: BrowserWindow | null = null;

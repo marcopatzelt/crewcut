@@ -37,7 +37,11 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const shot = async (name) => {
   if (!SHOTS) return;
   await wait(700);
-  await D.shot(name);
+  try {
+    await D.shot(name);
+  } catch {
+    // a picture that could not be taken does not stop the others (CI only)
+  }
 };
 
 // ---------- the steps ----------
