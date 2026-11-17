@@ -328,7 +328,7 @@ Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md), [
 
 ## License
 
-[MIT](LICENSE), copyright Marco Patzelt. The mascot Slate was made by the author with ChatGPT image generation and
+[MIT](LICENSE), copyright Marco Patzelt, [Claude Ambassador](https://striq.de/en/author/marco-patzelt#claude-ambassador). The mascot Slate was made by the author with ChatGPT image generation and
 redrawn by hand as SVG ([`docs/brand/`](docs/brand/)); it is part of the MIT-licensed repository. Third-party tools keep their own licences: ffmpeg (LGPL/GPL build from Debian),
 Blender (GPL, called as a program, not linked), Chromium (BSD), Inter (SIL Open Font License), the
 [Astryx](https://github.com/meta/astryx) design system by Meta (MIT) for some of the app's controls, Claude Code and Codex
