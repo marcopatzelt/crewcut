@@ -94,8 +94,9 @@ variants. Prompt blocks for each: `references/prompt-blocks.md`.
 
 1. **Read the input:** `brief/TITLE-vNNN.md` (title, promise, thumbnail text), the results of the episode
    (`brief/PROOF-vNNN.md`, `review/`), the final video.
-2. **Pick the layouts:** image 1 from the first layout of the pack, 1 or 2 test variants that differ from it in ONE
-   feature (the motif, the number, the face side). Same text, box, logo and title otherwise.
+2. **Pick the layouts:** image 1 from the first layout of the pack, then 5 to 9 more prompt variants (rule 20). Each
+   differs in a real way: the motif, the object (rule 17), the power word (rule 18), the crossover with the title
+   (rule 19) or the face side.
 3. **Images of the person:** copy the reference photo into each variant folder. Only when needed, a still frame:
    ```
    python3 skills/thumbnail/scripts/still_frame.py sheet export/<id>-vNNN-final.mp4 --out graphics/thumbnail/vN-x/stills --range 0: --max 30 --face 0.5,0.38
