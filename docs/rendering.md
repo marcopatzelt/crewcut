@@ -162,8 +162,9 @@ location = "local"         # or "rented"
   the generated script, the project settings, the chunk commands, the pack's font files, images the params name and
   the template's assets go up (`render/motion-remote/motion/` becomes `/work/motion`); never footage or keys. The
   machine runs `effectcraft-cli` from the Crewcut GPU image; on the fallback CUDA image this computer sends its own
-  binary when it is amd64, else the run stops with one sentence. Inserts with a speaker backdrop (they need the
-  recording) and params that name footage are refused there before anything is rented.
+  binary when it is amd64, else the run stops with one sentence. An insert with a speaker backdrop sends only its
+  speaker piece (picture-only ProRes in `render/matte/`, exactly the insert's span) after a spend card that says so in
+  plain words; the recording itself never goes up. Params that name footage are refused before anything is rented.
 
 ### `render all` without the engine
 

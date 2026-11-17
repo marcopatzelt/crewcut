@@ -217,9 +217,16 @@ def test_rented_cap_defaults_and_refusals(episode, studio, tmp_path):
     bd = plan_with(episode, studio, {**ROLL, "scene": "prompt_bar", "cues": {}, "data": {}, "backdrop": "speaker",
                                      "start": 6.0, "end": 10.0}, base="work/speaker-v001.mp4")
     compute = FakeCompute(tmp_path)
-    with pytest.raises(motion.MotionError, match="recordings never go to a rented machine"):
-        motion.render_motion(bd, location="rented", compute=compute, runner=FakeRunner(), log=lambda *a: None)
-    assert compute.sessions == []                                    # refused before anything was rented
+    motion.render_motion(bd, location="rented", compute=compute, runner=FakeRunner(), log=lambda *a: None)
+    kw, _ = compute.sessions[0]                                      # the speaker's picture only with its own card
+    assert kw["picture"]["why"] == "as the backdrop of a motion graphic" and kw["blender"] is False
+    [f] = kw["picture"]["files"]
+    assert f["shot"] == "m1" and "/render/matte/m1-backdrop-" in f["file"] and f["file"].endswith(".mov")
+    m = compute.machines[0]
+    assert (["m1-backdrop-" + f["file"].split("m1-backdrop-")[1].split("/")[-1]], "/work/motion/m1/") in m.puts
+    script = (bd.episode_dir / "render" / "motion-remote" / "motion" / "m1" / "script.jsx").read_text()
+    assert '"/work/motion/m1/m1-backdrop-' in script                  # the comp reads the uploaded piece
+    assert all("speaker-v001" not in " ".join(names) for names, _ in m.puts)   # never the recording itself
     clip = episode.dir / "broll" / "screen.mp4"
     clip.parent.mkdir()
     clip.write_bytes(b"video")

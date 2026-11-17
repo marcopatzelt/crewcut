@@ -60,8 +60,9 @@ def picture_sentence(picture: dict) -> str:
     ids = [str(f.get("shot") or "?") for f in files]
     secs = sum(float(f.get("seconds") or 0) for f in files)
     which = f"shot {ids[0]}" if len(ids) == 1 else f"{len(ids)} shots ({', '.join(ids)})"
-    return (f"The picture of {which}, {secs:.1f} s, without sound, goes to the rented machine to separate the speaker "
-            "from the background; it is deleted with the machine. Nothing else from the recording goes up.")
+    why = str(picture.get("why") or "to separate the speaker from the background")
+    return (f"The picture of {which}, {secs:.1f} s, without sound, goes to the rented machine {why}; it is deleted "
+            "with the machine. Nothing else from the recording goes up.")
 
 
 def _picture_files(picture: dict | None) -> dict[str, dict]:

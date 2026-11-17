@@ -15,8 +15,9 @@ The pack's font files are copied into `render/motion-work/fonts/` for every run 
 Where (`render.location` in config/crewcut.toml, `--local` / `--rented` win):
 - "local": here, on the CPU. Needs `effectcraft-cli` (the Crewcut image has it).
 - "rented": one machine through `crewcut.compute` (spend card first, cap, destroyed at the end). Only the generated
-  script, the project settings, font files and images the params name go up; never footage or keys. Inserts with a
-  speaker backdrop need footage and are refused there.
+  script, the project settings, font files and images the params name go up; never keys, never the recording.
+  An insert with a speaker backdrop sends only its picture-only speaker piece (render/matte/<id>-backdrop-*.mov),
+  after a spend card that names it; params that name footage are refused.
 """
 
 from __future__ import annotations
@@ -255,6 +256,24 @@ def speaker_luma(plan: Plan, ins: Insert, runner: media.Runner = media.run) -> l
     return grid
 
 
+def backdrop_piece(plan: Plan, ins: Insert, runner: media.Runner = media.run) -> Path:
+    """The speaker piece under a full-frame insert for a rented comp: picture-only ProRes in render/matte/ (the one
+    folder whose picture-only clips may go up, after a card that names them), named by what it is made of."""
+    import hashlib
+    key = hashlib.sha1(plan.backdrop_key(ins.start, ins.render_frames).encode()).hexdigest()[:10]
+    out = plan.episode_dir / "render" / "matte" / f"{ins.id}-backdrop-{key}.mov"
+    if out.is_file():
+        return out
+    out.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out.with_name(f".{out.stem}.part.mov")
+    rc, text = runner(backdrop_cmd(plan, ins, tmp), timeout=1800)
+    if rc != 0 or not tmp.is_file():
+        tmp.unlink(missing_ok=True)
+        raise MotionError(f"motion {ins.id}: the speaker backdrop could not be cut: {media.tail(text, 300)}")
+    tmp.replace(out)
+    return out
+
+
 def behind_hook(plan: Plan, ins: Insert, runner: media.Runner = media.run, log: Callable = print) -> bool:
     """Overlays with `"layer": "behind"`, after the overlay clip is encoded: the composite behind the speaker when the
     matte passed its edge check (crewcut/render/behind.py), else the overlay stays beside the person."""
@@ -382,7 +401,8 @@ def _remote_paths(ins: Insert, stage: Path) -> tuple[dict, list[Path]]:
     return swap(json.loads(json.dumps(ins.data))), files
 
 
-def stage_remote(plan: Plan, inserts: list[Insert], draft: bool = False) -> Path:
+def stage_remote(plan: Plan, inserts: list[Insert], draft: bool = False,
+                 backdrops: dict[str, str] | None = None) -> Path:
     """`render/motion-remote/motion/`: what the rented machine gets, uploaded as /work/motion. Per insert: the
     generated script, the project settings (comp.new), the chunk commands, render.sh, images the params name and the
     template's assets; once: the pack's font files."""
@@ -400,7 +420,8 @@ def stage_remote(plan: Plan, inserts: list[Insert], draft: bool = False) -> Path
         params, _ = _remote_paths(ins, stage)
         own = ins.template.parent / "assets"
         shutil.copytree(own if own.is_dir() else mtemplates.assets_dir(), d / "ec_assets")
-        ctx = motion_context(plan, ins, draft=draft, luma=speaker_luma(plan, ins))
+        ctx = motion_context(plan, ins, draft=draft, backdrop=(backdrops or {}).get(ins.id),
+                             luma=speaker_luma(plan, ins))
         for pid, pl in (ctx.get("plates") or {}).items():          # Blender plates go up with the comp
             src = Path(pl["first"]).parent
             if src.is_dir():
@@ -462,21 +483,27 @@ def render_rented(plan: Plan, inserts: list[Insert], compute, cap: float, draft:
     """Render the missing frames of these inserts on one rented machine. Leaving the session destroys it.
 
     Raises compute.NeedsApproval / compute.Refused from the session (the workbench turns them into exit code 3)."""
-    for ins in inserts:
-        if ins.backdrop == "speaker":
-            raise MotionError(f"motion {ins.id}: a speaker backdrop needs the recording, and recordings never go to "
-                              "a rented machine; render it here (--local)")
-    stage = stage_remote(plan, inserts, draft)
+    pieces = {ins.id: backdrop_piece(plan, ins, runner) for ins in inserts if ins.backdrop == "speaker"}
+    stage = stage_remote(plan, inserts, draft, {i: f"{REMOTE}/{i}/{p.name}" for i, p in pieces.items()})
+    picture = None
+    if pieces:
+        from ..compute import privacy
+        picture = {"why": "as the backdrop of a motion graphic",
+                   "files": [{"shot": i, "file": str(p), "sha256": privacy.sha256(p),
+                              "seconds": round(plan.by_id(i).frames / plan.fps, 2)} for i, p in pieces.items()]}
     total = sum(len(plan.missing(x)) for x in inserts)
     minutes = int(min(240, 20 + total * 2.0 / 60))
     log(f"motion: {total} frames of {len(inserts)} insert{'s' if len(inserts) != 1 else ''} on one rented machine "
         f"(cap ${cap:.2f})")
-    with compute.session(episode=plan.episode, step="edit", purpose="motion graphics", cap_usd=cap) as s:
+    extra = {"picture": picture, "blender": False} if picture else {}
+    with compute.session(episode=plan.episode, step="edit", purpose="motion graphics", cap_usd=cap, **extra) as s:
         machines = s.rent(gpus=build_gpus(), max_minutes=minutes)
         if not machines:
             raise MotionError("no rented machine is ready; nothing was rendered")
         m = machines[0]
         m.put([stage], "/work/")
+        for i, p in pieces.items():                  # the speaker's picture, after the card that names it
+            m.put([p], f"{REMOTE}/{i}/")
         _, out = m.run(f"test -x {REMOTE_BIN} && echo engine-ok || echo engine-missing", timeout=60)
         binary = REMOTE_BIN
         if "engine-ok" not in out:

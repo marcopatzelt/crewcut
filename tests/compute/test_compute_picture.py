@@ -133,3 +133,13 @@ def test_the_picture_rule_survives_attach_and_needs_an_episode(fake, fssh, clips
         lone.rent(gpus=1)
     with pytest.raises(ValueError):
         session_fn(episode=EP, purpose="x", cap_usd=1.0, monitor=False, picture={"files": [{"shot": "s03"}]})
+
+
+def test_backdrop_mov_in_render_matte_is_a_picture_clip_and_the_card_says_why():
+    from crewcut.compute import privacy
+    from crewcut.compute.session import picture_sentence
+    assert ".mov" in privacy.MATTE_SUFFIXES
+    s = picture_sentence({"why": "as the backdrop of a motion graphic",
+                          "files": [{"shot": "m1", "seconds": 4.0, "sha256": "x"}]})
+    assert "as the backdrop of a motion graphic" in s and "without sound" in s
+    assert "to separate the speaker" in picture_sentence({"files": [{"shot": "s1", "seconds": 2.0}]})

@@ -35,7 +35,7 @@ SECRET_NAMES = {".env", "id_rsa", "id_ed25519", "id_ecdsa", "credentials.json", 
 SECRET_SUFFIXES = {".pem", ".key", ".p12", ".pfx"}
 SCAN_LIMIT = 5 * 1024 * 1024
 MATTE_FOLDER = ("render", "matte")          # <studio>/episodes/<episode>/render/matte/<shot>.mp4
-MATTE_SUFFIXES = {".mp4", ".mkv"}           # what crewcut.motion.matte.export_shot writes
+MATTE_SUFFIXES = {".mp4", ".mkv", ".mov"}   # matte.export_shot (mp4) and the speaker backdrop of a rented comp (mov)
 
 # ffprobe goes through this name so tests can fake it: (argv) -> (exit code, output)
 ProbeRunner = Callable[[list[str]], tuple[int, str]]
