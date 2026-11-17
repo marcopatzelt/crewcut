@@ -112,6 +112,12 @@ body {
   gap: 16px;
 }
 
+.view.settings > * {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
 .slate {
   width: 112px;
   height: 112px;

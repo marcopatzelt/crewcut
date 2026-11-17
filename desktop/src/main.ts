@@ -21,7 +21,7 @@ const UI = join(__dirname, "ui");
 const PRELOAD = join(__dirname, "preload.js");
 const SHOTS = process.env.CREWCUT_DESKTOP_SHOTS || "";
 const res = (name: string) => (app.isPackaged ? join(process.resourcesPath, name) : join(__dirname, "..", "build", name));
-const ICON = app.isPackaged ? join(process.resourcesPath, "tray@2x.png") : join(__dirname, "..", "build", "icon.png");
+const ICON = res("icon.png");
 
 if (!app.requestSingleInstanceLock()) app.quit();
 
@@ -404,7 +404,7 @@ function registerIpc(): void {
   own("app:shot", async (e, name: string) => {
     if (!SHOTS) return false;
     if (name === "end") {
-      setTimeout(() => app.exit(0), 300);
+      setTimeout(() => app.exit(0), 6000); // time for CI to take a picture of the whole screen, window buttons included
       return true;
     }
     const win = BrowserWindow.fromWebContents(e.sender);

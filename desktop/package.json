@@ -13,7 +13,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test \"dist/test/*.test.js\"",
     "start": "npm run build && electron .",
-    "dist": "npm run build && electron-builder --publish never"
+    "dist": "npm run build && electron-builder --config electron-builder.config.cjs --publish never"
   },
   "dependencies": {
     "electron-updater": "6.8.11"

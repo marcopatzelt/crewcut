@@ -28,7 +28,7 @@ function h(tag, attrs, ...children) {
 
 function show(...nodes) {
   view.className = "view";
-  view.replaceChildren(...nodes);
+  view.replaceChildren(...nodes.flat().filter(Boolean));
 }
 
 const slate = (state) => h("img", { class: "slate", src: `brand/${state}.svg`, alt: "" });
@@ -221,7 +221,7 @@ function connectBlock(onDone) {
   return { box, status, start };
 }
 
-function codexBlock(onDone) {
+function codexBlock(onDone, label = "Connect Codex (beta) instead") {
   const box = h("div", { class: "row" });
   const status = h("p", { class: "note" }, "");
   const start = async () => {
@@ -244,7 +244,7 @@ function codexBlock(onDone) {
     box.replaceChildren();
     if (done.connected) onDone({ connected: true });
   };
-  box.replaceChildren(h("button", { class: "link", onclick: start }, "Connect Codex (beta) instead"));
+  box.replaceChildren(h("button", { class: "link", onclick: start }, label));
   return { box, status, start };
 }
 
@@ -292,10 +292,10 @@ async function settingsView(preview) {
       : [claude.box, claude.status],
     s.keychain ? null : h("p", { class: "note" }, "No system keychain was found (on Linux: GNOME Keyring or KWallet), so the login is kept in Crewcut's engine volume instead."));
 
-  const codex = codexBlock(() => void settingsView(preview));
+  const codex = codexBlock(() => void settingsView(preview), "Connect Codex");
   const codexCard = h("section", { class: "card", "aria-label": "Codex" },
     h("h2", {}, "Codex (beta)"),
-    h("p", {}, s.codex ? "Connected with your ChatGPT plan." : "Not connected. Say \"use Codex\" in the chat to switch to it after connecting."),
+    h("p", {}, s.codex ? "Connected with your ChatGPT plan. Say \"use Codex\" in the chat to work with it." : "Not connected."),
     s.codex
       ? h("div", { class: "row" }, h("button", { class: "secondary", onclick: async () => {
         await D.disconnect("codex");
@@ -327,11 +327,11 @@ async function settingsView(preview) {
     h("p", { class: "note" }, `Runs the image ghcr.io/marcopatzelt/crewcut:${v.tag}.`),
     h("div", { class: "row" }, h("button", { class: "link", onclick: () => void D.checkUpdates() }, "See the releases")));
 
-  view.replaceChildren(
+  view.replaceChildren(...[
     h("h1", {}, "Settings"),
     claudeCard, codexCard, keepCard, studioCard, about,
     preview ? null : h("div", { class: "row" }, h("button", { class: "primary", onclick: () => close(s.claudeConnected) }, "Done")),
-  );
+  ].filter(Boolean));
   if (HASH === "settings-claude" && !s.claudeConnected && !preview) void claude.start();
   if (HASH === "settings-codex" && !s.codex && !preview) void codex.start();
   if (preview) {

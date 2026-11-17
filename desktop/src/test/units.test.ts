@@ -134,8 +134,8 @@ test("the stack file the app ships is the repository's own compose.yaml plus a s
   const override = readFileSync(join(ROOT, "desktop/stack/desktop.yaml"), "utf8");
   assert.match(override, /build: !reset null/);
   assert.match(override, /pull_policy: never/);
-  const builder = readFileSync(join(ROOT, "desktop/electron-builder.yml"), "utf8");
-  assert.match(builder, /from: \.\.\/compose\.yaml/);
+  const builder = readFileSync(join(ROOT, "desktop/electron-builder.config.cjs"), "utf8");
+  assert.match(builder, /from: "\.\.\/compose\.yaml"/);
   const compose = readFileSync(join(ROOT, "compose.yaml"), "utf8");
   assert.match(compose, /CLAUDE_CODE_OAUTH_TOKEN: \$\{CLAUDE_CODE_OAUTH_TOKEN:-\}/);
 });

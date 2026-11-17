@@ -77,7 +77,7 @@ Signing is dormant until the secrets exist:
 | `APPLE_API_KEY` (the .p8 text), `APPLE_API_KEY_ID`, `APPLE_API_ISSUER` | notarizing with an App Store Connect API key (preferred) |
 | `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` | notarizing with an Apple ID instead |
 
-Without `CSC_LINK` the Mac app is ad-hoc signed (`-c.mac.identity=-`, with the hardened runtime off, which ad-hoc
+Without `CSC_LINK` the Mac app is ad-hoc signed (`mac.identity: "-"`, with the hardened runtime off, which ad-hoc
 signing needs) and the Windows installer is unsigned. The image the app runs comes from `image.yml`: every push to
 main publishes `:edge`, a version tag `v1.2.3` publishes `:1.2.3` and `:latest`. A release is a `v*` tag plus a
 GitHub release with the desktop files; the owner makes both.
