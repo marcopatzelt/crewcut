@@ -15,8 +15,8 @@ def main(argv: list[str]) -> int:
     name, chat = argv[0], (argv[1] if len(argv) > 1 else flow.ONBOARDING)
     eng = get(name)
     if eng.name != "codex":
-        flow.post(chat, "Claude Code logs in with a token: run `claude setup-token` once on a computer with a browser "
-                        "and put it into .env (./start.sh asks for it).")
+        flow.post(chat, "Claude connects with the Connect Claude button: on the start page, or in the desktop app's "
+                        "settings. On a server you can also put a `claude setup-token` token into .env.")
         return 0
 
     def tell(url: str, code: str | None) -> None:

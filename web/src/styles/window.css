@@ -2152,6 +2152,78 @@
   color: var(--ink-2);
 }
 
+/* ---------- Connect Claude (and Codex): one button, then one field for the code from Claude's page ---------- */
+
+.connect {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: min(440px, 100%);
+  margin: 8px auto 0;
+  text-align: center;
+}
+
+.page-head .connect {
+  align-items: flex-start;
+  margin: 12px 0 0;
+  text-align: left;
+}
+
+.connect-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.connect-field {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--r-ctl);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  color: var(--ink);
+  font: 400 14px/20px var(--font-mono);
+}
+
+.connect-field::placeholder {
+  color: var(--ink-3);
+  font-family: var(--font);
+}
+
+.connect-note,
+.connect-done,
+.connect-error {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 6px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+}
+
+.connect-done {
+  color: var(--ok);
+  font-weight: 500;
+}
+
+.connect-error {
+  color: var(--danger);
+}
+
+.connect-code {
+  padding: 1px 6px;
+  border-radius: var(--r-xs);
+  background: var(--chip);
+  font: 600 13px/18px var(--font-mono);
+  color: var(--ink);
+}
+
 /* ---------- read-only pages ---------- */
 
 .doc {

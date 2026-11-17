@@ -15,6 +15,10 @@ services:
         required: false
     environment:
       CREWCUT_STUDIO: /studio
+      # The desktop app passes these two (its Claude token comes from the system keychain); with ./start.sh Compose
+      # reads them from .env, as env_file does.
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+      CREWCUT_LAN_HOST: ${CREWCUT_LAN_HOST:-}
     ports:
       - "127.0.0.1:${CREWCUT_PORT:-4747}:4747"
       - "${CREWCUT_PROMPTER_BIND:-0.0.0.0}:${CREWCUT_PROMPTER_PORT:-4748}:4748"

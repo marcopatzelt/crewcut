@@ -1,5 +1,6 @@
-// DESIGN.md rule 1.2, 3, 15 and 16: the app has two text fields, the composer and the search field of the command
-// palette (which only picks from a list), and no <form> with more than one field.
+// DESIGN.md rule 1.2, 3, 15 and 16: the app has three text fields, the composer, the search field of the command
+// palette (which only picks from a list) and the one-time code from Claude's sign-in page (Connect Claude), and no
+// <form> with more than one field.
 import { lineOf, read, rel, report, srcRoot, walk } from "./lib.mjs";
 
 const TEXT_TYPES = new Set(["text", "search", "email", "url", "number", "password", "tel", "date", "time", ""]);
@@ -7,6 +8,7 @@ const TEXT_TYPES = new Set(["text", "search", "email", "url", "number", "passwor
 const ALLOWED = new Map([
   ["src/components/Composer.tsx", "the composer"],
   ["src/components/Palette.tsx", "the palette's search field"],
+  ["src/components/ConnectEngine.tsx", "the code from Claude's sign-in page"],
 ]);
 
 const problems = [];
@@ -37,7 +39,7 @@ for (const file of walk(srcRoot, [".tsx", ".ts", ".html"])) {
     const what = f.tag === "input" ? `<input type="${f.type || "text"}">` : `<${f.tag}>`;
     if (f.text) textFields.push(`${rel(file)}:${lineOf(text, f.index)} ${what}`);
     if (f.text && !ALLOWED.has(rel(file))) {
-      problems.push(`${rel(file)}:${lineOf(text, f.index)} text field outside the composer and the palette (<${f.tag}>)`);
+      problems.push(`${rel(file)}:${lineOf(text, f.index)} text field outside the composer, the palette and Connect Claude (<${f.tag}>)`);
     }
   }
   for (const m of text.matchAll(/<form\b[\s\S]*?<\/form>/g)) {
@@ -51,7 +53,7 @@ for (const [file, what] of ALLOWED) {
   if (here.length !== 1) problems.push(`expected exactly one text field in ${file} (${what}), found ${here.length}`);
 }
 if (textFields.length !== ALLOWED.size) {
-  problems.push(`expected ${ALLOWED.size} text fields (composer and palette), found ${textFields.length}: ${textFields.join(", ") || "none"}`);
+  problems.push(`expected ${ALLOWED.size} text fields (composer, palette, Claude's code), found ${textFields.length}: ${textFields.join(", ") || "none"}`);
 }
 
-report("check:forms", problems, `two text fields (${textFields.join(", ") || "none"}), no multi-field forms`);
+report("check:forms", problems, `three text fields (${textFields.join(", ") || "none"}), no multi-field forms`);

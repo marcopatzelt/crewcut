@@ -4,7 +4,8 @@
 // A waiting row jumps to the open card of its episode; every other row opens the job's log.
 import { ProgressBar } from "@astryxdesign/core/ProgressBar";
 import { useEffect, useRef, useState } from "react";
-import type { Activity, Episode, Identity, Money } from "../api/types";
+import { ONBOARDING, type Activity, type Episode, type Identity, type Money } from "../api/types";
+import { desktop } from "../lib/desktop";
 import { clock, countWord, usd, usdShort } from "../lib/format";
 import { jumpToOpenCard, navigate } from "../store/actions";
 import { EMPTY, useUi } from "../store/store";
@@ -119,11 +120,9 @@ function JobRow({
   );
 }
 
-/** The engine is not logged in: one line with a --warn dot (rule 11). */
+/** The engine is not connected: one line with a --warn dot (rule 11) and the way to connect it. */
 export function engineLine(engine: string): string {
-  return engine === "claude"
-    ? "Claude Code is not logged in. Run claude setup-token, put the value in .env and restart Crewcut."
-    : `${engine} is not logged in. Run ${engine} login, put the value in .env and restart Crewcut.`;
+  return engine === "claude" ? "Claude is not connected. Nothing can run yet." : "Codex is not connected. Nothing can run yet.";
 }
 
 function hintFor(active: Activity[], episode: string | null): string {
@@ -199,6 +198,7 @@ export function WorkingHint({ episode }: { episode: string | null }) {
   const engineOk = useUi((s) => s.state?.app.engine_ok ?? true);
   const engine = useUi((s) => s.state?.app.engine ?? "claude");
   const boot = useUi((s) => s.boot);
+  const onOnboarding = useUi((s) => s.view.kind === "episode" && s.view.id === ONBOARDING);
   const active = activity.filter((a) => ACTIVE.has(a.status));
   return (
     <>
@@ -206,7 +206,22 @@ export function WorkingHint({ episode }: { episode: string | null }) {
       {boot === "ready" && !engineOk ? (
         <p className="engine-line" role="alert">
           <span className="dot warn" aria-hidden="true" />
-          <span>{engineLine(engine)}</span>
+          <span>
+            {engineLine(engine)}{" "}
+            {onOnboarding ? null : (
+            <button
+              type="button"
+              className="link-button"
+              onClick={() => {
+                const bridge = desktop();
+                if (bridge) bridge.openSettings();
+                else navigate({ kind: "episode", id: ONBOARDING });
+              }}
+            >
+              {engine === "claude" ? "Connect Claude" : "Connect Codex"}
+            </button>
+            )}
+          </span>
         </p>
       ) : null}
     </>

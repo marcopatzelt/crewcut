@@ -7,6 +7,7 @@ import { ONBOARDING, type Card, type Step } from "../api/types";
 import { ChatPane, useFirstStart } from "../components/ChatPane";
 import { Composer } from "../components/Composer";
 import { MoneyLine, WorkingHint, WorkingList } from "../components/Crew";
+import { ConnectEngine } from "../components/ConnectEngine";
 import { ago, clock, episodeNumber } from "../lib/format";
 import { jumpToStep } from "../store/actions";
 import { EMPTY, useUi } from "../store/store";
@@ -176,8 +177,22 @@ export function Dock({ centered, narrow }: { centered?: boolean; narrow?: boolea
   );
 }
 
-/** The first start (rule 3): no title bar actions, Slate waving, one sentence; the composer floats below it. */
+/** The first start (rule 3): no top bar actions, Slate waving, one sentence; the composer floats below it. Until
+ *  Claude is connected, the first step is "Connect Claude". */
 function Welcome() {
+  const engineOk = useUi((s) => s.state?.app.engine_ok ?? true);
+  if (!engineOk) {
+    return (
+      <div className="hero">
+        <span className="hero-mark">
+          <SlateFigure state="wave" size={120} />
+        </span>
+        <h1>Connect Claude first.</h1>
+        <p>Crewcut runs on your own Claude plan. Sign in once, then paste your links.</p>
+        <ConnectEngine />
+      </div>
+    );
+  }
   return (
     <div className="hero">
       <span className="hero-mark">
@@ -192,10 +207,12 @@ function Welcome() {
 /** The onboarding chat in the main column: the Brand identity reads the links and builds the style pack. */
 export function OnboardingView() {
   const firstStart = useFirstStart(ONBOARDING);
+  const engineOk = useUi((s) => s.state?.app.engine_ok ?? true);
   const head = firstStart ? null : (
     <div className="page-head">
       <h1 className="one-line">Set up your style</h1>
       <p className="sub">The Brand identity reads your links and builds your profile. Nothing else to fill in.</p>
+      {engineOk ? null : <ConnectEngine />}
     </div>
   );
   return (

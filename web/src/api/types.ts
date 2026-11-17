@@ -171,6 +171,28 @@ export interface AppInfo {
   onboarded: boolean;
 }
 
+/** GET /api/engine/login: who is connected, and a Codex device sign-in in progress. */
+export interface EngineLogin {
+  claude: { installed: boolean; connected: boolean; source: "stored" | "environment" | null; signing_in: boolean };
+  codex: {
+    installed: boolean;
+    connected: boolean;
+    status?: "starting" | "installing" | "waiting" | "connected" | "failed";
+    url?: string;
+    code?: string | null;
+    text?: string;
+  };
+  chosen: string;
+}
+
+/** What Claude Code says about the connected account (each field optional). */
+export interface ClaudeAccount {
+  email?: string;
+  orgName?: string;
+  subscriptionType?: string;
+  authMethod?: string;
+}
+
 export interface State {
   app: AppInfo;
   team: Identity[];

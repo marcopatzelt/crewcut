@@ -2,6 +2,8 @@
 import type {
   Activity,
   Card,
+  ClaudeAccount,
+  EngineLogin,
   Episode,
   EpisodeDetail,
   EpisodeMedia,
@@ -109,6 +111,12 @@ export const api = {
     request<Activity[]>("GET", `/api/jobs${episode ? `?episode=${enc(episode)}` : ""}`),
   jobLog: (id: number) => request<JobLog>("GET", `/api/jobs/${id}/log`),
   profile: () => request<Profile>("GET", "/api/profile"),
+  engineLogin: () => request<EngineLogin>("GET", "/api/engine/login"),
+  claudeConnect: () => request<{ url: string }>("POST", "/api/engine/claude/connect", {}),
+  claudeCode: (code: string) =>
+    request<{ connected: boolean; account: ClaudeAccount }>("POST", "/api/engine/claude/code", { code }),
+  claudeDisconnect: () => request<EngineLogin>("POST", "/api/engine/claude/disconnect", {}),
+  codexConnect: () => request<EngineLogin["codex"]>("POST", "/api/engine/codex/connect", {}),
   money: () => request<Money>("GET", "/api/money"),
   prompter: (id: string) => request<PrompterLink>("GET", `/api/episodes/${enc(id)}/prompter`),
   /** What the episode view shows first: thumbnails, the cut, 3D scenes, the rented GPU. */

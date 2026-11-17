@@ -275,6 +275,14 @@ def build_parser() -> argparse.ArgumentParser:
     enp.add_argument("--no-login-test", action="store_true")
     enr = ensub.add_parser("rollback", help="go back to the previous good version")
     enr.add_argument("name", nargs="?")
+    enc = ensub.add_parser("connect", help="sign in without a terminal: prints the sign-in link (Claude) or the "
+                           "device link and code (Codex) as JSON lines; Claude then reads the code from stdin")
+    enc.add_argument("name")
+    enc.add_argument("--print-token", action="store_true",
+                     help="Claude: print the token for the desktop app (which keeps it in the keychain) instead of "
+                          "storing it in the engine volume")
+    end = ensub.add_parser("disconnect", help="forget the login made with connect")
+    end.add_argument("name")
     enl = ensub.add_parser("login", help="Codex: device-code login, the link and code appear in the chat")
     enl.add_argument("name")
     enl.add_argument("--episode", help="which chat gets the link (default: the onboarding chat)")
@@ -309,6 +317,13 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "open":  # host side: nothing of the studio is touched
         from . import opener
         return opener.main(a.url, no_open=a.no_open, timeout=a.timeout)
+    if a.cmd == "engine" and a.encmd in ("connect", "disconnect"):  # runs as the studio's owner, before any db access
+        from .engines import connect
+        try:
+            return connect.cli_connect(a.name, a.print_token) if a.encmd == "connect" else connect.cli_disconnect(a.name)
+        except ValueError as e:
+            print(json.dumps({"step": "error", "text": str(e)}), flush=True)
+            return 2
     try:
         return int(_run(a) or 0)
     except PermissionError as e:
@@ -322,6 +337,8 @@ def main(argv: list[str] | None = None) -> int:
 def _run(a) -> int:
     from . import approvals, brand, db, episodes, events, paths
     from .conductor import flow, queue
+    from .engines import connect
+    connect.load_stored_token()  # a Claude login made in the web UI (engine volume), unless the environment has one
 
     if a.cmd == "doctor":
         from . import doctor

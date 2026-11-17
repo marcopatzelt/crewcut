@@ -72,7 +72,7 @@ describe("empty and error states", () => {
     render(<App />);
     const crew = await screen.findByRole("complementary", { name: "Working now" });
     const line = await within(crew).findByRole("alert");
-    expect(line.textContent).toContain("Claude Code is not logged in.");
+    expect(line.textContent).toContain("Claude is not connected.");
     expect(line.querySelector(".dot.warn")).not.toBeNull();
   });
 

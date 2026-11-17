@@ -75,7 +75,9 @@ light `mint-dawn`, the 1280 px versions on small screens) is the background of t
 
 - The composer is the only text field in the app. Its placeholder says "Tell the crew what you want". It has a microphone button
   (browser speech input where available) and a send button.
-- The one exception is the search field of the command palette (rule 15). It picks from a list and takes no values.
+- Two exceptions: the search field of the command palette (rule 15), which picks from a list and takes no values,
+  and the one field of "Connect Claude" for the code Claude's own sign-in page shows (the only thing only the user
+  can copy; it appears after the button and goes away once Claude is connected).
 - Onboarding is the composer too: "Paste your links." Links go in, the Brand identity works in Working now, a profile
   card comes back.
 - Cards have exactly one primary button. Its label says what happens ("Use this title", "Rent a GPU", "Publish on
@@ -327,7 +329,7 @@ crew); narrow window; light and dark; the engine not logged in.
 | Check | Rule |
 |---|---|
 | `npm run check:tokens` | no raw colour values outside `tokens.css`; radii, shadows and durations only from tokens (4, 6, 9) |
-| `npm run check:forms` | two text fields: the composer and the search field of the palette; no `<form>` with more than one field (1.2, 3, 15) |
+| `npm run check:forms` | three text fields: the composer, the search field of the palette and the code field of Connect Claude; no `<form>` with more than one field (1.2, 3, 15) |
 | `npm run check:words` | no emoji, no exclamation marks, no "Submit"/"OK" buttons in `src/` (8, 10) |
 | `npm run check:contrast` | every text token clears 4.5:1 on its surfaces in both themes: the opaque stand-ins, the glass over both wallpaper samples with tiles and chips on it, tags over a white picture (4, 18) |
 | `npm run check:fonts` | no font file in the repo or in `dist/` whose name or inner name contains "SF Pro", "SF Compact", "SFNS", "SF Mono" or "New York"; no `@font-face` with these names (5) |

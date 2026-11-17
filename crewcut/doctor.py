@@ -148,7 +148,8 @@ def checks(ci: bool = False, probe: bool = False) -> list[dict]:
         add(OK, f"engine {eng.label}{tag}", _first_line(_run([eng.binary(), "--version"])) or eng.binary())
     ok, why = eng.login_status() if eng.installed() or eng.name == "claude" else (False, "not installed")
     if not ok:
-        fix = ("Run `claude setup-token` once on a computer with a browser, put the value into .env, restart."
+        fix = ("Press Connect Claude in Crewcut (the start page or the desktop app), or put a `claude setup-token` "
+               "token into .env and restart."
                if eng.name == "claude" else "Say \"use Codex\" in the chat or run `crewcut engine login codex`.")
         add(NOTE if ci else ERROR, "engine login", why, fix)
     else:

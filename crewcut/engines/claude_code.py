@@ -7,7 +7,9 @@ layers:
    `--model`, `--effort`, `--add-dir`, `--name`, the job context (`--append-system-prompt`);
 3. what the user or the crew member adds (`extra_args`): passed through unchanged. A flag from layer 3 that layer 2 also
    sets wins over layer 2; layer 1 cannot be overridden, because without it Crewcut cannot read the run.
-Login: CLAUDE_CODE_OAUTH_TOKEN from `claude setup-token`. It stays in the environment: never an argument, a file or a log.
+Login: CLAUDE_CODE_OAUTH_TOKEN from `claude setup-token`, made by "Connect Claude" (engines/connect.py) or by hand. It
+stays in the environment: never an argument or a log. The web UI keeps it in the engine volume (mode 0600, never in the
+studio folder); the desktop app keeps it in the system keychain.
 """
 
 from __future__ import annotations
@@ -114,7 +116,8 @@ class ClaudeCode(Engine):
     def login_status(self) -> tuple[bool, str]:
         kind = self.login_kind()
         if not kind:
-            return False, "no CLAUDE_CODE_OAUTH_TOKEN in the environment (run `claude setup-token` once, put it into .env)"
+            return False, ("Claude is not connected: press Connect Claude in Crewcut (or put a `claude setup-token` "
+                           "token into .env)")
         return True, f"{kind} credential present (value never shown)"
 
     def command(self, task: Task) -> list[str]:

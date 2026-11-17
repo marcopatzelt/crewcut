@@ -8,7 +8,7 @@ Two engines, both on **your own subscription**, behind one interface (`crewcut/e
 
 | Engine | Status | Login | Where the login lives |
 |---|---|---|---|
-| **Claude Code** (default) | primary | `claude setup-token` once on any computer with a browser; `./start.sh` writes it to `.env` as `CLAUDE_CODE_OAUTH_TOKEN` (hidden input) | the container's environment only |
+| **Claude Code** (default) | primary | "Connect Claude": Crewcut runs `claude setup-token` in the container with `BROWSER=true`, opens the sign-in link it prints (only links to claude.ai, claude.com, console.anthropic.com or platform.claude.com), and writes the code Claude's page shows to the CLI, which prints a one-year token. On a server without a screen `./start.sh` also takes a token by hand (hidden input, `.env`) | as `CLAUDE_CODE_OAUTH_TOKEN` in the environment: from the system keychain (desktop app), from `.env`, or from `/opt/engine/secrets/claude-oauth-token` in the engine volume (web UI, mode 0600, never the studio folder); the environment wins |
 | **Codex** | beta, not yet run on a real episode | say "use Codex": the sign-in link and a one-time code appear in the chat | `CODEX_HOME` in the engine volume, never the studio folder |
 
 You pick the engine once by saying it ("use Codex", "back to Claude"). `crewcut engine status` shows both.

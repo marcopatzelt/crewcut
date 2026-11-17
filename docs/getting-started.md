@@ -4,15 +4,14 @@
 
 - Docker: Docker Desktop (free for personal use and small companies), Colima (free) or Docker Engine on Linux.
   Docker Compose 2.24 or newer.
-- A Claude plan with Claude Code (`claude setup-token` once, on any computer with a browser).
+- A Claude plan: Pro, Max, Team or Enterprise. Crewcut connects to it with the "Connect Claude" button.
 - About 15 GB of free disk for the image and your first episodes.
 
 ## Start
 
 ```bash
 git clone https://github.com/marcopatzelt/crewcut.git && cd crewcut
-claude setup-token        # on a computer with a browser; copy the token
-./start.sh                # asks for the token once, then: docker compose up
+./start.sh                # writes .env, then: docker compose up, and opens Crewcut
 ```
 
 When the server answers, Crewcut opens in its own window at http://localhost:4747: an app window of Google Chrome,
@@ -21,8 +20,19 @@ of them), with your normal browser profile. Without one of them it opens in your
 installs Claude Code inside the container and takes a few minutes; until the server answers, the page says "Crewcut is
 starting…".
 
-On Windows, run `start.sh` in WSL or Git Bash (it opens the window with Edge), or copy `.env.example` to `.env`, fill
-in the token, run `docker compose up -d` and open http://localhost:4747.
+On Windows, run `start.sh` in WSL or Git Bash (it opens the window with Edge), or copy `.env.example` to `.env`, run
+`docker compose up -d` and open http://localhost:4747.
+
+### Connect Claude
+
+The first screen says "Connect Claude first." Press **Connect Claude**: Claude's own sign-in page opens in a new tab.
+Sign in; the page shows a code. Paste it into the one field and press Connect. Crewcut runs the official sign-in of
+Claude Code (`claude setup-token`) inside the container and keeps the one-year token in the engine volume (mode 0600,
+never in your studio folder); it never sees your password. **Connect Codex (beta) instead** shows a link and a one-time
+code for ChatGPT's device sign-in.
+
+On a server without a screen, `./start.sh` also asks for a token from `claude setup-token` (hidden input, Enter skips
+it); you can just as well open Crewcut in a browser later and press Connect Claude.
 
 | To | Run |
 |---|---|

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Start Crewcut. On the first run it creates .env and ./studio and asks once for the engine token (hidden input).
+# Start Crewcut. On the first run it creates .env and ./studio. Claude is connected in the window that opens
+# ("Connect Claude"); only on a server without a screen does it ask for a token (hidden input).
 # When the server answers, Crewcut opens in its own app window (host/open-app.sh).
 #   ./start.sh              start, then open the app window
 #   ./start.sh --no-open    start and only print the address
@@ -11,7 +12,7 @@ open_args=()
 for arg in "$@"; do
   case "$arg" in
     --no-open) open_args+=(--no-open) ;;
-    -h|--help) sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $arg (./start.sh --help)"; exit 2 ;;
   esac
 done
@@ -29,13 +30,26 @@ set_env() {  # set_env KEY VALUE: replace one line in .env without ever printing
   mv "$tmp" .env; chmod 600 .env
 }
 
+# Claude: normally "Connect Claude" in the window that opens (the CLI's own sign-in, no terminal). Only on a server
+# without a screen does this ask once for a token from `claude setup-token` (hidden input); Enter skips it.
+screen=""
+case "$(uname -s)" in
+  Darwin|MINGW*|MSYS*|CYGWIN*) screen=1 ;;
+  *) { [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ] || grep -qi microsoft /proc/version 2>/dev/null; } && screen=1 ;;
+esac
 if ! grep -q '^CLAUDE_CODE_OAUTH_TOKEN=..*' .env && ! grep -q '^ANTHROPIC_API_KEY=..*' .env; then
-  echo "Crewcut runs on your own Claude plan. Run 'claude setup-token' on a computer with a browser,"
-  echo "then paste the token here (the input stays hidden) and press Enter:"
-  IFS= read -rs token; echo
-  if [ ${#token} -lt 20 ]; then echo "That does not look like a token. Run 'claude setup-token' and try again."; exit 4; fi
-  set_env CLAUDE_CODE_OAUTH_TOKEN "$token"
-  token=""
+  if [ -n "$screen" ] || [ ! -t 0 ]; then
+    echo "Claude is not connected yet: press Connect Claude in Crewcut once it opens."
+  else
+    echo "No screen here. Either open Crewcut in a browser later and press Connect Claude, or paste a token from"
+    echo "'claude setup-token' now (the input stays hidden). Press Enter to skip:"
+    IFS= read -rs token; echo
+    if [ -n "$token" ]; then
+      if [ ${#token} -lt 20 ]; then echo "That does not look like a token. Run 'claude setup-token' and try again."; exit 4; fi
+      set_env CLAUDE_CODE_OAUTH_TOKEN "$token"
+    fi
+    token=""
+  fi
 fi
 
 # The host helper's key: it signs the one request the helper accepts ("set up YouTube in my Chrome").

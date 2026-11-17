@@ -59,13 +59,15 @@ published, rented or paid for without your yes.
 
 ## Quick start
 
-You need Docker and a Claude subscription with Claude Code.
+You need Docker and a Claude subscription (Pro, Max, Team or Enterprise).
 
 ```bash
 git clone https://github.com/marcopatzelt/crewcut.git && cd crewcut
-claude setup-token     # once, on any computer with a browser: prints your token
-./start.sh             # asks for the token once (hidden), writes .env, runs docker compose up
+./start.sh             # writes .env, runs docker compose up, opens Crewcut in its own window
 ```
+
+Press **Connect Claude**: Claude's own sign-in page opens, you sign in and paste the code it shows. No terminal and no
+token to copy (on a server without a screen, `./start.sh` also takes a token from `claude setup-token`).
 
 When the server answers, Crewcut opens in its own window (an app window of Chrome, Edge, Brave, Arc or Chromium; else
 your default browser) at **http://localhost:4747**. Paste your links (website, channel), and say your first idea:
@@ -228,7 +230,7 @@ to this table are welcome.
 
 | Engine | Status | Login |
 |---|---|---|
-| **Claude Code** | default | `claude setup-token` once; the token stays in the container's environment |
+| **Claude Code** | default | "Connect Claude" once (Claude's own sign-in, no terminal); the token stays in the environment, or in the system keychain with the desktop app |
 | **Codex** | beta, not yet run on a real episode | say "use Codex": a sign-in link and a one-time code appear in the chat |
 
 Both run on your own subscription. Switch by saying it ("use Codex", "back to Claude"). Crewcut never pins the engine:

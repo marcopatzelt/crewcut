@@ -1,7 +1,7 @@
 // States from DESIGN.md rule 11 (empty, loading, error, long content), the card accept call and the composer.
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { App } from "../App";
 import { navigate, START_WAIT_MS } from "../store/actions";
 import { getUi } from "../store/store";
@@ -131,11 +131,91 @@ describe("error", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Crewcut is starting…" })).toBeTruthy();
   });
 
-  it("says when the engine is not logged in", async () => {
+  it("says when Claude is not connected, and Connect Claude leads to the sign-in", async () => {
     mockApi({ "GET /api/state": state({ app: { ...state().app, engine_ok: false } }) });
     render(<App />);
     const crew = screen.getByRole("complementary", { name: "Working now" });
-    expect(await within(crew).findByText(/Claude Code is not logged in\. Run claude setup-token/)).toBeTruthy();
+    expect(await within(crew).findByText(/Claude is not connected\./)).toBeTruthy();
+    await userEvent.click(within(crew).getByRole("button", { name: "Connect Claude" }));
+    await waitFor(() => expect(window.location.hash).toBe("#/onboarding"));
+    expect(await screen.findByRole("group", { name: "Connect Claude" })).toBeTruthy();
+  });
+});
+
+describe("Connect Claude", () => {
+  const notConnected = () => state({ app: { ...state().app, engine_ok: false, onboarded: false } });
+
+  it("opens Claude's sign-in in a new tab, takes the code in one field and says who is connected", async () => {
+    const tab = { opener: {}, location: { href: "" }, close: vi.fn() };
+    vi.stubGlobal("open", vi.fn(() => tab));
+    let connected = false;
+    const calls = mockApi({
+      "GET /api/state": () => state({ app: { ...state().app, engine_ok: connected, onboarded: false } }),
+      "GET /api/episodes/_onboarding/messages": [],
+      "GET /api/cards": [],
+      "POST /api/engine/claude/connect": { url: "https://claude.ai/oauth/authorize?code=true&state=s" },
+      "POST /api/engine/claude/code": (c: { body: unknown }) => {
+        if ((c.body as { code: string }).code !== "abcdefgh#s") return new Reply(400, { detail: "That does not look like the code." });
+        connected = true;
+        return { connected: true, account: { email: "me@example.org" } };
+      },
+    });
+    window.history.replaceState(null, "", "/#/onboarding");
+    render(<App />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Connect Claude first." })).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Connect Claude" }));
+    const field = await screen.findByRole("textbox", { name: "Code from Claude's page" });
+    expect(tab.location.href).toBe("https://claude.ai/oauth/authorize?code=true&state=s");
+    expect(tab.opener).toBeNull();
+    await userEvent.type(field, "wrong-code{Enter}");
+    expect(await screen.findByText("That does not look like the code.")).toBeTruthy();
+    await userEvent.clear(field);
+    await userEvent.type(field, "abcdefgh#s");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+    expect(await screen.findByText("Claude is connected as me@example.org. Paste your links below.")).toBeTruthy();
+    expect(calls.filter((c) => c.path === "/api/engine/claude/code")).toHaveLength(2);
+  });
+
+  it("in the desktop app the app signs in itself (keychain) and the page never sees the token", async () => {
+    const connect = vi.fn(async () => ({ connected: true, account: { email: "me@example.org" } }));
+    Object.assign(window, { crewcutDesktop: { platform: "darwin", connect, openSettings: vi.fn(), setTheme: vi.fn() } });
+    onTestFinished(() => {
+      delete (window as Window & { crewcutDesktop?: unknown }).crewcutDesktop;
+    });
+    const calls = mockApi({
+      "GET /api/state": notConnected(),
+      "GET /api/episodes/_onboarding/messages": [],
+      "GET /api/cards": [],
+    });
+    window.history.replaceState(null, "", "/#/onboarding");
+    render(<App />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Connect Claude first." })).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Connect Claude" }));
+    expect(await screen.findByText(/Claude is connected as me@example.org/)).toBeTruthy();
+    expect(connect).toHaveBeenCalledWith("claude");
+    expect(calls.some((c) => c.path.startsWith("/api/engine/"))).toBe(false);
+  });
+
+  it("Codex (beta): the device link and code, then connected", async () => {
+    let done = false;
+    mockApi({
+      "GET /api/state": notConnected(),
+      "GET /api/episodes/_onboarding/messages": [],
+      "GET /api/cards": [],
+      "POST /api/engine/codex/connect": { status: "waiting", url: "https://auth.openai.com/codex/device", code: "ABCD-1234" },
+      "GET /api/engine/login": () => ({
+        claude: { installed: true, connected: false, source: null, signing_in: false },
+        codex: { installed: true, connected: done },
+        chosen: "claude",
+      }),
+    });
+    window.history.replaceState(null, "", "/#/onboarding");
+    render(<App />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Connect Claude first." })).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Connect Codex (beta) instead" }));
+    expect(await screen.findByText("ABCD-1234")).toBeTruthy();
+    done = true; // the page asks every 3 s
+    expect(await screen.findByText("Codex is connected.", {}, { timeout: 5000 })).toBeTruthy();
   });
 });
 

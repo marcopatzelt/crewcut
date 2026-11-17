@@ -74,6 +74,37 @@ def _guard(request: Request) -> JSONResponse | None:
 
 
 _ENGINE_CACHE: dict = {}
+_LOGIN: dict = {}  # the running sign-ins: "claude" -> ClaudeSignIn, "codex" -> {"status", "url", "code", "text"}
+_LOGIN_LOCK = __import__("threading").Lock()
+
+
+class CodeIn(BaseModel):
+    code: str
+
+
+def _engine_changed(ok: bool | None) -> None:
+    """After a connect or disconnect: forget the start's probe and the cache, so the screen shows the new state."""
+    _ENGINE_CACHE.clear()
+    if ok is None:
+        db.kv_set("engine_probe", "")
+    else:
+        db.kv_set("engine_probe", json.dumps({"ok": ok, "engine": "claude", "detail": "connected in Crewcut" if ok
+                                              else "disconnected in Crewcut", "at": db.now()}))
+
+
+def _login_view() -> dict:
+    from ..engines import connect
+    claude = engines.get("claude")
+    codex = engines.get("codex")
+    cx = _LOGIN.get("codex") if isinstance(_LOGIN.get("codex"), dict) else None
+    codex_ok = codex.installed() and codex.login_status()[0]
+    return {
+        "claude": {"installed": claude.installed(), "connected": claude.login_status()[0],
+                   "source": connect.token_source(), "signing_in": "claude" in _LOGIN},
+        "codex": {"installed": codex.installed(), "connected": codex_ok,
+                  **({k: v for k, v in cx.items() if k in ("status", "url", "code", "text")} if cx else {})},
+        "chosen": engines.current_name(),
+    }
 
 
 def _engine_ok() -> bool:
@@ -137,6 +168,8 @@ def state() -> dict:
 
 
 def create_app(start_worker: bool = True) -> FastAPI:
+    from ..engines import connect
+    connect.load_stored_token()  # a Claude login made in the web UI, unless the environment (.env, desktop app) has one
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         if start_worker:
@@ -449,6 +482,96 @@ def create_app(start_worker: bool = True) -> FastAPI:
     @app.get("/api/health")
     def health():
         return {"ok": True, "version": __version__}
+
+    # ---- Connect Claude and Codex from the web UI (engines/connect.py): the CLIs' own sign-in, no terminal ----------
+    @app.get("/api/engine/login")
+    def engine_login():
+        return _login_view()
+
+    @app.post("/api/engine/claude/connect")
+    def claude_connect():
+        from ..engines import connect
+        eng = engines.get("claude")
+        if not eng.installed():
+            raise HTTPException(409, "Claude Code is still being installed. Try again in a minute.")
+        with _LOGIN_LOCK:
+            old = _LOGIN.pop("claude", None)
+            if old:
+                old.close()
+            session = connect.ClaudeSignIn(eng.binary() or "claude")
+            try:
+                url = session.start()
+            except RuntimeError as e:
+                raise HTTPException(502, str(e)) from None
+            _LOGIN["claude"] = session
+        return {"url": url}
+
+    @app.post("/api/engine/claude/code")
+    def claude_code(body: CodeIn):
+        from ..engines import connect
+        with _LOGIN_LOCK:
+            session = _LOGIN.pop("claude", None)
+        if not session:
+            raise HTTPException(409, "The sign-in has ended. Press Connect Claude again.")
+        try:
+            token = session.finish(body.code)
+        except ValueError as e:
+            with _LOGIN_LOCK:
+                _LOGIN.setdefault("claude", session)  # a typo: the same sign-in takes the code again
+            raise HTTPException(400, str(e)) from None
+        except RuntimeError as e:
+            raise HTTPException(502, str(e)) from None
+        finally:
+            if "claude" not in _LOGIN:
+                session.close()
+        connect.store_token(token)
+        _engine_changed(ok=True)
+        return {"connected": True, "account": connect.claude_account(token, engines.get("claude").binary())}
+
+    @app.post("/api/engine/claude/disconnect")
+    def claude_disconnect():
+        from ..engines import connect
+        if not connect.forget_token():
+            raise HTTPException(409, "This Claude login comes from the environment (.env or the desktop app); "
+                                     "remove it there.")
+        _engine_changed(ok=False)
+        return _login_view()
+
+    @app.post("/api/engine/codex/connect")
+    def codex_connect():
+        import threading
+        import time as _time
+        eng = engines.get("codex")
+        state: dict = {"status": "starting"}
+        _LOGIN["codex"] = state
+
+        def run():
+            if not eng.installed():
+                state["status"] = "installing"
+                ok, out = eng.install()
+                if not ok:
+                    state.update(status="failed", text=f"Codex could not be installed: {out}")
+                    return
+            ok, why = eng.device_login(lambda url, code: state.update(status="waiting", url=url, code=code))
+            state.update(status="connected" if ok else "failed", text=why)
+            _engine_changed(ok=None)
+
+        threading.Thread(target=run, daemon=True).start()
+        end = _time.monotonic() + 60
+        while _time.monotonic() < end and state["status"] in ("starting", "installing"):
+            _time.sleep(0.3)
+        return {k: v for k, v in state.items() if k in ("status", "url", "code", "text")}
+
+    @app.post("/api/engine/codex/disconnect")
+    def codex_disconnect():
+        eng = engines.get("codex")
+        if eng.installed():
+            import subprocess as _sp
+            _sp.run([eng.binary() or "codex", "logout"], env={**os.environ, **eng.env()}, capture_output=True,
+                    timeout=30)
+        _LOGIN.pop("codex", None)
+        _engine_changed(ok=None)
+        return _login_view()
 
     # ---- YouTube sign-in (the redirect comes back to this local server) -------------------------------------------
     @app.get("/api/youtube/auth")

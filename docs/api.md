@@ -302,6 +302,27 @@ with `"episode": "_onboarding"` (the `profile` card). It never appears in `state
 | `GET /api/profile` | | `{"source": "neutral" or "brand", "rows": [{"label": "Accent", "value": "#E4572E", "kind": "color", "source": "from your website"}], "preview": "path or null", "rules": [{"step", "date", "rule", "source"}]}` |
 | `POST /api/onboarding` | `{"links": ["https://…"], "text": "optional sentence"}` | `{"job": 31}`; the Brand identity works, then posts a `profile` card |
 
+## Connect Claude and Codex
+
+The CLIs' own sign-in, driven by the server (`crewcut/engines/connect.py`); no OAuth client of Crewcut's own. Writes
+need a local origin like every write.
+
+| Method and path | Body | Answer |
+|---|---|---|
+| `GET /api/engine/login` | | `{"claude": {"installed", "connected", "source": "stored", "environment" or null, "signing_in"}, "codex": {"installed", "connected", "status"?, "url"?, "code"?, "text"?}, "chosen": "claude"}` |
+| `POST /api/engine/claude/connect` | `{}` | `{"url": "https://claude.ai/oauth/authorize?…"}`: `claude setup-token` runs with `BROWSER=true`; only a link to claude.ai, claude.com, console.anthropic.com or platform.claude.com counts. 409 while Claude Code is still being installed, 502 when no link comes |
+| `POST /api/engine/claude/code` | `{"code": "…"}` (8 to 1024 of `A-Za-z0-9_-#.:`) | `{"connected": true, "account": {"email"?, "orgName"?, "subscriptionType"?, "authMethod"?}}`; the token goes to `/opt/engine/secrets/claude-oauth-token` (0600) and into the server's environment. 400 for a malformed code (the sign-in stays open), 409 when no sign-in runs, 502 when Claude refuses the code |
+| `POST /api/engine/claude/disconnect` | `{}` | as `GET /api/engine/login`; 409 when the token comes from the environment (`.env` or the desktop app) |
+| `POST /api/engine/codex/connect` | `{}` | `{"status": "waiting", "url", "code"}` (installs Codex first when needed); `GET /api/engine/login` says when it is connected |
+| `POST /api/engine/codex/disconnect` | `{}` | as `GET /api/engine/login` |
+
+The same steps on the command line, as JSON lines (the desktop app uses them through `docker compose exec`):
+`crewcut engine connect claude [--print-token]` prints `{"step": "url", "url"}`, reads the code as one line on stdin,
+then prints `{"step": "done", "account", "token" or "stored": true}` or `{"step": "error", "text"}`;
+`crewcut engine connect codex` prints `{"step": "device", "url", "code"}`, then `done` or `error`;
+`crewcut engine disconnect claude|codex`. Run as root (as `docker compose exec` does), they switch to the studio
+folder's owner first.
+
 ## Money and compute
 
 | Method and path | Answer |
