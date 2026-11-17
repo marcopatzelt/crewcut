@@ -146,20 +146,18 @@ def test_engine_missing_is_one_clear_sentence(episode, studio, no_engine, capsys
     assert "render.location = \"rented\"" in capsys.readouterr().err
 
 
-def test_render_all_skips_motion_only_when_the_plan_says_so(episode, studio, no_engine, monkeypatch, capsys):
-    import crewcut.render.media as media_mod
-    monkeypatch.setattr(media_mod, "run", FakeRunner())
-    monkeypatch.setattr(workbench.media, "run", media_mod.run)
+def test_render_all_skips_motion_only_when_the_plan_says_so(episode, studio, no_engine, capsys):
     plan = plan_with(episode, studio, {**ROLL, "start": 7.0, "end": 10.0, "cues": {}},
                      sound={"hits": [2.0, "m1"]})                        # "m1" goes with the left-out insert
-    assert cli.main(["all", str(plan.path), "--local", "--json"]) == 1           # default: a clear failure
+    with pytest.raises(motion.EngineMissing):                          # default: a clear failure
+        workbench.render_all(plan, "local", runner=FakeRunner(), log=lambda *a: None)
+    assert cli.main(["all", str(plan.path), "--local"]) == 1
+    assert "effectcraft-cli is missing here" in capsys.readouterr().err
     raw = json.loads(plan.path.read_text())
     raw["motion_without_engine"] = "skip"
     plan.path.write_text(json.dumps(raw))
-    capsys.readouterr()
-    code = cli.main(["all", str(plan.path), "--local", "--json"])
-    out = json.loads(capsys.readouterr().out)
-    assert code == 0 and out["motion"]["skipped"] == ["m1"], out.get("error")
+    out = workbench.render_all(Plan(plan.path), "local", runner=FakeRunner(), log=lambda *a: None)
+    assert out["ok"] and out["motion"]["skipped"] == ["m1"]
     notes = json.loads((plan.episode_dir / "export" / "out-v001.cut.json").read_text())["notes"]
     assert any(n.startswith("m1: left out of this cut") for n in notes)
 

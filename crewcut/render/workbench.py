@@ -254,6 +254,46 @@ def shown(plan: Plan) -> dict:
     return assemble.shown(plan)
 
 
+def _rows_ok(rows: list[dict]) -> bool:
+    return all(r.get("frames_ok") and r.get("clip_ok") is not False for r in rows)
+
+
+def render_all(plan: Plan, mode: str | None = None, gpus: int = 2, samples: int | None = None, draft: bool = False,
+               max_usd: float | None = None, compute=None, runner: media.Runner = media.run,
+               log: Callable = print) -> dict:
+    """2d, motion, 3d, cut; stops at the first step that is not complete ({"ok": False, ...}). `mode` (local or
+    rented) is for motion and 3D. Without effectcraft-cli the motion step fails with one sentence, unless the plan
+    says `"motion_without_engine": "skip"`: then the cut leaves those inserts out and says so in its notes."""
+    out: dict = {"ok": False}
+    out["2d"] = render_2d(plan, runner=runner, log=log)
+    if not _rows_ok(out["2d"]):
+        log("2D inserts failed; not cutting")
+        return out
+    skipped: list[str] = []
+    try:
+        rm = render_motion(plan, None, False, mode, compute, runner=runner, log=log)
+    except motion.EngineMissing as e:
+        if plan.p.get("motion_without_engine") != "skip":
+            raise
+        skipped = e.ids
+        log(f"note: {e} The plan says motion_without_engine: skip, so the cut leaves them out.")
+        rm = {"way": "skipped", "frames": 0, "rows": [], "skipped": skipped}
+    out["motion"] = rm
+    if not _rows_ok(rm["rows"]):
+        log("Motion graphics inserts are not complete; not cutting")
+        return out
+    out["3d"] = render_3d(plan, mode, gpus, None, samples, draft, max_usd, compute, runner=runner, log=log)
+    if not _rows_ok(out["3d"]["rows"]):
+        log("3D inserts are not complete; not cutting")
+        return out
+    final = Plan(plan.path, pack=plan.pack, episode_dir=plan.episode_dir)
+    if skipped:
+        final.drop(skipped, "effectcraft-cli is missing here and the plan says motion_without_engine: skip")
+    out["cut"] = cut(final, runner=runner, log=log)
+    out["ok"] = True
+    return out
+
+
 # ---- samples of every 2D scene (for CI screenshots and the docs) ---------------------------------------------------
 def scenes_2d() -> list[str]:
     d = paths.templates_dir() / "2d"

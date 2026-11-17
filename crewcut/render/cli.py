@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 
 from .. import brand
-from . import assemble, capture, measure, motion, music, workbench
+from . import assemble, capture, measure, music, workbench
 from .plan import Plan, PlanError
 
 COMMANDS = ("plan", "2d", "motion", "3d", "probe", "cut", "shown", "all", "measure", "samples", "capture",
@@ -262,36 +262,11 @@ def run(a: argparse.Namespace, out: dict) -> int:
             print(f"Locked: {r['output']}  sha256 {r['sha256'][:16]}")
         return 0
     if a.cmd == "all":
-        rows2 = workbench.render_2d(plan, log=log)
-        if not _rows_ok(rows2):
-            out["2d"] = rows2
-            log("2D inserts failed; not cutting")
-            return 1
-        skipped: list[str] = []
-        try:
-            rm = workbench.render_motion(plan, None, False, mode, log=log)
-        except motion.EngineMissing as e:
-            if plan.p.get("motion_without_engine") != "skip":
-                raise
-            skipped = e.ids
-            log(f"note: {e} The plan says motion_without_engine: skip, so the cut leaves them out.")
-            rm = {"way": "skipped", "frames": 0, "rows": [], "skipped": skipped}
-        out.update({"2d": rows2, "motion": rm})
-        if not _rows_ok(rm["rows"]):
-            log("Motion graphics inserts are not complete; not cutting")
-            return 1
-        r3 = workbench.render_3d(plan, mode, a.gpus, None, a.samples, a.draft, a.max_usd, log=log)
-        out["3d"] = r3
-        if not _rows_ok(r3["rows"]):
-            log("3D inserts are not complete; not cutting")
-            return 1
-        final = Plan(a.plan)
-        if skipped:
-            final.drop(skipped, "effectcraft-cli is missing here and the plan says motion_without_engine: skip")
-        out["cut"] = workbench.cut(final, log=log)
-        if not a.json:
+        r = workbench.render_all(plan, mode, a.gpus, a.samples, a.draft, a.max_usd, log=log)
+        out.update({k: v for k, v in r.items() if k != "ok"})
+        if r["ok"] and not a.json:
             print(f"Cut: {out['cut']['output']}")
-        return 0
+        return 0 if r["ok"] else 1
     return 2
 
 
