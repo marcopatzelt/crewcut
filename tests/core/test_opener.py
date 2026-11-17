@@ -161,6 +161,7 @@ def test_open_app_sh_without_chromium_uses_the_default_browser(tmp_path):
     assert opened.strip() == "xdg-open http://localhost:4747"
 
 
+@pytest.mark.skipif(not (ROOT / "start.sh").exists(), reason="start.sh is not in the image (it runs on the host)")
 def test_start_sh_takes_no_open_and_refuses_unknown_options():
     r = subprocess.run(["bash", str(ROOT / "start.sh"), "--help"], capture_output=True, text=True, timeout=30)
     assert r.returncode == 0 and "--no-open" in r.stdout and "CREWCUT_OPEN" in r.stdout
