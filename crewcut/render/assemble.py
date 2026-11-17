@@ -154,6 +154,15 @@ def stage_notes(plan: Plan, base_end: int) -> list[str]:
             for x in plan.inserts if not x.transparent and x.place == "top" and x.end > limit]
 
 
+def speaker_vf(plan: Plan, zoom: float) -> str:
+    """The full-frame speaker picture: scaled to the frame, then held on the face at `zoom` (ends with ",")."""
+    W, H = plan.size
+    fx, fy = plan.face
+    norm = f"scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{H},"
+    return norm + (f"scale=iw*{zoom:g}:-2:flags=lanczos,crop={W}:{H}:(iw-{W})*{fx:g}:(ih-{H})*{fy:g},"
+                   if zoom != 1.0 else "")
+
+
 def pieces(plan: Plan, base_end: int, end: int) -> list[Piece]:
     """Split the video at every visible cut and every overlay edge. Pure: no files are read."""
     W, H = plan.size
@@ -225,9 +234,7 @@ def pieces(plan: Plan, base_end: int, end: int) -> list[Piece]:
             if color:
                 p = Piece(i, a, b, label, "color", None, a / fps, "", ov, color=color)
             else:
-                vf = norm + (f"scale=iw*{z:g}:-2:flags=lanczos,crop={W}:{H}:(iw-{W})*{fx:g}:(ih-{H})*{fy:g},"
-                             if z != 1.0 else "")
-                p = Piece(i, a, b, label, "base", base, a / fps, vf, ov)
+                p = Piece(i, a, b, label, "base", base, a / fps, speaker_vf(plan, z), ov)
         out.append(p)
     return out
 
@@ -398,8 +405,10 @@ def audio_graph(plan: Plan, end: int) -> AudioGraph:
             filters.append("[mu0]anull[mu]")
         mix.append("[mu]")
 
+    _, motion_notes = plan.motion_sounds()
+    notes += motion_notes
     for name, key, db_default, length, preroll in SFX:
-        entries = sound.get(key) or []
+        entries = plan.sound_entries(key)
         if not entries:
             continue
         f = _sfx_file(plan, sound, name, notes, len(entries))
@@ -478,7 +487,7 @@ def cut(plan: Plan, runner: media.Runner = media.run, log: Callable = print,
     check_not_shown(plan)
     for ins in plan.inserts:
         if not html.encode(plan, ins, runner, log):
-            raise PlanError(f"insert {ins.id} is not rendered yet (run `crewcut render 2d` / `3d` first)")
+            raise PlanError(f"insert {ins.id} is not rendered yet (run `crewcut render {ins.kind}` first)")
     out = plan.output
     out.parent.mkdir(parents=True, exist_ok=True)
     base_end = base_frames(plan, runner)
@@ -528,6 +537,7 @@ def cut(plan: Plan, runner: media.Runner = media.run, log: Callable = print,
         notes.append("the sound is silent; loudness was not adjusted")
     tp, more = encode_audio(raw_audio, m4a, gain, tp_target, runner)
     notes += more + stage_notes(plan, base_end)
+    notes += [f"{i}: left out of this cut ({why})" for i, why in plan.dropped.items()]
     final_tmp = out.with_name(out.stem + ".tmp" + out.suffix)
     rc, o = runner(final_cmd(raw_video, m4a, int(plan.p.get("crf") or 17), fps, final_tmp), timeout=3600)
     if rc:

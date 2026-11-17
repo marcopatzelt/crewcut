@@ -241,3 +241,18 @@ def run(backend: Any, project: str, name: str, params: dict[str, Any] | None = N
     code, merged = program(name, params or {}, extra, strict=strict, context=context)
     res = parse_result(backend.script(code, project=project, save=save, name=f"{name}.jsx"))
     return {"template": name, "params": merged, "result": res}
+
+
+def program_path(path: str | Path, params: dict[str, Any], strict: bool = True,
+                 context: dict[str, Any] | None = None, assets: str | None = None) -> tuple[str, dict]:
+    """Like :func:`program`, for a template given by its file: a pinned version (``<name>.vN.jsx``) or an episode's
+    own comp (``motion/m3/comp.jsx``). ``assets`` overrides ``EC_ASSETS`` (a rented machine has its own copy)."""
+    path = Path(path)
+    src = path.read_text(encoding="utf-8")
+    h = parse_header(src)
+    merged = merge(h["defaults"], params, strict=strict)
+    if assets is None:
+        own = path.parent / "assets"
+        assets = str(own) if own.is_dir() else str(assets_dir())
+    body = f"{src}\nreturn {h['name']}({js(merged)});"
+    return wrap_program(body, context_source(context) + lib_source() + f"\nvar EC_ASSETS = {js(assets)};\n"), merged

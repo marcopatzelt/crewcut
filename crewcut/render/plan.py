@@ -15,8 +15,10 @@ on the right edge of a Short.
 from __future__ import annotations
 
 import copy
+import dataclasses
 import hashlib
 import json
+import math
 import os
 import re
 from dataclasses import dataclass
@@ -25,14 +27,15 @@ from pathlib import Path
 from typing import Any
 
 from .. import brand, paths
+from ..motion import templates as mtemplates
 
 FORMATS = {"landscape": (1920, 1080), "portrait": (1080, 1920)}
-KINDS = ("2d", "3d", "clip")
-EXTRA_FRAMES = 2                                    # every 2D/3D insert renders 2 frames more than it shows
+KINDS = ("2d", "3d", "clip", "motion")
+EXTRA_FRAMES = 2                                    # every 2D/3D/motion insert renders 2 frames more than it shows
 PATH_KEYS = ("image", "folder", "avatar")           # data keys that carry a path, relative to the episode folder
 LIST_PATH_KEYS = {"cards": ("image", "folder")}
-SHARED = {"2d": ("base.css", "motion.js", "scene.js"), "3d": ("stage.py",)}
-EXT = {"2d": ".html", "3d": ".py"}
+SHARED = {"2d": ("base.css", "motion.js", "scene.js"), "3d": ("stage.py",)}   # motion: templates.lib_files()
+EXT = {"2d": ".html", "3d": ".py", "motion": ".jsx"}
 TEXT_SCENES = ("headline", "post")                  # inserts the viewer has to read
 LAYOUTS = ("full", "proof-top")
 STAGE_HEIGHT = 960                                  # proof-top: height of the proof's stage at the top (portrait)
@@ -44,7 +47,27 @@ RIGHT_FREE_FRAC = 0.18                              # portrait: right share kept
 KEYWORD_MARGIN = 0.04                               # keyword chips keep this share of the width to the left edge
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,40}$")
 _SCENE = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
+_MOTION_SCENE = re.compile(r"^(?P<name>[A-Za-z0-9_]{1,60})(?:@(?P<version>[1-9][0-9]{0,3}))?$")
 _COLORS = re.compile(r"^#?[0-9A-Fa-f]{6}$")
+
+# kind "motion" (motion graphics rendered by EffectCraft, crewcut/render/motion.py)
+STAGE_FORMAT = "stage"                              # proof-top inserts with place "top" render at the stage size
+BACKDROPS = ("speaker",)                            # "backdrop": the comp gets the speaker piece as footage
+LAYERS = ("behind",)                                # "layer": an overlay meant to sit behind the speaker (matte later)
+FACE_BOX = (0.32, 0.28)                             # face box size (fractions of the frame) when the plan gives a centre
+IMAGE_EXT = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".bmp", ".tif", ".tiff"}
+FOOTAGE_EXT = {".mp4", ".mov", ".mkv", ".webm", ".m4v", ".avi"}
+SOUND_LISTS = {"whoosh": "whooshes", "hit": "hits", "pop": "hits", "click": "hits", "bell": "hits",
+               "tick": "typing", "reel_tick": "typing", "typing": "typing"}
+MOTION_CAP_USD = {"landscape": 2.0, "portrait": 0.5}   # rented motion work per video: long-form, Short
+MOTION_DEFAULTS = {                                 # edit-style.json "motion" when the pack has none (neutral values)
+    "insert_s": [3, 6], "insert_s_long": {"ranking": 8}, "overlay_min_s": 1.5, "prefer": "motion",
+    "heroes": ["big_claim", "card_gallery", "ranking"],
+    "long": {"per_sentence_max": 1, "big_max": 5, "big_per_minute_max": 1, "all_per_minute_max": 2, "min_gap_s": 6,
+             "hero_each_max": 1, "heroes_max": 2},
+    "short": {"per_sentence_max": 1, "big_max": 2, "all_max": 5, "min_gap_s": None, "hero_each_max": 1,
+              "heroes_max": 1},
+}
 
 
 class PlanError(ValueError):
@@ -92,6 +115,8 @@ def tokens_for_hash(tokens: dict, kind: str) -> dict:
     """The part of the tokens that changes how an insert looks. Loudness and edit style do not."""
     if kind == "3d":
         keys = ("stage3d", "colors", "fonts", "motion")
+    elif kind == "motion":
+        keys = ("colors", "fonts", "shape", "motion_graphics")
     else:
         keys = ("colors", "fonts", "logo", "shape", "motion", "css")
     return {k: tokens.get(k) for k in keys}
@@ -107,6 +132,37 @@ def insert_hash(data: dict, files: list[Path], tokens: dict, extra: list[str] | 
     for x in extra:
         h.update(b"\0" + x.encode())
     return h.hexdigest()[:10]
+
+
+def font_files(tokens: dict) -> list[Path]:
+    """The pack's font files (fonts.<role>.files, resolved by render_tokens), each once, in role order."""
+    out: list[Path] = []
+    for spec in (tokens.get("fonts") or {}).values():
+        for f in (spec or {}).get("files") or []:
+            p = Path(f)
+            if p.is_file() and p not in out:
+                out.append(p)
+    return out
+
+
+def motion_context(plan: Plan, ins: Insert, draft: bool = False, backdrop: str | None = None) -> dict:
+    """CC_CTX of a motion insert (templates/motion/README.md): format, size, fps, duration (seconds of the insert),
+    transparent, face (only where the speaker is in the picture: overlays and speaker backdrops), backdrop (path of the
+    speaker piece, given by the renderer), draft, right_free and the brand (colours, fonts as family and weight,
+    shape, mg = the resolved motion_graphics)."""
+    t = plan.tokens
+    fonts = {role: {"family": (spec or {}).get("family"), "weight": (spec or {}).get("weight")}
+             for role, spec in (t.get("fonts") or {}).items()}
+    face = None
+    if ins.transparent or ins.backdrop == "speaker":
+        x, y, w, h = plan.face_box()
+        face = {"x": x, "y": y, "w": w, "h": h}
+    size = ins.size or plan.size
+    return {"format": ins.format or plan.format, "size": [size[0], size[1]], "fps": plan.fps,
+            "duration": round(ins.frames / plan.fps, 6), "transparent": ins.transparent, "face": face,
+            "backdrop": backdrop, "draft": bool(draft), "right_free": plan.right_free,
+            "brand": {"colors": t.get("colors") or {}, "fonts": fonts, "shape": t.get("shape") or {},
+                      "mg": t.get("motion_graphics") or {}}}
 
 
 @dataclass
@@ -132,6 +188,20 @@ class Insert:
     place: str = "full"              # proof-top: "top" (on the stage) or "full"; overlays are always "full"
     fit: str = "cover"               # on the stage: "cover" (fill, crop) or "contain" (whole, as a card)
     anchor: str = "center"           # fit cover: "center" or "top" (keeps the top of a tall capture)
+    # kind "motion" only (data holds the params the plan gives: data, cues in seconds, resolved paths)
+    format: str | None = None        # landscape | portrait | stage (proof-top, place "top")
+    size: tuple[int, int] | None = None
+    params: dict | None = None       # data merged over the template's header defaults: what the template gets
+    header: dict | None = None       # the template's parsed header (kind, formats, sounds, version, defaults)
+    source: Path | None = None       # episode-local comp (plan "source"); None for a library template ("scene")
+    version: int | None = None       # pinned template version ("scene": "name@N")
+    backdrop: str | None = None      # "speaker": the graded, zoomed speaker piece is the comp's footage
+    layer: str | None = None         # "behind": an overlay meant to sit behind the speaker (the matte comes later)
+    plates: tuple = ()               # Blender plates the comp needs: kept as validated data for now
+    sound: bool = False              # the template's @sounds become sound events of the cut
+    beat: Any = None                 # the motion plan row this insert comes from (for the Critic)
+    column: Any = None
+    assets: tuple[Path, ...] = ()    # image and footage files the params reference
 
     @property
     def frames(self) -> int:
@@ -139,7 +209,7 @@ class Insert:
 
     @property
     def render_frames(self) -> int:
-        return self.frames + EXTRA_FRAMES if self.kind in ("2d", "3d") else 0
+        return self.frames + EXTRA_FRAMES if self.kind in ("2d", "3d", "motion") else 0
 
     @property
     def data_file(self) -> Path | None:
@@ -177,6 +247,7 @@ class Plan:
                                                               RIGHT_FREE_FRAC))))
         self.words = load_words(self.local(self.p["words"])) if self.p.get("words") else []
         self.tokens = render_tokens(self.pack)
+        self.dropped: dict[str, str] = {}             # insert id -> why it is left out of this cut (see drop())
         self.inserts: list[Insert] = []
         for e in self.p.get("inserts") or []:
             ins = self._insert(e)
@@ -274,6 +345,22 @@ class Plan:
                 return round(float(cue["time"]) * self.fps) - start + offset
         raise PlanError(f"bad cue {cue!r}: use a frame number, {{\"word\": ...}} or {{\"time\": ...}}")
 
+    def anchor_time(self, v: Any, after: float = 0.0) -> float:
+        """An insert's start or end: seconds, or a word anchor {"word": "costs", "offset": -0.6, "after": 12.0} (the
+        first time the word is spoken at or after `after`, default: the start for an end, else 0; offset in seconds),
+        or {"time": 12.4, "offset": -0.2}."""
+        if isinstance(v, bool):
+            raise ValueError(f"bad time {v!r}")
+        if isinstance(v, dict):
+            off = float(v.get("offset") or 0.0)
+            if "word" in v:
+                a = float(v["after"]) if v.get("after") is not None else after
+                return round(self.word_time(v["word"], a) + off, 4)
+            if "time" in v:
+                return round(float(v["time"]) + off, 4)
+            raise ValueError(f"bad time {v!r}")
+        return float(v)
+
     def by_id(self, iid: str) -> Insert:
         for x in self.inserts:
             if x.id == iid:
@@ -334,12 +421,17 @@ class Plan:
         if kind not in KINDS:
             raise PlanError(f"insert {iid}: kind must be one of {', '.join(KINDS)}")
         try:
-            start_s, end_s = float(e["start"]), float(e["end"])
+            start_s = self.anchor_time(e["start"], 0.0)
+            end_s = self.anchor_time(e["end"], start_s)
+        except PlanError as ex:
+            raise PlanError(f"insert {iid}: {ex}") from ex
         except (KeyError, TypeError, ValueError) as ex:
-            raise PlanError(f"insert {iid}: start and end (seconds) are required") from ex
+            raise PlanError(f"insert {iid}: start and end (seconds or {{\"word\": ...}}) are required") from ex
         start, end = round(start_s * self.fps), round(end_s * self.fps)
         if end <= start:
             raise PlanError(f"insert {iid}: end must be after start")
+        if kind == "motion":
+            return self._motion(e, iid, start_s, end_s, start, end)
         transparent = bool(e.get("transparent"))
         if kind == "clip":
             if not e.get("file"):
@@ -370,14 +462,222 @@ class Plan:
         return self._placed(Insert(iid, kind, scene, start_s, end_s, start, end, transparent, cues, data, e,
                                    template=template, shared=shared, hash=h, out_dir=out_dir, clip=clip))
 
+    def _place(self, iid: str, e: dict, transparent: bool) -> str:
+        """Where a full-frame insert goes in proof-top ("top" on the stage, or "full"). Overlays are always "full"."""
+        place = e.get("place") or ("top" if self.layout == "proof-top" and not transparent else "full")
+        if place not in PLACES:
+            raise PlanError(f"insert {iid}: place must be one of {', '.join(PLACES)}")
+        if place == "top" and (self.layout != "proof-top" or transparent):
+            raise PlanError(f"insert {iid}: place 'top' needs layout proof-top and a full-frame insert")
+        return place
+
+    # ---- kind "motion" ---------------------------------------------------------------------------------------------
+    def motion_dirs(self) -> list[Path]:
+        """Folders of library motion templates: the pack's brand/templates/motion/ wins over the app's."""
+        dirs = [] if self.pack.is_neutral else [Path(self.pack.dir) / "templates" / "motion"]
+        return [*dirs, paths.templates_dir() / "motion"]
+
+    def motion_template(self, name: str, version: int | None = None) -> Path:
+        """The .jsx of a library template. With a version N: <name>.jsx when its @version is N (no @version counts as
+        1), else <name>.vN.jsx in the same folder."""
+        for d in self.motion_dirs():
+            cur = d / f"{name}.jsx"
+            if version is None:
+                if cur.is_file():
+                    return cur
+                continue
+            if cur.is_file():
+                try:
+                    v = mtemplates.parse_header(cur.read_text(encoding="utf-8")).get("version") or 1
+                except mtemplates.TemplateError:
+                    v = None
+                if v == version:
+                    return cur
+            old = d / f"{name}.v{version}.jsx"
+            if old.is_file():
+                return old
+        names = sorted({p.stem for d in self.motion_dirs() if d.is_dir() for p in d.glob("*.jsx") if "." not in p.stem})
+        want = f"{name}@{version}" if version else name
+        raise PlanError(f"no motion template '{want}'. Available: {', '.join(names) or 'none'}")
+
+    def episode_file(self, rel: str, what: str) -> Path:
+        """A file inside the episode folder (relative path only)."""
+        if not isinstance(rel, str) or not rel or Path(rel).is_absolute():
+            raise PlanError(f"{what} must be a path relative to the episode folder, got {rel!r}")
+        try:
+            p = paths.inside(self.episode_dir, rel)
+        except ValueError as e:
+            raise PlanError(f"{what} {rel}: the path must stay inside the episode folder") from e
+        if not p.is_file():
+            raise PlanError(f"{what} not found: {rel}")
+        return p
+
+    def _motion_paths(self, params: dict) -> list[Path]:
+        """Relative image and footage paths in the params (at any depth) become absolute paths inside the episode
+        folder. Returns the files."""
+        files: list[Path] = []
+
+        def one(v: Any) -> Any:
+            if isinstance(v, dict):
+                return {k: one(x) for k, x in v.items()}
+            if isinstance(v, list):
+                return [one(x) for x in v]
+            if not isinstance(v, str) or "://" in v or Path(v).suffix.lower() not in IMAGE_EXT | FOOTAGE_EXT:
+                return v
+            try:
+                p = self.local(v)
+            except PlanError:
+                return v
+            if not p.is_file():
+                return v
+            files.append(p)
+            return str(p)
+
+        for k in list(params):
+            params[k] = one(params[k])
+        return sorted(set(files))
+
+    def _plates(self, iid: str, plates: Any) -> tuple:
+        """`plates`: [{"id", "script", "args", "frames"}] (Blender jobs before the comp). Only the shape is checked."""
+        if plates in (None, []):
+            return ()
+        if not isinstance(plates, list):
+            raise PlanError(f"insert {iid}: plates must be a list of {{\"id\", \"script\", \"args\", \"frames\"}}")
+        out = []
+        for i, pl in enumerate(plates):
+            ok = (isinstance(pl, dict) and isinstance(pl.get("id"), str) and _ID.match(pl["id"])
+                  and isinstance(pl.get("script"), str) and pl["script"].endswith(".py")
+                  and isinstance(pl.get("args", {}), dict) and isinstance(pl.get("frames"), int)
+                  and not isinstance(pl.get("frames"), bool) and pl["frames"] > 0)
+            if not ok:
+                raise PlanError(f"insert {iid}: plate {i + 1} needs id (letters, digits, - and _), script (a .py "
+                                "file), args (an object) and frames (a whole number above 0)")
+            out.append(copy.deepcopy(pl))
+        if len({pl["id"] for pl in out}) != len(out):
+            raise PlanError(f"insert {iid}: plate ids must be unique")
+        return tuple(out)
+
+    def backdrop_key(self, start: int, frames: int) -> str:
+        """What the speaker backdrop of a span is made of (for the hash): the base file's stat, the zoom, the span."""
+        color = self.base_color()
+        if color:
+            src = f"color:{color}"
+        else:
+            if not self.p.get("base"):
+                raise PlanError("a speaker backdrop needs 'base' (the speaker cut)")
+            b = self.local(self.p["base"])
+            st = b.stat() if b.is_file() else None
+            src = f"{b}:{st.st_size}:{st.st_mtime_ns}" if st else f"{b}:missing"
+        return f"backdrop:{src}:{start}:{frames}:{self.zoom_at(start):g}:{self.face}"
+
+    def zoom_at(self, frame: int) -> float:
+        """The speaker zoom shown at a frame (the last zoom mark at or before it)."""
+        z = 1.0
+        for at, zz in self.speaker_marks():
+            if at <= frame:
+                z = zz
+        return z
+
+    def _motion(self, e: dict, iid: str, start_s: float, end_s: float, start: int, end: int) -> Insert:
+        scene, source = e.get("scene"), e.get("source")
+        if bool(scene) == bool(source):
+            raise PlanError(f"insert {iid}: a motion insert needs exactly one of scene (a library template) or "
+                            "source (a comp in the episode folder)")
+        version = None
+        if source:
+            template = self.episode_file(source, f"insert {iid}: source")
+            if template.suffix != ".jsx":
+                raise PlanError(f"insert {iid}: source must be a .jsx comp")
+        else:
+            m = _MOTION_SCENE.match(str(scene))
+            if not m:
+                raise PlanError(f"insert {iid}: scene {scene!r} is not a template name (name or name@version)")
+            version = int(m.group("version")) if m.group("version") else None
+            template = self.motion_template(m.group("name"), version)
+        try:
+            header = mtemplates.parse_header(template.read_text(encoding="utf-8"))
+            shared = tuple(mtemplates.lib_files())
+        except mtemplates.TemplateError as ex:
+            raise PlanError(f"insert {iid}: {ex}") from ex
+        backdrop, layer = e.get("backdrop"), e.get("layer")
+        if backdrop is not None and backdrop not in BACKDROPS:
+            raise PlanError(f"insert {iid}: backdrop must be null or \"speaker\"")
+        if layer is not None and layer not in LAYERS:
+            raise PlanError(f"insert {iid}: layer must be null or \"behind\"")
+        transparent = e.get("transparent")
+        transparent = (header.get("kind") == "overlay") if transparent is None else bool(transparent)
+        if backdrop and transparent:
+            raise PlanError(f"insert {iid}: backdrop \"speaker\" is for full-frame inserts (transparent false)")
+        if layer and not transparent:
+            raise PlanError(f"insert {iid}: layer \"behind\" is for overlays (transparent true)")
+        place = self._place(iid, e, transparent)
+        fmt = STAGE_FORMAT if place == "top" else self.format
+        size = self.stage_size if place == "top" else self.size
+        formats = header.get("formats")
+        if formats and fmt not in formats:
+            raise PlanError(f"insert {iid}: template {header['name']} has no {fmt} format (it has {', '.join(formats)})")
+        defaults = header.get("defaults") or {}
+        cues = {str(n): self.cue_frame(c, start, start_s) for n, c in (e.get("cues") or {}).items()}
+        bad = sorted(n for n in cues if n not in defaults)
+        if bad:
+            raise PlanError(f"insert {iid}: cue {', '.join(bad)} is not a parameter of {header['name']} "
+                            f"(parameters: {', '.join(sorted(defaults)) or 'none'})")
+        data = copy.deepcopy(e.get("data") or {})
+        if not isinstance(data, dict):
+            raise PlanError(f"insert {iid}: data must be an object")
+        both = sorted(set(data) & set(cues))
+        if both:
+            raise PlanError(f"insert {iid}: {', '.join(both)} is set in data and in cues; keep one")
+        data.update({n: round(f / self.fps, 4) for n, f in cues.items()})
+        assets = self._motion_paths(data)
+        try:
+            params = mtemplates.merge(defaults, data)
+        except mtemplates.TemplateError as ex:
+            raise PlanError(f"insert {iid}: {ex}") from ex
+        plates = self._plates(iid, e.get("plates"))
+        ins = Insert(iid, "motion", header["name"], start_s, end_s, start, end, transparent, cues, data, e,
+                     template=template, shared=shared, format=fmt, size=size, params=params, header=header,
+                     source=template if source else None, version=version, backdrop=backdrop, layer=layer,
+                     plates=plates, sound=bool(e.get("sound")), beat=e.get("beat"), column=e.get("column"),
+                     assets=tuple(assets))
+        ins.place = place
+        self._motion_hashed(ins)
+        return self._placed(ins)
+
+    def motion_hash(self, ins: Insert, draft: bool = False) -> str:
+        """Cache key of a motion insert: its params, the context (the backdrop by what it is made of, not by its
+        path), the .jsx and every lib file, the look tokens, the engine pin and the pack's font files."""
+        extra = [f"{p}:{p.stat().st_size}:{p.stat().st_mtime_ns}" for p in ins.assets] + self._engine_keys()
+        if ins.backdrop:
+            extra.append(self.backdrop_key(ins.start, ins.render_frames))
+        key = {"params": ins.data, "context": motion_context(self, ins, draft=draft)}
+        return insert_hash(key, [ins.template, *ins.shared], tokens_for_hash(self.tokens, "motion"), extra)
+
+    def _motion_hashed(self, ins: Insert, draft: bool = False) -> Insert:
+        ins.hash = self.motion_hash(ins, draft)
+        ins.out_dir = self.episode_dir / "render" / "inserts" / f"{ins.id}-{ins.hash}"
+        ins.clip = Path(str(ins.out_dir) + (".mov" if ins.transparent else ".mp4"))
+        return ins
+
+    def motion_draft(self, ins: Insert) -> Insert:
+        """The draft of a motion insert (8 blur samples): its own hash and folder, so the cut never uses a draft."""
+        return self._motion_hashed(dataclasses.replace(ins), draft=True)
+
+    def _engine_keys(self) -> list[str]:
+        """Cache key parts every motion insert shares: the engine pin and the pack's font files (size, time)."""
+        if getattr(self, "_ekeys", None) is None:
+            from .. import doctor  # late: doctor pulls in the database and the engines
+            keys = ["pin:" + json.dumps(doctor.read_pin(), sort_keys=True)]
+            for f in font_files(self.tokens):
+                st = f.stat()
+                keys.append(f"font:{f.name}:{st.st_size}:{st.st_mtime_ns}")
+            self._ekeys = keys
+        return self._ekeys
+
     def _placed(self, ins: Insert) -> Insert:
         """Where a full-frame insert goes (place, fit, anchor). Overlays always lie over the whole picture."""
         e = ins.raw
-        place = e.get("place") or ("top" if self.layout == "proof-top" and not ins.transparent else "full")
-        if place not in PLACES:
-            raise PlanError(f"insert {ins.id}: place must be one of {', '.join(PLACES)}")
-        if place == "top" and (self.layout != "proof-top" or ins.transparent):
-            raise PlanError(f"insert {ins.id}: place 'top' needs layout proof-top and a full-frame insert")
+        place = self._place(ins.id, e, ins.transparent)
         fit, anchor = e.get("fit") or "cover", e.get("anchor") or "center"
         if fit not in FITS:
             raise PlanError(f"insert {ins.id}: fit must be one of {', '.join(FITS)}")
@@ -431,8 +731,21 @@ class Plan:
 
     @property
     def face(self) -> tuple[float, float]:
+        """Face centre (fractions of the frame). The plan's `face` is [x, y], [x, y, w, h] or {"x", "y", "w", "h"}."""
+        x, y, _, _ = self.face_box()
+        return x, y
+
+    def face_box(self) -> tuple[float, float, float, float]:
+        """Face centre and box size (fractions of the frame); the size defaults to FACE_BOX."""
         f = self.p.get("face") or [0.5, 0.38]
-        return float(f[0]), float(f[1])
+        try:
+            if isinstance(f, dict):
+                return (float(f.get("x", 0.5)), float(f.get("y", 0.38)), float(f.get("w") or FACE_BOX[0]),
+                        float(f.get("h") or FACE_BOX[1]))
+            w, h = (float(f[2]), float(f[3])) if len(f) >= 4 else FACE_BOX
+            return float(f[0]), float(f[1]), w, h
+        except (TypeError, ValueError, IndexError, KeyError) as e:
+            raise PlanError(f"face must be [x, y], [x, y, w, h] or {{\"x\", \"y\", \"w\", \"h\"}}, got {f!r}") from e
 
     def speaker_marks(self) -> list[tuple[int, float]]:
         """(frame, zoom) marks for the speaker, zoom limited by the pack's zoom_max."""
@@ -463,6 +776,83 @@ class Plan:
         """proof-top: the colour around a card (fit contain) on the stage. Plan `stage_color`, default the pack's soft."""
         return self.color(self.p.get("stage_color") or "soft", "stage_color")
 
+    # ---- motion: sound events, left-out inserts --------------------------------------------------------------------
+    def motion_sounds(self) -> tuple[dict[str, list[float]], list[str]]:
+        """Sound events of motion inserts with `"sound": true`, from the template's @sounds: "in" = the insert's
+        start, "out" = its end minus the pack's exit_s, a number or a param name = the start plus those seconds.
+        At most one sound per insert; none on a keyword_pop right after a keyword_pop. Returns ({"hits": [s, ...],
+        "whooshes": [...], "typing": [...]}, notes)."""
+        out: dict[str, list[float]] = {"hits": [], "whooshes": [], "typing": []}
+        notes: list[str] = []
+        exit_s = float((self.tokens.get("motion_graphics") or {}).get("exit_s") or 0.25)
+        prev = None
+        for x in sorted((i for i in self.inserts if i.kind == "motion"), key=lambda i: i.start):
+            in_a_row = x.scene == "keyword_pop" and prev == "keyword_pop"
+            prev = x.scene
+            if not x.sound:
+                continue
+            if in_a_row:
+                notes.append(f"{x.id}: no sound (a keyword_pop right after a keyword_pop stays silent)")
+                continue
+            for snd in (x.header or {}).get("sounds") or []:
+                lst = SOUND_LISTS.get(snd["sound"])
+                at = snd["at"]
+                if lst is None:
+                    notes.append(f"{x.id}: sound {snd['sound']!r} is not one of {', '.join(sorted(SOUND_LISTS))}")
+                    continue
+                if at == "in":
+                    t = x.start / self.fps
+                elif at == "out":
+                    t = max(x.start, x.end - round(exit_s * self.fps)) / self.fps
+                elif isinstance(at, (int, float)):
+                    t = x.start / self.fps + float(at)
+                elif isinstance((x.params or {}).get(at), (int, float)) and not isinstance(x.params[at], bool):
+                    t = x.start / self.fps + float(x.params[at])
+                else:
+                    notes.append(f"{x.id}: sound at {at!r} is not in, out or a param in seconds")
+                    continue
+                out[lst].append(round(t, 3))
+                break                                   # one sound per motion graphic
+            else:
+                notes.append(f"{x.id}: sound is on, but template {x.scene} names no usable sound (@sounds)")
+        return out, notes
+
+    def drop(self, ids: list[str], why: str) -> None:
+        """Leave these inserts out of the cut (e.g. motion graphics without the engine and `motion_without_engine`
+        "skip"). Their sound events and the plan's sound references to them go too."""
+        for i in ids:
+            self.dropped[i] = why
+        self.inserts = [x for x in self.inserts if x.id not in self.dropped]
+
+    def _refers_to_dropped(self, entry: Any) -> bool:
+        ref = entry.get("at") if isinstance(entry, dict) else (entry[0] if isinstance(entry, list) and entry else entry)
+        return isinstance(ref, str) and ref.partition("@")[0] in self.dropped
+
+    def sound_entries(self, key: str) -> list:
+        """One list of plan["sound"][key] ("hits", "typing", "whooshes") plus the motion inserts' sound events."""
+        own = [x for x in (self.p.get("sound") or {}).get(key) or [] if not self._refers_to_dropped(x)]
+        return own + self.motion_sounds()[0].get(key, [])
+
+    def length_s(self) -> float:
+        """Length of the video as far as the plan knows without media: generated base, last word, last insert."""
+        b = self.p.get("base")
+        if isinstance(b, dict) and b.get("seconds"):
+            n = float(b["seconds"])
+        elif self.words:
+            n = max(w["e"] for w in self.words)
+        else:
+            n = max((x.end_s for x in self.inserts), default=0.0)
+        return n + float(self.p.get("tail") or 0)
+
+    def sentences(self) -> list[tuple[float, float]]:
+        """Sentence spans from the words file: each runs from its first word to the next sentence's first word."""
+        starts, new = [], True
+        for w in self.words:
+            if new:
+                starts.append(w["s"])
+            new = str(w["w"]).rstrip().endswith((".", "!", "?"))
+        return [(a, b) for a, b in zip(starts, [*starts[1:], math.inf], strict=True)]
+
     # ---- checks ---------------------------------------------------------------------------------------------------
     def _check(self) -> list[str]:
         out = []
@@ -487,6 +877,86 @@ class Plan:
                 if any(isinstance(v, (int, float)) and v > edge for v in xs):
                     out.append(f"{x.id}: a keyword centre lies in the right {self.right_free:.0%} of the frame, "
                                "where the platform's buttons are")
+        kw = [x.id for x in self.inserts if x.scene in ("keyword", "keyword_pop")]
+        kmax = self.pack.value("edit_style.keywords_max")
+        if isinstance(kmax, (int, float)) and len(kw) > kmax:
+            out.append(f"{len(kw)} keywords (keyword and keyword_pop: {', '.join(kw)}); the style pack allows "
+                       f"{int(kmax)}")
+        return out + self._motion_checks()
+
+    def motion_style(self) -> dict:
+        """edit-style.json `motion` over the neutral defaults."""
+        own = self.pack.value("edit_style.motion", {})
+        out = copy.deepcopy(MOTION_DEFAULTS)
+        for k, v in (own if isinstance(own, dict) else {}).items():
+            out[k] = {**out[k], **v} if isinstance(out.get(k), dict) and isinstance(v, dict) else v
+        return out
+
+    def _motion_checks(self) -> list[str]:
+        """Lengths (motion.insert_s, overlay_min_s), the template's kind and the density rules of edit-style.json
+        `motion` (long or short): per sentence, big moments, all motion, the gap, hero templates."""
+        ms = sorted((x for x in self.inserts if x.kind == "motion"), key=lambda x: x.start)
+        if not ms:
+            return []
+        cfg = self.motion_style()
+        out = []
+        lo, hi = (cfg.get("insert_s") or [3, 6])[:2]
+        longer = cfg.get("insert_s_long") or {}
+        omin = cfg.get("overlay_min_s")
+        for x in ms:
+            secs = x.frames / self.fps
+            kind = (x.header or {}).get("kind")
+            if kind == "overlay" and not x.transparent:
+                out.append(f"{x.id}: {x.scene} is an overlay template but the insert is full frame (transparent false)")
+            if kind == "full" and x.transparent:
+                out.append(f"{x.id}: {x.scene} is a full-frame template but the insert is an overlay")
+            if x.transparent:
+                if isinstance(omin, (int, float)) and secs < omin - 1e-6:
+                    out.append(f"{x.id}: overlay of {secs:.2f} s; at least {omin:g} s (motion.overlay_min_s)")
+            else:
+                top = float(longer.get(x.scene, hi)) if isinstance(longer, dict) else hi
+                if not lo - 1e-6 <= secs <= top + 1e-6:
+                    out.append(f"{x.id}: full-frame motion of {secs:.2f} s; the pack wants {lo:g} to {top:g} s "
+                               "(motion.insert_s)")
+        lim = cfg.get("short" if self.format == "portrait" else "long") or {}
+        minutes = self.length_s() / 60
+        per = lim.get("per_sentence_max")
+        if self.words and isinstance(per, (int, float)):
+            for a, b in self.sentences():
+                hit = [x.id for x in ms if a <= x.start_s < b]
+                if len(hit) > per:
+                    out.append(f"{', '.join(hit)}: {len(hit)} motion graphics in one sentence ({a:.1f} s); at most "
+                               f"{int(per)} per sentence")
+        big = [x.id for x in ms if not x.transparent]
+        caps = [v for v in (lim.get("big_max"),) if isinstance(v, (int, float))]
+        if isinstance(lim.get("big_per_minute_max"), (int, float)):
+            caps = [max(caps + [lim["big_per_minute_max"] * minutes])]
+        if caps and len(big) > caps[0]:
+            out.append(f"{len(big)} full-frame motion moments; at most {caps[0]:g} for this video")
+        allcap = None
+        if isinstance(lim.get("all_max"), (int, float)):
+            allcap = lim["all_max"]
+        elif isinstance(lim.get("all_per_minute_max"), (int, float)):
+            allcap = lim["all_per_minute_max"] * max(1.0, minutes)
+        if allcap is not None and len(ms) > allcap:
+            out.append(f"{len(ms)} motion graphics in {self.length_s():.0f} s; at most {allcap:g} (overlays included)")
+        gap = lim.get("min_gap_s")
+        if isinstance(gap, (int, float)):
+            for a, b in pairwise(ms):
+                if b.start_s - a.start_s < gap - 1e-6:
+                    out.append(f"{a.id} and {b.id} start {b.start_s - a.start_s:.1f} s apart; never two motion "
+                               f"graphics inside {gap:g} s")
+        heroes = [x.scene for x in ms if x.scene in (cfg.get("heroes") or [])]
+        each = lim.get("hero_each_max")
+        for name in sorted(set(heroes)):
+            if isinstance(each, (int, float)) and heroes.count(name) > each:
+                out.append(f"{name} is used {heroes.count(name)} times; a hero template at most {int(each)} per video")
+        if isinstance(lim.get("heroes_max"), (int, float)) and len(heroes) > lim["heroes_max"]:
+            out.append(f"{len(heroes)} hero templates ({', '.join(heroes)}); at most {int(lim['heroes_max'])}")
+        counters = {str(x.data.get("value")) for x in self.inserts if x.kind == "2d" and x.scene == "counter"}
+        for x in ms:
+            if x.scene == "number_roll" and str((x.params or {}).get("value")) in counters:
+                out.append(f"{x.id}: the number {x.params.get('value')} is also a 2D counter; one statement, one form")
         return out
 
     def summary(self) -> dict:
@@ -497,5 +967,12 @@ class Plan:
             "inserts": [{"id": x.id, "kind": x.kind, "scene": x.scene or (x.clip.name if x.clip else None),
                          "start": x.start_s, "end": x.end_s, "frames": x.frames, "cues": x.cues,
                          "transparent": x.transparent, "place": x.place, "missing": len(self.missing(x)),
-                         "clip": str(x.clip) if x.clip else None} for x in self.inserts],
+                         "clip": str(x.clip) if x.clip else None, **self._motion_row(x)} for x in self.inserts],
         }
+
+    def _motion_row(self, x: Insert) -> dict:
+        if x.kind != "motion":
+            return {}
+        return {"format": x.format, "source": str(x.source.relative_to(self.episode_dir)) if x.source else None,
+                "version": x.version, "backdrop": x.backdrop, "layer": x.layer, "sound": x.sound,
+                "plates": [p["id"] for p in x.plates], "hash": x.hash}
