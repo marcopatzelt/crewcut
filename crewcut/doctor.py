@@ -26,6 +26,41 @@ def _first_line(s: str) -> str:
     return s.splitlines()[0][:100] if s else ""
 
 
+def read_pin() -> dict:
+    """The EffectCraft pin of this app: upstream commit and the number of patch files (third_party/effectcraft)."""
+    root = paths.app_root() / "third_party" / "effectcraft"
+    out = {"commit": "", "patches": 0}
+    try:
+        for line in (root / "PIN").read_text(encoding="utf-8").splitlines():
+            k, _, v = line.partition(" ")
+            if k in ("commit", "sha256"):
+                out[k] = v.strip()
+    except OSError:
+        return out
+    out["patches"] = len(list((root / "patches").glob("*.patch")))
+    return out
+
+
+def motion_engine_status() -> tuple[str, str, str]:
+    """(status, detail, fix) for the motion engine line. Without the binary only `kind: "motion"` inserts fail."""
+    exe = os.environ.get("EFFECTCRAFT_CLI") or shutil.which("effectcraft-cli")
+    pin = read_pin()
+    pin_txt = f"pin {pin['commit'][:12] or '?'}, patches {pin['patches']}"
+    if not exe or not os.path.isfile(exe):
+        return (NOTE, f"effectcraft-cli missing ({pin_txt}): motion graphics inserts cannot render here; "
+                "everything else works", "Use the Crewcut image, or set render.location = rented in config/crewcut.toml.")
+    version = ""
+    raw = _run([exe, "--empty", "info", "--json"], 30)
+    try:
+        info = json.loads(raw) if raw.startswith("{") else {}
+        version = str(info.get("version") or info.get("engine", {}).get("version") or "")
+    except ValueError:
+        info = {}
+    if not raw:
+        return (WARN, f"effectcraft-cli at {exe} does not start ({pin_txt})", "Rebuild the image.")
+    return (OK, f"effectcraft-cli {version or '(version not reported)'}, {pin_txt}", "")
+
+
 def checks(ci: bool = False, probe: bool = False) -> list[dict]:
     out: list[dict] = []
 
@@ -74,6 +109,8 @@ def checks(ci: bool = False, probe: bool = False) -> list[dict]:
             "the bridge to Blender on the Mac itself is planned.")
     else:
         add(WARN, "blender", "missing: 3D scenes only on a rented GPU")
+    st_motion, detail_motion, fix_motion = motion_engine_status()
+    add(st_motion, "motion engine", detail_motion, fix_motion)
     fonts = _run(["fc-list", ":family"], 20)
     add(OK if "Inter" in fonts else WARN, "font Inter", "installed" if "Inter" in fonts else "missing (neutral pack)")
     try:

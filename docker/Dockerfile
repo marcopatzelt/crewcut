@@ -10,6 +10,12 @@
 # is not open, so it is never shipped; logins stay in the environment (Claude) or in the engine volume (Codex).
 
 ARG BLENDER_VERSION=5.0.1
+# The motion engine: effectcraft-cli, built by .github/workflows/effectcraft.yml from third_party/effectcraft (pinned
+# upstream commit + patches) for amd64 and arm64. The tag must match third_party/effectcraft/PIN and the number of
+# patch files (tests/motion/test_pin.py checks it). No Rust is built here.
+ARG EFFECTCRAFT_IMAGE=ghcr.io/marcopatzelt/crewcut-effectcraft:7a34ceffe209-p1
+
+FROM ${EFFECTCRAFT_IMAGE} AS effectcraft
 
 # ---- web UI: built on the build machine's own architecture, no emulation needed ------------------------------------
 FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS web
@@ -70,12 +76,20 @@ RUN python3 -m venv /opt/venv \
 COPY --from=blender /opt/blender /opt/blender
 RUN if [ -x /opt/blender/blender ]; then ln -s /opt/blender/blender /usr/local/bin/blender; fi
 
+# Motion graphics engine (MIT OR Apache-2.0; licences and upstream NOTICE next to it)
+COPY --from=effectcraft /effectcraft-cli /usr/local/bin/effectcraft-cli
+COPY --from=effectcraft /licenses /usr/share/licenses/effectcraft
+COPY --from=effectcraft /PIN /usr/share/licenses/effectcraft/PIN
+ENV EFFECTCRAFT_CLI=/usr/local/bin/effectcraft-cli
+
 COPY skills/ skills/
 COPY team/ team/
 COPY templates/ templates/
 COPY packs/ packs/
 COPY config/ config/
 COPY tools/ tools/
+COPY third_party/ third_party/
+COPY THIRD_PARTY_NOTICES.md ./
 COPY examples/ examples/
 COPY tests/ tests/
 COPY host/ host/

@@ -1,8 +1,10 @@
 name: image
 
 # Builds the Docker image on GitHub's runners (never on a developer laptop):
-#   base for linux/amd64 (with smoke tests and renders) and linux/arm64 (QEMU emulation, the private repo has no free
-#   arm64 runner), and the gpu variant for linux/amd64. Pushing to GHCR only on a manual run with push = true.
+#   base for linux/amd64 (with smoke tests and renders) and linux/arm64 (native arm64 runner, free for public repos),
+#   and the gpu variant for linux/amd64. Pushing to GHCR only on a manual run with push = true.
+# The motion engine comes in as a finished binary from ghcr.io/<owner>/crewcut-effectcraft (effectcraft.yml builds it);
+# every job logs in first because that package can be private.
 on:
   push:
     branches: [main]
@@ -29,6 +31,11 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
@@ -63,14 +70,16 @@ jobs:
           if-no-files-found: warn
 
   base-arm64:
-    name: base, linux/arm64 (QEMU)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 300
+    name: base, linux/arm64 (native runner)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
+      - uses: docker/login-action@v3
         with:
-          platforms: arm64
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
@@ -82,13 +91,12 @@ jobs:
           tags: crewcut:ci-arm64
           cache-from: type=gha,scope=base-arm64
           cache-to: type=gha,mode=max,scope=base-arm64
-      - name: doctor under emulation
-        run: docker run --rm --platform linux/arm64 --entrypoint "" -e CREWCUT_STUDIO=/tmp/studio crewcut:ci-arm64 crewcut doctor --ci
-      - name: one 2D frame under emulation
+      - name: doctor (shows the motion engine)
+        run: docker run --rm --entrypoint "" -e CREWCUT_STUDIO=/tmp/studio crewcut:ci-arm64 crewcut doctor --ci
+      - name: one 2D frame and one motion frame
         run: |
           mkdir -p ci-out && chmod 777 ci-out
-          docker run --rm --platform linux/arm64 --shm-size=1g --entrypoint "" \
-            -e CREWCUT_CHROMIUM_ARGS="--no-zygote --single-process --disable-gpu" \
+          docker run --rm --shm-size=1g --entrypoint "" \
             -v "$PWD/ci-out:/out" crewcut:ci-arm64 bash /app/tests/smoke/render.sh /out --quick
       - uses: actions/upload-artifact@v4
         if: always()
@@ -105,6 +113,11 @@ jobs:
       - name: Free disk space
         run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
       - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
