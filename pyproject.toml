@@ -19,6 +19,7 @@ dependencies = [
   "numpy>=1.26",
   "qrcode>=7.4",
   "python-multipart>=0.0.9",
+  "click>=8",
 ]
 
 [project.optional-dependencies]

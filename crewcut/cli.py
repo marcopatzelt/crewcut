@@ -18,6 +18,7 @@ DELEGATED = {
     "ingest": ("crewcut.cut.cli", True),
     "transcribe": ("crewcut.cut.cli", True),
     "cut": ("crewcut.cut.cli", True),
+    "motion": ("crewcut.motion.cli", False),
 }
 HEAVY = {"render": {"2d", "3d", "probe", "cut", "all", "capture", "music-bed"}, "transcribe": None,
          "cut": {"build", "grade", "islands", "probe", "verify", "doubles", "takes", "short", "short-check"}}
@@ -274,6 +275,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     pr = sub.add_parser("prompter", help="print the phone link and QR code of the teleprompter")
     pr.add_argument("episode")
+
+    # handled by _delegate before parsing; listed here so `crewcut --help` shows it
+    sub.add_parser("motion", add_help=False, help="motion graphics with EffectCraft (crewcut motion --help)")
     return p
 
 
