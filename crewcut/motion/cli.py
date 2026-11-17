@@ -460,7 +460,7 @@ def add_solid(app, comp, name, in_, out_, three_d, mb, blend, pos, scale, opacit
 @layer_add.command("text")
 @_common_layer_opts
 @click.option("--text", required=True)
-@click.option("--font", default="Manrope V5")
+@click.option("--font", default="Inter", help="Font family (the neutral pack uses Inter).")
 @click.option("--style", default="ExtraBold")
 @click.option("--size", type=float, default=120)
 @click.option("--fill", default="#111111")
@@ -839,11 +839,14 @@ def template_show(app: App, name):
 @click.option("--params", "params", default="{}", help="JSON (or @file.json) over the template defaults.")
 @click.option("--loose", is_flag=True, help="Accept parameters the template does not declare.")
 @click.option("--keep-script", help="Also write the generated script to this path.")
+@click.option("--context", "context", default=None,
+              help="JSON (or @file.json): the insert's context for CC.* (format, size, fps, duration, face, brand).")
 @click.pass_obj
 @handle_error
-def run_template(app: App, name, params, loose, keep_script):
+def run_template(app: App, name, params, loose, keep_script, context):
     """Run motion template NAME in the project (one undo step)."""
-    code, merged = tp.program(name, parse_json_opt(params, "--params") or {}, app.templates_dir, strict=not loose)
+    code, merged = tp.program(name, parse_json_opt(params, "--params") or {}, app.templates_dir, strict=not loose,
+                              context=parse_json_opt(context, "--context") if context else None)
     if keep_script:
         with open(keep_script, "w", encoding="utf-8") as f:
             f.write(code)

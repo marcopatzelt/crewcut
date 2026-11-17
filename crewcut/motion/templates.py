@@ -40,6 +40,7 @@ TAG = re.compile(r"(?:^|\n)[ \t]*\*?[ \t]*@(?P<tag>[A-Za-z]+)\b")
 FORMATS = ("landscape", "portrait", "stage")
 KINDS = ("full", "overlay")
 LIB = Path("lib") / "ec_lib.jsx"
+FRAME_LIB = Path("lib") / "cc_frame.jsx"     # CC.*: format, safe areas, face box, brand tokens (reads CC_CTX)
 
 
 class TemplateError(ValueError):
@@ -169,8 +170,32 @@ def lib_path() -> Path:
     raise TemplateError(f"{LIB} not found in templates/motion")
 
 
+def frame_lib_path() -> Path | None:
+    """``lib/cc_frame.jsx`` (the pack's copy wins), or None when neither the pack nor the app has one."""
+    for d in (pack_dir(), app_dir()):
+        p = d / FRAME_LIB
+        if p.is_file():
+            return p
+    return None
+
+
+def lib_files() -> list[Path]:
+    """Every shared library file a template script gets, in load order. They are part of an insert's cache key."""
+    out = [lib_path()]
+    f = frame_lib_path()
+    if f:
+        out.append(f)
+    return out
+
+
 def lib_source() -> str:
-    return lib_path().read_text(encoding="utf-8")
+    return "\n".join(f.read_text(encoding="utf-8") for f in lib_files())
+
+
+def context_source(context: dict[str, Any] | None) -> str:
+    """``var CC_CTX = {...};``: what the workbench tells a template about the insert (format, size, fps, duration,
+    transparent, face, backdrop, draft, brand). Templates read it only through ``CC.*`` (lib/cc_frame.jsx)."""
+    return f"var CC_CTX = {js(context or {})};\n"
 
 
 def merge(defaults: dict[str, Any], params: dict[str, Any], strict: bool = True) -> dict[str, Any]:
@@ -183,8 +208,18 @@ def merge(defaults: dict[str, Any], params: dict[str, Any], strict: bool = True)
     return out
 
 
-def program(name: str, params: dict[str, Any], extra: str | None = None, strict: bool = True) -> tuple[str, dict]:
-    """The full script for template ``name`` with ``params``, and the merged params."""
+def template_path(name: str, extra: str | None = None) -> Path:
+    """The file of template ``name`` on the search path."""
+    ts = discover(extra)
+    if name not in ts:
+        raise TemplateError(f"unknown template {name!r}; available: {', '.join(sorted(ts)) or 'none'}")
+    return Path(ts[name]["path"])
+
+
+def program(name: str, params: dict[str, Any], extra: str | None = None, strict: bool = True,
+            context: dict[str, Any] | None = None) -> tuple[str, dict]:
+    """The full script for template ``name`` with ``params`` (and the insert's ``context`` as ``CC_CTX``), and the
+    merged params."""
     ts = discover(extra)
     if name not in ts:
         raise TemplateError(f"unknown template {name!r}; available: {', '.join(sorted(ts)) or 'none'}")
@@ -196,13 +231,13 @@ def program(name: str, params: dict[str, Any], extra: str | None = None, strict:
     if not os.path.isdir(assets):
         assets = str(assets_dir())
     body = f"{src}\nreturn {name}({js(merged)});"
-    return wrap_program(body, lib_source() + f"\nvar EC_ASSETS = {js(assets)};\n"), merged
+    return wrap_program(body, context_source(context) + lib_source() + f"\nvar EC_ASSETS = {js(assets)};\n"), merged
 
 
 def run(backend: Any, project: str, name: str, params: dict[str, Any] | None = None, extra: str | None = None,
-        strict: bool = True, save: bool = True) -> dict[str, Any]:
+        strict: bool = True, save: bool = True, context: dict[str, Any] | None = None) -> dict[str, Any]:
     """Run template ``name`` in ``project`` through ``backend`` (one engine process, one undo group) and save.
     Returns ``{"template", "params", "result"}``; ``result`` is what the template function returned."""
-    code, merged = program(name, params or {}, extra, strict=strict)
+    code, merged = program(name, params or {}, extra, strict=strict, context=context)
     res = parse_result(backend.script(code, project=project, save=save, name=f"{name}.jsx"))
     return {"template": name, "params": merged, "result": res}
