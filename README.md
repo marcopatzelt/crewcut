@@ -78,6 +78,19 @@ The Scout comes back with a topic card. `./start.sh --no-open` only prints the a
 again. To keep Crewcut in your dock or start menu, install it as an app: in Chrome or Edge the install icon in the
 address bar, in Safari File → Add to Dock. Details, Windows and GPUs: [docs/getting-started.md](docs/getting-started.md).
 
+### Download the app
+
+*Coming with the first release.* Crewcut also comes as a desktop app for macOS, Windows and Linux: it checks Docker,
+downloads Crewcut with a progress bar, connects Claude with one button (the login stays in your system's keychain) and
+opens the studio in its own window. On a Mac, one line installs it:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/marcopatzelt/crewcut/main/install.sh | sh
+```
+
+Windows (`.exe`) and Linux (`.AppImage`, `.deb`) download from the releases page. The first release is not signed by
+Apple or Microsoft yet; the one extra click is in [docs/desktop.md](docs/desktop.md).
+
 ## How it works
 
 Ten steps. The crew works between them; you decide at each card.
@@ -338,6 +351,7 @@ straight to the Editor, with hard limits. See [docs/crew-talk.md](docs/crew-talk
 [Compute](docs/compute.md) ·
 [YouTube](docs/youtube.md) ·
 [Web UI](docs/ui.md) ·
+[Desktop app](docs/desktop.md) ·
 [Crew talk](docs/crew-talk.md) ·
 [Shorts](docs/shorts.md) ·
 [HTTP API](docs/api.md) ·

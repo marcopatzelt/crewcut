@@ -1,4 +1,5 @@
 // The platform the page runs on, the shortcut keys to show (DESIGN.md rule 15), and the theme switch.
+import { desktop } from "./desktop";
 
 interface UaData {
   platform?: string;
@@ -87,6 +88,7 @@ export function currentTheme(): Theme {
  */
 function syncThemeColor(): void {
   if (typeof document === "undefined" || typeof getComputedStyle !== "function") return;
+  desktop()?.setTheme(currentTheme()); // the desktop app recolours its window buttons
   const panel = getComputedStyle(document.documentElement).getPropertyValue("--panel").trim();
   if (!panel) return;
   document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((m) => {
@@ -110,6 +112,8 @@ export function initTheme(param: string | null): void {
   if (stored === "light" || stored === "dark") {
     document.documentElement.dataset.theme = stored;
     syncThemeColor();
+  } else {
+    desktop()?.setTheme(currentTheme());
   }
 }
 

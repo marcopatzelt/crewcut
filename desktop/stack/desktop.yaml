@@ -1,0 +1,6 @@
+# The desktop app's addition to the repository's compose.yaml (which it ships unchanged): no build from source and no
+# pull by Compose; the app pulls the image itself, with progress, the tag matching the app's version.
+services:
+  crewcut:
+    build: !reset null
+    pull_policy: never

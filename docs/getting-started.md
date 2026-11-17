@@ -9,6 +9,9 @@
 
 ## Start
 
+The desktop app does all of this with buttons (Docker check, download, Connect Claude): [desktop.md](desktop.md),
+coming with the first release. With the repository:
+
 ```bash
 git clone https://github.com/marcopatzelt/crewcut.git && cd crewcut
 ./start.sh                # writes .env, then: docker compose up, and opens Crewcut

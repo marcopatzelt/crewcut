@@ -1,0 +1,317 @@
+/* The desktop app's own pages (first start and settings), in the Crewcut look: the wallpaper under one sheet of glass,
+   Slate, one primary button. Colours, radii and shadows come from tokens.css (copied from the web app). */
+
+@font-face {
+  font-family: "Inter";
+  font-weight: 400;
+  src: url("fonts/inter-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 500;
+  src: url("fonts/inter-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 600;
+  src: url("fonts/inter-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 700;
+  src: url("fonts/inter-700.woff2") format("woff2");
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--window);
+  color: var(--ink);
+  font: 400 14px/20px var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: 46px minmax(0, 1fr);
+  background: var(--panel) url("wallpapers/mint-dawn-1280.jpg") center / cover no-repeat;
+}
+
+@media (prefers-color-scheme: dark) {
+  .page {
+    background-image: url("wallpapers/green-dusk-1280.jpg");
+  }
+}
+
+.page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--panel);
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .page::before {
+    background: var(--material-window);
+    -webkit-backdrop-filter: var(--blur-window);
+    backdrop-filter: var(--blur-window);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .page::before {
+    background: var(--panel);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* The top bar moves the window; the system's window buttons sit over it (env(titlebar-area-*)). */
+.bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 max(12px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 8px)) 0
+    max(16px, calc(env(titlebar-area-x, 0px) + 12px));
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.bar-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.view {
+  position: relative;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 32px 48px;
+  text-align: center;
+}
+
+.view.settings {
+  justify-content: flex-start;
+  align-items: stretch;
+  text-align: left;
+  gap: 16px;
+}
+
+.slate {
+  width: 112px;
+  height: 112px;
+}
+
+h1 {
+  margin: 4px 0 0;
+  font: 700 28px/34px var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  margin: 0;
+  font: 600 15px/20px var(--font);
+}
+
+p {
+  max-width: 480px;
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.settings .row {
+  justify-content: flex-start;
+}
+
+button,
+input {
+  font: inherit;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.primary {
+  min-height: 36px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--accent-fill);
+  color: var(--accent-fill-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondary {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--chip);
+  color: var(--ink);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.link {
+  min-height: 32px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.field {
+  width: min(360px, 100%);
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-ctl);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  color: var(--ink);
+  font-family: var(--font-mono);
+}
+
+.meter {
+  width: min(420px, 100%);
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--chip);
+  overflow: hidden;
+}
+
+.meter i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--accent-fill);
+  border-radius: var(--r-full);
+  transition: width var(--t-soft) var(--ease-out);
+}
+
+.meter.unknown i {
+  width: 30%;
+  animation: slide var(--t-loop) linear infinite;
+}
+
+@keyframes slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+
+.note {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-3);
+}
+
+.error {
+  color: var(--danger);
+}
+
+.ok {
+  color: var(--ok);
+  font-weight: 500;
+}
+
+.code {
+  padding: 2px 8px;
+  border-radius: var(--r-xs);
+  background: var(--chip);
+  font: 600 16px/24px var(--font-mono);
+  color: var(--ink);
+}
+
+.card {
+  padding: 16px;
+  border-radius: var(--r-panel);
+  background: var(--tile);
+  box-shadow: inset 0 0 0 1px var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.switch {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.switch input {
+  margin-top: 3px;
+  accent-color: var(--accent-fill);
+}
+
+.spin {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--line-strong);
+  border-top-color: var(--accent-fill);
+  border-radius: var(--r-full);
+  animation: spin var(--t-spin) linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin,
+  .meter.unknown i {
+    animation: none;
+  }
+
+  .meter i {
+    transition: none;
+  }
+}

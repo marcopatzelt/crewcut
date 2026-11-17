@@ -1,0 +1,27 @@
+{
+  "name": "crewcut-desktop",
+  "productName": "Crewcut",
+  "version": "0.1.0",
+  "description": "Crewcut as a desktop app: it runs the Crewcut Docker stack, connects Claude and shows the studio in its own window.",
+  "license": "MIT",
+  "author": "Marco Patzelt",
+  "homepage": "https://github.com/marcopatzelt/crewcut",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-ui.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test \"dist/test/*.test.js\"",
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.11"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.1",
+    "electron": "45.2.1",
+    "electron-builder": "26.18.0",
+    "typescript": "5.9.3"
+  }
+}
