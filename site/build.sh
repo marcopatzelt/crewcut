@@ -19,6 +19,10 @@ cp "$SITE/index.html" "$OUT/"
 cp "$SITE/assets/site.css" "$SITE/assets/site.js" "$OUT/assets/"
 cp -R "$SITE/media" "$OUT/media"
 
+# the launch film: one source in docs/launch (also used by the README), copied, never stored twice
+mkdir -p "$OUT/media/film"
+cp "$ROOT/docs/launch/crewcut-launch-web.mp4" "$ROOT/docs/launch/poster.webp" "$ROOT/docs/launch/poster.jpg" "$OUT/media/film/"
+
 B="$ROOT/docs/brand"
 cp "$B/crewcut-lockup.svg" "$B/crewcut-lockup-dark.svg" "$B/slate-icon-small.svg" "$B/social-preview.png" \
    "$B/icons/slate-icon-180.png" "$OUT/assets/brand/"

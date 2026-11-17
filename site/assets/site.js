@@ -1,5 +1,37 @@
 /* Crewcut landing page: the fogged glass of the close. Own code, no library.
    It starts at load; prefers-reduced-motion keeps the fog from coming back. */
+/* The launch film (#film): loads when it comes within 200 px of the view, plays muted in a loop, pauses when it
+   leaves. Sound only on the button (the first time it starts the film from the beginning). With reduced motion
+   it never starts by itself: the poster and the Play button. Without this script the video keeps its own controls. */
+(function () {
+  const v = document.getElementById("film-video");
+  const ctl = document.querySelector(".film__ctl");
+  const play = document.getElementById("film-play"), sound = document.getElementById("film-sound");
+  if (!v || !ctl || !play || !sound) return;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  v.removeAttribute("controls"); v.muted = true; ctl.hidden = false;
+  let near = false, userPaused = reduce, unmutedOnce = false;
+  const show = () => { play.textContent = v.paused ? "Play" : "Pause"; sound.setAttribute("aria-pressed", String(!v.muted)); };
+  const start = () => { if (v.preload !== "auto") v.preload = "auto"; const p = v.play(); if (p && p.catch) p.catch(show); };
+  v.addEventListener("play", show); v.addEventListener("pause", show); v.addEventListener("volumechange", show);
+  play.addEventListener("click", () => { if (v.paused) { userPaused = false; start(); } else { userPaused = true; v.pause(); } });
+  sound.addEventListener("click", () => {
+    v.muted = !v.muted;
+    if (!v.muted && !unmutedOnce) { unmutedOnce = true; v.currentTime = 0; }
+    if (!v.muted && v.paused) { userPaused = false; start(); }
+    show();
+  });
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver((es) => {
+      for (const e of es) {
+        near = e.isIntersecting;
+        if (near && !userPaused) start(); else if (!near && !v.paused) v.pause();
+      }
+    }, { rootMargin: "200px 0px" }).observe(v);
+  } else if (!reduce) { start(); }
+  show();
+})();
+
 (function () {
   const root = document.documentElement;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;

@@ -27,6 +27,8 @@ web/.vite/
 
 # media and renders
 *.mp4
+# the launch film (README and landing page); the master is a release asset, never in git
+!docs/launch/*.mp4
 *.mov
 *.mkv
 *.wav

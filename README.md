@@ -21,6 +21,16 @@ Open source, one Docker container, on your own computer.**
 
 <br>
 
+<!-- The launch film plays here once docs/launch/crewcut-launch-web.mp4 is uploaded through GitHub's web editor:
+     replace the next line with the github.com/user-attachments/assets/... address, alone on its line. -->
+<!-- LAUNCH_VIDEO_URL -->
+
+[![The Crewcut launch film, 17 seconds: watch it on the website](docs/launch/poster.jpg)](https://marcopatzelt.github.io/crewcut/#film)
+
+<sub>Made with Crewcut's own motion tools: EffectCraft and Blender on one rented GPU, 1.75 $. [How it was built](examples/launch-film/) · Film credits: [docs/launch/SOUNDS.md](docs/launch/SOUNDS.md)</sub>
+
+<br>
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/readme/crewcut-dark.png">
   <img alt="Crewcut's episode view as a glass window on a rendered landscape: two thumbnail variants with a phone-size preview, the cut as a film strip with waveform and the Critic's notes, the 3D scenes and the rented GPU; on the right the crew chat with who works on what" src="docs/readme/crewcut-light.png" width="100%">

@@ -23,3 +23,17 @@ from Poly Haven (CC0).
 **The app** (`app/`, `crew/`): screenshots of the Crewcut web UI in demo mode, rendered in CI. The hero window is
 `docs/readme/crewcut-dark.png` whole (commit 5addce3, 2880 x 2000); the home, the phone crops and seven crew tiles
 are cut from the README images of the same commit; the writer and brand tiles come from screens run 43982257994.
+
+## Film
+
+**The launch film** (`film/`, from `docs/launch/`): made with Crewcut's own motion tools on 17 November 2026, rendered
+on one rented RTX 4090 (1.75 $ including three review rounds). How it was built: `examples/launch-film/`.
+
+| Part | Source | Licence |
+|---|---|---|
+| Comp, type, timing | [EffectCraft](https://github.com/storytold/effectcraft) (`effectcraft-cli`) | MIT OR Apache-2.0 |
+| 3D (Slate, the meadow, the word "Video!") | Blender 5.0.1 Cycles, scene scripts written for Crewcut | Blender GPL-3.0 (tool); scripts MIT |
+| Sky over the meadow | HDRI [Kloofendal 48d Partly Cloudy (Pure Sky)](https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky), Poly Haven | CC0, Greg Zaal (original), Jarod Guest (sky edits) |
+| Type | Manrope, Mikhail Sharanda | SIL Open Font License 1.1 |
+| Slate, crew, cursor, dock icons | drawn for Crewcut (`docs/brand/`) | MIT |
+| Every sound and the music bed | synthesized by code (`examples/launch-film/sfx.py`), no recordings or sample packs; the full sound map is in [`docs/launch/SOUNDS.md`](../../docs/launch/SOUNDS.md) | MIT |

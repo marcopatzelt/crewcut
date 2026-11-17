@@ -9,7 +9,7 @@ name: pages
 on:
   push:
     branches: [main]
-    paths: ["site/**", "docs/brand/**", "docs/readme/**", ".github/workflows/pages.yml"]
+    paths: ["site/**", "docs/brand/**", "docs/readme/**", "docs/launch/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
     inputs:
       ship_without_gate:

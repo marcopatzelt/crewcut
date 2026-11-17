@@ -60,7 +60,8 @@
      wallpapers, Inter and Inter Tight 800). Hero: centred over the morning sky. Section heads start on the container's left line (Taste's
      rule; the mock centred them); the close sits on a glass card over the fog. Motion: all own code, no
      library; it starts at load, nothing waits for the scroll, reduced motion stops it.
-     Sections: hero, the app, one window, crew, rendering, steps, closing. -->
+     Sections: hero, the app, film, one window, crew, rendering, steps, closing. The film loads only when it
+     comes near the view, plays muted and in a loop; sound only on the button; reduced motion shows the poster. -->
 <header class="nav">
   <div class="wrap">
     <div class="nav__bar">
@@ -101,6 +102,25 @@
       <div class="stage__frame">
         <picture><source media="(max-width: 760px)" srcset="media/app/episode-chat-phone.webp" width="720" height="1548"><img class="stage__shot" src="media/app/stage-dark-1800.webp" srcset="media/app/stage-dark-1200.webp 1200w, media/app/stage-dark-1800.webp 1800w, media/app/stage-dark-2400.webp 2400w" sizes="(min-width: 1360px) 1200px, calc(100vw - 32px)" alt="An episode in Crewcut: thumbnail A, B and C to pick from, the cut as a film strip with the Critic's notes, the 3D scenes and the rented GPU, and the crew chat on the right" width="2880" height="2000" fetchpriority="high"></picture>
       </div>
+    </div>
+  </section>
+
+  <section class="film" id="film" aria-labelledby="film-h">
+    <div class="wrap">
+      <div class="sh">
+        <h2 id="film-h" class="display">Motion graphics by the crew</h2>
+        <p class="lead">The launch film, 17 seconds. EffectCraft sets the type and the timing, Blender renders the 3D on one rented GPU, and every sound is made by code. Rendering it cost 1.75&nbsp;$.</p>
+      </div>
+      <figure class="film__frame">
+        <video id="film-video" class="film__video" controls muted loop playsinline preload="none" poster="media/film/poster.webp" width="1920" height="1080" aria-label="The Crewcut launch film: a cursor clicks the Crewcut app, Slate the clapperboard spins out in 3D, a prompt is typed over a meadow, cards fly into a grid, a word reel lands on Upload, the word Video lands with a paint splash, and the logo forms from flakes">
+          <source src="media/film/crewcut-launch-web.mp4" type="video/mp4">
+        </video>
+        <div class="film__ctl" hidden>
+          <button type="button" class="film__btn" id="film-play">Play</button>
+          <button type="button" class="film__btn" id="film-sound" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 9v6h4l5 4V5L8 9H4Zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4Zm-2.5-8.8v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6Z"/></svg>Sound</button>
+        </div>
+        <figcaption class="film__cap">Every sound is synthesized; credits in <a href="https://github.com/marcopatzelt/crewcut/blob/main/docs/launch/SOUNDS.md">SOUNDS.md</a>. <a href="https://github.com/marcopatzelt/crewcut/tree/main/examples/launch-film">How it was built</a>.</figcaption>
+      </figure>
     </div>
   </section>
 
