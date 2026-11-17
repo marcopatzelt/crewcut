@@ -151,7 +151,7 @@ def test_render_all_skips_motion_only_when_the_plan_says_so(episode, studio, no_
     monkeypatch.setattr(media_mod, "run", FakeRunner())
     monkeypatch.setattr(workbench.media, "run", media_mod.run)
     plan = plan_with(episode, studio, {**ROLL, "start": 7.0, "end": 10.0, "cues": {}},
-                     sound={"hits": ["s1@value", "m1"]})
+                     sound={"hits": [2.0, "m1"]})                        # "m1" goes with the left-out insert
     assert cli.main(["all", str(plan.path), "--local", "--json"]) == 1           # default: a clear failure
     raw = json.loads(plan.path.read_text())
     raw["motion_without_engine"] = "skip"
@@ -159,7 +159,7 @@ def test_render_all_skips_motion_only_when_the_plan_says_so(episode, studio, no_
     capsys.readouterr()
     code = cli.main(["all", str(plan.path), "--local", "--json"])
     out = json.loads(capsys.readouterr().out)
-    assert code == 0 and out["motion"]["skipped"] == ["m1"]
+    assert code == 0 and out["motion"]["skipped"] == ["m1"], out.get("error")
     notes = json.loads((plan.episode_dir / "export" / "out-v001.cut.json").read_text())["notes"]
     assert any(n.startswith("m1: left out of this cut") for n in notes)
 

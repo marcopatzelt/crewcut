@@ -203,6 +203,7 @@ def test_context_matches_the_template_contract(episode, studio):
 
 
 def test_lengths_kinds_and_density_warnings(episode, studio):
+    """The density rules come from crewcut.motion.density; the plan hands it what parsing decided."""
     plan = make(episode, studio,
                 roll(start=0.4, end=2.4),                                           # full frame 2 s: too short
                 pop(id="k3", start=2.4, end=3.4),                                   # overlay 1 s; 2.0 s after m1
@@ -210,27 +211,27 @@ def test_lengths_kinds_and_density_warnings(episode, studio):
                 {"id": "r1", "kind": "motion", "scene": "ranking", "start": 10.5, "end": 16.5},
                 {"id": "r2", "kind": "motion", "scene": "ranking", "start": 17.0, "end": 23.0})
     w = "\n".join(plan.warnings)
-    assert "m1: full-frame motion of 2.00 s; the pack wants 3 to 6 s" in w
-    assert "k3: overlay of 1.00 s; at least 1.5 s" in w
+    assert "m1 (number_roll) runs 2.0 s; full frame needs 3 to 6 s" in w
+    assert "k3 (keyword_pop) runs 1.0 s; an overlay needs at least 1.5 s" in w        # overlay by its @kind
     assert "k2: keyword_pop is an overlay template but the insert is full frame" in w
-    assert "r1: full-frame motion" not in w                                 # ranking may take up to 8 s
-    assert "m1 and k3 start 2.0 s apart; never two motion graphics inside 6 s" in w
-    assert "m1, k3: 2 motion graphics in one sentence" in w
-    assert "ranking is used 2 times; a hero template at most 1 per video" in w
-    assert "5 motion graphics in 12 s; at most 2" in w
+    assert "r1 (ranking) runs" not in w                                     # ranking may take up to 8 s
+    assert "m1 and k3 start 2.0 s apart (never 2 inside 6 s)" in w
+    assert "2 motion moments in the sentence at 0:00.4: m1, k3" in w
+    assert "Hero templates {'ranking': 2}" in w
+    assert "m1 starts at 0.4 s; the first 3 s show the speaker alone" in w
+    assert "5 motion moments in 0.2 min" in w
 
 
-def test_shorts_limits_and_keywords_max(episode, studio):
+def test_shorts_limits_and_keywords(episode, studio):
     (studio / "brand").mkdir(parents=True, exist_ok=True)
     (studio / "brand" / "edit-style.json").write_text(json.dumps({"keywords_max": 1}))
-    plan = make(episode, studio, roll(start=0.4, end=4.0), roll(id="m2", start=5.0, end=8.5, cues={}),
-                roll(id="m3", start=9.0, end=12.0, cues={}), format="portrait")
+    plan = make(episode, studio, roll(start=3.5, end=7.0), roll(id="m2", start=7.5, end=11.0, cues={}),
+                roll(id="m3", start=11.5, end=15.0, cues={}), format="portrait", base={"color": "soft", "seconds": 20})
     w = "\n".join(plan.warnings)
-    assert "3 full-frame motion moments; at most 2 for this video" in w
+    assert "3 full-frame motion inserts (at most 2 in a Short)" in w
     assert "apart" not in w                                                # Shorts have no 6 s gap rule
-    assert "2 keywords (keyword and keyword_pop: k1" not in w
     plan = make(episode, studio, pop(start=8.0, end=10.0))
-    assert any("2 keywords (keyword and keyword_pop: k1, k2); the style pack allows 1" in x for x in plan.warnings)
+    assert "2 keywords (keyword + keyword_pop) over the speaker (at most 1)" in plan.warnings
 
 
 def test_one_statement_one_form(episode, studio):
@@ -290,5 +291,7 @@ def test_neutral_pack_has_the_motion_block():
     p = brand.load()
     m = p.value("edit_style.motion")
     assert m["insert_s"] == [3, 6] and m["overlay_min_s"] == 1.5 and m["prefer"] == "motion"
-    assert m["long"]["min_gap_s"] == 6 and m["short"]["big_max"] == 2
+    assert m["min_gap_s"] == 6 and m["shorts"]["big_max"] == 2 and m["big_moments"] == [3, 5]
+    from crewcut.motion import density
+    assert {k: v for k, v in m.items() if k != "prefer"} == density.NEUTRAL    # one set of numbers
     assert p.value("edit_style.graphics_mix") == {"motion": 0.4, "2d": 0.4, "3d": 0.0, "text": 0.2}

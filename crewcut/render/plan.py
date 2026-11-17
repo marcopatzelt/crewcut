@@ -18,7 +18,6 @@ import copy
 import dataclasses
 import hashlib
 import json
-import math
 import os
 import re
 from dataclasses import dataclass
@@ -27,6 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from .. import brand, paths
+from ..motion import density
 from ..motion import templates as mtemplates
 
 FORMATS = {"landscape": (1920, 1080), "portrait": (1080, 1920)}
@@ -60,14 +60,6 @@ FOOTAGE_EXT = {".mp4", ".mov", ".mkv", ".webm", ".m4v", ".avi"}
 SOUND_LISTS = {"whoosh": "whooshes", "hit": "hits", "pop": "hits", "click": "hits", "bell": "hits",
                "tick": "typing", "reel_tick": "typing", "typing": "typing"}
 MOTION_CAP_USD = {"landscape": 2.0, "portrait": 0.5}   # rented motion work per video: long-form, Short
-MOTION_DEFAULTS = {                                 # edit-style.json "motion" when the pack has none (neutral values)
-    "insert_s": [3, 6], "insert_s_long": {"ranking": 8}, "overlay_min_s": 1.5, "prefer": "motion",
-    "heroes": ["big_claim", "card_gallery", "ranking"],
-    "long": {"per_sentence_max": 1, "big_max": 5, "big_per_minute_max": 1, "all_per_minute_max": 2, "min_gap_s": 6,
-             "hero_each_max": 1, "heroes_max": 2},
-    "short": {"per_sentence_max": 1, "big_max": 2, "all_max": 5, "min_gap_s": None, "hero_each_max": 1,
-              "heroes_max": 1},
-}
 
 
 class PlanError(ValueError):
@@ -844,15 +836,6 @@ class Plan:
             n = max((x.end_s for x in self.inserts), default=0.0)
         return n + float(self.p.get("tail") or 0)
 
-    def sentences(self) -> list[tuple[float, float]]:
-        """Sentence spans from the words file: each runs from its first word to the next sentence's first word."""
-        starts, new = [], True
-        for w in self.words:
-            if new:
-                starts.append(w["s"])
-            new = str(w["w"]).rstrip().endswith((".", "!", "?"))
-        return [(a, b) for a, b in zip(starts, [*starts[1:], math.inf], strict=True)]
-
     # ---- checks ---------------------------------------------------------------------------------------------------
     def _check(self) -> list[str]:
         out = []
@@ -877,87 +860,47 @@ class Plan:
                 if any(isinstance(v, (int, float)) and v > edge for v in xs):
                     out.append(f"{x.id}: a keyword centre lies in the right {self.right_free:.0%} of the frame, "
                                "where the platform's buttons are")
-        kw = [x.id for x in self.inserts if x.scene in ("keyword", "keyword_pop")]
-        kmax = self.pack.value("edit_style.keywords_max")
-        if isinstance(kmax, (int, float)) and len(kw) > kmax:
-            out.append(f"{len(kw)} keywords (keyword and keyword_pop: {', '.join(kw)}); the style pack allows "
-                       f"{int(kmax)}")
         return out + self._motion_checks()
 
-    def motion_style(self) -> dict:
-        """edit-style.json `motion` over the neutral defaults."""
-        own = self.pack.value("edit_style.motion", {})
-        out = copy.deepcopy(MOTION_DEFAULTS)
-        for k, v in (own if isinstance(own, dict) else {}).items():
-            out[k] = {**out[k], **v} if isinstance(out.get(k), dict) and isinstance(v, dict) else v
-        return out
+    def motion_limits(self) -> dict:
+        """The motion limits: edit-style.json `motion` over crewcut.motion.density's neutral numbers."""
+        return density.limits(self.pack.edit_style)
 
     def _motion_checks(self) -> list[str]:
-        """Lengths (motion.insert_s, overlay_min_s), the template's kind and the density rules of edit-style.json
-        `motion` (long or short): per sentence, big moments, all motion, the gap, hero templates."""
-        ms = sorted((x for x in self.inserts if x.kind == "motion"), key=lambda x: x.start)
+        """Motion warnings: a template used against its @kind, one number shown twice (counter and number_roll), and
+        the density report of crewcut.motion.density (lengths, big moments, motion per minute, the 6 s gap, one per
+        sentence, heroes, sounds, the speaker alone at the start and end, keyword and keyword_pop together)."""
+        ms = [x for x in self.inserts if x.kind == "motion"]
         if not ms:
             return []
-        cfg = self.motion_style()
         out = []
-        lo, hi = (cfg.get("insert_s") or [3, 6])[:2]
-        longer = cfg.get("insert_s_long") or {}
-        omin = cfg.get("overlay_min_s")
         for x in ms:
-            secs = x.frames / self.fps
             kind = (x.header or {}).get("kind")
             if kind == "overlay" and not x.transparent:
                 out.append(f"{x.id}: {x.scene} is an overlay template but the insert is full frame (transparent false)")
             if kind == "full" and x.transparent:
                 out.append(f"{x.id}: {x.scene} is a full-frame template but the insert is an overlay")
-            if x.transparent:
-                if isinstance(omin, (int, float)) and secs < omin - 1e-6:
-                    out.append(f"{x.id}: overlay of {secs:.2f} s; at least {omin:g} s (motion.overlay_min_s)")
-            else:
-                top = float(longer.get(x.scene, hi)) if isinstance(longer, dict) else hi
-                if not lo - 1e-6 <= secs <= top + 1e-6:
-                    out.append(f"{x.id}: full-frame motion of {secs:.2f} s; the pack wants {lo:g} to {top:g} s "
-                               "(motion.insert_s)")
-        lim = cfg.get("short" if self.format == "portrait" else "long") or {}
-        minutes = self.length_s() / 60
-        per = lim.get("per_sentence_max")
-        if self.words and isinstance(per, (int, float)):
-            for a, b in self.sentences():
-                hit = [x.id for x in ms if a <= x.start_s < b]
-                if len(hit) > per:
-                    out.append(f"{', '.join(hit)}: {len(hit)} motion graphics in one sentence ({a:.1f} s); at most "
-                               f"{int(per)} per sentence")
-        big = [x.id for x in ms if not x.transparent]
-        caps = [v for v in (lim.get("big_max"),) if isinstance(v, (int, float))]
-        if isinstance(lim.get("big_per_minute_max"), (int, float)):
-            caps = [max(caps + [lim["big_per_minute_max"] * minutes])]
-        if caps and len(big) > caps[0]:
-            out.append(f"{len(big)} full-frame motion moments; at most {caps[0]:g} for this video")
-        allcap = None
-        if isinstance(lim.get("all_max"), (int, float)):
-            allcap = lim["all_max"]
-        elif isinstance(lim.get("all_per_minute_max"), (int, float)):
-            allcap = lim["all_per_minute_max"] * max(1.0, minutes)
-        if allcap is not None and len(ms) > allcap:
-            out.append(f"{len(ms)} motion graphics in {self.length_s():.0f} s; at most {allcap:g} (overlays included)")
-        gap = lim.get("min_gap_s")
-        if isinstance(gap, (int, float)):
-            for a, b in pairwise(ms):
-                if b.start_s - a.start_s < gap - 1e-6:
-                    out.append(f"{a.id} and {b.id} start {b.start_s - a.start_s:.1f} s apart; never two motion "
-                               f"graphics inside {gap:g} s")
-        heroes = [x.scene for x in ms if x.scene in (cfg.get("heroes") or [])]
-        each = lim.get("hero_each_max")
-        for name in sorted(set(heroes)):
-            if isinstance(each, (int, float)) and heroes.count(name) > each:
-                out.append(f"{name} is used {heroes.count(name)} times; a hero template at most {int(each)} per video")
-        if isinstance(lim.get("heroes_max"), (int, float)) and len(heroes) > lim["heroes_max"]:
-            out.append(f"{len(heroes)} hero templates ({', '.join(heroes)}); at most {int(lim['heroes_max'])}")
         counters = {str(x.data.get("value")) for x in self.inserts if x.kind == "2d" and x.scene == "counter"}
         for x in ms:
             if x.scene == "number_roll" and str((x.params or {}).get("value")) in counters:
                 out.append(f"{x.id}: the number {x.params.get('value')} is also a 2D counter; one statement, one form")
+        rep = density.count(self.density_plan(), self.words, self.motion_limits(), total_s=self.length_s())
+        out += [f["text"] for f in rep["findings"] if f["level"] in ("ERROR", "CHECK")]
         return out
+
+    def density_plan(self) -> dict:
+        """The plan as crewcut.motion.density reads it, with what parsing decided: start and end in seconds, the
+        template's name and `transparent` (a motion insert without it takes its template's @kind)."""
+        p = copy.deepcopy(self.p)
+        by_id = {x.id: x for x in self.inserts}
+        for e in p.get("inserts") or []:
+            x = by_id.get(str(e.get("id"))) if isinstance(e, dict) else None
+            if x is not None:
+                e.update(start=x.start_s, end=x.end_s, transparent=x.transparent)
+                if x.kind == "motion":
+                    e["scene"] = x.scene
+        p["format"] = self.format
+        return p
 
     def summary(self) -> dict:
         return {

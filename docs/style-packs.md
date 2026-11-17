@@ -55,28 +55,28 @@ Keys marked "(new)" came with the cut checks of 16 Nov 2026.
 | `end_card` | true | the video ends with an end card |
 | `cut_words` (new) | all empty | language data for the cut checks, see below |
 
-`motion` holds the motion graphics rules (`crewcut render plan` warns when a plan breaks one; see
-[motion.md](motion.md)). "Full frame" is a motion insert that covers the picture, an overlay lies on the speaker:
+`motion` holds the motion graphics rules. `crewcut render plan` warns when a plan breaks one, the style check counts
+them (`motion-*`), both through `crewcut/motion/density.py`; see [motion.md](motion.md). "Full frame" is a motion
+insert that covers the picture, an overlay lies on the speaker. A pack that leaves a key out keeps the neutral value.
 
 | Key | Neutral default | Meaning |
 |---|---|---|
+| `prefer` | `"motion"` | `"motion"`: with the engine present (or `render.location = "rented"`) the motion templates (`number_roll`, `keyword_pop`) are the default over the 2D `counter` and `keyword`, and `render plan` says so; `"2d"` keeps the 2D scenes first |
 | `insert_s` | [3, 6] | shortest and longest full-frame motion insert, seconds |
-| `insert_s_long` | ranking 8 | templates that may run longer (template: longest seconds) |
+| `insert_long_s` | 8 | longest for an explainer (`"explainer": true` in its data) |
 | `overlay_min_s` | 1.5 | shortest overlay; nothing enters and leaves within 1 s |
-| `prefer` | `"motion"` | `"motion"`: with the engine present the motion templates (`number_roll`, `keyword_pop`) are the default over the 2D `counter` and `keyword`; `"2d"` keeps the 2D scenes first |
-| `heroes` | big_claim, card_gallery, ranking | hero templates: each at most `hero_each_max` per video |
-| `long` | see below | limits of a long-form video |
-| `short` | see below | limits of a Short (portrait plan) |
+| `template_min_s`, `template_max_s` | keyword_pop 1.5, lower_third 3, number_roll 3, prompt_bar 3 to 6, word_reel 3, quote 4, ranking up to 8 | per-template lengths over the two above |
+| `per_sentence_max` | 1 | motion graphics starting in one sentence: overlay or insert, never both (needs the words file) |
+| `big_moments` | [3, 5] | full-frame motion inserts per long video (fewer is a note) |
+| `big_per_minute_max` | 1 | videos longer than 5 minutes: at most one big moment per minute |
+| `per_minute_max` | 2 | all motion, overlays included, per minute on average |
+| `min_gap_s` | 6 | never two motion graphics starting this close together (long videos) |
+| `heroes`, `heroes_max` | big_claim, card_gallery, ranking; 2 | hero templates: each once per video, at most this many in total |
+| `sounds_per_motion_max` | 1 | sounds per motion graphic (the workbench uses only the first `@sounds` entry) |
+| `shorts` | big_max 2, total [3, 5], heroes_max 1 | the same for a Short (portrait plan) |
 
-| Limit | `long` | `short` | Meaning |
-|---|---|---|---|
-| `per_sentence_max` | 1 | 1 | motion graphics starting in one sentence (needs the words file) |
-| `big_max` | 5 | 2 | full-frame motion inserts per video |
-| `big_per_minute_max` | 1 | - | long videos: at most one per minute (the higher of the two caps counts) |
-| `all_per_minute_max` | 2 | - | all motion, overlays included, per minute on average (at least 1 minute counted) |
-| `all_max` | - | 5 | all motion per Short |
-| `min_gap_s` | 6 | null | never two motion graphics starting this close together |
-| `hero_each_max`, `heroes_max` | 1, 2 | 1, 1 | each hero template, and all hero templates together |
+The speaker also stays alone for `speaker_open_close_seconds` at the start and end (a Short: `shorts.end_face_s` at
+the end), and at least `speaker_min_seconds` between two full-frame parts when one of them is motion.
 
 `cut_words` holds the word lists of the channel's language; code never contains them, the neutral pack has none:
 

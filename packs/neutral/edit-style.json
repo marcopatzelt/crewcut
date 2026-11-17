@@ -24,37 +24,22 @@
     "text": 0.2
   },
   "motion": {
-    "insert_s": [
-      3,
-      6
-    ],
-    "insert_s_long": {
-      "ranking": 8
-    },
-    "overlay_min_s": 1.5,
     "prefer": "motion",
-    "heroes": [
-      "big_claim",
-      "card_gallery",
-      "ranking"
-    ],
-    "long": {
-      "per_sentence_max": 1,
-      "big_max": 5,
-      "big_per_minute_max": 1,
-      "all_per_minute_max": 2,
-      "min_gap_s": 6,
-      "hero_each_max": 1,
-      "heroes_max": 2
-    },
-    "short": {
-      "per_sentence_max": 1,
-      "big_max": 2,
-      "all_max": 5,
-      "min_gap_s": null,
-      "hero_each_max": 1,
-      "heroes_max": 1
-    }
+    "insert_s": [3.0, 6.0],
+    "insert_long_s": 8.0,
+    "overlay_min_s": 1.5,
+    "template_min_s": {"keyword_pop": 1.5, "lower_third": 3.0, "number_roll": 3.0, "prompt_bar": 3.0,
+                       "word_reel": 3.0, "quote": 4.0},
+    "template_max_s": {"prompt_bar": 6.0, "ranking": 8.0},
+    "per_sentence_max": 1,
+    "big_moments": [3, 5],
+    "big_per_minute_max": 1.0,
+    "per_minute_max": 2.0,
+    "min_gap_s": 6.0,
+    "heroes": ["big_claim", "card_gallery", "ranking"],
+    "heroes_max": 2,
+    "sounds_per_motion_max": 1,
+    "shorts": {"big_max": 2, "total": [3, 5], "heroes_max": 1}
   },
   "speaker_share_min": 0.4,
   "speaker_min_seconds": 2.0,

@@ -127,6 +127,7 @@ MOTION_GRAPHICS = {          # brand.json motion_graphics: the defaults (palette
     "blur": {"shutter": 180, "samples": 16},
     "plate3d": {"material": "glossy", "bevel": 0.05, "extrude": 0.2},
 }
+MOTION_PAIRS = {"insert_s": "[3, 6]", "big_moments": "[3, 5]"}
 EASES = ("linear", "easy", "smooth", "strong", "out", "expo", "in", "expoIn", "soft", "snap")   # EC.EASES in ec_lib.jsx
 
 
@@ -346,34 +347,48 @@ def _check_motion_graphics(pack: Pack) -> list[str]:
 
 
 def _check_motion_style(pack: Pack) -> list[str]:
-    """edit-style.json `motion` (lengths, preference, density limits) and `graphics_mix`."""
+    """edit-style.json `motion` (the limits crewcut.motion.density reads, and `prefer`) and `graphics_mix`."""
     out = []
     m = pack.value("edit_style.motion")
     if m is not None:
         where = "edit-style.json motion"
         if not isinstance(m, dict):
             return [f"{where} must be an object"]
-        ins = m.get("insert_s")
-        if ins is not None and not (isinstance(ins, list) and len(ins) == 2 and all(_num_in(v, 0.5, 60) for v in ins)
-                                    and ins[0] < ins[1]):
-            out.append(f"{where}.insert_s must be [shortest, longest] in seconds, e.g. [3, 6]")
-        if m.get("overlay_min_s") is not None and not _num_in(m["overlay_min_s"], 0.5, 30):
-            out.append(f"{where}.overlay_min_s must be seconds from 0.5 to 30")
+
+        def pair(k: str, lo: float, hi: float) -> None:
+            v = m.get(k)
+            if v is not None and not (isinstance(v, list) and len(v) == 2 and all(_num_in(x, lo, hi) for x in v)
+                                      and v[0] <= v[1]):
+                out.append(f"{where}.{k} must be [lowest, highest], e.g. {MOTION_PAIRS[k]}")
+
+        for k, lo, hi in (("insert_s", 0.5, 60), ("big_moments", 0, 100)):
+            pair(k, lo, hi)
+        for k, lo, hi in (("insert_long_s", 0.5, 60), ("overlay_min_s", 0.5, 30), ("per_sentence_max", 0, 10),
+                          ("big_per_minute_max", 0, 10), ("per_minute_max", 0, 30), ("min_gap_s", 0, 60),
+                          ("heroes_max", 0, 20), ("sounds_per_motion_max", 0, 10)):
+            if m.get(k) is not None and not _num_in(m[k], lo, hi):
+                out.append(f"{where}.{k} must be a number from {lo:g} to {hi:g}")
+        for k in ("template_min_s", "template_max_s"):
+            v = m.get(k)
+            if v is not None and not (isinstance(v, dict) and all(_num_in(x, 0.1, 60) for x in v.values())):
+                out.append(f"{where}.{k} must map template names to seconds")
         if m.get("prefer") is not None and m["prefer"] not in ("motion", "2d"):
             out.append(f"{where}.prefer must be \"motion\" or \"2d\"")
-        for part in ("long", "short"):
-            d = m.get(part)
-            if d is None:
-                continue
-            if not isinstance(d, dict):
-                out.append(f"{where}.{part} must be an object of limits")
-                continue
-            for k, v in d.items():
-                if v is not None and not _num_in(v, 0, 1000):
-                    out.append(f"{where}.{part}.{k} must be a number (or null for no limit)")
         heroes = m.get("heroes")
         if heroes is not None and not (isinstance(heroes, list) and all(isinstance(h, str) for h in heroes)):
             out.append(f"{where}.heroes must be a list of template names")
+        sh = m.get("shorts")
+        if sh is not None:
+            if not isinstance(sh, dict):
+                out.append(f"{where}.shorts must be an object")
+            else:
+                for k in ("big_max", "heroes_max"):
+                    if sh.get(k) is not None and not _num_in(sh[k], 0, 100):
+                        out.append(f"{where}.shorts.{k} must be a number")
+                t = sh.get("total")
+                if t is not None and not (isinstance(t, list) and len(t) == 2 and all(_num_in(x, 0, 100) for x in t)
+                                          and t[0] <= t[1]):
+                    out.append(f"{where}.shorts.total must be [lowest, highest], e.g. [3, 5]")
     mix = pack.value("edit_style.graphics_mix")
     if mix is not None:
         if not isinstance(mix, dict) or not all(_num_in(v, 0, 1) for v in mix.values()):

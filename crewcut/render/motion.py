@@ -215,7 +215,8 @@ def behind_hook(plan: Plan, ins: Insert, runner: media.Runner = media.run, log: 
         matte = None
     fn = getattr(matte, "composite_behind", None)
     if fn is None:
-        log(f"motion {ins.id}: layer \"behind\" is laid over the speaker for now (no matte step installed)")
+        log(f"motion {ins.id}: layer \"behind\" is laid over the speaker for now (the matte step has no "
+            "composite_behind yet; see docs/motion-matte.md)")
         return True
     return bool(fn(plan, ins, runner=runner, log=log))
 

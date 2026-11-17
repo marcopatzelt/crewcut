@@ -93,7 +93,7 @@ def motion_notes(plan: Plan) -> list[str]:
             out.append("effectcraft-cli is missing here: " + ("render all leaves the motion inserts out of the cut "
                        "(motion_without_engine: skip)" if skip else "render motion and render all will stop"))
         out += plan.motion_sounds()[1]
-    prefer = plan.motion_style().get("prefer")
+    prefer = plan.pack.value("edit_style.motion.prefer", "motion")
     if prefer == "motion" and (engine or where == "rented"):
         better = {"counter": "number_roll", "keyword": "keyword_pop"}
         for x in plan.of_kind("2d"):

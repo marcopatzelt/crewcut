@@ -88,15 +88,17 @@ def test_check_reports_bad_motion_blocks(studio):
     p = _pack(studio, {"motion_graphics": {"palette": ["#E4572E"], "pastels": "yes", "ground": "sky", "glass": 1,
                                            "enter_s": 3, "ease": "bounce", "blur": {"shutter": 900, "samples": 0},
                                            "plate3d": []}},
-              {"motion": {"insert_s": [6, 3], "overlay_min_s": 0, "prefer": "html", "long": {"big_max": "five"},
-                          "heroes": "ranking"},
+              {"motion": {"insert_s": [6, 3], "overlay_min_s": 0, "prefer": "html", "min_gap_s": "six",
+                          "heroes": "ranking", "template_max_s": {"ranking": "long"}, "big_moments": [5],
+                          "shorts": {"total": [5, 3]}},
                "graphics_mix": {"motion": 1.4}})
     problems = "\n".join(brand.check(p))
     for needle in ("motion_graphics.palette", "motion_graphics.pastels", "motion_graphics.ground",
                    "motion_graphics.glass", "motion_graphics.enter_s", "motion_graphics.ease",
                    "motion_graphics.blur.shutter", "motion_graphics.blur.samples", "motion_graphics.plate3d",
-                   "motion.insert_s", "motion.overlay_min_s", "motion.prefer", "motion.long.big_max",
-                   "motion.heroes", "graphics_mix"):
+                   "motion.insert_s", "motion.overlay_min_s", "motion.prefer", "motion.min_gap_s",
+                   "motion.heroes", "motion.template_max_s", "motion.big_moments", "motion.shorts.total",
+                   "graphics_mix"):
         assert needle in problems, needle
 
 

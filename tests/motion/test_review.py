@@ -181,7 +181,7 @@ def test_clean_insert_passes_and_bundle_has_every_file(tmp_path):
     assert sharp["frames"] == 100 and len(sharp["per_frame"]) == 100
     dj = json.loads((b / "m1" / "density.json").read_text())
     assert dj["counts"]["motion"] == 1 and dj["this"]["id"] == "m1"
-    assert dj["limits_from"].startswith("neutral")
+    assert dj["limits_from"] == "edit-style.json motion"          # the neutral pack writes the motion block out
     md = (b / "m1" / "web-look.md").read_text()
     for q in rv.WEB_QUESTIONS:
         assert md.count(q) == 8
