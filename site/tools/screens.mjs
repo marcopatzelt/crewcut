@@ -1,4 +1,4 @@
-// Renders the built landing page at 1440 and 390 px, light and dark: the whole page and the first screen.
+// Renders the built landing page at 1440, 1024, 768 and 390 px, light and dark: the whole page and the first screen.
 // Runs on GitHub's runner only (.github/workflows/pages.yml), never on a developer laptop.
 //
 //   node screens.mjs <url of site/_site/index.html> <output folder>
@@ -14,7 +14,7 @@ mkdirSync(out, { recursive: true });
 
 const browser = await chromium.launch();
 for (const scheme of ['light', 'dark']) {
-  for (const [w, h] of [[1440, 900], [390, 844]]) {
+  for (const [w, h] of [[1440, 900], [1024, 768], [768, 1024], [390, 844]]) {
     const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, colorScheme: scheme, reducedMotion: 'reduce' });
     const page = await ctx.newPage();
     await page.goto(url, { waitUntil: 'networkidle' });
