@@ -7,6 +7,10 @@ state between commands; the engine writes it with ``--save``.
 
 Finding the binary, in order: the ``cli`` argument (``--cli``), ``$EFFECTCRAFT_CLI``, ``effectcraft-cli`` on ``PATH``.
 The Crewcut image ships it as ``/usr/local/bin/effectcraft-cli`` (pin and patches in ``third_party/effectcraft``).
+
+Fonts: EffectCraft reads extra font folders from ``EFFECTCRAFT_FONT_DIRS`` (a ``:``-separated path list). The render
+workbench copies the style pack's font files into one folder per run and passes it with ``Backend(env=...)``, which
+every engine process of that backend gets.
 """
 
 from __future__ import annotations
@@ -83,6 +87,7 @@ class Backend:
     gpu: bool = False
     timeout: float = 3600.0
     extra_env: dict[str, str] = field(default_factory=dict)
+    env: dict[str, str] | None = None   # extra environment for every engine process, e.g. EFFECTCRAFT_FONT_DIRS
     last_argv: list[str] = field(default_factory=list)
     engine: Any = None          # optional persistent McpEngine (--persistent): same results, no reload per call
 
@@ -92,6 +97,10 @@ class Backend:
         if e is None or not project or save_as or not e.alive():
             return None
         return e if os.path.abspath(project) == e.project else None
+
+    def process_env(self) -> dict[str, str]:
+        """The environment of every engine process: this process's, then ``extra_env``, then ``env``."""
+        return {**os.environ, **self.extra_env, **(self.env or {})}
 
     @property
     def binary(self) -> str:
@@ -121,9 +130,9 @@ class Backend:
     def call(self, argv: list[str], timeout: float | None = None, check: bool = True) -> Any:
         """Run one CLI call, return its parsed JSON reply. Engine errors become :class:`BackendError`."""
         self.last_argv = argv
-        env = dict(os.environ, **self.extra_env)
         try:
-            r = subprocess.run(argv, capture_output=True, text=True, timeout=timeout or self.timeout, env=env)
+            r = subprocess.run(argv, capture_output=True, text=True, timeout=timeout or self.timeout,
+                               env=self.process_env())
         except subprocess.TimeoutExpired as e:
             raise BackendError(f"effectcraft-cli timed out after {e.timeout:.0f} s", argv=argv) from e
         out = _parse_json_out(r.stdout)
@@ -141,7 +150,8 @@ class Backend:
 
     # ── engine commands ──────────────────────────────────────────────────
     def version(self) -> str:
-        r = subprocess.run([self.binary, "--version"], capture_output=True, text=True, timeout=30)
+        r = subprocess.run([self.binary, "--version"], capture_output=True, text=True, timeout=30,
+                           env=self.process_env())
         return r.stdout.strip() or r.stderr.strip()
 
     def info(self, project: str | None = None) -> Any:
