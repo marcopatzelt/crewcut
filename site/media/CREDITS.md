@@ -26,9 +26,10 @@ and a 540 x 960 crop for phones, posters in WebP and JPEG.
 
 **Frames** (`frames/`): 3D scenes the studio rendered for a commercial, cut so that no words show (in the GPU card).
 
-**The app** (`app/`, `crew/`): screenshots of the Crewcut web UI in demo mode, rendered in CI. The hero window is
-`docs/readme/crewcut-dark.png` whole (commit 5addce3, 2880 x 2000); the home, the phone crops and seven crew tiles
-are cut from the README images of the same commit; the writer and brand tiles come from screens run 43982257994.
+**The app** (`app/`, `crew/`): screenshots of the Crewcut web UI, edge to edge as the app looks now, with the sample
+data of `tests/web-sample` (the author's own videos), rendered in CI (screens run 44122818211, commit 5cdbd17). The hero
+is `docs/readme/crewcut-dark.png` whole (2880 x 2000), the home the README's `crewcut-episodes-{light,dark}.png` whole,
+the phone crops are cut from the same images. The crew tiles are parts of the UI from screens run 43982257994.
 
 ## Film
 
