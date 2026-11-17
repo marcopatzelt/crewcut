@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App";
 import type { Card, EpisodeMedia, EpisodeMotion, MotionPlanData, ShelfRow } from "../api/types";
 import { acceptLabel, foldedText } from "../components/CardView";
+import { createDemoBackend } from "../demo/backend";
 import { moneyWords, pieceName } from "../components/Motion";
 import { card, episode, episodeRoutes, mockApi, openAt, Reply, resetApp, state } from "./helpers";
 
@@ -633,26 +634,35 @@ describe("the Motion shelf of the style pack", () => {
 // ---------- the demo ----------
 
 describe("motion in the demo", () => {
-  it("has the commercial's motion plan and style frame open, a strike that works, the tiles and the shelf", async () => {
+  it("keeps the workflow's order: the commercial's plan has its yes, its style frame is the open motion card", async () => {
     window.history.replaceState(null, "", "/#/e/015-thinking-levels-commercial");
     render(<App demo />);
-    const planGroup = await screen.findByRole("group", { name: "Motion plan v002: 3 motion moments" });
-    expect(within(planGroup).getByText(/cap \$2 for this video/)).toBeTruthy();
-    expect(screen.getByRole("group", { name: "Style frame of dial, round 1" })).toBeTruthy();
+    expect(await screen.findByRole("group", { name: "Style frame of dial, round 1" })).toBeTruthy();
+    expect(await screen.findByText("Motion plan approved · version 2")).toBeTruthy();
+    expect(screen.queryByRole("group", { name: /^Motion plan/ })).toBeNull();
+    // the approved plan, read-only in the Motion panel, with the row struck before the yes
+    const panel = await screen.findByRole("region", { name: "Motion" });
+    expect(within(panel).getByText("Plan v2, approved")).toBeTruthy();
+    expect(within(panel).queryByRole("button", { name: /^Not this one/ })).toBeNull();
+    expect(within(panel).queryByRole("button", { name: "Show the card" })).toBeNull();
+    expect(within(panel).getByText("Struck")).toBeTruthy();
+    expect(within(panel).getByText(/cap \$2 for this video/)).toBeTruthy();
     const lane = await screen.findByRole("list", { name: "Motion on the strip" });
-    expect(within(lane).getAllByRole("listitem")).toHaveLength(3);
-    expect(within(lane).getByText("Style frame")).toBeTruthy();
+    expect(within(lane).getAllByRole("listitem").map((t) => t.getAttribute("aria-label"))).toEqual([
+      "0:05, Keyword pop. Done.",
+      "0:10, A dial turns from low to high and the needle lands as the word high is said. Style frame.",
+      "0:15, Number roll. In review.",
+    ]);
+  });
 
-    await userEvent.click(within(planGroup).getByRole("button", { name: /^Not this one: 0:05 Keyword pop/ }));
-    const next = await screen.findByRole("group", { name: "Motion plan v003: 2 motion moments" });
-    expect(within(next).getByRole("button", { name: /^Not this one: 0:05 Keyword pop/ }).getAttribute("aria-pressed")).toBe("true");
-    await waitFor(() => expect(screen.getByText("Plan v3 waits for your yes")).toBeTruthy());
-
-    // the only two chosen upgrades: the second one may not go
-    await userEvent.click(within(next).getByRole("button", { name: /^Not this one: Every exit/ }));
-    const v4 = await screen.findByRole("group", { name: "Motion plan v004: 2 motion moments" });
-    await userEvent.click(within(v4).getByRole("button", { name: /^Not this one: The number lands/ }));
-    expect((await within(v4).findByRole("alert")).textContent).toContain("only chosen upgrade");
+  it("refuses a strike on the demo's answered plan, as the server does", async () => {
+    const demo = createDemoBackend({ latency: 0 });
+    await expect(demo.request("POST", "/api/cards/61/strike", { row: "beat:2", struck: true })).rejects.toMatchObject({
+      status: 409,
+      message: "This card is answered already.",
+    });
+    const cards = await demo.request<Card[]>("GET", "/api/cards?episode=015-thinking-levels-commercial&status=open");
+    expect(cards.map((c) => c.kind).sort()).toEqual(["preview", "style-frame"]);
   });
 
   it("shows the shelf in the style pack", async () => {

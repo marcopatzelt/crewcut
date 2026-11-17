@@ -224,13 +224,15 @@ episode in work, four published ones and nine Shorts. Episode 012 shows variants
 differently). Chats, jobs and money are made up. Nothing runs; a sentence gets a
 reply that says so.
 
-Motion graphics in the demo (`src/demo/motion.ts`): the commercial (015) has a cut from its five 3D shots, its motion
-plan open (version 2, one row struck; striking works and refuses the only chosen upgrade as the server does), the
-style frame of its one new piece next to the bar's frame, and three tiles (done, in review, style frame); 013 shows
-the finished loop (pieces done, the report's three lines, the decided motion cards); the style pack's shelf holds two
-templates of the pack, the app's five and one piece made for one video. Their pictures are small posters drawn with
-plain shapes (`public/demo/motion/*.svg`, outside the folder `build_media.py` rebuilds); the demo has no loops. Both
-motion cards sit in 015, which already needs a yes, so the home keeps its two "Needs you" cards.
+Motion graphics in the demo (`src/demo/motion.ts`) keep the workflow's order: the commercial (015) has a cut from its
+five 3D shots, its motion plan approved (version 2, one row struck before the yes; read-only in the Motion panel, one
+folded line in the chat), the style frame of its one new piece open next to the bar's frame, and three tiles (done,
+style frame, in review); 013 shows the finished loop (pieces done, the report's three lines, the decided motion
+cards); the style pack's shelf holds two templates of the pack, the app's five and one piece made for one video. A
+strike on the demo's answered plan is refused as the server refuses it; the open motion-plan card is covered by the
+tests' own fixtures. The pictures are small posters drawn with plain shapes (`public/demo/motion/*.svg`, outside the
+folder `build_media.py` rebuilds); the demo has no loops. The style frame is the open card of 015, which already
+needs a yes, so the home keeps its two "Needs you" cards.
 
 When the demo starts on its own, Working now says "Demo data. Crewcut is not running at this address." With
 `?demo=1` it says "Demo data. Nothing here is real."

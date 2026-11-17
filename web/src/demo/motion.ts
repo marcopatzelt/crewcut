@@ -1,5 +1,6 @@
-// Motion graphics in the demo, shaped like docs/api.md ("Motion cards", "Motion"). Made-up data: the commercial (015)
-// has its motion plan open (version 2, after one struck row) and the style frame of its one new piece; the published
+// Motion graphics in the demo, shaped like docs/api.md ("Motion cards", "Motion"). Made-up data, in the order the
+// workflow allows: the commercial (015) has its motion plan approved (version 2, after one struck row) and the style
+// frame of its one new piece open, the only motion card that waits for a yes; the published
 // 013 shows the finished loop (all pieces done, the report's three lines, the bar moved to it); the shelf holds two
 // templates of the pack, the app's five and one piece made for one video. The pictures are small posters drawn with
 // plain shapes (public/demo/motion/); the demo has no loops, so every tile shows its poster.
@@ -71,7 +72,7 @@ export function makeMotionDemo(ids: { e015: string; e013: string; e011: string }
   const D = 86400;
   const { e015, e013, e011 } = ids;
 
-  // ----- 015, the commercial: the plan is open, the dial's style frame waits beside it -----
+  // ----- 015, the commercial: the plan has its yes, the dial's style frame waits for one -----
   const dial: MotionNew = {
     row: "new:dial",
     id: "dial",
@@ -156,8 +157,9 @@ export function makeMotionDemo(ids: { e015: string; e013: string; e011: string }
     file: "edit/motion-plan-v002.md",
     preview: null,
     sha256: "7d2a91c4e05b",
-    status: "open",
+    status: "accepted",
     created: ago(30 * MIN),
+    decided_at: ago(20 * MIN),
     data: { motion_plan: plan015, cap_usd: 2, images: [POSTER.keyword, POSTER.number] },
   };
   const frameCard: Card = {
@@ -376,7 +378,7 @@ export function makeMotionDemo(ids: { e015: string; e013: string; e011: string }
         at: ago(12 * MIN),
         author: "designer",
         step: "edit",
-        text: "The dial is the one new piece. Its frame at the strongest moment, next to the board from 013, so you can judge it with the plan.",
+        text: "The plan has your yes. The dial is the one new piece: its frame at the strongest moment, next to the board from 013. Nothing of it moves before your yes on the frame.",
         card: 62,
       },
     ],
@@ -390,8 +392,8 @@ export function makeMotionDemo(ids: { e015: string; e013: string; e011: string }
         file: plan015.file,
         md_url: null,
         version: plan015.version,
-        card: { id: 61, status: "open" },
-        approved: false,
+        card: { id: 61, status: "accepted" },
+        approved: true,
         columns: plan015.columns,
         quiet: plan015.quiet,
         density: plan015.density,
@@ -404,7 +406,7 @@ export function makeMotionDemo(ids: { e015: string; e013: string; e011: string }
       pieces: [
         { id: "m1", kind: "library", scene: "keyword_pop", source: null, beat: 2, column: "a", state: "done", brief: null, loop: null, poster: POSTER.keyword, start: 5.2, end: 7.6, transparent: true },
         { id: "m2", kind: "library", scene: "number_roll", source: null, beat: 4, column: "a", state: "in review", brief: null, loop: null, poster: POSTER.number, start: 15, end: 18, transparent: false },
-        { id: "dial", kind: "custom", scene: null, source: "motion/dial/comp.jsx", beat: null, column: null, state: "style frame", brief: dial.brief, loop: null, poster: POSTER.dial, start: null, end: null, transparent: false },
+        { id: "dial", kind: "custom", scene: null, source: "motion/dial/comp.jsx", beat: 3, column: "b", state: "style frame", brief: dial.brief, loop: null, poster: POSTER.dial, start: 10, end: 14, transparent: false },
       ],
       report: null,
       retention: null,

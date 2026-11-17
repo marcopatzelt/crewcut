@@ -511,7 +511,10 @@ export function PieceTile({ p }: { p: MotionPiece }) {
   const state = stateWord(p.state);
   const kind = p.kind === "custom" ? "Made for this video" : p.transparent ? "Overlay" : "Full frame";
   return (
-    <li className={`mtile is-${p.state.replace(/\s+/g, "-")}`} aria-label={`${[at, name].filter(Boolean).join(", ")}. ${state}.`}>
+    <li
+      className={`mtile is-${p.state.replace(/\s+/g, "-")}`}
+      aria-label={`${[at, name.replace(/[.\s]+$/, "")].filter(Boolean).join(", ")}. ${state}.`}
+    >
       <span className="mtile-pic">
         <Loop src={p.loop} poster={p.poster} label="" />
         <span className="glass-tag mtile-state">

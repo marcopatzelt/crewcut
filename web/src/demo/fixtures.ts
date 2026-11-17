@@ -285,7 +285,7 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     step: "edit",
     steps: steps(["done", "done", "done", "done", "skipped", "waiting", "open", "skipped", "open", "open"]),
     updated: ago(12 * MIN),
-    open_cards: 3,
+    open_cards: 2,
     cover: pic(m015, true),
     seconds: 25,
     needs: {
@@ -548,7 +548,8 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     choice: 0,
     decided_at: ago(5 * D - 20 * MIN),
   };
-  // Motion graphics: the commercial's plan and style frame are open; 013 shows the finished loop (src/demo/motion.ts).
+  // Motion graphics: the commercial's plan has its yes and its style frame is open; 013 shows the finished loop
+  // (src/demo/motion.ts).
   const motionDemo = makeMotionDemo({ e015: e015.id, e013: e013.id, e011: e011.id }, ago);
   Object.assign(DEMO_FILES, motionDemo.files);
   const cards: Card[] = [titleCard, spend, thumbCard, openingCard, ...motionDemo.cards];
