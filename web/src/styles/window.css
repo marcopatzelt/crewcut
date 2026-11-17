@@ -1109,7 +1109,7 @@
 .job {
   position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 10px;
   width: 100%;
   text-align: left;
@@ -1181,10 +1181,10 @@
 }
 
 .job-cost {
-  align-self: start;
   font-size: 12px;
-  line-height: 19px;
+  line-height: 16px;
   color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
 }
 
 /* The newest picture of a running job: a render frame, a thumbnail draft. */

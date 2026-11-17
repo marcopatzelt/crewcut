@@ -1,4 +1,4 @@
-// Who works on what right now, done today, and the money (DESIGN.md rules 1.5, 13, 14). Two shapes:
+// Who works on what right now, and the money (DESIGN.md rules 1.5, 13, 14). Two shapes:
 // - "rail": the right column of the home and the read-only views, each running job with its newest picture;
 // - "chat": slim tiles on top of the episode's crew chat.
 // A waiting row jumps to the open card of its episode; every other row opens the job's log.
@@ -92,6 +92,7 @@ function JobRow({
           <span className="job-who">
             <span className="job-name one-line">{who.name}</span>
             <span className="job-time">{clock(seconds)}</span>
+            {running && a.cost_usd > 0 ? <span className="job-cost">{usd(a.cost_usd)}</span> : null}
           </span>
           <span className={shape === "rail" ? "job-doing" : "job-doing one-line"}>{doing}</span>
           {shape === "rail" ? <span className="job-meta one-line">{meta}</span> : null}
@@ -113,7 +114,6 @@ function JobRow({
             />
           ) : null}
         </span>
-        {running && a.cost_usd > 0 ? <span className="job-cost">{usd(a.cost_usd)}</span> : null}
       </button>
     </div>
   );
