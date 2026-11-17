@@ -104,6 +104,8 @@ the face box, never a ring or frame around the head.
 | `CC.groundLayer(c)` | the full-frame ground: the pack ground lit at its edges by drifting pools of the palette; nothing on an overlay |
 | `CC.landBy(cue)`, `CC.enterS()`, `CC.exitS()`, `CC.ease()` | timing from the pack: complete 1.5 frames before a cue, entrance 0.35 to 0.5 s, exit, ease |
 | `CC.luma`, `CC.mix`, `CC.lumaUnder` | colour arithmetic and the luminance of the picture under a box |
+| `CC.meter(c, o)`, `CC.rowWidth` | digits that count like a meter (reels behind feathered windows, carries, whole digits on holds); the width of a row set character by character |
+| `CC.textColor(i)` | the i-th palette colour that reads as type on the ground (a light yellow on a light ground is skipped) |
 | `CC.plate(id)` | a ready Blender plate from `CC_CTX.plates`, or null |
 
 ### Motion rules (from the handbook, binding)
@@ -166,6 +168,32 @@ and both lines sink.
 Sounds: `whoosh` on the entrance. Limits: a name wider than the free side at `minNameSize` (about 22 characters at
 60 px in 16:9) reaches across the body below the face box; it never touches the face box itself.
 
+### `number_roll` (full or overlay, 4.0 s, min 3)
+
+A number that counts up like a meter. Every digit is a reel behind its own feathered window (it opens from a slit on
+the first frame and closes at the exit). The value eases from `from` to the target (power `ease`) and lands exactly
+at `landAt`: the units reel rolls with the value (blurred while fast) and ticks whole digits when slow, every other
+reel turns only when the reel on its right carries from 9 to 0, and the units reel lands with a small settle. Digits
+are set tight with their measured advances in the display font, whole on every hold, and the row (grown by the push)
+is fitted inside the safe box, so nothing is ever clipped. Leading zeros stay hidden until the count reaches them; a
+sign and separators (`+`, `,`, `.`) rise in place and show with the digit on their left. The unit is in the accent
+colour; the line of text below drifts slower than the number (depth). The cut in lands on a camera move (the number
+settles from 104 % while it counts, then the slow push). Full frame on the pack ground; with a transparent insert it
+is an overlay on the free side like `keyword_pop`.
+
+| Param | Default | Meaning |
+|---|---|---|
+| `value` | `"128"` | the number as shown: digits with `,` `.` or spaces; `prefix` goes in front (a sign or a currency) |
+| `unit`, `label` | `"GB"`, `"of memory on one laptop"` | the unit after the number (accent, `unitScale` × size) and one line under it (body font) |
+| `size`, `minSize`, `labelSize` | `160`, `110`, `50` | hero size, its floor when fitting, the line's size (never under 40) |
+| `rollAt`, `roll`, `landAt`, `cueAt` | `0.0`, `1.3`, `null`, `null` | the count starts at `rollAt` and lands at `landAt` (default `rollAt + roll`); a cue lands it 1 frame before the cue |
+| `from`, `ease` | `0`, `2.2` | the start value and the power of the ease-out |
+| `outAt` | `null` | the exit: the reels run on upward while their windows close (default: the last `exit_s`) |
+
+Cues: `cueAt` (the number complete 1 frame before it). Sounds: `reel_tick` at `rollAt`, `tick` at `landAt`.
+Limits: whole numbers and decimals as written (the count runs over the digits, so `4.2` counts 0.0 to 4.2); no
+negative counts; very large numbers (8+ digits) fit by shrinking toward `minSize`.
+
 ### `prompt_bar` (full with the speaker as backdrop, 5.0 s, 3 to 6)
 
 "What I asked". The speaker's own picture (`CC_CTX.backdrop`, the piece of the cut) blurs, calms (less saturation,
@@ -189,3 +217,22 @@ Sounds: `typing` at `typeAt`. Without a backdrop the bar sits on the pack ground
 plate is left out and the text sits on the blurred picture. Limits: about 40 letters per line in 16:9 at 54 px and
 25 in 9:16; longer prompts shrink to 42 px and three lines, then they get tight; prompts over ~120 letters belong in a
 screenshot.
+
+### `word_reel` (full, 3.5 s, min 3)
+
+Steps or tools roll past like a slot machine: a column of words scrolls with motion blur, brakes and lands on the
+current one; a thin accent selection frame with corner handles (an outline, never a fill) hugs the word in the
+middle and resizes smoothly between the measured widths of the words passing it; the words fade with their distance
+from the middle. The camera settles from 106 % into the hold and then pushes in; at the end the column runs on upward
+and the frame closes. A short list wraps around, so the reel always travels at least `minTravel` lines.
+
+| Param | Default | Meaning |
+|---|---|---|
+| `words`, `target` | nine production steps, `"Captions"` | the list and the one to land on (a word or an index) |
+| `size`, `minSize` | `120`, `72` | hero size; the widest word plus its frame fits the safe width |
+| `rollAt`, `landAt`, `cueAt`, `minTravel` | `0.0`, `null`, `null`, `5` | the roll; it lands at `landAt` (default by the distance, 0.9 to 1.5 s), 1.5 frames before a cue |
+| `image` | `""` | optional picture behind (a screenshot): tilted, blurred, desaturated, drifting |
+| `outAt` | `null` | the exit |
+
+Cues: `cueAt` (the frame lands on the word). Sounds: `reel_tick` at `rollAt`, `click` at `landAt`. Limits: lists of
+three or fewer show only one neighbour on each side; words over ~14 letters shrink toward `minSize`.
