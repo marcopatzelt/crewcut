@@ -45,8 +45,27 @@ def engine_dir(tmp_path, monkeypatch):
     yield tmp_path / "engine"
 
 
+def test_root_under_rootless_docker_stays_root_in_the_sandbox(tmp_path, monkeypatch):
+    calls = []
+    run_as = tmp_path / "crewcut-user"
+    run_as.write_text("0:0\n")
+    monkeypatch.setattr(connect, "RUN_AS", run_as)
+    monkeypatch.setenv("CREWCUT_STUDIO", str(tmp_path))
+    monkeypatch.setattr(connect.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(connect.os, "setuid", lambda u: calls.append(u))
+    monkeypatch.delenv("IS_SANDBOX", raising=False)
+    connect.drop_to_studio_owner()
+    assert calls == [] and connect.os.environ["IS_SANDBOX"] == "1"
+    run_as.write_text("1234:1235\n")
+    monkeypatch.setattr(connect.os, "setgroups", lambda g: None)
+    monkeypatch.setattr(connect.os, "setgid", lambda g: calls.append(("gid", g)))
+    connect.drop_to_studio_owner()
+    assert calls == [("gid", 1235), 1234]
+
+
 def test_root_switches_to_the_studio_owner(tmp_path, monkeypatch):
     calls = []
+    monkeypatch.setattr(connect, "RUN_AS", tmp_path / "missing")
     monkeypatch.setenv("CREWCUT_STUDIO", str(tmp_path))
     monkeypatch.setattr(connect.os, "geteuid", lambda: 0)
     monkeypatch.setattr(connect.os, "setgroups", lambda g: calls.append(("groups", g)))

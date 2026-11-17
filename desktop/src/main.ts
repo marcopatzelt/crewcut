@@ -188,7 +188,8 @@ async function startStack(): Promise<{ ok: boolean; text?: string }> {
   const cfg = stackConfig();
   const ref = `${cfg.image}:${cfg.tag}`;
   try {
-    if (!(await imageExists(ref)) || (cfg.tag === "edge" && settings.get().image !== ref)) {
+    const present = await imageExists(ref);
+    if (!present || cfg.tag === "edge") { // a development build follows :edge, so it asks for a newer one each start
       send("stack:progress", { phase: "pull", text: "Downloading Crewcut…" });
       const socket = await dockerSocket();
       let last = 0;
@@ -198,16 +199,23 @@ async function startStack(): Promise<{ ok: boolean; text?: string }> {
         last = now;
         send("stack:progress", { phase: "pull", current: p.current, total: p.total, text: bytesWords(p.current, p.total) });
       };
-      if (socket) {
-        await pullImage(socket, cfg.image, cfg.tag, report).catch(async (e: Error) => {
-          log(`pull through the API: ${e.message}; trying the docker command`);
+      const pull = async () => {
+        if (socket) {
+          await pullImage(socket, cfg.image, cfg.tag, report).catch(async (e: Error) => {
+            log(`pull through the API: ${e.message}; trying the docker command`);
+            const r = await docker(["pull", ref], { env: dockerEnv(), timeout: 3_600_000 });
+            if (r.code !== 0) throw new Error(r.stderr.trim().split("\n").pop() || e.message);
+          });
+        } else {
           const r = await docker(["pull", ref], { env: dockerEnv(), timeout: 3_600_000 });
-          if (r.code !== 0) throw new Error(r.stderr.trim().split("\n").pop() || e.message);
-        });
-      } else {
-        const r = await docker(["pull", ref], { env: dockerEnv(), timeout: 3_600_000 });
-        if (r.code !== 0) throw new Error(r.stderr.trim().split("\n").pop() || "docker pull failed");
-      }
+          if (r.code !== 0) throw new Error(r.stderr.trim().split("\n").pop() || "docker pull failed");
+        }
+      };
+      // offline, or GitHub not answering: the image that is already here will do
+      await pull().catch((e: Error) => {
+        if (!present) throw e;
+        log(`no newer image: ${e.message}`);
+      });
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -219,18 +227,35 @@ async function startStack(): Promise<{ ok: boolean; text?: string }> {
   if (up.code !== 0) return { ok: false, text: up.stderr.trim().split("\n").slice(-2).join(" ") || "docker compose up failed" };
   stackStarted = true;
   let lastTail = 0;
-  const ok = await stack.waitHealthy(PORT, 20 * 60_000, (seconds) => {
+  const ready = await stack.waitHealthy(PORT, 20 * 60_000, (seconds) => {
     const msg = { phase: "engine", seconds, text: "Installing Claude Code inside Crewcut (first start only)…" };
     send("stack:progress", msg);
     if (seconds - lastTail >= 10) {
       lastTail = seconds;
       void stack.lastLog(cfg).then((line) => send("stack:progress", { ...msg, log: line.slice(0, 200) }));
     }
-  });
-  if (!ok) return { ok: false, text: "Crewcut did not answer within 20 minutes. Docker Desktop's logs show why." };
+  }, startWatch(cfg));
+  if (ready !== true) return { ok: false, text: ready };
   settings.set({ image: ref });
   send("stack:progress", { phase: "ready", text: "Crewcut is ready." });
   return { ok: true };
+}
+
+/** Watches the container while Crewcut starts: when its start fails and Docker starts it over, say so with the
+ *  container's last log line instead of waiting for the full time. */
+function startWatch(cfg: stack.StackConfig): () => Promise<string | null> {
+  let base: stack.ContainerState | null | undefined;
+  return async () => {
+    const now = await stack.containerState(cfg);
+    if (base === undefined) {
+      base = now;
+      if (!now || (now.status !== "exited" && now.status !== "dead")) return null;
+    }
+    if (!stack.failing(base, now)) return null;
+    const line = (await stack.lastLog(cfg)).slice(0, 300);
+    return `Crewcut stopped while starting${now ? ` (${now.status}, exit code ${now.exitCode})` : ""}.` +
+      (line ? ` Its last line: ${line}` : "");
+  };
 }
 
 async function restartWithToken(): Promise<boolean> {
@@ -238,8 +263,11 @@ async function restartWithToken(): Promise<boolean> {
   const cfg = stackConfig();
   const r = await stack.up(cfg);
   if (r.code !== 0) return false;
-  return stack.waitHealthy(PORT, 5 * 60_000, (seconds) =>
-    send("stack:progress", { phase: "engine", seconds, text: "Starting the crew with your Claude login…" }));
+  const ready = await stack.waitHealthy(PORT, 5 * 60_000, (seconds) =>
+    send("stack:progress", { phase: "engine", seconds, text: "Starting the crew with your Claude login…" }),
+  startWatch(cfg));
+  if (ready !== true) log(ready);
+  return ready === true;
 }
 
 // ---------- Connect Claude and Codex (crewcut engine connect, JSON lines) ----------

@@ -2,8 +2,10 @@
 
 ## You need
 
-- Docker: Docker Desktop (free for personal use and small companies), Colima (free) or Docker Engine on Linux.
-  Docker Compose 2.24 or newer.
+- Docker: Docker Desktop (free for personal use and small companies), OrbStack or Colima on a Mac, Docker Engine on
+  Linux (rootful or rootless). Docker Compose 2.24 or newer. Crewcut runs as the owner of your studio folder, so every
+  file the crew writes is yours; under rootless Docker that owner is root inside the container (which is you on the
+  host), and Crewcut tells Claude Code with `IS_SANDBOX=1` that the container is its sandbox.
 - A Claude plan: Pro, Max, Team or Enterprise. Crewcut connects to it with the "Connect Claude" button.
 - About 15 GB of free disk for the image and your first episodes.
 

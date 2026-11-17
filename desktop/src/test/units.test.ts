@@ -10,7 +10,7 @@ import { CODE_RE, deviceAllowed, parseStep, signInAllowed, Steps, TOKEN_RE } fro
 import { bytesWords, composeOk, PullProgress, socketFromHost } from "../docker";
 import { imageTag } from "../release";
 import { SettingsFile, visibleBounds } from "../settings";
-import { composeArgs, composeEnv } from "../stack";
+import { composeArgs, composeEnv, failing, parseState } from "../stack";
 import { THEME } from "../theme";
 
 const ROOT = join(__dirname, "..", "..", "..");
@@ -138,4 +138,16 @@ test("the stack file the app ships is the repository's own compose.yaml plus a s
   assert.match(builder, /from: "\.\.\/compose\.yaml"/);
   const compose = readFileSync(join(ROOT, "compose.yaml"), "utf8");
   assert.match(compose, /CLAUDE_CODE_OAUTH_TOKEN: \$\{CLAUDE_CODE_OAUTH_TOKEN:-\}/);
+});
+
+test("a container that starts over and over is a failed start, not a long one", () => {
+  assert.deepEqual(parseState("restarting|3|1\n"), { status: "restarting", restarts: 3, exitCode: 1 });
+  const base = parseState("running|0|0");
+  assert.equal(failing(base, parseState("running|0|0")), false);
+  assert.equal(failing(base, parseState("restarting|1|1")), true);
+  assert.equal(failing(base, parseState("exited|0|78")), true);
+  // a container that was already looping before this start: only a new restart counts
+  assert.equal(failing(parseState("restarting|9|1"), parseState("running|9|0")), false);
+  assert.equal(failing(parseState("restarting|9|1"), parseState("restarting|10|1")), true);
+  assert.equal(failing(null, null), false);
 });

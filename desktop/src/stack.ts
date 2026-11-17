@@ -94,13 +94,46 @@ export function health(port: number): Promise<boolean> {
   });
 }
 
-/** Waits until Crewcut answers; tick(seconds) is called every 2 s for the screen. */
-export async function waitHealthy(port: number, timeoutMs: number, tick: (seconds: number) => void): Promise<boolean> {
+export interface ContainerState {
+  status: string;
+  restarts: number;
+  exitCode: number;
+}
+
+export function parseState(line: string): ContainerState | null {
+  const [status, restarts, exitCode] = line.trim().split("|");
+  if (!status) return null;
+  return { status, restarts: Number(restarts) || 0, exitCode: Number(exitCode) || 0 };
+}
+
+/** The Crewcut container's state: running, restarting (its start failed and Docker tries again), exited. */
+export async function containerState(c: StackConfig): Promise<ContainerState | null> {
+  const ps = await docker([...composeArgs(c), "ps", "-a", "-q", SERVICE], { env: composeEnv(c), timeout: 20_000 });
+  const id = ps.stdout.trim().split("\n")[0];
+  if (!id) return null;
+  const r = await docker(["inspect", "--format", "{{.State.Status}}|{{.RestartCount}}|{{.State.ExitCode}}", id],
+    { env: composeEnv(c), timeout: 20_000 });
+  return r.code === 0 ? parseState(r.stdout) : null;
+}
+
+/** The container stopped or started over since `base`: its start fails, and waiting longer will not help. */
+export function failing(base: ContainerState | null, now: ContainerState | null): boolean {
+  if (!now) return false;
+  if (now.status === "exited" || now.status === "dead") return true;
+  return now.restarts > (base?.restarts ?? 0);
+}
+
+/** Waits until Crewcut answers; tick(seconds) is called every 2 s for the screen. Stops early with the reason when
+ *  check() returns one (the container's start fails over and over). */
+export async function waitHealthy(port: number, timeoutMs: number, tick: (seconds: number) => void,
+  check?: () => Promise<string | null>): Promise<true | string> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     if (await health(port)) return true;
+    const why = check ? await check() : null;
+    if (why) return why;
     tick(Math.round((Date.now() - start) / 1000));
     await new Promise((r) => setTimeout(r, 2000));
   }
-  return false;
+  return "Crewcut did not answer in time.";
 }

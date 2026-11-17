@@ -1,20 +1,63 @@
 #!/bin/bash
 # Crewcut container start. Prepares the studio folder, installs the engine on the first start, checks everything
-# once (doctor), then runs the command as the owner of the studio folder. Never as root.
+# once (doctor), then runs the command as the user who owns the studio folder on the host.
 set -euo pipefail
 
 STUDIO=${CREWCUT_STUDIO:-/studio}
-mkdir -p "$STUDIO/.crewcut/logs" "$STUDIO/.crewcut/home" /opt/engine
+mkdir -p /opt/engine
+mkdir -p "$STUDIO/.crewcut/logs" "$STUDIO/.crewcut/home" 2>/dev/null || true   # a folder nobody may write: see below
 
-uid=$(stat -c %u "$STUDIO")
-gid=$(stat -c %g "$STUDIO")
-if [ "$uid" = "0" ]; then uid=1000; gid=1000; fi   # a folder Docker created as root: use the image's user
-chown "$uid:$gid" "$STUDIO/.crewcut" "$STUDIO/.crewcut/logs" "$STUDIO/.crewcut/home" /opt/engine 2>/dev/null || true
-export HOME="$STUDIO/.crewcut/home"
+# Who runs Crewcut: the owner of the studio folder, so every file the crew writes belongs to you on the host.
+# - Docker on Linux (rootful), Docker Desktop and OrbStack on a Mac: the folder's owner (1000, 501, ...).
+# - Rootless Docker or Podman: your host user is root (0) inside the container, and root here is an ordinary user on
+#   the host (/proc/self/uid_map does not map 0 to 0). Then Crewcut runs as 0, which is you; Claude Code's permission
+#   bypass refuses root unless IS_SANDBOX=1 says it runs in a sandbox, which this container is.
+# - A folder Docker created itself (owned by root on a rootful host): the image's user 1000, as before.
+# Whoever it is must be able to write the folder; otherwise root takes over (the same sandbox rule), and if even root
+# cannot, the container stops with one line that says why.
+owner_uid=$(stat -c %u "$STUDIO")
+owner_gid=$(stat -c %g "$STUDIO")
+host_root=$(awk '$1 == 0 { print $2; exit }' /proc/self/uid_map 2>/dev/null || echo 0)
+if [ "$(id -u)" != "0" ]; then
+  uid=$(id -u); gid=$(id -g)                        # started with --user: stay that user
+elif [ "$owner_uid" != "0" ]; then
+  uid=$owner_uid; gid=$owner_gid
+elif [ "${host_root:-0}" != "0" ]; then
+  uid=0; gid=0                                       # rootless: root in here is you on the host
+else
+  uid=1000; gid=1000                                 # rootful, a folder Docker made as root: the image's user
+  # Docker just made it (nothing in it but our own folder): it becomes the image user's, as ./start.sh would make it
+  if [ -z "$(ls -A "$STUDIO" 2>/dev/null | grep -vx '.crewcut')" ]; then chown "$uid:$gid" "$STUDIO" 2>/dev/null || true; fi
+fi
 
 as_user() { setpriv --reuid="$uid" --regid="$gid" --clear-groups -- "$@"; }
-
 if [ "$(id -u)" != "0" ]; then as_user() { "$@"; }; fi
+
+writable() { as_user sh -c 'f="$1/.crewcut-write-test.$$"; : > "$f" && rm -f "$f"' sh "$STUDIO" 2>/dev/null; }
+if [ "$(id -u)" = "0" ] && [ "$uid" != "0" ]; then
+  chown "$uid:$gid" "$STUDIO/.crewcut" 2>/dev/null || true
+  if ! writable; then
+    echo "crewcut: the studio folder (owner $owner_uid:$owner_gid) is not writable for $uid:$gid; running as root inside the container"
+    uid=0; gid=0
+  fi
+fi
+if ! writable; then
+  echo "crewcut: cannot write the studio folder $STUDIO (owner $owner_uid:$owner_gid, mode $(stat -c %a "$STUDIO"))." \
+       "Make it yours and writable on the host (chown and chmod u+rwx), then start Crewcut again."
+  exit 78
+fi
+[ "$uid" = "0" ] && export IS_SANDBOX=1
+
+# Crewcut's own folders belong to the same user (an earlier start may have given them to another one).
+for d in "$STUDIO/.crewcut" "$STUDIO/.claude"; do
+  [ -e "$d" ] || continue
+  if [ -n "$(find "$d" -xdev \( ! -user "$uid" -o ! -group "$gid" \) -print -quit 2>/dev/null)" ]; then
+    chown -R -h "$uid:$gid" "$d" 2>/dev/null || true
+  fi
+done
+export HOME="$STUDIO/.crewcut/home"
+# `docker compose exec` (Connect Claude from the desktop app) runs as root: it reads who Crewcut runs as from here.
+printf '%s:%s\n' "$uid" "$gid" > /run/crewcut-user 2>/dev/null || true
 
 # Engine: the newest version of the one the user chose (Claude Code by default, Codex beta), installed next to the
 # last good one and switched only after a smoke test (crewcut/engines/versions.py). The first start waits for it; later

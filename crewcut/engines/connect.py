@@ -103,15 +103,26 @@ def forget_token() -> bool:
 
 # ---------- inside the container: run as the studio's owner, never as root ----------
 
+RUN_AS = Path("/run/crewcut-user")
+
+
 def drop_to_studio_owner() -> None:
-    """`docker compose exec` runs as root; the CLI runs as the owner of the studio folder (as the entrypoint does)."""
+    """`docker compose exec` runs as root; the CLI runs as the user Crewcut runs as (the entrypoint wrote it to
+    /run/crewcut-user: the studio folder's owner, or root under rootless Docker, where root is you on the host)."""
     studio = Path(os.environ.get("CREWCUT_STUDIO", "/studio"))
     if os.geteuid() != 0 or not studio.is_dir():
         return
-    st = studio.stat()
-    uid, gid = (st.st_uid, st.st_gid) if st.st_uid else (1000, 1000)
-    home = studio / ".crewcut" / "home"
-    os.environ["HOME"] = str(home)
+    uid = gid = None
+    try:
+        u, g = RUN_AS.read_text(encoding="utf-8").strip().split(":")
+        uid, gid = int(u), int(g)
+    except (OSError, ValueError):
+        st = studio.stat()
+        uid, gid = (st.st_uid, st.st_gid) if st.st_uid else (1000, 1000)
+    os.environ["HOME"] = str(studio / ".crewcut" / "home")
+    if uid == 0:
+        os.environ["IS_SANDBOX"] = "1"  # as the entrypoint: root in a rootless container is the host's user
+        return
     os.setgroups([])
     os.setgid(gid)
     os.setuid(uid)
