@@ -2,12 +2,15 @@
 # Smoke renders inside the Crewcut image. CI runs this (.github/workflows/image.yml); never run it on a laptop you
 # need, it starts Chromium, Blender and ffmpeg.
 #   bash /app/tests/smoke/render.sh <out_dir> [--quick]
-# Renders the last frame of every 2D scene (both formats) in the neutral pack, the demo episode end to end, one 3D
-# still per scene on the CPU (amd64 images only), and the 10-second preview. Writes PNG/MP4 files and a summary; exit 1 when anything failed.
+# Renders the last frame of every 2D scene (both formats) in the neutral pack, the demo episode end to end (with its
+# two motion graphics when effectcraft-cli is there), one 3D still per scene on the CPU (amd64 images only), the
+# motion graphics part (tests/smoke/motion.py: the last frame of every motion template in each format with the hue
+# check, a keyword_pop overlay MOV and a number_roll MP4 with their frame counts; under 10 minutes), and the
+# 10-second preview. Writes PNG/MP4 files and a summary; exit 1 when anything failed.
 set -uo pipefail
 OUT=${1:-/tmp/crewcut-smoke}
 QUICK=${2:-}
-mkdir -p "$OUT/2d" "$OUT/3d"
+mkdir -p "$OUT/2d" "$OUT/3d" "$OUT/motion"
 export CREWCUT_STUDIO
 CREWCUT_STUDIO=$(mktemp -d)
 TOKENS=$(mktemp --suffix .json)
@@ -33,7 +36,8 @@ else
   else
     note "2d  samples  FAILED: $(tail -5 "$OUT/2d/samples.log" | tr '\n' ' ')"; fail=1
   fi
-  # the demo episode end to end: six 2D inserts on a generated background, assembly, loudness
+  # the demo episode end to end: six 2D inserts and two motion graphics (left out with a note when effectcraft-cli
+  # is missing: the plan says motion_without_engine: skip) on a generated background, assembly, loudness
   mkdir -p "$CREWCUT_STUDIO/episodes"
   cp -r /app/examples/demo "$CREWCUT_STUDIO/episodes/000-demo"
   if timeout 1500 crewcut render all "$CREWCUT_STUDIO/episodes/000-demo/edit/plan-v001.json" --local \
@@ -54,6 +58,18 @@ if [ -z "$QUICK" ] && command -v blender >/dev/null 2>&1 && [ -f /app/tests/smok
   fi
 else
   note "3d  skipped (quick run or no Blender in this image)"
+fi
+
+if [ -z "$QUICK" ] && command -v effectcraft-cli >/dev/null 2>&1; then
+  # motion graphics: every template's last frame per format with the hue check, two real clips (budget 10 minutes)
+  if timeout 600 python3 /app/tests/smoke/motion.py "$OUT/motion" > "$OUT/motion/log.txt" 2>&1; then
+    note "motion  ok  $(grep -c '^motion sample .*: ok' "$OUT/motion/log.txt") samples, $(grep -c '^motion clip .*: ok' "$OUT/motion/log.txt") clips; $(grep 'took' "$OUT/motion/log.txt" | tr '\n' ' ')"
+  else
+    note "motion  FAILED: $(grep -E 'FAILED|Error|error' "$OUT/motion/log.txt" | tail -5 | tr '\n' ' ')$(tail -2 "$OUT/motion/log.txt" | tr '\n' ' ')"
+    fail=1
+  fi
+else
+  note "motion  skipped (quick run or no effectcraft-cli in this image)"
 fi
 
 if [ -z "$QUICK" ]; then

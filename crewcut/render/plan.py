@@ -142,9 +142,6 @@ def motion_context(plan: Plan, ins: Insert, draft: bool = False, backdrop: str |
     transparent, face (only where the speaker is in the picture: overlays and speaker backdrops), backdrop (path of the
     speaker piece, given by the renderer), draft, right_free and the brand (colours, fonts as family and weight,
     shape, mg = the resolved motion_graphics)."""
-    t = plan.tokens
-    fonts = {role: {"family": (spec or {}).get("family"), "weight": (spec or {}).get("weight")}
-             for role, spec in (t.get("fonts") or {}).items()}
     face = None
     if ins.transparent or ins.backdrop == "speaker":
         x, y, w, h = plan.face_box()
@@ -153,8 +150,16 @@ def motion_context(plan: Plan, ins: Insert, draft: bool = False, backdrop: str |
     return {"format": ins.format or plan.format, "size": [size[0], size[1]], "fps": plan.fps,
             "duration": round(ins.frames / plan.fps, 6), "transparent": ins.transparent, "face": face,
             "backdrop": backdrop, "draft": bool(draft), "right_free": plan.right_free,
-            "brand": {"colors": t.get("colors") or {}, "fonts": fonts, "shape": t.get("shape") or {},
-                      "mg": t.get("motion_graphics") or {}}}
+            "brand": brand_context(plan.tokens)}
+
+
+def brand_context(tokens: dict) -> dict:
+    """CC_CTX.brand from the render tokens: colours, fonts as family and weight (no file paths), shape, and mg (the
+    resolved motion_graphics)."""
+    fonts = {role: {"family": (spec or {}).get("family"), "weight": (spec or {}).get("weight")}
+             for role, spec in (tokens.get("fonts") or {}).items()}
+    return {"colors": tokens.get("colors") or {}, "fonts": fonts, "shape": tokens.get("shape") or {},
+            "mg": tokens.get("motion_graphics") or {}}
 
 
 @dataclass
@@ -467,7 +472,7 @@ class Plan:
     def motion_dirs(self) -> list[Path]:
         """Folders of library motion templates: the pack's brand/templates/motion/ wins over the app's."""
         dirs = [] if self.pack.is_neutral else [Path(self.pack.dir) / "templates" / "motion"]
-        return [*dirs, paths.templates_dir() / "motion"]
+        return [*dirs, mtemplates.app_dir()]
 
     def motion_template(self, name: str, version: int | None = None) -> Path:
         """The .jsx of a library template. With a version N: <name>.jsx when its @version is N (no @version counts as
