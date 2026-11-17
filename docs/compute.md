@@ -152,6 +152,7 @@ made once per studio. Nothing ever touches a machine without exactly this label:
   If it cannot be pulled, the machine is destroyed (the host is not blocked), and renting falls back to
   `vast.fallback_image` for 24 hours. On the fallback image, `setup.sh` installs Blender `vast.blender_version` to
   `/opt/blender/` (checksum checked when the mirror has one) and Crewcut uploads `templates/3d/` to `/app/templates/`.
+  A session opened with `blender=False` (the matting job) runs `setup.sh --blender none` and skips both.
 
 ## Privacy
 
@@ -160,6 +161,15 @@ video and audio files, anything from an episode's `originals/`, `audio/`, `inbox
 (transcripts) folder, the studio state (`.crewcut/`), files that look like keys (`.env`, `*.pem`, `id_*`), symbolic links,
 and files that contain something that looks like a key or token. Vast hosts are other people's machines, so there is no
 switch to send recordings there. No login, no Claude token and no Vast key ever goes to a machine.
+
+**One narrow exception: the picture of a shot for graphics behind the speaker** ([motion-matte.md](motion-matte.md)).
+A video file may go up only when all of these hold: it lies directly in an episode's `render/matte/` folder, where
+Crewcut itself cut it for one shot; ffprobe finds exactly one video stream and nothing else (no sound, subtitles or
+data); and its sha256 is named on an accepted spend card of the running session, which says in plain words that the
+shot's picture goes to the rented machine and is deleted with it. A session asks for that card when it is opened with
+`picture={"files": [{"shot", "file", "sha256", "seconds"}]}`, also inside an approved budget (that card adds no money).
+Sound, originals, raw folders and every other recording stay refused inside such a session too, and a session without
+`picture` refuses every video file as before.
 
 Everything fetched lands in a temporary folder first. Known secret values (the Vast key and other keys in Crewcut's
 environment) are replaced in every file; secret patterns (Claude tokens, `CONTAINER_API_KEY=…`,
@@ -185,6 +195,9 @@ with compute.session(episode="003-x", step="edit", purpose="3D scenes", cap_usd=
     m.get("/work/out/", Path("render/"))
 compute.guard.sweep()
 ```
+
+`compute.session(..., picture={...}, blender=False)` is the matting job's session: see Privacy above and
+[motion-matte.md](motion-matte.md).
 
 ## Command line
 
