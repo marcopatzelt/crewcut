@@ -66,8 +66,16 @@ upload step uploads. Layouts, colours, face rules, word limits and the reference
     one of the two focal points (rule 15).
 18. **A power word that makes people ask "how?".** Among the few words (`max_words`) there is one power word that
     raises the question "how?": solved, cracked, replaced, built, without code, in 1 hour. The video must carry it.
+19. **Image and title as a crossover, never the same line.** The image and the title are two halves: one sets an
+    expectation, the other turns it or adds what is missing. They never repeat each other. A key word of the title may
+    appear in the image, but not the same statement. Test: read the image text and the title side by side; if one makes
+    the other redundant, rewrite the image text.
+20. **Many candidates, then finalists.** A round makes 6 to 10 prompt variants that really differ (motif, object, power
+    word, crossover, face position), and up to 4 images per prompt (`--variants 4`), so 20 or more candidates. The Critic
+    checks every candidate and picks the best 2 or 3 as finalists for the A/B test (YouTube allows at most 3). The
+    reasons go into `PLAN.md`, one line per candidate.
 
-When you apply rules 12 to 18 you may cite them in one line:
+When you apply rules 12 to 20 you may cite them in one line:
 `crewcut say --episode $CREWCUT_EPISODE --cite "pattern break and proof after Vexian's packaging advice" "…"`.
 
 ## Layout templates
@@ -101,7 +109,7 @@ variants. Prompt blocks for each: `references/prompt-blocks.md`.
    in order, the layout with sizes in percent, the exact text, the colours and what must be absent.
 6. **Write `PLAN.md`** in the round folder: images in which order, which prompt, why these variants, the pattern-break
    sentences (rule 12), then check and test.
-7. **Generate:** `crewcut thumbnail make --episode $CREWCUT_EPISODE --prompt A-x/prompt.txt --ref A-x/1-photo.jpg --ref A-x/3-result.png --way codex --variants 2`.
+7. **Generate:** `crewcut thumbnail make --episode $CREWCUT_EPISODE --prompt A-x/prompt.txt --ref A-x/1-photo.jpg --ref A-x/3-result.png --way codex --variants 4`, once per prompt variant (rule 20).
    Way `api` only after an accepted spend card.
 8. **Check:**
    ```
@@ -130,6 +138,9 @@ the user's other videos at the same age (views). If it is clearly below, the Des
 thumbnail by rules 15 to 18 and, if needed, a new title from the title step. It runs as a "title and thumbnail" test
 against the old package, and only with a card, because it changes the live video. A video that lay flat for 70 days can
 take off after new packaging (Steven Baterina's example, see Sources).
+The archive too: every 90 days the Publisher checks older videos. Candidates are videos with good watch time per view
+but few impressions or a low click rate. They get a new package as a test, again only with a card. A video can still
+take off "two years down the line" with a new thumbnail and title (Zack Honarvar, see Sources).
 
 As far as we know there is no public API to start a test. The Publisher prepares the variants (upload copies from
 `--convert`) and a card for the user, who starts the test in Studio. Recording tests and their results is planned
@@ -153,6 +164,7 @@ Check by hand on the finished image and the 160 px preview. `thumb_check.py` pri
 12. No AI look: no collage, no small text, no whiteboards, no stock-photo light.
 13. One large object shows the audience and the goal.
 14. One power word that makes people ask "how?", and the video carries it.
+15. Image text and title do not say the same thing: one sets an expectation, the other turns it.
 
 ## Scripts
 
@@ -186,3 +198,6 @@ No connection to or endorsement by these people; we took ideas and wrote our own
   https://www.instagram.com/reel/DfvkIktPyQH/: one or two focal points, no AI-looking clutter, one object that names the
   audience and the goal, a power word that raises "how?", and new packaging for a video that lies flat (rules 15 to 18
   and "Repackage when a video is flat").
+- Zack Honarvar in the Ourselves podcast, Instagram reel, https://www.instagram.com/reel/Df0AeCOz6qF/: title and thumbnail
+  as a crossover instead of the same line, many thumbnail candidates with only the finalists in the A/B test (Airrack tests
+  20 to 50), and new packaging for old videos (rules 19 and 20, archive repackaging).

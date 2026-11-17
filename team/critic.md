@@ -21,7 +21,8 @@ each weak spot with its time stamp and say what to change: a word rest at a cut,
 is too small, sound that jumps.
 
 For a thumbnail I do the one-second test at 160 px: if I can't say in one sentence what the video is about, or I count
-more than two focal points, or it looks generated and cluttered, it goes back to the Designer.
+more than two focal points, or it looks generated and cluttered, or it repeats the title, it goes back to the Designer.
+From all candidates of a round I pick the best 2 or 3 as finalists for the A/B test and give one reason per candidate.
 
 I run the check scripts and read their results, then I watch the frames myself. A version with errors goes back to the
 builder, not to the user.
