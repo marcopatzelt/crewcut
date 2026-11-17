@@ -1,7 +1,8 @@
-// The app as one glass window on a desk (DESIGN.md rules 2, 7 and 18): the wallpaper behind, the window with its
-// title bar, the places on the left, the open view in the middle, and on the right either the crew rail (Working now
-// and Spend) or, in an episode, the slim crew chat.
-import { WifiOff } from "lucide-react";
+// The app fills the page from edge to edge (DESIGN.md rules 2, 7 and 18): one sheet of glass over the wallpaper, the
+// top bar, the places on the left, the open view in the middle, and on the right either the crew rail (Working now
+// and Spend) or, in an episode, the slim crew chat. No frame and no fake window around it.
+import { Button } from "@astryxdesign/core/Button";
+import { LoaderCircle, WifiOff } from "lucide-react";
 import { useEffect } from "react";
 import { ONBOARDING } from "./api/types";
 import { ErrorLine, Loading } from "./components/bits";
@@ -10,7 +11,7 @@ import { CrewRail } from "./components/Crew";
 import { Palette } from "./components/Palette";
 import { PrompterPopover } from "./components/PrompterPopover";
 import { Sidebar } from "./components/Sidebar";
-import { TitleBar } from "./components/TitleBar";
+import { TitleBar, useDocumentTitle } from "./components/TitleBar";
 import {
   boot,
   focusComposer,
@@ -25,6 +26,7 @@ import {
 } from "./store/actions";
 import { getUi, useUi } from "./store/store";
 import { Dock, EpisodeView, NewEpisodeView, OnboardingView } from "./views/EpisodeView";
+import { SlateFigure } from "./slate/Slate";
 import { Home } from "./views/Home";
 import { JobLogView, ProfileView, RendersView, TeamView } from "./views/ReadOnlyViews";
 
@@ -108,11 +110,39 @@ function Notices() {
   );
 }
 
+/**
+ * No Crewcut answers at this address: first "Crewcut is starting…" while the app keeps asking, then the honest
+ * "Can't reach the Crewcut engine" with what to check and a retry. Never made-up content.
+ */
+function EngineState({ status }: { status: "starting" | "unreachable" }) {
+  const starting = status === "starting";
+  return (
+    <main className="main engine-main" aria-label="Crewcut">
+      <div className="engine-state" role={starting ? "status" : "alert"} data-testid="engine-state">
+        <SlateFigure state={starting ? "working" : "waiting"} size={104} />
+        <h1>{starting ? "Crewcut is starting…" : "Can't reach the Crewcut engine"}</h1>
+        {starting ? (
+          <p>
+            <LoaderCircle size={14} className="spin" aria-hidden="true" />
+            Waiting for the engine at this address. The first start takes a few minutes.
+          </p>
+        ) : (
+          <>
+            <p>Check that Docker is running and Crewcut is started (the Crewcut app, or ./start.sh), then try again.</p>
+            <Button label="Try again" variant="primary" clickAction={() => void boot()} />
+          </>
+        )}
+      </div>
+    </main>
+  );
+}
+
 /** The middle and the right of the window for the open view. */
 function Body() {
   const view = useUi((s) => s.view);
   const status = useUi((s) => s.boot);
   const error = useUi((s) => s.bootError);
+  if (status === "starting" || status === "unreachable") return <EngineState status={status} />;
   if (status === "loading" || status === "error") {
     return (
       <>
@@ -162,23 +192,25 @@ function Body() {
   );
 }
 
-export function App({ demo, play }: { demo?: boolean; play?: boolean }) {
+export function App() {
   const menuOpen = useUi((s) => s.menuOpen);
   const sideHidden = useUi((s) => s.sideHidden);
   const crewHidden = useUi((s) => s.crewHidden);
   const episodeId = useUi((s) => (s.view.kind === "episode" && s.view.id !== ONBOARDING ? s.view.id : null));
   const onboarding = useUi((s) => s.view.kind === "episode" && s.view.id === ONBOARDING);
   const firstStart = useFirstStart(onboarding ? ONBOARDING : "");
+  const engineDown = useUi((s) => s.boot === "starting" || s.boot === "unreachable");
+  useDocumentTitle();
 
   useEffect(() => {
-    void boot({ demo, play });
+    void boot();
     window.addEventListener("hashchange", onHashChange);
     window.addEventListener("popstate", onHashChange);
     return () => {
       window.removeEventListener("hashchange", onHashChange);
       window.removeEventListener("popstate", onHashChange);
     };
-  }, [demo, play]);
+  }, []);
 
   // A file dropped outside the chat must not replace the app with the file.
   useEffect(() => {
@@ -201,7 +233,7 @@ export function App({ demo, play }: { demo?: boolean; play?: boolean }) {
   const cls = [
     "app",
     episodeId ? "in-episode" : "in-home",
-    sideHidden ? "side-hidden" : null,
+    sideHidden || engineDown ? "side-hidden" : null,
     crewHidden ? "crew-hidden" : null,
   ]
     .filter(Boolean)
@@ -210,10 +242,10 @@ export function App({ demo, play }: { demo?: boolean; play?: boolean }) {
   return (
     <div className={cls}>
       <div className="window">
-        <TitleBar quiet={firstStart} />
+        <TitleBar quiet={firstStart || engineDown} />
         {episodeId ? <PrompterPopover episode={episodeId} /> : null}
         <div className="win-body">
-          <Sidebar compact={Boolean(episodeId)} />
+          {engineDown ? null : <Sidebar compact={Boolean(episodeId)} />}
           {menuOpen ? <div className="scrim" aria-hidden="true" onClick={() => setMenu(false)} /> : null}
           <Body />
         </div>

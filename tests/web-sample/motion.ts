@@ -1,9 +1,9 @@
-// Motion graphics in the demo, shaped like docs/api.md ("Motion cards", "Motion"). Made-up data, in the order the
+// Motion graphics in the sample data, shaped like docs/api.md ("Motion cards", "Motion"). Made-up data, in the order the
 // workflow allows: the commercial (015) has its motion plan approved (version 2, after one struck row) and the style
 // frame of its one new piece open, the only motion card that waits for a yes; the published
 // 013 shows the finished loop (all pieces done, the report's three lines, the bar moved to it); the shelf holds two
 // templates of the pack, the app's five and one piece made for one video. The pictures are small posters drawn with
-// plain shapes (public/demo/motion/); the demo has no loops, so every tile shows its poster.
+// plain shapes (tests/web-sample/public/motion/); the sample data have no loops, so every tile shows its poster.
 import type {
   Card,
   EpisodeMotion,
@@ -14,21 +14,21 @@ import type {
   MotionRatchet,
   MotionUpgrade,
   ShelfRow,
-} from "../api/types";
+} from "../../web/src/api/types";
 
 const POSTER = {
-  keyword: "demo/motion/keyword-pop.svg",
-  number: "demo/motion/number-roll.svg",
-  lower: "demo/motion/lower-third.svg",
-  dial: "demo/motion/dial-landscape.svg",
-  dialPortrait: "demo/motion/dial-portrait.svg",
-  board: "demo/motion/board-build.svg",
-  price: "demo/motion/price-tag.svg",
-  prompt: "demo/motion/prompt-bar.svg",
-  reel: "demo/motion/word-reel.svg",
+  keyword: "sample/motion/keyword-pop.svg",
+  number: "sample/motion/number-roll.svg",
+  lower: "sample/motion/lower-third.svg",
+  dial: "sample/motion/dial-landscape.svg",
+  dialPortrait: "sample/motion/dial-portrait.svg",
+  board: "sample/motion/board-build.svg",
+  price: "sample/motion/price-tag.svg",
+  prompt: "sample/motion/prompt-bar.svg",
+  reel: "sample/motion/word-reel.svg",
 };
 
-export interface MotionDemo {
+export interface MotionSample {
   cards: Card[];
   messages: Record<string, Message[]>;
   motion: Record<string, EpisodeMotion>;
@@ -67,7 +67,7 @@ export function planTitle(plan: Pick<MotionPlanData, "columns" | "version">): st
   return `Motion plan v${String(plan.version).padStart(3, "0")}: ${n} motion moment${n === 1 ? "" : "s"}`;
 }
 
-export function makeMotionDemo(ids: { e015: string; e013: string; e011: string }, ago: (seconds: number) => string): MotionDemo {
+export function makeMotionSample(ids: { e015: string; e013: string; e011: string }, ago: (seconds: number) => string): MotionSample {
   const MIN = 60;
   const D = 86400;
   const { e015, e013, e011 } = ids;

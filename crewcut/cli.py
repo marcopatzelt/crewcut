@@ -76,6 +76,12 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--ci", action="store_true", help="no login probe; missing login is a note, not an error")
     d.add_argument("--probe", action="store_true", help="also prove the engine login with a tiny call")
 
+    op = sub.add_parser("open", help="open Crewcut in its own app window once it answers (on your computer); "
+                        "prints the address. CREWCUT_OPEN=app|browser|none")
+    op.add_argument("url", nargs="?", help="default http://localhost:<CREWCUT_PORT or 4747>")
+    op.add_argument("--no-open", action="store_true", help="only print the address")
+    op.add_argument("--timeout", type=float, default=None, help="seconds to wait for the server (default 900)")
+
     s = sub.add_parser("serve", help="start the web UI, the API and the teleprompter")
     s.add_argument("--host", default=os.environ.get("CREWCUT_HOST", "127.0.0.1"))
     s.add_argument("--port", type=int, default=None)
@@ -300,6 +306,9 @@ def main(argv: list[str] | None = None) -> int:
         with lanes.heavy("brand preview"):
             return int(preview.main(argv[2:]) or 0)
     a = build_parser().parse_args(argv)
+    if a.cmd == "open":  # host side: nothing of the studio is touched
+        from . import opener
+        return opener.main(a.url, no_open=a.no_open, timeout=a.timeout)
     try:
         return int(_run(a) or 0)
     except PermissionError as e:

@@ -1,35 +1,63 @@
-// The window's title bar (DESIGN.md rule 2): three decorative dots, where you are, the search that opens the command
-// palette, and the actions of the open view. 46 px, part of the glass window; the views scroll below it.
+// The top bar (DESIGN.md rule 2): where you are, the search that opens the command palette, and the actions of the
+// open view. 46 px on the glass; the views scroll below it. In an app window it is also the window's title bar: its
+// empty parts move the window (window.css), and the document title names the open view.
 import { Kbd } from "@astryxdesign/core/Kbd";
 import { Button } from "@astryxdesign/core/Button";
 import { StatusDot } from "@astryxdesign/core/StatusDot";
 import { Menu, PanelRight, Plus, Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ONBOARDING } from "../api/types";
 import { episodeNumber } from "../lib/format";
 import { ariaKeys, keyText } from "../lib/platform";
 import { api } from "../api/client";
 import { messageOf, navigate, refreshState, setMenu, setPalette, toggleCrew } from "../store/actions";
-import { EMPTY, useUi } from "../store/store";
+import { EMPTY, useUi, type View } from "../store/store";
 import { PrompterButton } from "./PrompterPopover";
 
 /** What the title bar says after "Make a Short" started one. */
 export const SHORT_STARTED = "Short started. The Scout looks for passages.";
 
+const HERE: Record<string, string> = {
+  episodes: "Episodes",
+  new: "New episode",
+  profile: "Style pack",
+  crew: "Crew",
+  renders: "GPU and renders",
+  job: "Job log",
+};
+
+/** The open view's name: the crumb shows the episode's number, the window title its title. */
+function viewName(view: View, title: string | undefined, short: boolean): string {
+  if (view.kind !== "episode") return HERE[view.kind] ?? "";
+  const id = view.id;
+  if (id === ONBOARDING) return "Set up your style";
+  return short ? episodeNumber(id) ?? title ?? id : title ?? episodeNumber(id) ?? id;
+}
+
+/** The document title: "Crewcut" and the open view, for the app window's title, the task bar and the tab. */
+export function documentTitle(view: View, title?: string): string {
+  const name = viewName(view, title, false);
+  return name ? `Crewcut · ${name}` : "Crewcut";
+}
+
+function useEpisodeTitle(): string | undefined {
+  return useUi((s) => (s.view.kind === "episode" ? s.state?.episodes.find((e) => e.id === (s.view as { id: string }).id)?.title : undefined));
+}
+
+/** Keeps document.title on "Crewcut · <view>". */
+export function useDocumentTitle(): void {
+  const view = useUi((s) => s.view);
+  const title = useEpisodeTitle();
+  const text = documentTitle(view, title);
+  useEffect(() => {
+    document.title = text;
+  }, [text]);
+}
+
 function Crumbs() {
   const view = useUi((s) => s.view);
-  const title = useUi((s) => (s.view.kind === "episode" ? s.state?.episodes.find((e) => e.id === (s.view as { id: string }).id)?.title : undefined));
-  const here: Record<string, string> = {
-    episodes: "Episodes",
-    new: "New episode",
-    profile: "Style pack",
-    crew: "Crew",
-    renders: "GPU and renders",
-    job: "Job log",
-  };
-  let current: string;
-  if (view.kind === "episode") current = view.id === ONBOARDING ? "Set up your style" : episodeNumber(view.id) ?? title ?? view.id;
-  else current = here[view.kind] ?? "";
+  const title = useEpisodeTitle();
+  const current = viewName(view, title, true);
   const top = view.kind === "episodes";
   return (
     <nav className="crumbs" aria-label="Where you are">
@@ -115,11 +143,6 @@ export function TitleBar({ quiet }: { quiet: boolean }) {
 
   return (
     <header className="titlebar">
-      <span className="lights" aria-hidden="true">
-        <i />
-        <i />
-        <i />
-      </span>
       {quiet ? null : (
         <>
           <button

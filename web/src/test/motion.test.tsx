@@ -1,13 +1,14 @@
 // Motion graphics in the web UI: the four motion cards (render, the strike call, accessible names), the motion tiles
-// on the film strip and the motion panel of an episode, the Motion shelf of the style pack, and the demo.
+// on the film strip and the motion panel of an episode, the Motion shelf of the style pack, and the sample data.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App";
 import type { Card, EpisodeMedia, EpisodeMotion, MotionPlanData, ShelfRow } from "../api/types";
 import { acceptLabel, foldedText } from "../components/CardView";
-import { createDemoBackend } from "../demo/backend";
 import { moneyWords, pieceName } from "../components/Motion";
+import { createSampleBackend } from "../../../tests/web-sample/backend";
+import { setBackend } from "../api/client";
 import { card, episode, episodeRoutes, mockApi, openAt, Reply, resetApp, state } from "./helpers";
 
 beforeEach(() => resetApp());
@@ -631,12 +632,13 @@ describe("the Motion shelf of the style pack", () => {
   });
 });
 
-// ---------- the demo ----------
+// ---------- the sample data of the CI pictures ----------
 
-describe("motion in the demo", () => {
+describe("motion in the sample data", () => {
   it("keeps the workflow's order: the commercial's plan has its yes, its style frame is the open motion card", async () => {
     window.history.replaceState(null, "", "/#/e/015-thinking-levels-commercial");
-    render(<App demo />);
+    setBackend(createSampleBackend({ latency: 0 }));
+    render(<App />);
     expect(await screen.findByRole("group", { name: "Style frame of dial, round 1" })).toBeTruthy();
     expect(await screen.findByText("Motion plan approved · version 2")).toBeTruthy();
     expect(screen.queryByRole("group", { name: /^Motion plan/ })).toBeNull();
@@ -655,19 +657,20 @@ describe("motion in the demo", () => {
     ]);
   });
 
-  it("refuses a strike on the demo's answered plan, as the server does", async () => {
-    const demo = createDemoBackend({ latency: 0 });
-    await expect(demo.request("POST", "/api/cards/61/strike", { row: "beat:2", struck: true })).rejects.toMatchObject({
+  it("refuses a strike on the sample's answered plan, as the server does", async () => {
+    const sample = createSampleBackend({ latency: 0 });
+    await expect(sample.request("POST", "/api/cards/61/strike", { row: "beat:2", struck: true })).rejects.toMatchObject({
       status: 409,
       message: "This card is answered already.",
     });
-    const cards = await demo.request<Card[]>("GET", "/api/cards?episode=015-thinking-levels-commercial&status=open");
+    const cards = await sample.request<Card[]>("GET", "/api/cards?episode=015-thinking-levels-commercial&status=open");
     expect(cards.map((c) => c.kind).sort()).toEqual(["preview", "style-frame"]);
   });
 
   it("shows the shelf in the style pack", async () => {
     window.history.replaceState(null, "", "/#/profile");
-    render(<App demo />);
+    setBackend(createSampleBackend({ latency: 0 }));
+    render(<App />);
     const grid = await screen.findByRole("list", { name: "Motion templates" });
     expect(within(grid).getAllByRole("button").length).toBe(7);
     expect(within(grid).getByRole("button", { name: /^Board build, version 1, made for 013/ })).toBeTruthy();

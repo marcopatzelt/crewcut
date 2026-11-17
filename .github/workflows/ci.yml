@@ -64,6 +64,12 @@ jobs:
         run: node --experimental-strip-types ../tools/brand/build.mjs --check
       - run: npm test
       - run: npm run build
+      - name: The build ships no sample or demo data (only the CI pictures use tests/web-sample)
+        run: |
+          test ! -e dist/demo && test ! -e dist/sample
+          if grep -rIlE "sample/media|website-100-times|Demo data|sample-token|__crewcutPlayDone|[?&]demo=" dist; then
+            echo "sample or demo content in dist/"; exit 1
+          fi
 
   scripts:
     name: Shell and JavaScript syntax
@@ -71,9 +77,10 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - run: bash -n start.sh && bash -n docker/entrypoint.sh && bash -n host/crewcut-host.sh
-      - name: shellcheck of the host helper (it runs on the user's computer)
-        run: shellcheck -S warning host/crewcut-host.sh start.sh
+      - run: bash -n start.sh && bash -n docker/entrypoint.sh && bash -n host/crewcut-host.sh && bash -n host/open-app.sh
+      - name: shellcheck of the host scripts (they run on the user's computer)
+        run: shellcheck -S warning host/crewcut-host.sh host/open-app.sh start.sh
+      - run: node --check tools/ci/sample_server.mjs && node --check tools/ci/readme_shots.mjs
       - run: for f in tools/*.js templates/2d/*.js; do if [ -f "$f" ]; then node --check "$f"; fi; done
 
   diagrams:

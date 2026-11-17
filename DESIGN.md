@@ -34,9 +34,10 @@ itself stays neutral.
 
 ## 2. The window and its places
 
-The app is one glass window on a desk (rule 18): the rendered wallpaper behind it (dark `green-dusk`, light
-`mint-dawn`, the 1280 px versions on small screens), the window inset 22 px at the top and 26 px elsewhere, radius
-20 px. Inside it a 46 px title bar and three places side by side. New things go into one of them; there is no fourth.
+The app fills the page from edge to edge, in a browser tab, in an installed app window and in the desktop app alike:
+no frame, no fake window, no margin, no outer radius or shadow around it. The rendered wallpaper (dark `green-dusk`,
+light `mint-dawn`, the 1280 px versions on small screens) is the background of the whole page, under one sheet of glass
+(rule 18). On it a 46 px top bar and three places side by side. New things go into one of them; there is no fourth.
 
 | Place | Width at 1440 px | Holds |
 |---|---|---|
@@ -44,9 +45,11 @@ The app is one glass window on a desk (rule 18): the rendered wallpaper behind i
 | **Main** (center) | the rest | the Episodes home, an episode's media, or a read-only page |
 | **Right column** | 318 px; the crew chat 372 px | on the home and the read-only pages: Working now and Spend. In an episode: the crew chat |
 
-- **Title bar:** three decorative dots (`aria-hidden`, no function), breadcrumbs ("Episodes / 012"), a centred search
-  field that opens the command palette (rule 15), and the actions of the view on the right ("Make a Short" and the
-  teleprompter in an episode, "3 at work" on the home, the right-column toggle).
+- **Top bar:** breadcrumbs ("Episodes / 012"), a centred search field that opens the command palette (rule 15), and
+  the actions of the view on the right ("Make a Short" and the teleprompter in an episode, "3 at work" on the home,
+  the right-column toggle). No fake window buttons. In an app window it is the window's title bar: its empty parts
+  move the window (`app-region: drag`), its controls and the search field do not (`no-drag`), and it keeps clear of
+  the system's window buttons (`env(titlebar-area-*)`). The document title is "Crewcut · <view>".
 - **The Episodes home is the start view** (`#/episodes`). Title "Episodes" and one line ("Two need your yes.
   Everything else is moving."), "Import footage" (only when an episode takes footage: the newest one at the record or
   edit step) and "New episode". Filter pills (All, Needs you, In work, Long videos, Shorts, Published; a pill shows its
@@ -65,8 +68,8 @@ The app is one glass window on a desk (rule 18): the rendered wallpaper behind i
 - Style pack, Crew, GPU and renders and a job log open in the main column as read-only pages. They have no edit
   controls: a change is a sentence to the agent. The composer floats at their foot.
 - Headlines are large and bold (rule 5), never italic; emphasis comes from weight.
-- Below 1200 px the sidebar is the icon rail everywhere. Below 900 px the window fills the screen and the parts stack
-  in one scrolling column (main, then the right column); the sidebar opens as a menu from the title bar.
+- Below 1200 px the sidebar is the icon rail everywhere. Below 900 px the parts stack in one scrolling column (main,
+  then the right column); the sidebar opens as a menu from the top bar.
 
 ## 3. Input
 
@@ -87,8 +90,8 @@ values.
 
 | Job | Tokens |
 |---|---|
-| Desk | `--wallpaper`, `--wallpaper-small` (the rendered landscape), `--window` (its colour before it loads), `--desk-hi`, `--desk-lo` (the brightest and darkest wallpaper colour after the window's blur, for the contrast check), `--desk-tint` |
-| Glass | `--material-window` (the window), `--edge-window`, `--panel` (its opaque stand-in), `--tile` (panels, cards and rows on the glass), `--chip` (pills, chips, the search field), `--chip-on`, `--chip-on-ink` (a selected pill, the user's bubble) |
+| Page background | `--wallpaper`, `--wallpaper-small` (the rendered landscape), `--window` (its colour before it loads), `--desk-hi`, `--desk-lo` (the brightest and darkest wallpaper colour after the glass's blur, for the contrast check), `--desk-tint` |
+| Glass | `--material-window` (the sheet over the page), `--panel` (its opaque stand-in; also the app window's theme colour), `--tile` (panels, cards and rows on the glass), `--chip` (pills, chips, the search field), `--chip-on`, `--chip-on-ink` (a selected pill, the user's bubble) |
 | Surfaces | `--bg`, `--card` (opaque: chat cards, menus, the palette), `--sunken` |
 | Row states | `--hover`, `--selected` (both neutral, translucent) |
 | Text | `--ink`, `--ink-2` (supporting), `--ink-3` (meta, timestamps, hints) |
@@ -96,9 +99,9 @@ values.
 | Accent | `--accent` (deep green words: links, the Designer's pick), `--accent-ink`; `--accent-fill` (mint: the primary button, progress, the ring of a chosen picture), `--accent-fill-ink`; `--focus`, `--selection` |
 | Status | `--ok`, `--warn`, `--danger`, `--marker` (the amber of a Critic note and of "needs your yes") |
 | On pictures | `--material-tag`, `--tag-solid`, `--tag-ink`, `--tag-edge` (tags), `--media-ground`, `--media-fade`, `--on-media`, `--on-media-shade`, `--on-media-ring`, `--render-pending` |
-| Fixed cards | the GPU card (`--gpu-*`), the phone preview (`--phone*`), the title bar dots (`--dot-close`, `--dot-minimize`, `--dot-zoom`) |
+| Fixed cards | the GPU card (`--gpu-*`), the phone preview (`--phone*`) |
 | Material (rule 18) | `--material-window`, `--material-tag`, `--material-float`, `--edge-light` |
-| Depth | `--shadow-1`, `--shadow-2`, `--shadow-3`, `--shadow-press`, `--shadow-window` (the window on the desk), `--shadow-media` (pictures) |
+| Depth | `--shadow-1`, `--shadow-2`, `--shadow-3`, `--shadow-press`, `--shadow-window` (Astryx's high shadow), `--shadow-media` (pictures) |
 
 - **Depth instead of lines.** Layers come from material and shadow. A hairline only separates two things on the same
   layer.
@@ -109,10 +112,10 @@ values.
 - **Hierarchy comes from ink and size,** not from extra colours.
 - **Status colours mean status.** `--danger` for errors and for money above the cap, never as decoration.
 - **Identities have no colours.** They are told apart by their two-letter mark and name (rule 13).
-- **Layers in dark:** the desk darkest, the glass of the window over it, tiles lighter on the glass, `--card` (menus,
+- **Layers in dark:** the wallpaper darkest, the glass over it, tiles lighter on the glass, `--card` (menus,
   chat cards) lighter still. Raised means lighter, not darker with more shadow.
 - Text clears 4.5:1 on every surface it sits on, in both themes. On the glass the check uses the opaque stand-in and
-  the translucent window over both wallpaper samples (`--desk-hi`, `--desk-lo`), with tiles, chips and row states on
+  the translucent glass over both wallpaper samples (`--desk-hi`, `--desk-lo`), with tiles, chips and row states on
   top. Words on pictures sit on a tag or a fade that clears 4.5:1 even over a white picture. A token that fails gets
   more contrast; the rule does not get softer.
 
@@ -152,7 +155,6 @@ Numbers that change in place use `font-variant-numeric: tabular-nums`.
 | `--r-group` | Grouped lists (the running jobs) | 12 px |
 | `--r-card` | Cards | 14 px |
 | `--r-panel` | Panels and media cards on the glass, the palette, dialogs | 18 px |
-| `--r-window` | The window on the desk | 20 px |
 | `--r-composer` | Composer | 22 px |
 | `--r-full` | Primary button, round icon buttons, dots | full |
 
@@ -163,8 +165,8 @@ values. Where the browser supports `corner-shape: squircle`, panels and cards us
 
 - 4 px grid. Steps: 4, 8, 12, 16, 20, 24, 32, 40. Media keep their own aspect: 16:9 thumbnails and frames, 9:16
   Shorts, 16:7.4 for the picture of a media card.
-- The window sits on the desk 22 px from the top and 26 px from the other edges; below 900 px 12 px, below 760 px it
-  fills the screen. Cmd+B folds the sidebar, Cmd+Alt+B the right column (a spring on the grid columns).
+- The app fills the page from edge to edge at every width. Cmd+B folds the sidebar, Cmd+Alt+B the right column (a
+  spring on the grid columns).
 - Each scroll area scrolls on its own: the main column, the right column, the transcript of the crew chat.
 
 | Measure | Value |
@@ -347,11 +349,11 @@ crew); narrow window; light and dark; the engine not logged in.
 ## 18. Material
 
 Material is a translucent surface: what lies behind shows through, blurred (`backdrop-filter`). Crewcut has one big
-sheet of it, the window on the desk, and a few small pieces. Too much glass looks cheap and costs rendering time.
+sheet of it over the whole page, and a few small pieces. Too much glass looks cheap and costs rendering time.
 
 | Surface | Token |
 |---|---|
-| The window on the desk | `--material-window`, `--blur-window` (`blur(44px) saturate(1.5)`) |
+| The sheet over the page (`.window`) | `--material-window`, `--blur-window` (`blur(44px) saturate(1.5)`) |
 | Tags on pictures ("Pick a thumbnail", "Scene 5, 62 %") | `--material-tag`, `--blur-tag` |
 | Palette, the teleprompter dialog | `--material-float`, `--blur-float` |
 | Teleprompter controls (on the phone) | `--prompter-material` |
@@ -362,11 +364,11 @@ cards (`--card`). Every material surface follows these five steps, in this order
 1. an opaque colour (`--panel`, `--card` or `--tag-solid`) as the base value;
 2. inside `@supports (backdrop-filter: blur(1px))` the translucent colour plus `backdrop-filter` and
    `-webkit-backdrop-filter`;
-3. a fine light edge (`--edge-window`, `--tag-edge`, `--edge-light`);
+3. a fine light edge on the small pieces (`--tag-edge`, `--edge-light`; the sheet over the page has none);
 4. in `@media (prefers-reduced-transparency: reduce)` opaque again;
 5. in `@media (prefers-contrast: more)` opaque, with a `--line-strong` edge.
 
-**The desk** behind the window is the rendered wallpaper (`--wallpaper`), credits in
+**The page background** under the sheet is the rendered wallpaper (`--wallpaper`), credits in
 `web/public/wallpapers/CREDITS.md`. It never moves. No refraction effects. If you notice the effect, it is too strong.
 
 ## 19. Media first
@@ -386,13 +388,15 @@ cards (`--card`). Every material surface follows these five steps, in this order
     a queued one says "queued" without a picture.
   - **Rented GPU** (rule 14): its own dark green card over the newest frame.
 - The Shorts row draws the English title over the text-free frame.
-- Demo data is English everywhere (titles, cards, chat lines, crew messages), its pictures carry no German text, and
-  the "Demo data" line stays.
+- The app ships no sample or demo data. Without a server it says "Crewcut is starting…", then "Can't reach the
+  Crewcut engine" with a retry; it never fills the screen with made-up content. The pictures for the README, the docs
+  and the landing page come from sample data in `tests/web-sample` (CI only): English everywhere (titles, cards, chat
+  lines, crew messages), no German text in its pictures, and a caption that says "sample data".
 
 ## 20. Astryx
 
 Crewcut uses parts of [Astryx](https://github.com/facebook/astryx) (MIT, prebuilt CSS in layers): `Button`,
 `Badge`, `StatusDot`, `ProgressBar` and `Kbd`. Its theme `crewcut` (`web/src/styles/astryx-theme.css`, switched on
 by `data-astryx-theme="crewcut"` on `<html>`) points every Astryx token at ours, so Astryx has no colours of its own.
-Our own CSS is unlayered and always wins. The media layer (desk, window, thumbnails, film strip, waveform, render
+Our own CSS is unlayered and always wins. The media layer (page, glass, thumbnails, film strip, waveform, render
 tiles, GPU card, phone check), Slate, the chat, the cards, the composer and the command palette stay ours.

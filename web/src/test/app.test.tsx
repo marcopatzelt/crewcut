@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App";
-import { navigate } from "../store/actions";
+import { navigate, START_WAIT_MS } from "../store/actions";
 import { getUi } from "../store/store";
 import { card, episode, episodeRoutes, job, message, mockApi, NEVER, openAt, Reply, resetApp, state } from "./helpers";
 
@@ -105,11 +105,30 @@ describe("error", () => {
     expect(await screen.findByText("Back again.")).toBeTruthy();
   });
 
-  it("falls back to demo data when no API answers", async () => {
-    mockApi({ "GET /api/state": new TypeError("Failed to fetch") });
+  it("says Crewcut is starting while no API answers, then that it can't reach the engine, and never makes up content", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const calls = mockApi({ "GET /api/state": new TypeError("Failed to fetch") });
     render(<App />);
-    expect(await screen.findByText("Demo data. Crewcut is not running at this address.")).toBeTruthy();
-    expect((await screen.findAllByText("Claude improves a website 100 times")).length).toBeGreaterThan(0);
+    expect(await screen.findByRole("heading", { level: 1, name: "Crewcut is starting…" })).toBeTruthy();
+    expect(screen.queryByRole("navigation", { name: "Places" })).toBeNull();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(calls.filter((c) => c.path === "/api/state").length).toBeGreaterThan(3); // it keeps asking
+    await vi.advanceTimersByTimeAsync(START_WAIT_MS);
+    expect(await screen.findByRole("heading", { level: 1, name: "Can't reach the Crewcut engine" })).toBeTruthy();
+    expect(screen.getByText(/Check that Docker is running and Crewcut is started/)).toBeTruthy();
+    expect(screen.queryByText(/Claude improves a website/)).toBeNull();
+    expect(screen.queryByText(/demo/i)).toBeNull();
+    // the engine is up again: one press loads the real state
+    mockApi({ "GET /api/state": state(), "GET /api/profile": {} });
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(getUi().boot).toBe("ready"));
+    vi.useRealTimers();
+  });
+
+  it("a page that is not Crewcut, or a proxy without the server, counts as not answering", async () => {
+    mockApi({ "GET /api/state": new Reply(502, "<h1>Bad gateway</h1>", "text/html") });
+    render(<App />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Crewcut is starting…" })).toBeTruthy();
   });
 
   it("says when the engine is not logged in", async () => {

@@ -15,9 +15,35 @@ claude setup-token        # on a computer with a browser; copy the token
 ./start.sh                # asks for the token once, then: docker compose up
 ```
 
-Open http://localhost:4747. The first start installs Claude Code inside the container and takes a few minutes.
-On Windows, run `start.sh` in WSL or Git Bash, or copy `.env.example` to `.env`, fill in the token and run
-`docker compose up -d`.
+When the server answers, Crewcut opens in its own window at http://localhost:4747: an app window of Google Chrome,
+Microsoft Edge, Brave, Arc or Chromium (whichever is installed first; on Linux your default browser first when it is one
+of them), with your normal browser profile. Without one of them it opens in your default browser. The first start
+installs Claude Code inside the container and takes a few minutes; until the server answers, the page says "Crewcut is
+starting…".
+
+On Windows, run `start.sh` in WSL or Git Bash (it opens the window with Edge), or copy `.env.example` to `.env`, fill
+in the token, run `docker compose up -d` and open http://localhost:4747.
+
+| To | Run |
+|---|---|
+| start without opening a window, only print the address | `./start.sh --no-open` |
+| open a normal browser tab instead of an app window | `CREWCUT_OPEN=browser ./start.sh` |
+| never open anything (servers, rented machines) | `CREWCUT_OPEN=none ./start.sh` |
+| open the window again later | `crewcut open` (or `host/open-app.sh`); it also prints the address |
+
+`crewcut open` waits up to 15 minutes for the server (`--timeout` in seconds) and takes `--no-open` and
+`CREWCUT_OPEN` too.
+
+### Keep it as an app
+
+Crewcut can be installed like an app, so it has its own icon in the dock or start menu and opens without a browser
+around it:
+
+- **Chrome or Edge:** open http://localhost:4747 and click the install icon at the right of the address bar (or the
+  menu → Cast, save and share → Install page as app; in Edge Apps → Install this site as an app).
+- **Safari (macOS 14 or newer):** File → Add to Dock.
+
+The installed app is the same page: it needs Crewcut running (`./start.sh`).
 
 ## First run
 

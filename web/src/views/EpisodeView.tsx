@@ -6,7 +6,7 @@ import type { CSSProperties } from "react";
 import { ONBOARDING, type Card, type Step } from "../api/types";
 import { ChatPane, useFirstStart } from "../components/ChatPane";
 import { Composer } from "../components/Composer";
-import { DemoNote, MoneyLine, WorkingHint, WorkingList } from "../components/Crew";
+import { MoneyLine, WorkingHint, WorkingList } from "../components/Crew";
 import { ago, clock, episodeNumber } from "../lib/format";
 import { jumpToStep } from "../store/actions";
 import { EMPTY, useUi } from "../store/store";
@@ -159,7 +159,6 @@ export function EpisodeView({ id }: { id: string }) {
         <div className="media-scroll">
           <EpisodeHead id={id} />
           <EpisodeMediaPanels key={id} id={id} />
-          <DemoNote />
         </div>
       </main>
       <CrewChat id={id} />

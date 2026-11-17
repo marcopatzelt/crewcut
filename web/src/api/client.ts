@@ -1,4 +1,4 @@
-// The HTTP client for docs/api.md. In demo mode every call goes to the in-memory demo backend instead.
+// The HTTP client for docs/api.md. Tests can put an in-memory backend in its place (setBackend); the app never does.
 import type {
   Activity,
   Card,
@@ -33,7 +33,7 @@ export class ApiError extends Error {
 export type EventKind = "activity" | "message" | "card" | "cost" | "episode" | "crew";
 export type EventHandler = (kind: EventKind, data: unknown) => void;
 
-/** The demo backend implements the same calls without a server. */
+/** An in-memory stand-in with the same calls, for the tests only. */
 export interface Backend {
   request<T>(method: string, path: string, body?: unknown): Promise<T>;
   upload(episode: string, files: File[]): Promise<UploadResult[]>;
@@ -77,7 +77,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   if (!res.ok) {
     let detail = "";
     if (isJson) detail = detailOf(await res.json().catch(() => null));
-    const unreachable = res.status === 404 && !isJson;
+    // Not Crewcut answering: a page that is not JSON, or a proxy in front saying the server behind it is not up.
+    const unreachable = (res.status === 404 && !isJson) || ([502, 503, 504].includes(res.status) && !isJson);
     throw new ApiError(res.status, detail || `The server answered ${res.status}.`, unreachable);
   }
   if (res.status === 204) return undefined as T;

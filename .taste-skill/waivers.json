@@ -19,19 +19,15 @@
     },
     {
       "check": "container-edges",
-      "reason": "A landing-page rule (one .wrap container with equal margins on every section). The app is one window with three columns of their own widths and insets (DESIGN.md rules 2 and 7); the composer dock floats centred on its column."
+      "reason": "A landing-page rule (one .wrap container with equal margins on every section). The app fills the page with three columns of their own widths and insets (DESIGN.md rules 2 and 7); the composer dock floats centred on its column."
     },
     {
       "check": "cta",
       "reason": "There is no marketing call to action in the app; the one action is the card button (rule 12)."
     },
     {
-      "check": "sample-label",
-      "reason": "The note 'Demo data. Nothing here is real.' appears only in demo mode and must stay (rule 17: test data only, said so)."
-    },
-    {
       "check": "overlap-text",
-      "reason": "Panels and the composer float over the scrolling columns of the window on purpose (DESIGN.md rules 7 and 18); Taste measures the boxes, not what is visible."
+      "reason": "Panels and the composer float over the scrolling columns on purpose (DESIGN.md rules 7 and 18); Taste measures the boxes, not what is visible."
     },
     {
       "check": "cut-text",

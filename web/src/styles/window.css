@@ -1,7 +1,7 @@
-/* The desk, the glass window and the media-first views (DESIGN.md rules 2, 7, 12 and 18). Colours, radii, shadows
+/* The page, its glass sheet and the media-first views (DESIGN.md rules 2, 7, 12 and 18). Colours, radii, shadows
    and durations come only from tokens.css; npm run check:materials and check:motion read this file too. */
 
-/* ---------- the desk: the wallpaper behind everything (rule 18) ---------- */
+/* ---------- the page: the wallpaper behind everything (rule 18) ---------- */
 
 .app {
   position: fixed;
@@ -14,9 +14,13 @@
   background-repeat: no-repeat;
   --nav-w: 236px;
   --aside-w: 318px;
+  /* The top bar: 46 px, taller only when the system's window buttons need more; its sides keep clear of them. */
+  --bar-h: max(46px, env(titlebar-area-height, 0px));
+  --bar-pad-left: max(16px, calc(env(titlebar-area-x, 0px) + 12px));
+  --bar-pad-right: max(12px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 8px));
 }
 
-/* Small screens load the 1280 px wallpaper; the window covers most of it anyway. */
+/* Small screens load the 1280 px wallpaper; the glass covers all of it anyway. */
 @media (max-width: 900px) {
   .app {
     background-image: var(--wallpaper-small);
@@ -44,18 +48,16 @@
   --aside-w: 0px;
 }
 
-/* ---------- the window: one sheet of glass, opaque first (rule 18) ---------- */
+/* ---------- one sheet of glass over the whole page, opaque first (rule 18) ----------
+   No frame, no margin, no outer radius or shadow: the top bar and the three columns sit on the page from edge to
+   edge, in a browser tab, in an installed app window and in the desktop app alike. The class keeps its old name. */
 
 .window {
   position: absolute;
-  inset: 22px 26px 26px;
+  inset: 0;
   display: grid;
-  grid-template-rows: 46px minmax(0, 1fr);
-  border-radius: var(--r-window);
+  grid-template-rows: var(--bar-h) minmax(0, 1fr);
   background: var(--panel);
-  box-shadow:
-    var(--shadow-window),
-    inset 0 0 0 1px var(--edge-window);
   overflow: hidden;
   isolation: isolate;
 }
@@ -69,37 +71,30 @@
   transition: grid-template-columns var(--t-soft) var(--spring-soft);
 }
 
-/* ---------- the title bar ---------- */
+/* ---------- the top bar ----------
+   In its own window it is the window's title bar: its empty parts move the window (app-region: drag), its controls
+   stay clickable (no-drag). The titlebar-area variables say where the system's window buttons sit, when the app runs
+   with a window-controls overlay (an installed app, the desktop app); in a browser tab they are not set and the
+   fallbacks give the plain padding. */
 
 .titlebar {
   position: relative;
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 0 12px 0 16px;
+  padding: 0 var(--bar-pad-right) 0 var(--bar-pad-left);
   min-width: 0;
+  -webkit-app-region: drag;
+  app-region: drag;
 }
 
-.lights {
-  display: flex;
-  gap: 8px;
-  flex: none;
-}
-
-.lights i {
-  display: block;
-  width: 12px;
-  height: 12px;
-  border-radius: var(--r-full);
-  background: var(--dot-close);
-}
-
-.lights i:nth-child(2) {
-  background: var(--dot-minimize);
-}
-
-.lights i:nth-child(3) {
-  background: var(--dot-zoom);
+.titlebar :is(button, a, input, [role="status"], [role="alert"]),
+.palette-layer,
+.popover,
+.scrim,
+.side.open {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
 .crumbs {
@@ -107,7 +102,6 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
-  margin-left: 8px;
   font-size: 13px;
   line-height: 18px;
   color: var(--ink-2);
@@ -126,7 +120,7 @@
 .tb-center {
   position: absolute;
   left: 50%;
-  top: 8px;
+  top: calc((var(--bar-h) - 30px) / 2);
   transform: translateX(-50%);
 }
 
@@ -1316,16 +1310,11 @@
   margin-top: 10px;
 }
 
-.foot-note,
-.demo-note {
+.foot-note {
   margin-top: 8px;
   font-size: 12px;
   line-height: 16px;
   color: var(--ink-3);
-}
-
-.demo-note {
-  padding: 0 6px;
 }
 
 /* ---------- the episode view: media first ---------- */
@@ -1955,10 +1944,6 @@
   color: var(--gpu-ink);
 }
 
-.media-main .demo-note {
-  padding: 0;
-}
-
 /* ---------- the crew chat column ---------- */
 
 .chatcol {
@@ -2224,10 +2209,44 @@
   min-width: 0;
 }
 
+/* ---------- no Crewcut answers: starting, then can't reach (spans the main column and the right column) ---------- */
+
+.engine-main {
+  grid-column: 1 / -1;
+}
+
+.engine-state {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.engine-state h1 {
+  margin: 4px 0 0;
+  font: 700 28px/34px var(--font-display);
+  color: var(--ink);
+}
+
+.engine-state p {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 440px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink-2);
+}
+
 /* ---------- notices ---------- */
 
 .window > .notice {
-  top: 54px;
+  top: calc(var(--bar-h) + 8px);
 }
 
 /* ---------- material (rule 18): the window and the tags on pictures, opaque where the browser cannot blur ---------- */
@@ -2265,7 +2284,6 @@
     background: var(--panel);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-    box-shadow: 0 0 0 1px var(--line-strong);
   }
 
   .glass-tag {
@@ -2284,7 +2302,6 @@
 }
 
 @supports (corner-shape: squircle) {
-  .window,
   .panel,
   .rail-card,
   .need,
@@ -2519,7 +2536,7 @@
   }
 }
 
-/* One column: the window fills the screen, the parts stack and the page itself scrolls. */
+/* One column: the parts stack and the page itself scrolls. */
 @media (max-width: 899px) {
   .app {
     position: relative;
@@ -2531,9 +2548,8 @@
   .window {
     position: relative;
     inset: auto;
-    margin: 12px;
-    min-height: calc(100% - 24px);
-    grid-template-rows: 46px auto;
+    min-height: 100%;
+    grid-template-rows: var(--bar-h) auto;
   }
 
   .win-body {
@@ -2547,11 +2563,11 @@
   .side.open {
     display: flex;
     position: fixed;
-    top: 66px;
-    left: 20px;
-    bottom: 20px;
+    top: calc(var(--bar-h) + 8px);
+    left: 8px;
+    bottom: 8px;
     z-index: 40;
-    width: min(280px, calc(100vw - 40px));
+    width: min(280px, calc(100vw - 16px));
     align-items: stretch;
     padding: 12px;
     border-radius: var(--r-panel);
@@ -2635,23 +2651,14 @@
     white-space: normal;
   }
 
-  .rail .demo-note {
-    padding: 0;
-  }
-
-  .window {
-    margin: 0;
-    min-height: 100%;
-    border-radius: 0;
-  }
-
   .crumbs {
     display: none;
   }
 
   .titlebar {
     gap: 10px;
-    padding: 0 8px 0 14px;
+    --bar-pad-left: max(14px, calc(env(titlebar-area-x, 0px) + 10px));
+    --bar-pad-right: max(8px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 6px));
   }
 
   .search {
@@ -2683,10 +2690,5 @@
 
   .dock {
     padding: 0 12px 12px;
-  }
-
-  .side.open {
-    top: 54px;
-    left: 8px;
   }
 }

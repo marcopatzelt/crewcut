@@ -1,7 +1,8 @@
-// README images, rendered in CI only (never on a laptop). The app draws its own desk (the rendered wallpaper) and its
-// glass window, so this script only opens it in demo mode and takes the picture: 1440 x 1000, the width the design
-// is made for, at twice the pixel density (2880 x 2000 PNG), light and dark, plus a short animation of the demo.
-//   node tools/ci/readme_shots.mjs <base url of web/dist> <out dir>
+// README images, rendered in CI only (never on a laptop). The app fills the page from edge to edge; this script opens
+// it against the CI picture server (tools/ci/sample_server.mjs, sample data from tests/web-sample) and takes the
+// picture: 1440 x 1000, the width the design is made for, at twice the pixel density (2880 x 2000 PNG), light and dark,
+// plus a short animation in which the script presses the real buttons.
+//   node tools/ci/readme_shots.mjs <base url of the sample server> <out dir>
 // Needs the `playwright` package (CI installs it) and ffmpeg for the animation.
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
@@ -17,7 +18,9 @@ const EPISODE = "#/e/012-website-100-times";
 
 /** Waits until the pictures in view have loaded and the fonts are ready, so no frame shows half a page. */
 async function settle(page) {
-  await page.waitForLoadState("networkidle");
+  // Not "networkidle": the live event stream stays open, as with the real server.
+  await page.waitForSelector("main h1", { timeout: 15000 });
+  await page.waitForTimeout(800);
   await page.evaluate(async () => {
     await document.fonts.ready;
     const imgs = Array.from(document.images).filter((i) => !i.complete);
@@ -27,7 +30,7 @@ async function settle(page) {
 
 async function still(browser, theme, hash, name) {
   const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 2, colorScheme: theme });
-  await page.goto(`${base}/index.html?demo=1&theme=${theme}${hash}`, { waitUntil: "load" });
+  await page.goto(`${base}/index.html?theme=${theme}${hash}`, { waitUntil: "load" });
   await settle(page);
   await page.waitForTimeout(2500); // Slate's states play once and hold still
   await page.screenshot({ path: join(out, `${name}-${theme}.png`) });
@@ -36,20 +39,33 @@ async function still(browser, theme, hash, name) {
 
 async function animation(browser) {
   const dir = join(out, "video-tmp");
+  await fetch(`${base}/__sample/reset?play=1`, { method: "POST" }); // the start of the sequence: no rented GPU yet
   const ctx = await browser.newContext({
     viewport: { width: W, height: H }, colorScheme: "dark",
     recordVideo: { dir, size: { width: W, height: H } },
   });
   const page = await ctx.newPage();
-  // Play mode opens episode 012 by itself; the card plays in its crew chat.
-  await page.goto(`${base}/index.html?demo=1&play=1&theme=dark`, { waitUntil: "load" });
+  await page.goto(`${base}/index.html?theme=dark${EPISODE}`, { waitUntil: "load" });
   await settle(page);
-  try {
-    await page.waitForFunction(() => window.__crewcutPlayDone === true, null, { timeout: 15000 });
-  } catch {
-    console.error("the demo timeline did not report done within 15 s; recording what is there");
-  }
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(600);
+  // 1. The Editor asks: the GPU card springs into the crew chat with "On this machine" chosen.
+  await fetch(`${base}/__sample/play/card-in`, { method: "POST" });
+  const card = page.locator("[data-open-card]").filter({ has: page.locator('[data-way="rented"]') }).last();
+  await card.waitFor({ timeout: 10000 });
+  await page.waitForTimeout(1400);
+  // 2. The choice moves to the rented GPU; the button text follows.
+  await card.locator('[data-way="rented"]').click();
+  await page.waitForTimeout(1300);
+  // 3. The button is pressed, then released: the yes goes out (the real POST) and the card folds to one line.
+  const button = card.locator("[data-accept]");
+  await button.evaluate((b) => b.setAttribute("data-pressed", "true"));
+  await page.waitForTimeout(220);
+  await button.evaluate((b) => b.removeAttribute("data-pressed"));
+  await button.click();
+  await page.waitForTimeout(250);
+  // 4. The rented GPU starts: a new row slides into the crew chat, the GPU card and the render tiles appear.
+  await fetch(`${base}/__sample/play/after-yes`, { method: "POST" });
+  await page.waitForTimeout(3900);
   await ctx.close();
   const file = readdirSync(dir).find((f) => f.endsWith(".webm"));
   renameSync(join(dir, file), join(out, "crewcut-demo.webm"));
@@ -67,5 +83,6 @@ for (const theme of ["dark", "light"]) {
   await still(browser, theme, "#/episodes", "crewcut-episodes");
 }
 await animation(browser);
+await fetch(`${base}/__sample/reset`, { method: "POST" });
 await browser.close();
 console.log("README images in", out);

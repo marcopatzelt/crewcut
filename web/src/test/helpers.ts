@@ -2,7 +2,7 @@
 import { vi } from "vitest";
 import type { Activity, Card, Episode, Message, State, StepStatus } from "../api/types";
 import { setBackend } from "../api/client";
-import { steps } from "../demo/fixtures";
+import { steps } from "../../../tests/web-sample/fixtures";
 import { stopLiveUpdates } from "../store/actions";
 import { resetUi } from "../store/store";
 
@@ -19,6 +19,8 @@ export class Reply {
   constructor(
     public status: number,
     public body: unknown,
+    /** Not JSON: the body is sent as it is (a proxy's error page, a page that is not Crewcut). */
+    public type = "application/json",
   ) {}
 }
 
@@ -51,9 +53,10 @@ export function mockApi(routes: Routes): Call[] {
     if (value === NEVER) return new Promise<Response>(() => undefined);
     if (value instanceof Error) throw value;
     const reply = value instanceof Reply ? value : new Reply(200, value);
-    return new Response(JSON.stringify(reply.body), {
+    const json = reply.type.includes("json");
+    return new Response(json ? JSON.stringify(reply.body) : String(reply.body), {
       status: reply.status,
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": reply.type },
     });
   });
   vi.stubGlobal("fetch", fn);

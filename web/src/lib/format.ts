@@ -131,3 +131,17 @@ export function mediaKind(path: string): "video" | "image" | "other" {
 export function fileName(path: string): string {
   return path.split("/").pop() ?? path;
 }
+
+/** The ten steps of a long video, in order: id and the label the screen shows. */
+export const STEP_LABELS: Array<[string, string]> = [
+  ["idea", "Idea"],
+  ["title", "Title"],
+  ["proof", "Proof"],
+  ["script", "Script"],
+  ["record", "Record"],
+  ["edit", "Edit"],
+  ["thumbnail", "Thumbnail"],
+  ["blog", "Blog"],
+  ["upload", "Upload"],
+  ["results", "Results"],
+];

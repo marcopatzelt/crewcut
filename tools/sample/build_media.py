@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the web app's demo media from the author's own channel.
+"""Build the sample media of the CI pictures (README, docs, landing page) from the author's own channel.
 
 Reads two source folders (never writes there):
 
@@ -8,9 +8,9 @@ Reads two source folders (never writes there):
 
 Writes (inside this repo only):
 
-  web/public/demo/media/**     web-sized JPEGs (rebuilt from scratch on every run)
+  tests/web-sample/public/media/**  web-sized JPEGs (rebuilt from scratch on every run; never in the app or image)
   web/public/wallpapers/*.jpg  wallpapers, copied unchanged (CREDITS.md there is kept)
-  web/src/demo/media.json      the manifest the demo fixtures read
+  tests/web-sample/media.json       the manifest the sample fixtures read
 
 Rules every picture follows (see the PLAN below for the exact crop of each one):
   - No German text in a picture. Frames come from moments with no text overlay; 3D frames of the commercial are
@@ -26,8 +26,8 @@ Rules every picture follows (see the PLAN below for the exact crop of each one):
 Needs `magick` (ImageMagick 7) and `ffmpeg` on PATH.
 
 Usage:
-  CREWCUT_DEMO_MOCK=<mock dir> CREWCUT_DEMO_STUDIO=<studio dir> python3 tools/demo/build_media.py
-  python3 tools/demo/build_media.py --mock <dir> --studio <dir> [--repo <dir>] [--sheet out.jpg]
+  CREWCUT_SAMPLE_MOCK=<mock dir> CREWCUT_SAMPLE_STUDIO=<studio dir> python3 tools/sample/build_media.py
+  python3 tools/sample/build_media.py --mock <dir> --studio <dir> [--repo <dir>] [--sheet out.jpg]
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ import tempfile
 from pathlib import Path
 
 QUALITY = 82
-MEDIA_URL = "demo/media"  # relative to the web app's root (the app may be served under a sub-path)
+MEDIA_URL = "sample/media"  # relative to the root the CI picture server serves (tools/ci/sample_server.mjs)
 WALL_URL = "wallpapers"
 
 # Crops are on the source picture: (width, height, x, y). None = the whole picture.
@@ -163,8 +163,8 @@ def run(cmd: list[str]) -> None:
 class Builder:
     def __init__(self, mock: Path, studio: Path, repo: Path):
         self.mock, self.studio, self.repo = mock, studio, repo
-        self.media = repo / "web/public/demo/media"
-        self.tmp = Path(tempfile.mkdtemp(prefix="crewcut-demo-media-"))
+        self.media = repo / "tests/web-sample/public/media"
+        self.tmp = Path(tempfile.mkdtemp(prefix="crewcut-sample-media-"))
         self.done: dict[str, str] = {}  # (source hash + operation) -> url, so a picture used twice is written once
         self.outputs: list[tuple[str, str]] = []  # (label, url) for the contact sheet
         self.thumbs_en = mock / "assets/thumbs-en"
@@ -357,8 +357,9 @@ class Builder:
     def contact_sheet(self, path: Path) -> None:
         web_public = self.repo / "web/public"
         args = []
+        sample_public = self.repo / "tests/web-sample/public"
         for label, url in self.outputs:
-            args += ["-label", label, str(web_public / url)]
+            args += ["-label", label, str(sample_public / url.removeprefix("sample/"))]
         for name in (WALL_DARK, WALL_LIGHT):
             args += ["-label", f"wallpaper {name}", str(web_public / WALL_URL / f"{name}-1280.jpg")]
         run(["magick", "montage", *args, "-tile", "6x", "-geometry", "300x300>+8+8", "-background", "#202124",
@@ -368,20 +369,20 @@ class Builder:
 def main() -> None:
     here = Path(__file__).resolve()
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--mock", default=os.environ.get("CREWCUT_DEMO_MOCK"), help="design mock folder")
-    ap.add_argument("--studio", default=os.environ.get("CREWCUT_DEMO_STUDIO"), help="video studio folder")
+    ap.add_argument("--mock", default=os.environ.get("CREWCUT_SAMPLE_MOCK"), help="design mock folder")
+    ap.add_argument("--studio", default=os.environ.get("CREWCUT_SAMPLE_STUDIO"), help="video studio folder")
     ap.add_argument("--repo", default=str(here.parents[2]), help="repo root (default: this script's repo)")
     ap.add_argument("--sheet", help="also write a labelled contact sheet of every output to this path")
     a = ap.parse_args()
     if not a.mock or not a.studio:
-        ap.error("set --mock and --studio (or CREWCUT_DEMO_MOCK and CREWCUT_DEMO_STUDIO)")
+        ap.error("set --mock and --studio (or CREWCUT_SAMPLE_MOCK and CREWCUT_SAMPLE_STUDIO)")
     for tool in ("magick", "ffmpeg"):
         if not shutil.which(tool):
             sys.exit(f"{tool} not found on PATH")
 
     b = Builder(Path(a.mock).resolve(), Path(a.studio).resolve(), Path(a.repo).resolve())
     manifest = b.build()
-    out = b.repo / "web/src/demo/media.json"
+    out = b.repo / "tests/web-sample/media.json"
     out.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     if a.sheet:
         b.contact_sheet(Path(a.sheet))

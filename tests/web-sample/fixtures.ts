@@ -1,4 +1,4 @@
-// Demo data, shaped exactly like docs/api.md. Test data only: made-up chats, jobs and money; the pictures are the
+// Sample data, shaped exactly like docs/api.md, for the web tests and the CI pictures only (never shipped): made-up chats, jobs and money; the pictures are the
 // web-sized, text-free (or English) stills listed in media.json. Every title, card, chat line and crew message is
 // English. Times are relative to the moment the page loads, so "12 min ago" stays true in every screenshot.
 import type {
@@ -18,23 +18,12 @@ import type {
   State,
   Step,
   StepStatus,
-} from "../api/types";
-import { makeMotionDemo } from "./motion";
+} from "../../web/src/api/types";
+import { STEP_LABELS } from "../../web/src/lib/format";
+import { makeMotionSample } from "./motion";
+import mediaJson from "./media.json";
 import profileJson from "./profile.json";
-import { DEMO_QR_SVG } from "./qr";
-
-export const STEP_LABELS: Array<[string, string]> = [
-  ["idea", "Idea"],
-  ["title", "Title"],
-  ["proof", "Proof"],
-  ["script", "Script"],
-  ["record", "Record"],
-  ["edit", "Edit"],
-  ["thumbnail", "Thumbnail"],
-  ["blog", "Blog"],
-  ["upload", "Upload"],
-  ["results", "Results"],
-];
+import { SAMPLE_QR_SVG } from "./qr";
 
 export function steps(statuses: StepStatus[]): Step[] {
   return STEP_LABELS.map(([id, label], i) => ({ id, n: i + 1, label, status: statuses[i] ?? "open" }));
@@ -50,7 +39,7 @@ export function shortSteps(ids: string[], statuses: StepStatus[]): Step[] {
   }));
 }
 
-// ---------- the pictures (media.json, written by tools/demo/build_media.py) ----------
+// ---------- the pictures (media.json, written by tools/sample/build_media.py) ----------
 
 interface ManifestThumb {
   id: string;
@@ -74,9 +63,7 @@ interface Manifest {
   shorts: { key: string; title_en: string; cover: string; from: string }[];
 }
 
-// Read without a hard import, so the app still builds and tests run when the manifest is missing.
-const found = import.meta.glob<Manifest>("./media.json", { eager: true, import: "default" });
-const MANIFEST: Manifest = found["./media.json"] ?? { episodes: [], shorts: [] };
+const MANIFEST = mediaJson as Manifest;
 
 function ep(key: string): ManifestEpisode | undefined {
   return MANIFEST.episodes.find((e) => e.key === key);
@@ -84,7 +71,7 @@ function ep(key: string): ManifestEpisode | undefined {
 
 // ---------- the data ----------
 
-export interface DemoData {
+export interface SampleData {
   /** The card and the waiting row the scripted sequence adds, then the render it starts after the yes. */
   playCard: Card | null;
   playWaiting: Activity | null;
@@ -101,13 +88,13 @@ export interface DemoData {
   prompter: PrompterLink;
   script: PrompterScript;
   media: Record<string, EpisodeMedia>;
-  /** GET /api/episodes/{id}/motion, the shelf and the bar (src/demo/motion.ts) */
+  /** GET /api/episodes/{id}/motion, the shelf and the bar (tests/web-sample/motion.ts) */
   motion: Record<string, EpisodeMotion>;
   shelf: ShelfRow[];
   ratchet: MotionRatchet;
 }
 
-/** What a job's engine reported about itself (docs/api.md). Made-up demo values. */
+/** What a job's engine reported about itself (docs/api.md). Made-up sample values. */
 function ran(model: string, effort: string | null) {
   return { engine: "claude", model, effort, engine_version: "2.1.325" };
 }
@@ -229,15 +216,15 @@ const TEAM: Identity[] = [
   },
 ];
 
-/** Paths inside an episode folder that demo messages and cards show, mapped to pictures in public/. */
-export const DEMO_FILES: Record<string, string> = {};
+/** Paths inside an episode folder that sample messages and cards show, mapped to pictures in public/. */
+export const SAMPLE_FILES: Record<string, string> = {};
 
 /**
- * The demo data. `play` is the start of the scripted sequence (?demo=1&play=1): the rented GPU is not there yet; the
- * timeline in backend.ts adds the card, the yes and the render, using `playCard`, `playWaiting`, `playRender` and
- * `playMedia`.
+ * The sample data. `play` is the start of the scripted sequence of the README animation: the rented GPU is not there
+ * yet; the sequence (tools/ci/readme_shots.mjs with backend.ts) adds the card, the yes and the render, using
+ * `playCard`, `playWaiting`, `playRender` and `playMedia`.
  */
-export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoData {
+export function makeSample(now = Date.now(), opts: { play?: boolean } = {}): SampleData {
   const ago = (seconds: number) => new Date(now - seconds * 1000).toISOString();
   const MIN = 60;
   const H = 3600;
@@ -247,20 +234,20 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
   const m012 = ep("012");
   const m015 = ep("015");
   // Large variants for the episode view; the small ones where a picture is drawn small (cards, the rail, a phone).
-  // Only A and B: variant C spells its title differently ("Design-Skills"), so the demo leaves it out.
+  // Only A and B: variant C spells its title differently ("Design-Skills"), so the sample data leave it out.
   const thumbs012 = (m012?.thumbs ?? [])
     .filter((t) => t.id === "A" || t.id === "B")
     .map((t) => ({ ...t, small: t.url, url: t.url_large ?? t.url }));
   const scenes = m012?.scenes ?? m015?.scenes ?? [];
   const sceneUrl = (i: number) => (i === 0 ? scenes[0]?.url_large ?? scenes[0]?.url : scenes[i]?.url) ?? null;
 
-  // Paths the demo chat names, as the real server would (inside the episode), mapped to the pictures.
-  for (const t of thumbs012) DEMO_FILES[`graphics/thumbnail/v1/${t.id}.jpg`] = t.url;
-  if (scenes[4]) DEMO_FILES["render/inserts/s5/0412.jpg"] = scenes[4].url;
-  if (m015) DEMO_FILES["render/probe/opening.jpg"] = m015.cover_large ?? m015.cover;
-  // The style pack's 10-second preview: a still from the newest cut stands in for the video in the demo.
+  // Paths the sample chat names, as the real server would (inside the episode), mapped to the pictures.
+  for (const t of thumbs012) SAMPLE_FILES[`graphics/thumbnail/v1/${t.id}.jpg`] = t.url;
+  if (scenes[4]) SAMPLE_FILES["render/inserts/s5/0412.jpg"] = scenes[4].url;
+  if (m015) SAMPLE_FILES["render/probe/opening.jpg"] = m015.cover_large ?? m015.cover;
+  // The style pack's 10-second preview: a still from the newest cut stands in for the video in the sample data.
   const still = m012?.frames?.[4]?.url;
-  if (still) DEMO_FILES["brand/preview-v001.mp4"] = still;
+  if (still) SAMPLE_FILES["brand/preview-v001.mp4"] = still;
 
   // ----- episodes -----
   const e012: Episode = {
@@ -495,7 +482,7 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
         gpu_name: "RTX 4090",
       },
       referral: {
-        url: "https://cloud.vast.ai/?ref_id=demo",
+        url: "https://cloud.vast.ai/?ref_id=sample",
         note: "Referral link: the author of Crewcut earns 3% of your Vast spend as credit. It costs you nothing extra.",
       },
     },
@@ -549,10 +536,10 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     decided_at: ago(5 * D - 20 * MIN),
   };
   // Motion graphics: the commercial's plan has its yes and its style frame is open; 013 shows the finished loop
-  // (src/demo/motion.ts).
-  const motionDemo = makeMotionDemo({ e015: e015.id, e013: e013.id, e011: e011.id }, ago);
-  Object.assign(DEMO_FILES, motionDemo.files);
-  const cards: Card[] = [titleCard, spend, thumbCard, openingCard, ...motionDemo.cards];
+  // (tests/web-sample/motion.ts).
+  const motionSample = makeMotionSample({ e015: e015.id, e013: e013.id, e011: e011.id }, ago);
+  Object.assign(SAMPLE_FILES, motionSample.files);
+  const cards: Card[] = [titleCard, spend, thumbCard, openingCard, ...motionSample.cards];
 
   // ----- chats -----
   const messages: Record<string, Message[]> = {
@@ -679,7 +666,7 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     ],
     _onboarding: [],
   };
-  for (const [id, list] of Object.entries(motionDemo.messages)) messages[id] = [...(messages[id] ?? []), ...list];
+  for (const [id, list] of Object.entries(motionSample.messages)) messages[id] = [...(messages[id] ?? []), ...list];
   for (const e of [...longs, ...shorts]) {
     messages[e.id] = [
       ...(messages[e.id] ?? []),
@@ -799,7 +786,7 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     ],
   };
 
-  const prompter: PrompterLink = { url: "http://crewcut.local:4748/p/demo-token", qr_svg: DEMO_QR_SVG };
+  const prompter: PrompterLink = { url: "http://crewcut.local:4748/p/sample-token", qr_svg: SAMPLE_QR_SVG };
 
   const script: PrompterScript = {
     title: e012.title,
@@ -892,8 +879,8 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     prompter,
     script,
     media,
-    motion: motionDemo.motion,
-    shelf: motionDemo.shelf,
-    ratchet: motionDemo.ratchet,
+    motion: motionSample.motion,
+    shelf: motionSample.shelf,
+    ratchet: motionSample.ratchet,
   };
 }

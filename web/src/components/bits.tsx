@@ -121,7 +121,7 @@ export function Media({
       </div>
     );
   }
-  // Decide by the address the browser loads (the demo maps videos to still images).
+  // Decide by the address the browser loads (it may map a video to a still image).
   const kind = mediaKind(url) === "other" ? mediaKind(path) : mediaKind(url);
   const state = loaded ? "ready" : slow ? "loading" : "waiting";
   if (kind === "video") {

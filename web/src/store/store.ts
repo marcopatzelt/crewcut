@@ -32,10 +32,9 @@ export interface UploadLine {
 }
 
 export interface UiState {
-  boot: "loading" | "ready" | "error";
+  /** "starting": no Crewcut answers yet, the app asks again every 2 s; "unreachable": it gave up and offers a retry. */
+  boot: "loading" | "starting" | "unreachable" | "ready" | "error";
   bootError: string | null;
-  /** null: live data. "asked": ?demo=1. "auto": no API answered, so the app shows demo data. */
-  demo: null | "asked" | "auto";
   state: State | null;
   view: View;
   /** The episode chat the composer talks to when a read-only view is open. */
@@ -64,7 +63,6 @@ export function initialUi(): UiState {
   return {
     boot: "loading",
     bootError: null,
-    demo: null,
     state: null,
     view: { kind: "new" },
     lastEpisode: null,

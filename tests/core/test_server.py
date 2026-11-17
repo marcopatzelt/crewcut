@@ -61,3 +61,15 @@ def test_prompter_needs_the_token(client):
     assert p.get(f"/p/{token}/script").json()["blocks"] == []
     r = p.post(f"/p/{token}/control", json={"playing": True, "speed": 99})
     assert r.json()["playing"] is True and r.json()["speed"] == 4.0
+
+
+def test_web_app_manifest_is_served_with_its_type(crew, monkeypatch, tmp_path):
+    from crewcut import paths
+    (tmp_path / "index.html").write_text("<!doctype html><title>Crewcut</title>")
+    (tmp_path / "manifest.webmanifest").write_text('{"name": "Crewcut", "display": "standalone"}')
+    monkeypatch.setattr(paths, "web_dist_dir", lambda: tmp_path)
+    c = TestClient(create_app(start_worker=False), base_url="http://localhost:4747")
+    r = c.get("/manifest.webmanifest")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("application/manifest+json")
+    assert r.json()["display"] == "standalone"
+    assert "<title>Crewcut</title>" in c.get("/e/012").text  # any other path is the app itself

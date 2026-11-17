@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import mimetypes
 import os
 import re
 import shutil
@@ -19,6 +20,9 @@ from .. import __version__, approvals, brand, db, engines, episodes, events, led
 from ..conductor import flow, queue
 
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "[::1]", "::1"}
+
+# The web app manifest (install as an app): browsers expect this type, and not every system's mime table knows it.
+mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 
 class TextIn(BaseModel):

@@ -1,16 +1,12 @@
 // Everything that changes the store: boot, navigation, live events, sending, accepting, uploading.
-import { api, ApiError, connectEvents, setBackend, usingBackend, type EventKind } from "../api/client";
+import { api, ApiError, connectEvents, type EventKind } from "../api/client";
 import { ONBOARDING, type Activity, type Card, type Episode, type Message, type Money, type State } from "../api/types";
-import { createDemoBackend } from "../demo/backend";
 import { FILTER_IDS, getUi, setUi, type Filter, type Thread, type UiState, type View } from "./store";
 
 export function messageOf(e: unknown): string {
   if (e instanceof Error && e.message) return e.message;
   return "Something went wrong.";
 }
-
-/** True while the scripted demo (?demo=1&play=1) runs: it opens its episode instead of the home. */
-let playing = false;
 
 // ---------- navigation (the view lives in the URL hash, so Back works and CI can open each place) ----------
 
@@ -52,12 +48,10 @@ export function hashToView(hash: string): View | null {
 }
 
 /** The start: the onboarding chat until the user is onboarded, then the Episodes home (or "New episode" when there
- *  is none yet). The scripted demo opens its episode, so the card plays where it can be seen. */
+ *  is none yet). */
 function defaultView(state: State): View {
   if (!state.app.onboarded) return { kind: "episode", id: ONBOARDING };
-  const first = state.episodes[0];
-  if (first && playing) return { kind: "episode", id: first.id };
-  return first ? { kind: "episodes" } : { kind: "new" };
+  return state.episodes[0] ? { kind: "episodes" } : { kind: "new" };
 }
 
 export function navigate(v: View, opts: { replace?: boolean; fromHash?: boolean } = {}): void {
@@ -88,28 +82,43 @@ export function onHashChange(): void {
 
 let stopLive: (() => void) | null = null;
 let bootSeq = 0;
+let startingSince: number | null = null;
+let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
-export async function boot(opts: { demo?: boolean; play?: boolean } = {}): Promise<void> {
+/** How long the app keeps asking a Crewcut that does not answer before it says so (the server may be starting). */
+export const START_WAIT_MS = 90_000;
+const START_RETRY_MS = 2_000;
+
+/**
+ * Loads the state. When no Crewcut answers at this address (the container is starting or stopped), the screen says
+ * "Crewcut is starting…" and asks again every 2 s; after 90 s it says it can't reach the engine and offers a retry.
+ * It never shows made-up content.
+ */
+export async function boot(): Promise<void> {
   const mine = (bootSeq += 1);
-  setUi({ boot: "loading", bootError: null });
-  if (opts.demo && !usingBackend()) {
-    playing = Boolean(opts.play);
-    setBackend(createDemoBackend({ play: opts.play }));
-    setUi({ demo: "asked" });
-  }
+  clearTimeout(retryTimer);
+  if (getUi().boot !== "starting") setUi({ boot: "loading", bootError: null });
   let state: State;
   try {
     state = await api.state();
   } catch (e) {
     if (mine !== bootSeq) return; // a newer boot owns the screen
-    if (e instanceof ApiError && e.unreachable && !usingBackend()) {
-      setBackend(createDemoBackend());
-      setUi({ demo: "auto" });
-      return boot();
+    if (e instanceof ApiError && e.unreachable) {
+      startingSince ??= Date.now();
+      if (Date.now() - startingSince < START_WAIT_MS) {
+        setUi({ boot: "starting", bootError: null });
+        retryTimer = setTimeout(() => void boot(), START_RETRY_MS);
+      } else {
+        startingSince = null;
+        setUi({ boot: "unreachable", bootError: messageOf(e) });
+      }
+      return;
     }
+    startingSince = null;
     setUi({ boot: "error", bootError: messageOf(e) });
     return;
   }
+  startingSince = null;
   if (mine !== bootSeq) return;
   setUi({ state, boot: "ready", seen: stamp(state.activity, {}) });
   void loadChannel();
@@ -142,7 +151,8 @@ export function startLive(): void {
 export function stopLiveUpdates(): void {
   stopLive?.();
   stopLive = null;
-  playing = false;
+  clearTimeout(retryTimer);
+  startingSince = null;
 }
 
 /** After a broken stream: fetch the state again and anything new in the open chats. */

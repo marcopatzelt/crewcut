@@ -4,16 +4,38 @@ The UI lives in `web/`: React 19, Vite 5, TypeScript (strict), plain CSS with to
 [Astryx](https://github.com/facebook/astryx) (MIT). It follows [DESIGN.md](../DESIGN.md) and talks to the server only
 through [api.md](api.md). The container serves the built files from `web/dist/`.
 
-It looks like one good Mac app window lying on a desk: the rendered wallpaper behind, the app as a single sheet of
-glass, pictures first. The three dots in the title bar are decoration; there is no fake menu bar, no Apple logo and no
-Apple font in the repository.
+The app fills the page from edge to edge: the rendered wallpaper as the page background, one sheet of glass over it,
+the top bar and three columns directly on it, pictures first. There is no frame, no fake window and no fake window
+buttons, in a browser tab, in an installed app window and in the desktop app alike. No Apple font is in the repository.
 
-## The window and its places
+## Opening Crewcut: its own window
+
+`./start.sh` (and `crewcut open`, both through the same steps: `host/open-app.sh` and `crewcut/opener.py`) waits until
+the server answers, then opens the UI as an app window: `--app=http://localhost:4747` of the first installed of Google
+Chrome, Microsoft Edge, Brave, Arc and Chromium (macOS: `open -na "<App>" --args --app=URL --window-size=1440,900`;
+Linux: the default browser first when it is one of them; Windows through WSL or Git Bash: `msedge --app=URL`). It uses
+the normal browser profile, so no first-run dialog appears. Without one of these browsers the default browser opens a
+tab. `--no-open` or `CREWCUT_OPEN=none` only print the address, `CREWCUT_OPEN=browser` opens a tab.
+
+The page is also an installable app (`public/manifest.webmanifest`: name Crewcut, `display: standalone`,
+`display_override: ["window-controls-overlay", "standalone"]`, the 192 and 512 px icons of Slate, `--panel` as theme
+and background colour; `theme-color` metas for light and dark, kept in step with a theme chosen in the palette).
+Chrome and Edge show the install icon in the address bar on `localhost` (no service worker is needed); Safari on
+macOS 14 or newer adds it with File → Add to Dock. The server sends the manifest as `application/manifest+json`.
+
+In its own window the top bar is the window's title bar. With a window-controls overlay (an installed app that the user
+switched to the compact title bar, and the desktop app) the system's window buttons sit over the top bar; the bar keeps
+clear of them with `env(titlebar-area-x)`, `env(titlebar-area-width)` and `env(titlebar-area-height)`, which fall back
+to the plain padding in a browser tab. Its empty parts move the window (`app-region: drag`); its buttons, links, the
+search field, the palette, the menu and the teleprompter dialog are `no-drag`. The document title is "Crewcut · " and
+the open view ("Crewcut · Episodes", "Crewcut · Claude improves a website 100 times").
+
+## The places
 
 | Part | What it shows | Code |
 |---|---|---|
-| Desk and window | the wallpaper (`--wallpaper`, dark `green-dusk`, light `mint-dawn`, 1280 px below 900 px), the glass window inset 22/26 px with radius 20 px | `src/App.tsx`, `src/styles/window.css` |
-| Title bar (46 px) | three decorative dots, breadcrumbs ("Episodes / 012"), the search field that opens the command palette, the view's actions ("Make a Short" and the teleprompter in an episode, "3 at work" on the home) and the right-column toggle | `src/components/TitleBar.tsx` |
+| Page | the wallpaper (`--wallpaper`, dark `green-dusk`, light `mint-dawn`, 1280 px below 900 px) as the page background, one sheet of glass over all of it, edge to edge | `src/App.tsx`, `src/styles/window.css` |
+| Top bar (46 px) | breadcrumbs ("Episodes / 012"), the search field that opens the command palette, the view's actions ("Make a Short" and the teleprompter in an episode, "3 at work" on the home) and the right-column toggle | `src/components/TitleBar.tsx` |
 | Sidebar (236 px; 64 px icon rail in an episode and below 1200 px) | the places with counts (Episodes, Shorts, Crew, Style pack, GPU and renders), the channel from the style pack, the crew dock with Slate's faces | `src/components/Sidebar.tsx` |
 | Main | the Episodes home, an episode's media, a read-only page, the onboarding chat or "New episode" | `src/views/Home.tsx`, `src/views/EpisodeView.tsx`, `src/views/EpisodeMedia.tsx`, `src/views/ReadOnlyViews.tsx` |
 | Right column (318 px) | Working now (each running job with its newest picture and progress) and Spend | `src/components/Crew.tsx` |
@@ -50,8 +72,8 @@ the cap in one line, and after the build the motion report's three lines (better
 retention hint. Without a cut the tiles sit in the Motion panel. A 404 counts as "no motion yet"; an error shows one
 line with "Try again" and leaves the other media alone.
 
-Cmd+B folds the sidebar and Cmd+Alt+B the right column (a spring on the grid columns). Below 900 px the window fills
-the screen, the parts stack in one scrolling column and the sidebar opens as a menu from the title bar.
+Cmd+B folds the sidebar and Cmd+Alt+B the right column (a spring on the grid columns). Below 900 px the parts stack
+in one scrolling column and the sidebar opens as a menu from the top bar.
 
 Style pack, Crew, GPU and renders and a job log open in the main column as read-only pages. They have no edit
 controls; each ends with "To change something, say it in the chat."
@@ -81,7 +103,7 @@ The open view lives in the hash, so Back works and screenshots can open each pla
 | `#/job/<id>` | the read-only log of one job |
 
 Without a hash the app opens the onboarding chat when `app.onboarded` is false, else the Episodes home, else `#/new`
-when there is no episode yet. The scripted demo (`?demo=1&play=1`) opens its episode.
+when there is no episode yet.
 `?theme=light` or `?theme=dark` forces a theme; without it the choice made in the palette ("Switch to the dark theme",
 kept in the browser's storage where the browser allows it) or else the system setting decides.
 
@@ -146,7 +168,7 @@ the card (`POST /api/cards/{id}/decline`) with the reason "Local is fine. Render
 
 | Shortcut | Does |
 |---|---|
-| Cmd/Ctrl+K | Command palette (also the search field in the title bar): episodes (Cmd+1 to 9), "Show all episodes", "Show the Shorts", "Show the style pack", "Show the crew", "Show GPU and renders", "New episode", "Open teleprompter", "Switch to the dark/light theme", the sidebar and the right column |
+| Cmd/Ctrl+K | Command palette (also the search field in the top bar): episodes (Cmd+1 to 9), "Show all episodes", "Show the Shorts", "Show the style pack", "Show the crew", "Show GPU and renders", "New episode", "Open teleprompter", "Switch to the dark/light theme", the sidebar and the right column |
 | Cmd/Ctrl+N | New episode (`#/new`, focus in the composer) |
 | Cmd/Ctrl+1 to 9 | Episode 1 to 9 |
 | Cmd/Ctrl+B, Cmd/Ctrl+Alt+B | Sidebar, right column (below 760 px Cmd+B opens the menu) |
@@ -164,7 +186,7 @@ running job yet: the API has no endpoint for it.
 On load the app fetches `GET /api/state`, then opens `EventSource('/api/events')` and applies `activity`, `message`,
 `card`, `cost` and `episode` events. `crew` events (one direct message between crew members) are read and ignored: a
 finished exchange arrives as a `message` with an `exchange`. On a broken stream it closes it, waits 1 s, 2 s, 4 s … up to 30 s, fetches the state
-and new messages again, and reopens. While it retries, a slim line under the title bar says "Lost the connection to the container. Retrying…". An `activity` event for a job the screen
+and new messages again, and reopens. While it retries, a slim line under the top bar says "Lost the connection to the container. Retrying…". An `activity` event for a job the screen
 has not seen, without `identity` and `doing`, triggers one state fetch instead of a guess.
 
 ### Fields the UI reads beyond api.md
@@ -196,12 +218,14 @@ A message that only repeats the title of the card it carries is not shown; the c
 |---|---|---|
 | Home | no episodes | Slate dozing, "No episodes yet. Start one with New episode." and the button |
 | Home | a filter without episodes | "Nothing here right now." |
-| Main | first start (not onboarded, empty onboarding chat) | the title bar without search and actions; Slate waving, "Paste your links." and "Website, YouTube channel, socials. The crew reads the rest."; the composer floats under the sentence (560 px) and glides to the bottom after the first message |
+| Main | first start (not onboarded, empty onboarding chat) | the top bar without search and actions; Slate waving, "Paste your links." and "Website, YouTube channel, socials. The crew reads the rest."; the composer floats under the sentence (560 px) and glides to the bottom after the first message |
 | Episode | no media yet (or a server without the media route) | Slate dozing, "No pictures yet. Thumbnails, the cut and renders show here as the crew makes them." |
 | Episode | the strip is being made (`cut.pending`) | "The strip and the waveform are on their way." and "Frames come as soon as the cut is read." |
 | Episode | the media fail | "Couldn't load the pictures of this episode. …" and "Try again" |
 | Crew chat | no messages | "Say an idea below, or ask the Scout for three." |
-| Window | the live connection is lost | the slim line under the title bar |
+| Page | no Crewcut answers at the address (network error, a 404 page, an answer that is not JSON, a proxy's 502 to 504) | the top bar without search and actions, Slate working, "Crewcut is starting…" and "Waiting for the engine at this address. The first start takes a few minutes."; it asks again every 2 s |
+| Page | still no answer after 90 s | Slate waiting, "Can't reach the Crewcut engine", "Check that Docker is running and Crewcut is started (the Crewcut app, or ./start.sh), then try again." and "Try again" (it asks again for 90 s) |
+| Page | the live connection is lost | the slim line under the top bar |
 | Card | a preview loads | a placeholder of the same size on `--sunken`, with the run shimmer after 300 ms |
 | Card | a preview fails | "Couldn't load the preview. The file is at episodes/003-…/review/frame-231.png." and "Try again" |
 | Working now | nobody works | "Nobody is working. Nothing is running, nothing costs money." |
@@ -213,58 +237,52 @@ Only what arrives after a chat or Working now first showed animates in; what is 
 File previews use `/api/files/{episode}/{path}`. A path that already starts with `/api/` (the profile preview) is
 used as it is.
 
-## Demo mode
+## No made-up content
 
-`?demo=1` (or no API answering at the address: a network error, a 404 page or an answer that is not JSON) switches to
-an in-memory backend in `src/demo/`. It answers the same calls, the media route too, with fixtures shaped like api.md.
-Everything in it is English. The pictures come from `src/demo/media.json` (web-sized stills under
-`public/demo/media/`, made by `tools/demo/build_media.py`): episode 012 "Claude improves a website 100 times" with two
-thumbnail variants, ten strip frames, the commercial's five 3D scenes and a running GPU rental; the commercial, an
-episode in work, four published ones and nine Shorts. Episode 012 shows variants A and B only (C spells its title
-differently). Chats, jobs and money are made up. Nothing runs; a sentence gets a
-reply that says so.
+The app ships no sample or demo data and has no mode that shows any: when no Crewcut answers, it says so (the two
+"Page" rows in the states table). The production build is checked for it in CI (`dist/` holds no sample fixture or
+picture).
 
-Motion graphics in the demo (`src/demo/motion.ts`) keep the workflow's order: the commercial (015) has a cut from its
-five 3D shots, its motion plan approved (version 2, one row struck before the yes; read-only in the Motion panel, one
-folded line in the chat), the style frame of its one new piece open next to the bar's frame, and three tiles (done,
-style frame, in review); 013 shows the finished loop (pieces done, the report's three lines, the decided motion
+## Sample data for the pictures (CI only)
+
+The README, the docs and the landing page need pictures with content. They come from sample data that never reaches
+the app or the image: `tests/web-sample/` (excluded in `.dockerignore`). It holds an in-memory stand-in for the
+server (`backend.ts`, the calls of api.md, the media and motion routes too) with fixtures shaped like api.md. Everything
+in it is English. The pictures come from `tests/web-sample/media.json` (web-sized stills under
+`tests/web-sample/public/media/`, made by `tools/sample/build_media.py` from the author's own videos): episode 012
+"Claude improves a website 100 times" with two thumbnail variants, ten strip frames, the commercial's five 3D scenes and
+a running GPU rental; the commercial, an episode in work, four published ones and nine Shorts. Episode 012 shows
+variants A and B only (C spells its title differently). Chats, jobs and money are made up; a sentence gets a reply that
+says these are sample data.
+
+Motion graphics in the sample data (`tests/web-sample/motion.ts`) keep the workflow's order: the commercial (015) has a
+cut from its five 3D shots, its motion plan approved (version 2, one row struck before the yes; read-only in the Motion
+panel, one folded line in the chat), the style frame of its one new piece open next to the bar's frame, and three tiles
+(done, style frame, in review); 013 shows the finished loop (pieces done, the report's three lines, the decided motion
 cards); the style pack's shelf holds two templates of the pack, the app's five and one piece made for one video. A
-strike on the demo's answered plan is refused as the server refuses it; the open motion-plan card is covered by the
-tests' own fixtures. The pictures are small posters drawn with plain shapes (`public/demo/motion/*.svg`, outside the
-folder `build_media.py` rebuilds); the demo has no loops. The style frame is the open card of 015, which already
-needs a yes, so the home keeps its two "Needs you" cards.
+strike on the sample's answered plan is refused as the server refuses it. The pictures are small posters drawn with
+plain shapes (`tests/web-sample/public/motion/*.svg`); there are no loops.
 
-When the demo starts on its own, Working now says "Demo data. Crewcut is not running at this address." With
-`?demo=1` it says "Demo data. Nothing here is real."
-
-`?demo=1` is a still scene: the home with two open questions, or with `#/e/012-website-100-times` the episode with the
-thumbnail pick open, scene 5 rendering at 62 % on a rented RTX 4090, three of the crew working and "Month $4.10 of
-$20". `?demo=1&play=1` opens episode 012 and plays a short scripted sequence once, for the README animation, then
-stays still:
+The web tests use the stand-in with `setBackend` (`src/test/look.test.tsx`, `src/test/motion.test.tsx`). CI serves it
+with `tools/ci/sample_server.mjs`: the built `web/dist`, `/api` answered by the stand-in (bundled for Node with
+esbuild), `/api/events` as a real event stream, the files and pictures from `tests/web-sample/public`, and the
+teleprompter at `/p/sample-token`. The still scene is the home with two open questions, or with
+`#/e/012-website-100-times` the episode with the thumbnail pick open, scene 5 rendering at 62 % on a rented RTX 4090,
+three of the crew working and "Month $4.10 of $20". For the README animation the server starts from the beginning of
+the sequence (`POST /__sample/reset?play=1`) and `tools/ci/readme_shots.mjs` presses the real buttons:
 
 | From load | What happens |
 |---|---|
-| 0.6 s | the GPU card springs into the crew chat with "On this machine" chosen (50 min against 12 min, so this machine is the honest first choice); the Editor's waiting row appears |
-| 2.0 s | the choice moves to the rented GPU; the button now says "Rent a GPU for $0.60" |
-| 3.3 s | the button is pressed (`data-pressed`), then released: the yes goes out and the card folds to one line |
-| 4.2 s | "3D scene 5 of 5 on a rented GPU" slides into the working tiles; the GPU card and the render tiles of scene 5 appear among the media |
-| 6.9 s | `window.__crewcutPlayDone = true` |
+| 0.6 s | `POST /__sample/play/card-in`: the GPU card springs into the crew chat with "On this machine" chosen (50 min against 12 min, so this machine is the honest first choice); the Editor's waiting row appears |
+| 2.0 s | the script clicks the rented GPU; the button now says "Rent a GPU for $0.60" |
+| 3.3 s | the button is pressed (`data-pressed`), released and clicked: the real yes goes out and the card folds to one line |
+| 3.6 s | `POST /__sample/play/after-yes`: "3D scene 5 of 5 on a rented GPU" slides into the working tiles; the GPU card and the render tiles of scene 5 appear among the media |
 
-The sequence starts 600 ms after the page has loaded and the screen listens for events. It clicks the real buttons, so
-the screen does exactly what it does for a person. Storage is optional everywhere.
-
-Demo works from any static server at the site root, for example:
-
-```
-cd web && npm run build
-python3 -m http.server -d dist 8080      # then open http://localhost:8080/index.html?demo=1
-```
-
-CI (`.github/workflows/screens.yml`) screenshots the home (`index.html?demo=1`) and episode 012
-(`#/e/012-website-100-times`) at 1440x900 in light and dark, at 1100 and at 390x844, plus `#/profile` and `#/crew`.
-The README images (the app itself at 1440 x 1000, twice the density, 2880 x 2000: `crewcut-{dark,light}.png` for episode 012,
-`crewcut-episodes-{dark,light}.png` for the home) and the animation (`crewcut-demo.webp` and `.mp4`, dark, play mode)
-come from `tools/ci/readme_shots.mjs`.
+CI (`.github/workflows/screens.yml`) screenshots the home and episode 012 (`#/e/012-website-100-times`) at 1440x900 in
+light and dark, at 1100 and at 390x844, plus `#/profile`, `#/crew` and the teleprompter, and the page without a server
+("Crewcut is starting…", `app-starting*.png`). The README images (the app itself at 1440 x 1000, twice the density,
+2880 x 2000: `crewcut-{dark,light}.png` for episode 012, `crewcut-episodes-{dark,light}.png` for the home) and the
+animation (`crewcut-demo.webp` and `.mp4`, dark) come from `tools/ci/readme_shots.mjs`.
 
 ## The teleprompter
 
@@ -280,7 +298,6 @@ A second Vite entry, `prompter.html`, served by the teleprompter port at `/p/<to
   position while it plays, so a second phone or the desktop can drive it. `?remote=1` shows only the controls (the
   "Open the remote" link in the Teleprompter popover).
 - Keeps the phone screen on while it plays, where the browser allows it (Wake Lock).
-- `?demo=1` shows a demo script without a server.
 
 ## Run against a local server
 
@@ -300,7 +317,7 @@ npm run dev                   # http://localhost:5173, forwards /api to :4747 an
 | Command | What it checks |
 |---|---|
 | `npm run typecheck` | TypeScript, strict |
-| `npm run test` | vitest + Testing Library: loading (spinner after 300 ms), empty, error with retry, long content (90-character title, 4,000-word message, 30 jobs), the engine not logged in, demo fallback, card accept (options, Ctrl+Enter, spend card, error), the composer (Enter, Shift+Enter, new episode, onboarding, failed send), the teleprompter; the states table above, the step dots, the spend card's two ways (local declines, never accepts), the waiting row jumping to its card, the palette and shortcuts, crew talk (collapsed and opened), the still demo and the scripted sequence; the media of an episode (thumbnails, cut, scenes, GPU), the thumbnail pick, the GPU card's Stop, the media's empty, pending and error states, the home's sections and filters; the four motion cards (columns, the strike call and its refusal, the cap per video and per Short, posters only with reduced motion, accessible names), the motion tiles on the strip and the Motion panel (order, states, report lines, 404, error), the Motion shelf (hover to play, opened details, one-off pieces, no shelf) and motion in the demo |
+| `npm run test` | vitest + Testing Library: loading (spinner after 300 ms), empty, error with retry, long content (90-character title, 4,000-word message, 30 jobs), the engine not logged in, "Crewcut is starting…" and "Can't reach the Crewcut engine" (never made-up content), card accept (options, Ctrl+Enter, spend card, error), the composer (Enter, Shift+Enter, new episode, onboarding, failed send), the teleprompter; the states table above, the step dots, the spend card's two ways (local declines, never accepts), the waiting row jumping to its card, the palette and shortcuts, crew talk (collapsed and opened), the sample data's still scene and the steps of the README animation; the media of an episode (thumbnails, cut, scenes, GPU), the thumbnail pick, the GPU card's Stop, the media's empty, pending and error states, the home's sections and filters; the four motion cards (columns, the strike call and its refusal, the cap per video and per Short, posters only with reduced motion, accessible names), the motion tiles on the strip and the Motion panel (order, states, report lines, 404, error), the Motion shelf (hover to play, opened details, one-off pieces, no shelf) and motion in the sample data |
 | `npm run check:tokens` | no raw colour values in `src/` outside `src/styles/tokens.css`; radii, shadows, durations and curves only from tokens (rules 4, 6, 9) |
 | `npm run check:forms` | two text fields, the composer and the palette's search field, and no `<form>` with more than one field (rules 1.2, 3, 15) |
 | `npm run check:words` | no emoji, no exclamation marks in user-facing text (tooltips too), no "OK", "Submit" or "Yes" labels (rules 8, 10) |

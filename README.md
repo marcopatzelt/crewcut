@@ -29,7 +29,7 @@ https://github.com/user-attachments/assets/1a299daa-9e75-48cb-b0f1-da97c4894bdc
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/readme/crewcut-dark.png">
-  <img alt="Crewcut's episode view as a glass window on a rendered landscape: two thumbnail variants with a phone-size preview, the cut as a film strip with waveform and the Critic's notes, the 3D scenes and the rented GPU; on the right the crew chat with who works on what" src="docs/readme/crewcut-light.png" width="100%">
+  <img alt="Crewcut's episode view, edge to edge: two thumbnail variants with a phone-size preview, the cut as a film strip with waveform and the Critic's notes, the 3D scenes and the rented GPU; on the right the crew chat with who works on what" src="docs/readme/crewcut-light.png" width="100%">
 </picture>
 
 </div>
@@ -44,11 +44,11 @@ published, rented or paid for without your yes.
 
 > **Status: v0.1, pre-release.** Everything in this README is built and unit-tested, and the image is built and
 > smoke-tested in CI for amd64 and arm64, with real 2D, 3D and assembly renders. A full episode with real footage has
-> **not** run yet; that is the next step. What does not exist yet is marked *planned*. The pictures show demo data.
+> **not** run yet; that is the next step. What does not exist yet is marked *planned*. The pictures show sample data.
 
 <img alt="In the episode view a card asks for one yes; one press, the card folds away, the rented GPU starts and the crew column shows the work" src="docs/readme/crewcut-demo.webp" width="100%">
 
-<p align="center"><sub>Media first, the crew chat beside it. Demo data from the author's own videos, rendered in CI from the current app.</sub></p>
+<p align="center"><sub>Media first, the crew chat beside it. Sample data from the author's own videos, rendered in CI from the current app.</sub></p>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/readme/crewcut-episodes-dark.png">
@@ -67,11 +67,14 @@ claude setup-token     # once, on any computer with a browser: prints your token
 ./start.sh             # asks for the token once (hidden), writes .env, runs docker compose up
 ```
 
-Open **http://localhost:4747**, paste your links (website, channel), and say your first idea:
+When the server answers, Crewcut opens in its own window (an app window of Chrome, Edge, Brave, Arc or Chromium; else
+your default browser) at **http://localhost:4747**. Paste your links (website, channel), and say your first idea:
 
 > Next video: I ran five local AI models on a $900 laptop. Which one is worth it?
 
-The Scout comes back with a topic card. Details, Windows and GPUs: [docs/getting-started.md](docs/getting-started.md).
+The Scout comes back with a topic card. `./start.sh --no-open` only prints the address; `crewcut open` opens the window
+again. To keep Crewcut in your dock or start menu, install it as an app: in Chrome or Edge the install icon in the
+address bar, in Safari File → Add to Dock. Details, Windows and GPUs: [docs/getting-started.md](docs/getting-started.md).
 
 ## How it works
 
@@ -359,4 +362,4 @@ from a pinned upstream commit with our patch files, licences and NOTICE shipped 
 with the method of CLI-Anything by HKUDS, RobustVideoMatting (GPL-3.0, downloaded and run as its own program on rented
 machines only, never shipped), and the HDRI of the launch film from Poly Haven (CC0). Details:
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-The demo pictures are frames and thumbnails of the author's own videos.
+The sample pictures are frames and thumbnails of the author's own videos.

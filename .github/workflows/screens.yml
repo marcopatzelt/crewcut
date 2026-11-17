@@ -1,7 +1,8 @@
 name: screens
 
-# Renders screenshots on GitHub's runner, never on a developer laptop: the static mockup, the built web app in demo
-# mode, the README images and the brand PNGs. They are uploaded as the artifact "screens" at once.
+# Renders screenshots on GitHub's runner, never on a developer laptop: the static mockup, the built web app with
+# sample data (tools/ci/sample_server.mjs answers /api from tests/web-sample; the app itself ships none), the README
+# images and the brand PNGs. They are uploaded as the artifact "screens" at once.
 # The Taste gate runs after the upload and only for big changes (tools/ci/gate_decide.sh: more than 300 changed lines
 # in web/, a design token in web/src/styles/tokens.css changed, a file added or removed, "[gate]" in a commit
 # message, or run_gate on a manual run). It is information only: findings go to the job summary, it never fails the
@@ -9,7 +10,7 @@ name: screens
 on:
   push:
     branches: [main]
-    paths: ["docs/mockup.html", "docs/brand/**", "web/**", "tools/ci/**", ".github/workflows/screens.yml"]
+    paths: ["docs/mockup.html", "docs/brand/**", "web/**", "tests/web-sample/**", "tools/ci/**", ".github/workflows/screens.yml"]
   workflow_dispatch:
     inputs:
       run_gate:
@@ -41,27 +42,40 @@ jobs:
       - name: Build the web UI
         if: hashFiles('web/package-lock.json') != ''
         run: cd web && npm ci --no-audit --no-fund && npm run build
-      - name: Web UI in demo mode, light, dark and phone width
+      - name: The CI picture server (the built app, /api answered from the sample data in tests/web-sample)
         if: hashFiles('web/package-lock.json') != ''
         run: |
-          (cd web/dist && python3 -m http.server 8099 > /dev/null 2>&1 &)
-          sleep 2
+          web/node_modules/.bin/esbuild tests/web-sample/backend.ts --bundle --platform=node --format=esm \
+            --outfile=/tmp/sample-backend.mjs --log-level=warning
+          nohup node tools/ci/sample_server.mjs /tmp/sample-backend.mjs web/dist tests/web-sample/public 8099 \
+            > /tmp/sample-server.log 2>&1 &
+          for i in $(seq 1 30); do curl -fs -o /dev/null http://localhost:8099/api/state && break; sleep 1; done
+          curl -fs http://localhost:8099/api/state > /dev/null
+      - name: Web UI with sample data, light, dark and phone width; the states without a server
+        if: hashFiles('web/package-lock.json') != ''
+        run: |
           P="npx -y playwright@1.50.1 screenshot --wait-for-timeout 2500"
+          U="http://localhost:8099/index.html"
           E="#/e/012-website-100-times"
-          $P --viewport-size "1440, 900" "http://localhost:8099/index.html?demo=1" shots/app.png
-          $P --viewport-size "1440, 900" --color-scheme dark "http://localhost:8099/index.html?demo=1" shots/app-dark.png
-          $P --viewport-size "1440, 900" "http://localhost:8099/index.html?demo=1$E" shots/app-episode.png
-          $P --viewport-size "1440, 900" --color-scheme dark "http://localhost:8099/index.html?demo=1$E" shots/app-episode-dark.png
-          $P --viewport-size "1100, 800" --color-scheme dark "http://localhost:8099/index.html?demo=1$E" shots/app-episode-1100.png
-          $P --viewport-size "390, 844" "http://localhost:8099/index.html?demo=1" shots/app-phone.png
-          $P --viewport-size "390, 844" --color-scheme dark "http://localhost:8099/index.html?demo=1$E" shots/app-episode-phone.png
-          $P --viewport-size "390, 844" "http://localhost:8099/prompter.html?demo=1" shots/prompter-phone.png
-          $P --viewport-size "1440, 900" "http://localhost:8099/index.html?demo=1#/profile" shots/app-profile.png
-          $P --viewport-size "1440, 900" "http://localhost:8099/index.html?demo=1#/crew" shots/app-crew.png
-          $P --viewport-size "1280, 800" "http://localhost:8099/index.html?demo=1" shots/app-1280.png
-          $P --viewport-size "1100, 800" "http://localhost:8099/index.html?demo=1" shots/app-1100.png
-          $P --viewport-size "900, 800" "http://localhost:8099/index.html?demo=1" shots/app-900.png
-      - name: README images (the app on its desk, 2x density, light and dark) and the animation
+          $P --viewport-size "1440, 900" "$U" shots/app.png
+          $P --viewport-size "1440, 900" --color-scheme dark "$U" shots/app-dark.png
+          $P --viewport-size "1440, 900" "$U$E" shots/app-episode.png
+          $P --viewport-size "1440, 900" --color-scheme dark "$U$E" shots/app-episode-dark.png
+          $P --viewport-size "1100, 800" --color-scheme dark "$U$E" shots/app-episode-1100.png
+          $P --viewport-size "390, 844" "$U" shots/app-phone.png
+          $P --viewport-size "390, 844" --color-scheme dark "$U$E" shots/app-episode-phone.png
+          $P --viewport-size "390, 844" "http://localhost:8099/p/sample-token" shots/prompter-phone.png
+          $P --viewport-size "1440, 900" "$U#/profile" shots/app-profile.png
+          $P --viewport-size "1440, 900" "$U#/crew" shots/app-crew.png
+          $P --viewport-size "1280, 800" "$U" shots/app-1280.png
+          $P --viewport-size "1100, 800" "$U" shots/app-1100.png
+          $P --viewport-size "900, 800" "$U" shots/app-900.png
+          # No Crewcut behind the page: a plain static server, so /api answers 404 pages. "Crewcut is starting…"
+          (cd web/dist && python3 -m http.server 8098 > /dev/null 2>&1 &)
+          sleep 1
+          $P --viewport-size "1440, 900" "http://localhost:8098/index.html" shots/app-starting.png
+          $P --viewport-size "1440, 900" --color-scheme dark "http://localhost:8098/index.html" shots/app-starting-dark.png
+      - name: README images (the app with sample data, 2x density, light and dark) and the animation
         if: hashFiles('web/package-lock.json') != ''
         run: |
           sudo apt-get install -y -qq ffmpeg > /dev/null
@@ -98,7 +112,7 @@ jobs:
           git clone -q https://github.com/Leonxlnx/taste-skill.git /tmp/taste && git -C /tmp/taste checkout -q f6b76575f949707b4e3c37cd86cb44b0b98643e8
           export CHROME_PATH=$(cd /tmp/shots-tool && node -e "console.log(require('playwright').chromium.executablePath())")
           mkdir -p shots/taste
-          node /tmp/taste/skills/taste-skill/scripts/consistency.mjs "http://localhost:8099/index.html?demo=1" \
+          node /tmp/taste/skills/taste-skill/scripts/consistency.mjs "http://localhost:8099/index.html" \
             --page software --widths 1440,1100,390 --profile /tmp/taste-profile --out shots/taste --no-sweep \
             | tee shots/taste/report.txt
           echo "Taste gate ran because: ${{ steps.decide.outputs.why }}. Information only." >> "$GITHUB_STEP_SUMMARY"

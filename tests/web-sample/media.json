@@ -34,107 +34,107 @@
   },
   "channel": {
     "name": "STRIQ",
-    "avatar": "demo/media/channel/avatar.jpg"
+    "avatar": "sample/media/channel/avatar.jpg"
   },
   "episodes": [
     {
       "key": "012",
       "title_en": "Claude improves a website 100 times",
       "kind": "long",
-      "cover": "demo/media/episodes/012-cover.jpg",
-      "cover_large": "demo/media/episodes/012-cover-1280.jpg",
+      "cover": "sample/media/episodes/012-cover.jpg",
+      "cover_large": "sample/media/episodes/012-cover-1280.jpg",
       "cover_english": true,
       "thumbs": [
         {
           "id": "A",
           "label": "Face right",
-          "url": "demo/media/thumbs/012-A.jpg",
-          "url_large": "demo/media/thumbs/012-A-1280.jpg",
+          "url": "sample/media/thumbs/012-A.jpg",
+          "url_large": "sample/media/thumbs/012-A-1280.jpg",
           "english": true
         },
         {
           "id": "B",
           "label": "Face centered",
-          "url": "demo/media/episodes/012-cover.jpg",
-          "url_large": "demo/media/episodes/012-cover-1280.jpg",
+          "url": "sample/media/episodes/012-cover.jpg",
+          "url_large": "sample/media/episodes/012-cover-1280.jpg",
           "english": true
         },
         {
           "id": "C",
           "label": "Face right, title top left",
-          "url": "demo/media/thumbs/012-C.jpg",
-          "url_large": "demo/media/thumbs/012-C-1280.jpg",
+          "url": "sample/media/thumbs/012-C.jpg",
+          "url_large": "sample/media/thumbs/012-C-1280.jpg",
           "english": true
         }
       ],
       "frames": [
         {
           "t": 4,
-          "url": "demo/media/strip/012-0004.jpg"
+          "url": "sample/media/strip/012-0004.jpg"
         },
         {
           "t": 14,
-          "url": "demo/media/strip/012-0014.jpg"
+          "url": "sample/media/strip/012-0014.jpg"
         },
         {
           "t": 18,
-          "url": "demo/media/strip/012-0018.jpg"
+          "url": "sample/media/strip/012-0018.jpg"
         },
         {
           "t": 71,
-          "url": "demo/media/strip/012-0071.jpg"
+          "url": "sample/media/strip/012-0071.jpg"
         },
         {
           "t": 137,
-          "url": "demo/media/strip/012-0137.jpg"
+          "url": "sample/media/strip/012-0137.jpg"
         },
         {
           "t": 141,
-          "url": "demo/media/strip/012-0141.jpg"
+          "url": "sample/media/strip/012-0141.jpg"
         },
         {
           "t": 196,
-          "url": "demo/media/strip/012-0196.jpg"
+          "url": "sample/media/strip/012-0196.jpg"
         },
         {
           "t": 215,
-          "url": "demo/media/strip/012-0215.jpg"
+          "url": "sample/media/strip/012-0215.jpg"
         },
         {
           "t": 217,
-          "url": "demo/media/strip/012-0217.jpg"
+          "url": "sample/media/strip/012-0217.jpg"
         },
         {
           "t": 258,
-          "url": "demo/media/strip/012-0258.jpg"
+          "url": "sample/media/strip/012-0258.jpg"
         }
       ],
       "scenes": [
         {
           "id": "s1",
           "name": "Rhine front",
-          "url": "demo/media/scenes/s1-rhine-front.jpg",
-          "url_large": "demo/media/scenes/s1-rhine-front-1280.jpg"
+          "url": "sample/media/scenes/s1-rhine-front.jpg",
+          "url_large": "sample/media/scenes/s1-rhine-front-1280.jpg"
         },
         {
           "id": "s2",
           "name": "Lounge chair",
-          "url": "demo/media/scenes/s2-lounge-chair.jpg"
+          "url": "sample/media/scenes/s2-lounge-chair.jpg"
         },
         {
           "id": "s3",
           "name": "Bridge view",
-          "url": "demo/media/scenes/s3-bridge-view.jpg"
+          "url": "sample/media/scenes/s3-bridge-view.jpg"
         },
         {
           "id": "s4",
           "name": "Facade",
-          "url": "demo/media/scenes/s4-facade.jpg"
+          "url": "sample/media/scenes/s4-facade.jpg"
         },
         {
           "id": "s5",
           "name": "Evening street",
-          "url": "demo/media/scenes/s5-evening-street.jpg"
+          "url": "sample/media/scenes/s5-evening-street.jpg"
         }
       ]
     },
@@ -142,46 +142,46 @@
       "key": "015",
       "title_en": "Thinking levels commercial",
       "kind": "commercial",
-      "cover": "demo/media/episodes/015-cover.jpg",
-      "cover_large": "demo/media/episodes/015-cover-1280.jpg",
+      "cover": "sample/media/episodes/015-cover.jpg",
+      "cover_large": "sample/media/episodes/015-cover-1280.jpg",
       "cover_english": false
     },
     {
       "key": "014",
       "title_en": "Use local AI privately: what really stays with you",
       "kind": "long",
-      "cover": "demo/media/episodes/014-cover.jpg",
-      "cover_large": "demo/media/episodes/014-cover-1280.jpg",
+      "cover": "sample/media/episodes/014-cover.jpg",
+      "cover_large": "sample/media/episodes/014-cover-1280.jpg",
       "cover_english": false
     },
     {
       "key": "013",
       "title_en": "One prompt, a full game",
       "kind": "long",
-      "cover": "demo/media/episodes/013-cover.jpg",
-      "cover_large": "demo/media/episodes/013-cover-1280.jpg",
+      "cover": "sample/media/episodes/013-cover.jpg",
+      "cover_large": "sample/media/episodes/013-cover-1280.jpg",
       "cover_english": true
     },
     {
       "key": "011",
       "title_en": "Local AI is enough for $0.10",
       "kind": "long",
-      "cover": "demo/media/episodes/011-cover.jpg",
-      "cover_large": "demo/media/episodes/011-cover-1280.jpg",
+      "cover": "sample/media/episodes/011-cover.jpg",
+      "cover_large": "sample/media/episodes/011-cover-1280.jpg",
       "cover_english": true,
       "thumbs": [
         {
           "id": "A",
           "label": "Published",
-          "url": "demo/media/episodes/011-cover.jpg",
-          "url_large": "demo/media/episodes/011-cover-1280.jpg",
+          "url": "sample/media/episodes/011-cover.jpg",
+          "url_large": "sample/media/episodes/011-cover-1280.jpg",
           "english": true
         },
         {
           "id": "B",
           "label": "Price duel",
-          "url": "demo/media/thumbs/011-B.jpg",
-          "url_large": "demo/media/thumbs/011-B-1280.jpg",
+          "url": "sample/media/thumbs/011-B.jpg",
+          "url_large": "sample/media/thumbs/011-B-1280.jpg",
           "english": true
         }
       ]
@@ -190,16 +190,16 @@
       "key": "010",
       "title_en": "Claude operates any software in 19 minutes",
       "kind": "long",
-      "cover": "demo/media/episodes/010-cover.jpg",
-      "cover_large": "demo/media/episodes/010-cover-1280.jpg",
+      "cover": "sample/media/episodes/010-cover.jpg",
+      "cover_large": "sample/media/episodes/010-cover-1280.jpg",
       "cover_english": true
     },
     {
       "key": "008",
       "title_en": "Graphify, measured: −20%, not −99%",
       "kind": "long",
-      "cover": "demo/media/episodes/008-cover.jpg",
-      "cover_large": "demo/media/episodes/008-cover-1280.jpg",
+      "cover": "sample/media/episodes/008-cover.jpg",
+      "cover_large": "sample/media/episodes/008-cover-1280.jpg",
       "cover_english": true
     }
   ],
@@ -207,55 +207,55 @@
     {
       "key": "S014",
       "title_en": "Graphify promises 71 times fewer tokens. I measured it",
-      "cover": "demo/media/shorts/S014.jpg",
+      "cover": "sample/media/shorts/S014.jpg",
       "from": "008"
     },
     {
       "key": "S013",
       "title_en": "Claude writes like an aircraft manual",
-      "cover": "demo/media/shorts/S013.jpg",
+      "cover": "sample/media/shorts/S013.jpg",
       "from": "013"
     },
     {
       "key": "S012",
       "title_en": "My old rules slowed Claude down",
-      "cover": "demo/media/shorts/S012.jpg",
+      "cover": "sample/media/shorts/S012.jpg",
       "from": "013"
     },
     {
       "key": "S011",
       "title_en": "What does a game by Claude cost?",
-      "cover": "demo/media/shorts/S011.jpg",
+      "cover": "sample/media/shorts/S011.jpg",
       "from": "013"
     },
     {
       "key": "S010",
       "title_en": "More rounds, worse website?",
-      "cover": "demo/media/shorts/S010.jpg",
+      "cover": "sample/media/shorts/S010.jpg",
       "from": "012"
     },
     {
       "key": "S009",
       "title_en": "Make it better, 100 times",
-      "cover": "demo/media/shorts/S009.jpg",
+      "cover": "sample/media/shorts/S009.jpg",
       "from": "012"
     },
     {
       "key": "S008",
       "title_en": "You can spot a Claude website at once",
-      "cover": "demo/media/shorts/S008.jpg",
+      "cover": "sample/media/shorts/S008.jpg",
       "from": "012"
     },
     {
       "key": "S007",
       "title_en": "This design skill impressed me",
-      "cover": "demo/media/shorts/S007.jpg",
+      "cover": "sample/media/shorts/S007.jpg",
       "from": "012"
     },
     {
       "key": "S005",
       "title_en": "Claude costs 78 cents, GLM only 10 cents",
-      "cover": "demo/media/shorts/S005.jpg",
+      "cover": "sample/media/shorts/S005.jpg",
       "from": "011"
     }
   ],

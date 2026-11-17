@@ -1,5 +1,5 @@
 // The states of the floating layout (DESIGN.md rule 11 and the empty, loading and error lines), the step dots,
-// the spend card's two ways, the command palette and shortcuts (rule 15), and the scripted demo for the README.
+// the spend card's two ways, the command palette and shortcuts (rule 15), and the sample data of the README pictures.
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +9,8 @@ import { matches } from "../components/Palette";
 import { keyLabels } from "../lib/platform";
 import { getUi, setUi } from "../store/store";
 import { engineWords } from "../views/ReadOnlyViews";
+import { createSampleBackend } from "../../../tests/web-sample/backend";
+import { setBackend } from "../api/client";
 import { card, episode, episodeRoutes, job, message, mockApi, openAt, resetApp, state } from "./helpers";
 
 beforeEach(() => {
@@ -19,7 +21,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
-  delete window.__crewcutPlayDone;
 });
 
 const spendCard = (local: number) =>
@@ -319,45 +320,45 @@ describe("job details", () => {
   });
 });
 
-describe("the scripted demo for the README", () => {
-  it("plays the card, the switch to the rented GPU, the fold and the new row, then says it is done", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    render(<App demo play />);
-    await vi.advanceTimersByTimeAsync(500);
+describe("the sample data of the README pictures (tests/web-sample, CI only)", () => {
+  it("the README animation's steps: the card, the switch to the rented GPU, the yes, the new row and the GPU", async () => {
+    const sample = createSampleBackend({ latency: 0, play: true });
+    setBackend(sample);
+    window.history.replaceState(null, "", "/#/e/012-website-100-times");
+    render(<App />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Claude improves a website 100 times" })).toBeTruthy();
     expect(screen.queryByRole("group", { name: "Render 3D scene 5 on a rented GPU?" })).toBeNull();
-    await vi.advanceTimersByTimeAsync(800);
-    const group = screen.getByRole("group", { name: "Render 3D scene 5 on a rented GPU?" });
+    act(() => sample.play.cardIn());
+    const group = await screen.findByRole("group", { name: "Render 3D scene 5 on a rented GPU?" });
     expect(within(group).getByRole("button", { name: "Render on this machine" })).toBeTruthy();
-    await vi.advanceTimersByTimeAsync(1500);
-    expect(within(group).getByRole("button", { name: "Rent a GPU for $0.60" })).toBeTruthy();
-    await vi.advanceTimersByTimeAsync(1800);
-    expect(screen.queryByRole("group", { name: "Render 3D scene 5 on a rented GPU?" })).toBeNull();
-    expect(screen.getByText("GPU rental approved · about 12 min for about $0.60")).toBeTruthy();
-    await vi.advanceTimersByTimeAsync(800);
+    const rented = group.querySelector<HTMLElement>('[data-way="rented"]');
+    expect(rented).toBeTruthy();
+    await userEvent.click(rented as HTMLElement);
+    await userEvent.click(within(group).getByRole("button", { name: "Rent a GPU for $0.60" }));
+    expect(await screen.findByText("GPU rental approved · about 12 min for about $0.60")).toBeTruthy();
+    await act(() => sample.play.afterYes());
     const chat = screen.getByRole("region", { name: "Crew chat" });
-    expect(within(chat).getByText("3D scene 5 of 5 on a rented GPU")).toBeTruthy();
-    // the rented GPU shows up among the media of the episode
-    expect(await screen.findByRole("region", { name: "Rented RTX 4090" })).toBeTruthy();
-    expect(window.__crewcutPlayDone).toBeUndefined();
-    await vi.advanceTimersByTimeAsync(3000);
-    expect(window.__crewcutPlayDone).toBe(true);
+    expect(await within(chat).findByText("3D scene 5 of 5 on a rented GPU")).toBeTruthy();
   });
 
-  it("without play the demo is the still scene of the README images: the home, then episode 012", async () => {
-    render(<App demo />);
+  it("the still scene of the README images: the home, then episode 012", async () => {
+    setBackend(createSampleBackend({ latency: 0 }));
+    render(<App />);
     expect(await screen.findByRole("heading", { level: 1, name: "Episodes" })).toBeTruthy();
     const needs = screen.getByRole("region", { name: "Needs you" });
     expect(within(needs).getAllByRole("button", { name: /Needs your yes\./ })).toHaveLength(2);
     const rail = screen.getByRole("complementary", { name: "Working now" });
     expect(within(rail).getByText("$4.10 of $20")).toBeTruthy();
-    expect(screen.getByText("Demo data. Nothing here is real.")).toBeTruthy();
+    // the page is the app from edge to edge: no fake window buttons; the window title names the view
+    expect(document.querySelector(".titlebar .lights, .titlebar i")).toBeNull();
+    await waitFor(() => expect(document.title).toBe("Crewcut · Episodes"));
     await userEvent.click(within(needs).getByRole("button", { name: /^Claude improves a website 100 times\./ }));
     expect(await screen.findByRole("heading", { level: 1, name: "Claude improves a website 100 times" })).toBeTruthy();
+    await waitFor(() => expect(document.title).toBe("Crewcut · Claude improves a website 100 times"));
     expect(screen.getByText("7 of 10 · Thumbnail")).toBeTruthy();
     const variants = await screen.findByRole("radiogroup", { name: "Thumbnail variants" });
     expect(within(variants).getByRole("radio", { name: /^B: Face centered, the Designer's pick/ }).getAttribute("aria-checked")).toBe("true");
     expect(screen.getByRole("region", { name: "Rented RTX 4090" })).toBeTruthy();
     expect(await screen.findByRole("group", { name: "Pick a thumbnail" })).toBeTruthy();
-    expect(window.__crewcutPlayDone).toBeUndefined();
   });
 });

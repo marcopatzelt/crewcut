@@ -290,17 +290,6 @@ export function MoneyLine({ episode }: { episode: string }) {
   );
 }
 
-/** The demo says so, always (rule 17). */
-export function DemoNote() {
-  const demo = useUi((s) => s.demo);
-  if (!demo) return null;
-  return (
-    <p className="demo-note">
-      {demo === "auto" ? "Demo data. Crewcut is not running at this address." : "Demo data. Nothing here is real."}
-    </p>
-  );
-}
-
 /** The right column of the home and the read-only views: "Working now", then "Spend". */
 export function CrewRail() {
   const view = useUi((s) => s.view);
@@ -321,7 +310,6 @@ export function CrewRail() {
         <WorkingList shape="rail" episode={null} />
       </section>
       <SpendCard episode={episode === "_onboarding" ? null : episode} />
-      <DemoNote />
     </aside>
   );
 }

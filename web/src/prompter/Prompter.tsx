@@ -23,7 +23,7 @@ export interface PrompterSource {
   script(): Promise<PrompterScript>;
   getControl(): Promise<PrompterControl>;
   setControl(c: PrompterControl): Promise<void>;
-  /** false in demo mode: nothing to follow. */
+  /** false when nothing else follows this screen (a source without a server, as in the tests). */
   shared: boolean;
 }
 

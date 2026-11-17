@@ -5,7 +5,7 @@
 :root,
 :root[data-theme="light"] {
   color-scheme: light;
-  /* The desk: the wallpaper behind the window, and two samples of it after the window's blur (brightest and darkest),
+  /* The page: the wallpaper behind the glass, and two samples of it after the glass's blur (brightest and darkest),
      which npm run check:contrast uses as the ground under the glass. */
   --wallpaper: url("/wallpapers/mint-dawn-2560.jpg");
   --wallpaper-small: url("/wallpapers/mint-dawn-1280.jpg");
@@ -13,9 +13,8 @@
   --desk-hi: #CFE4DF;
   --desk-lo: #5F8669;
   --desk-tint: rgba(255, 255, 255, 0.06);
-  /* The window: one sheet of glass (rule 18). --panel is its opaque stand-in. */
+  /* One sheet of glass over the whole page (rule 18). --panel is its opaque stand-in. */
   --material-window: rgba(247, 250, 248, 0.80);
-  --edge-window: rgba(255, 255, 255, 0.75);
   --panel: #F1F5F3;
   --tile: rgba(255, 255, 255, 0.62);
   --bg: #FFFFFF;
@@ -87,10 +86,6 @@
   --gpu-track: rgba(255, 255, 255, 0.14);
   --gpu-button: rgba(255, 255, 255, 0.12);
   --gpu-edge: rgba(255, 255, 255, 0.08);
-  /* The three dots of the title bar: decorative, they do nothing. */
-  --dot-close: #FF5F57;
-  --dot-minimize: #FEBC2E;
-  --dot-zoom: #28C840;
   --qr-plate: #FFFFFF;
   --qr-ink: #111111;
   --prompter-bg: #000000;
@@ -110,7 +105,6 @@
   --desk-lo: #0D1F15;
   --desk-tint: rgba(0, 0, 0, 0.10);
   --material-window: rgba(9, 22, 19, 0.70);
-  --edge-window: rgba(255, 255, 255, 0.12);
   --panel: #10201C;
   --tile: rgba(255, 255, 255, 0.055);
   --bg: #12231F;
@@ -181,10 +175,6 @@
   --gpu-track: rgba(255, 255, 255, 0.14);
   --gpu-button: rgba(255, 255, 255, 0.12);
   --gpu-edge: rgba(255, 255, 255, 0.08);
-  /* The three dots of the title bar: decorative, they do nothing. */
-  --dot-close: #FF5F57;
-  --dot-minimize: #FEBC2E;
-  --dot-zoom: #28C840;
   --qr-plate: #FFFFFF;
   --qr-ink: #111111;
   --prompter-bg: #000000;
@@ -205,7 +195,6 @@
     --desk-lo: #0D1F15;
     --desk-tint: rgba(0, 0, 0, 0.10);
     --material-window: rgba(9, 22, 19, 0.70);
-    --edge-window: rgba(255, 255, 255, 0.12);
     --panel: #10201C;
     --tile: rgba(255, 255, 255, 0.055);
     --bg: #12231F;
@@ -276,10 +265,6 @@
     --gpu-track: rgba(255, 255, 255, 0.14);
     --gpu-button: rgba(255, 255, 255, 0.12);
     --gpu-edge: rgba(255, 255, 255, 0.08);
-    /* The three dots of the title bar: decorative, they do nothing. */
-    --dot-close: #FF5F57;
-    --dot-minimize: #FEBC2E;
-    --dot-zoom: #28C840;
     --qr-plate: #FFFFFF;
     --qr-ink: #111111;
     --prompter-bg: #000000;

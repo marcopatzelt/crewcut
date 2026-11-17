@@ -1,7 +1,20 @@
 #!/usr/bin/env bash
 # Start Crewcut. On the first run it creates .env and ./studio and asks once for the engine token (hidden input).
+# When the server answers, Crewcut opens in its own app window (host/open-app.sh).
+#   ./start.sh              start, then open the app window
+#   ./start.sh --no-open    start and only print the address
+# CREWCUT_OPEN=app|browser|none picks how it opens (default app: an app window of Chrome, Edge, Brave, Arc or Chromium).
 set -euo pipefail
 cd "$(dirname "$0")"
+
+open_args=()
+for arg in "$@"; do
+  case "$arg" in
+    --no-open) open_args+=(--no-open) ;;
+    -h|--help) sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "Unknown option: $arg (./start.sh --help)"; exit 2 ;;
+  esac
+done
 
 command -v docker >/dev/null 2>&1 || {
   echo "Docker is not installed. Install Docker Desktop, Colima or Docker Engine, then run ./start.sh again."; exit 1; }
@@ -47,6 +60,7 @@ pidfile="$studio_dir/.crewcut/host/helper.pid"
 if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then kill "$(cat "$pidfile")" 2>/dev/null || true; fi
 CREWCUT_STUDIO_DIR="$studio_dir" nohup host/crewcut-host.sh > "$studio_dir/.crewcut/logs/host.log" 2>&1 &
 echo $! > "$pidfile"
-url="http://localhost:${CREWCUT_PORT:-4747}"
+port="${CREWCUT_PORT:-$(grep '^CREWCUT_PORT=' .env | tail -1 | cut -d= -f2- || true)}"
+url="http://localhost:${port:-4747}"
 echo "Crewcut is starting at $url (the first start installs the engine and takes a few minutes)."
-if command -v open >/dev/null 2>&1; then open "$url"; elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$url" >/dev/null 2>&1 || true; fi
+host/open-app.sh "${open_args[@]+"${open_args[@]}"}" "$url" || true

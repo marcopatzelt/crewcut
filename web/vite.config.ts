@@ -37,10 +37,9 @@ export default defineConfig({
         prompter: fileURLToPath(new URL("./prompter.html", import.meta.url)),
       },
       output: {
-        // React, icons and fonts in one shared file; the demo data in another.
+        // React, icons and fonts in one shared file.
         manualChunks(id) {
           if (id.includes("node_modules")) return "vendor";
-          if (id.includes("/src/demo/")) return "demo";
           return undefined;
         },
       },

@@ -81,10 +81,24 @@ export function currentTheme(): Theme {
   return set === "light" || set === "dark" ? set : systemTheme();
 }
 
+/**
+ * The colour of the app window's own bar (meta theme-color) follows a theme chosen in the app. index.html sets both
+ * themes' --panel by media query; a chosen theme overrides them with the --panel it now has.
+ */
+function syncThemeColor(): void {
+  if (typeof document === "undefined" || typeof getComputedStyle !== "function") return;
+  const panel = getComputedStyle(document.documentElement).getPropertyValue("--panel").trim();
+  if (!panel) return;
+  document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((m) => {
+    m.content = panel;
+  });
+}
+
 /** ?theme= wins (screenshots), then the stored choice, then the system. */
 export function initTheme(param: string | null): void {
   if (param === "light" || param === "dark") {
     document.documentElement.dataset.theme = param;
+    syncThemeColor();
     return;
   }
   let stored: string | null = null;
@@ -93,12 +107,16 @@ export function initTheme(param: string | null): void {
   } catch {
     stored = null; // storage blocked, for example in a third-party frame: follow the system
   }
-  if (stored === "light" || stored === "dark") document.documentElement.dataset.theme = stored;
+  if (stored === "light" || stored === "dark") {
+    document.documentElement.dataset.theme = stored;
+    syncThemeColor();
+  }
 }
 
 export function switchTheme(): Theme {
   const next: Theme = currentTheme() === "dark" ? "light" : "dark";
   document.documentElement.dataset.theme = next;
+  syncThemeColor();
   try {
     window.localStorage.setItem(THEME_KEY, next);
   } catch {

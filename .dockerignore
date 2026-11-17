@@ -16,3 +16,6 @@ web/dist
 *.m4a
 *.mp3
 docs/*.png
+# Sample data for the web tests and the CI pictures only: never in the image
+tests/web-sample
+tools/sample
