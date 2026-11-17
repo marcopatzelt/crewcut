@@ -27,6 +27,7 @@ The motion workflow (no engine; docs/motion-workflow.md):
     crewcut motion library [--no-episodes]
     crewcut motion new EPISODE INSERT_ID --from brief.md
     crewcut motion style-frame EPISODE INSERT_ID --ours F [--ours F] [--ref F] [--natural]
+    crewcut motion promote EPISODE INSERT_ID --name NAME [--title T]
 
 Exit codes: 0 ok, 1 error, 2 usage, 3 `render palette` found one hue above the limit (plain output only).
 """
@@ -1132,6 +1133,30 @@ def style_frame_cmd(app: App, episode, insert_id, ours, ref, natural):
     from . import custom
     c = custom.style_frame(episode, insert_id, list(ours), list(ref), natural=natural)
     out(app, approvals.view(c), f"card #{c['id']} is open: {c['title']}")
+
+
+def _sample_renderer():
+    """The render path's sample renderer, when it has one (``crewcut.render.motion.render_sample``)."""
+    try:
+        from ..render import motion as rmotion
+    except ImportError:
+        return None
+    return getattr(rmotion, "render_sample", None)
+
+
+@cli.command("promote")
+@click.argument("episode")
+@click.argument("insert_id")
+@click.option("--name", required=True, help="The template name: lower case, digits and _.")
+@click.option("--title", default=None, help="A short title for the shelf.")
+@click.pass_obj
+@handle_error
+def promote_cmd(app: App, episode, insert_id, name, title):
+    """Turn a reviewed custom piece (0 errors) into a template of your pack, then ask with a template card."""
+    from . import library as lib
+    e = lib.promote(episode, insert_id, name, _sample_renderer(), title=title)
+    out(app, e, f"{name} v{e['version']} is in your pack (brand/templates/motion/{name}.jsx), waiting for your yes "
+        f"on card #{e.get('card')}.")
 
 
 def main(argv: list[str] | None = None) -> int:
