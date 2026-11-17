@@ -23,7 +23,7 @@ Open source, one Docker container, on your own computer.**
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/readme/crewcut-dark.png">
-  <img alt="Crewcut's episode view as a glass window on a rendered landscape: three thumbnail variants with a phone-size preview, the cut as a film strip with waveform and the Critic's notes, the 3D scenes and the rented GPU; on the right the crew chat with who works on what" src="docs/readme/crewcut-light.png" width="100%">
+  <img alt="Crewcut's episode view as a glass window on a rendered landscape: two thumbnail variants with a phone-size preview, the cut as a film strip with waveform and the Critic's notes, the 3D scenes and the rented GPU; on the right the crew chat with who works on what" src="docs/readme/crewcut-light.png" width="100%">
 </picture>
 
 </div>
