@@ -13,6 +13,9 @@ the machine (Vast onstart hook, instance key), (3) the local guard (`guard.sweep
 
 The CLI uses detached sessions: `crewcut compute rent` leaves the machines running for later `run` / `fetch` calls;
 the cap and the deadlines are then enforced by every CLI call and by the guard.
+
+`picture=` (graphics behind the speaker only): the session may upload the picture of named shots, and only after a yes
+on a spend card that says so in plain words (see privacy.py). `blender=False` skips the Blender install in the setup.
 """
 
 from __future__ import annotations
@@ -49,6 +52,30 @@ def _say(episode: str | None, identity: str | None, text: str) -> None:
 
 def _plural(n: int, word: str) -> str:
     return f"{n} {word}{'' if n == 1 else 's'}"
+
+
+def picture_sentence(picture: dict) -> str:
+    """The plain words on the spend card when a session sends the picture of shots (no sound) to the rented machine."""
+    files = list(picture.get("files") or [])
+    ids = [str(f.get("shot") or "?") for f in files]
+    secs = sum(float(f.get("seconds") or 0) for f in files)
+    which = f"shot {ids[0]}" if len(ids) == 1 else f"{len(ids)} shots ({', '.join(ids)})"
+    return (f"The picture of {which}, {secs:.1f} s, without sound, goes to the rented machine to separate the speaker "
+            "from the background; it is deleted with the machine. Nothing else from the recording goes up.")
+
+
+def _picture_files(picture: dict | None) -> dict[str, dict]:
+    return {str(f["sha256"]): f for f in (picture or {}).get("files") or [] if f.get("sha256")}
+
+
+def _card_pictures(card: dict) -> set[str]:
+    """sha256 of the shot pictures an accepted spend card allows: only when its text says so in plain words."""
+    pic = (card.get("data") or {}).get("picture") or {}
+    sentence = str(pic.get("sentence") or "")
+    if card.get("kind") != "spend" or card.get("status") != "accepted" or not sentence or \
+            sentence not in str(card.get("body") or ""):
+        return set()
+    return set(_picture_files(pic))
 
 
 class Machine:
@@ -96,8 +123,9 @@ class Machine:
         """Upload code, fonts and scene files (rsync over SSH). Recordings, keys and studio state are refused."""
         self._check()
         srcs = [Path(s) for s in sources]
-        n = privacy.check_upload(srcs)
-        self._doing("uploading code")
+        n = privacy.check_upload(srcs, self._session.picture_ok() if self._session is not None else ())
+        self._doing("uploading the shot's picture" if any(p.suffix.lower() in privacy.RAW_MEDIA for p in srcs)
+                    else "uploading code")
         state.touch(self.rental, busy=True)
         try:
             rc, _, err = ssh.run(ssh.rsync_up_argv(srcs, self.host, self.port, self.instance, dest), timeout)
@@ -154,7 +182,7 @@ class Machine:
 class Session:
     def __init__(self, episode: str | None, step: str | None = None, purpose: str = "", cap_usd: float | None = None,
                  *, identity: str | None = None, job: int | str | None = None, provider=None, detached: bool = False,
-                 monitor: bool = True, sid: str | None = None):
+                 monitor: bool = True, sid: str | None = None, picture: dict | None = None, blender: bool = True):
         self.episode = episode
         self.step = step
         self.purpose = purpose or "rented GPU work"
@@ -177,6 +205,10 @@ class Session:
         self._halt = threading.Event()
         self._thread: threading.Thread | None = None
         self._pub = ""
+        self.picture = picture if picture and _picture_files(picture) else None
+        self.blender = bool(blender)
+        if picture and self.picture is None:
+            raise ValueError("picture= needs files with a sha256 each")
 
     # ---- lifecycle -----------------------------------------------------------------------------------------------
     @classmethod
@@ -187,7 +219,8 @@ class Session:
             raise ComputeError(f"no compute session {sid}")
         s = cls(rec.get("episode"), rec.get("step"), rec.get("purpose", ""), rec.get("cap_usd"),
                 identity=rec.get("identity"), job=rec.get("job"), provider=provider,
-                detached=bool(rec.get("detached")), monitor=False, sid=sid)
+                detached=bool(rec.get("detached")), monitor=False, sid=sid, picture=rec.get("picture"),
+                blender=rec.get("blender", True))
         s.label = rec.get("label") or s.label
         s.stopped = rec.get("stopped")
         s.closed = bool(rec.get("closed"))
@@ -201,7 +234,7 @@ class Session:
                 "identity": self.identity, "job": self.job, "cap_usd": self.cap_usd, "detached": self.detached,
                 "label": self.label, "pid": os.getpid(), "host": socket.gethostname(), "heartbeat": state.now(),
                 "created": state.iso(state.now()), "closed": None, "stopped": None, "rentals": [],
-                "credit_before": None,
+                "credit_before": None, "picture": self.picture, "blender": self.blender, "picture_card": None,
             })
         if self._monitor_on and self._thread is None:
             self._thread = threading.Thread(target=self._monitor, name=f"crewcut-compute-{self.id}", daemon=True)
@@ -328,6 +361,28 @@ class Session:
             self._thread.join(timeout=5)
         return self.proof_text
 
+    # ---- the picture of shots (graphics behind the speaker) -------------------------------------------------------
+    def _picture_card(self) -> dict | None:
+        """An accepted spend card of this episode that names every picture file of this session (by sha256)."""
+        need = set(_picture_files(self.picture))
+        if not need or not self.episode:
+            return None
+        for c in reversed(approvals.list_cards(episode=self.episode, status="accepted")):
+            if c.get("episode") == self.episode and need <= _card_pictures(c):
+                state.update_session(self.id, picture_card=int(c["id"]))
+                return c
+        return None
+
+    def picture_ok(self) -> frozenset[str]:
+        """sha256 of the shot pictures this session may upload: those named on its accepted card, else nothing."""
+        if not self.picture or self.closed or self.stopped:
+            return frozenset()
+        cid = self.record().get("picture_card")
+        card = approvals.get(int(cid)) if cid else None
+        if not card or card.get("episode") != self.episode:
+            return frozenset()
+        return frozenset(set(_picture_files(self.picture)) & _card_pictures(card))
+
     # ---- renting -------------------------------------------------------------------------------------------------
     def _open_spend_card(self) -> int | None:
         """Any open spend card of this episode (also one a tool proposed from an estimate): one money question at a
@@ -388,6 +443,8 @@ class Session:
             approvals.require_right("spend", self.identity)
         except approvals.RightsError as e:
             raise Refused(str(e)) from e
+        if self.picture and not self.episode:
+            raise Refused("the picture of a shot goes to a rented machine only inside an episode")
         prov = self.provider()
 
         self.doing(f"Renting {_plural(gpus, 'GPU')}: looking for offers")
@@ -416,9 +473,10 @@ class Session:
             raise NeedsApproval(card)
         amount = self._fit_budget(amount, prices)
         title = f"Rent {_plural(gpus, 'GPU')} for up to {max_minutes:.0f} min (at most ${amount:.2f})"
+        goes_up = picture_sentence(self.picture) if self.picture else "Only code and fonts go to the rented machines."
         body = (f"For: {self.purpose}. Price now: {', '.join(f'${p:.2f}' for p in prices)} per GPU and hour. "
                 f"Worst case until every deadline: ${worst_new:.2f}. The session stops and destroys its machines "
-                f"at ${self.cap_usd:.2f}. Only code and fonts go to the rented machines.")
+                f"at ${self.cap_usd:.2f}. {goes_up}")
         if estimate and estimate.get("sentence"):
             body = estimate["sentence"] + " " + body
         data = {"source": "compute", "step": self.step, "cap_usd": self.cap_usd, "gpus": gpus,
@@ -427,6 +485,9 @@ class Session:
         if estimate:
             data["estimate"] = {k: estimate.get(k) for k in ("local_seconds", "local_measured", "rented_seconds",
                                                                "rented_usd", "rented_usd_worst", "gpus", "sentence")}
+        if self.picture:
+            data["picture"] = {"files": list(_picture_files(self.picture).values()),
+                               "sentence": picture_sentence(self.picture)}
         try:
             ok, card_id, reason = approvals.require_spend(self.episode, amount, title, body, data, self.identity,
                                                           reserved_usd=rentals.reserved(self.episode))
@@ -437,6 +498,15 @@ class Session:
                 self.doing(f"Waiting for your yes: {title}", status="waiting")
                 raise NeedsApproval(card_id, reason)
             raise Refused(reason)
+        if self.picture and not self._picture_card():
+            # Inside the budget no spend card is needed, but the picture of a shot never goes up without a yes that
+            # names it. This card adds nothing to the budget.
+            ptitle = f"Send the picture of {_plural(len(data['picture']['files']), 'shot')} to a rented GPU"
+            card = approvals.propose(self.episode, self.step, "spend", ptitle, body=body,
+                                     data={**data, "amount_usd": round(amount, 4), "budget_usd": 0.0},
+                                     identity=self.identity)
+            self.doing(f"Waiting for your yes: {ptitle}", status="waiting")
+            raise NeedsApproval(int(card["id"]), "waiting for a yes to send the shot's picture")
 
         try:
             credit = prov.credit()
@@ -613,7 +683,7 @@ class Session:
             self._fail(prov, rid, o, "setup upload failed", block=True)
             return "fail", "setup upload"
         deadline = int(rentals.deadline_ts(rentals.get(rid)))
-        blender = str((settings.get("vast") or {}).get("blender_version") or "5.0.1")
+        blender = str((settings.get("vast") or {}).get("blender_version") or "5.0.1") if self.blender else "none"
         cmd = f"bash {remote.SETUP_REMOTE} --deadline {deadline} --blender {blender}"
         rc, out = self._ssh(rid, addr[0], addr[1], cmd, settings.num("limits.setup_minutes") * 60)
         if "SETUP_OK" not in out:
@@ -621,7 +691,7 @@ class Session:
             info = f"setup failed: {last[0][:200]}"
             self._fail(prov, rid, o, info, block=rc != 2)
             return ("systematic" if rc == 2 else "fail"), info
-        if "app: missing" in out:
+        if "app: missing" in out and self.blender:
             t3d = paths.templates_dir() / "3d"
             if t3d.is_dir():
                 self._ssh(rid, addr[0], addr[1], "mkdir -p /app/templates", 30)
