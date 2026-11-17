@@ -1,71 +1,10 @@
-/* Crewcut landing page: the motion that CSS cannot do alone. Own code, no library.
-   Everything starts at load; nothing waits for the scroll. One button pauses all motion;
-   prefers-reduced-motion keeps the drum still and the fog from coming back. */
+/* Crewcut landing page: the fogged glass of the close. Own code, no library.
+   It starts at load; prefers-reduced-motion keeps the fog from coming back. */
 (function () {
   const root = document.documentElement;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const dark = matchMedia("(prefers-color-scheme: dark)").matches;
-  let paused = false;
-
-  // one button pauses every animation on the page (WCAG 2.2.2) and plays it again
-  for (const b of document.querySelectorAll("[data-pause]")) {
-    b.addEventListener("click", () => {
-      paused = !paused;
-      root.classList.toggle("is-paused", paused);
-      for (const x of document.querySelectorAll("[data-pause]")) {
-        x.setAttribute("aria-pressed", String(paused));
-        x.textContent = paused ? "Play motion" : "Pause motion";
-      }
-    });
-  }
-
-  // ---------------------------------------------------------------- the drum: twenty pictures on a turning cylinder
-  const drum = document.getElementById("drum");
-  if (drum && drum.getContext) {
-    const g = drum.getContext("2d");
-    const items = drum.dataset.items.split(";").map((s) => { const [src, kind] = s.split(" "); const im = new Image(); im.decoding = "async"; im.src = src; return { im, v: kind === "v" }; });
-    let w = 0, h = 0, dpr = 1, turn = 0, last = 0, scrollTurn = 0, visible = true;
-    const size = () => { dpr = Math.min(devicePixelRatio || 1, 2); w = drum.clientWidth; h = drum.clientHeight; drum.width = Math.round(w * dpr); drum.height = Math.round(h * dpr); };
-    function draw() {
-      g.setTransform(dpr, 0, 0, dpr, 0, 0);
-      g.clearRect(0, 0, w, h);
-      const phone = w < 600, k = phone ? 0.95 : 0.9;
-      const R = 800 * k, P = 3200 * k, cx = w / 2, cy = h * 0.5;
-      const list = [];
-      items.forEach((it, i) => {
-        const a = (i * 18 + turn + scrollTurn) * Math.PI / 180, c = Math.cos(a);
-        if (c < 0.08 || !it.im.complete || !it.im.naturalWidth) return;
-        const z = R * c, s = P / (P - z);
-        const bw = (it.v ? 112 : 232) * k, bh = (it.v ? 199 : 130) * k;
-        list.push({ it, z, x: cx + R * Math.sin(a) * s, y: cy + z * 0.12 * k * s, dw: bw * s * c, dh: bh * s, c });
-      });
-      list.sort((p, q) => p.z - q.z);
-      for (const p of list) {
-        const x = p.x - p.dw / 2, y = p.y - p.dh / 2, r = 14 * k * (p.dh / (130 * k));
-        g.save();
-        g.globalAlpha = Math.min(1, 0.35 + p.c);
-        g.beginPath(); g.roundRect ? g.roundRect(x, y, p.dw, p.dh, Math.min(r, p.dw / 2)) : g.rect(x, y, p.dw, p.dh); g.clip();
-        const im = p.it.im, ir = im.naturalWidth / im.naturalHeight, br = p.dw / p.dh / p.c;
-        // cover the box, then squeeze it by the angle (the picture turns away from you)
-        let sw = im.naturalWidth, sh = im.naturalHeight, sx = 0, sy = 0;
-        if (ir > br) { sw = sh * br; sx = (im.naturalWidth - sw) / 2; } else { sh = sw / br; sy = (im.naturalHeight - sh) / 2; }
-        g.drawImage(im, sx, sy, sw, sh, x, y, p.dw, p.dh);
-        g.restore();
-      }
-    }
-    function frame(t) {
-      const dt = last ? Math.min(t - last, 100) : 0; last = t;
-      if (!reduce && !paused) turn -= dt * 360 / 140000;
-      if (visible) draw();
-      requestAnimationFrame(frame);
-    }
-    size(); draw();
-    for (const it of items) it.im.addEventListener("load", draw, { once: true });
-    addEventListener("resize", () => { size(); draw(); });
-    if (!reduce) addEventListener("scroll", () => { if (!paused) scrollTurn = scrollY * -0.05; }, { passive: true });
-    if ("IntersectionObserver" in window) new IntersectionObserver((e) => { visible = e[0].isIntersecting; }).observe(drum);
-    requestAnimationFrame(frame);
-  }
+  const paused = false;
 
   // ---------------------------------------------------------------- the close: the word and the fogged glass
   // A blurred copy of the wallpaper with drops is painted on a canvas over the word "Crewcut"; the pointer wipes it

@@ -33,10 +33,10 @@
 <body>
 <!-- Built from the approved design mock (content-suite-plan/design-mock/landing.html, 16 Nov 2026), checked with the
      Taste skill (tasteskill 2.5.1, pinned in CI). Kind: software. Look: the client's own (Crewcut green and mint, the
-     wallpapers, Inter and Inter Tight 800). Hero: centred over the meadow sky. Section heads start on the container's left line (Taste's
+     wallpapers, Inter and Inter Tight 800). Hero: centred over the morning sky. Section heads start on the container's left line (Taste's
      rule; the mock centred them); the close sits on a glass card over the fog. Motion: all own code, no
-     library; it starts at load, nothing waits for the scroll, one button pauses it, reduced motion stops it.
-     Screens at 1440x900: hero 1, app 1, drum 1, window 1, work 2, crew 2, rendering 1, steps 1, closing 1. -->
+     library; it starts at load, nothing waits for the scroll, reduced motion stops it.
+     Sections: hero, the app, one window, crew, rendering, steps, closing. -->
 <header class="nav">
   <div class="wrap">
     <div class="nav__bar">
@@ -75,31 +75,8 @@
   <section class="stage" id="app" aria-label="The Crewcut app">
     <div class="wrap">
       <div class="stage__frame">
-        <picture><source media="(max-width: 760px)" srcset="media/app/episode-chat-phone.webp" width="720" height="1548"><img class="stage__shot" src="media/app/episode-dark-1760.webp" srcset="media/app/episode-dark-1200.webp 1200w, media/app/episode-dark-1760.webp 1760w, media/app/episode-dark-2400.webp 2400w" sizes="(min-width: 1360px) 1200px, calc(100vw - 32px)" alt="An episode in Crewcut: thumbnail A, B and C to pick from, the cut as a film strip with the Critic's notes, the 3D scenes and the rented GPU, and the crew chat on the right" width="1760" height="1206" fetchpriority="high"></picture>
-        <div class="workcard" role="img" aria-label="Working now: the Editor renders 3D scene 5 of 5 on a rented GPU, the Designer checks thumbnail B on a phone, the Critic compares cut v2 with your best video">
-          <p class="workcard__h">Working now</p>
-          <div class="workcard__j"><img src="assets/brand/crew/editor.svg" alt="" width="36" height="36"><div><b>Editor</b><span>3D scene 5 of 5, rented GPU</span><i class="workcard__bar"><i></i></i></div></div>
-          <div class="workcard__j"><img src="assets/brand/crew/designer.svg" alt="" width="36" height="36"><div><b>Designer</b><span>Thumbnail B, phone check</span></div></div>
-          <div class="workcard__j"><img src="assets/brand/crew/critic.svg" alt="" width="36" height="36"><div><b>Critic</b><span>Cut v2 against your best video</span></div></div>
-        </div>
-        <div class="phone stage__phone" aria-hidden="true">
-          <div class="phone__f"><div class="phone__s"><img class="phone__shot" src="media/app/prompter-phone-script.webp" alt="" width="390" height="844" loading="lazy"><div class="phone__island"></div></div></div>
-        </div>
+        <picture><source media="(max-width: 760px)" srcset="media/app/episode-chat-phone.webp" width="720" height="1548"><img class="stage__shot" src="media/app/stage-dark-1800.webp" srcset="media/app/stage-dark-1200.webp 1200w, media/app/stage-dark-1800.webp 1800w, media/app/stage-dark-2400.webp 2400w" sizes="(min-width: 1360px) 1200px, calc(100vw - 32px)" alt="An episode in Crewcut: thumbnail A, B and C to pick from, the cut as a film strip with the Critic's notes, the 3D scenes and the rented GPU, and the crew chat on the right" width="2880" height="2000" fetchpriority="high"></picture>
       </div>
-    </div>
-  </section>
-
-  <section class="proof" id="proof" aria-labelledby="proof-h">
-    <div class="wrap">
-      <div class="sh">
-        <h2 id="proof-h" class="display">Real YouTube videos. Real thumbnails.</h2>
-        <p class="lead">Thumbnails from the STRIQ channel, made with the studio that became Crewcut (shown in English), and the screens of the app that makes them.</p>
-      </div>
-      <div class="drum">
-        <canvas class="drum__canvas" id="drum" role="img" aria-label="Thumbnails from the STRIQ channel and screens of the Crewcut app on a turning drum" data-items="media/thumbs/website-100.jpg w;media/app/prompter-phone.webp v;media/app/drum-app-episode-dark.webp w;media/thumbs/local-ai.jpg w;media/app/drum-app.webp w;media/app/app-phone.webp v;media/thumbs/full-game.jpg w;media/app/drum-app-crew.webp w;media/thumbs/graphify.jpg w;media/app/drum-app-profile.webp w;media/app/app-episode-phone.webp v;media/thumbs/any-software.jpg w;media/app/drum-app-dark.webp w;media/thumbs/cost-020.jpg w;media/app/drum-app-episode.webp w;media/app/prompter-phone.webp v;media/thumbs/design-a.jpg w;media/app/drum-app-episode-dark.webp w;media/thumbs/design-b.jpg w;media/app/app-phone.webp v"></canvas>
-        <div class="drum__still" aria-hidden="true"><img src="media/thumbs/website-100.jpg" alt=""><img src="media/app/drum-app-episode-dark.webp" alt=""><img src="media/thumbs/local-ai.jpg" alt=""><img src="media/app/drum-app.webp" alt=""><img src="media/thumbs/full-game.jpg" alt=""></div>
-      </div>
-      <p class="proof__cap">Twenty of them, turning. Scroll and the drum turns with you. <button class="pause" type="button" aria-pressed="false" data-pause>Pause motion</button></p>
     </div>
   </section>
 
@@ -108,7 +85,7 @@
       <div class="sh">
         <h2 id="window-h" class="display">One window for the whole video</h2>
         <p class="lead">Episodes, Shorts, thumbnails and renders sit side by side. You see what each crew member works on and what it costs, while it happens.</p>
-        <div class="chips" role="list" aria-label="In the app"><span class="chip" role="listitem">Thumbnails A and B</span><span class="chip" role="listitem">3D scenes</span><span class="chip" role="listitem">Shorts from long videos</span><span class="chip" role="listitem">Keyword captions</span><span class="chip" role="listitem">Upload check</span><span class="chip" role="listitem">Your style pack</span><span class="chip" role="listitem">Blog post, planned</span></div>
+        <div class="chips" role="list" aria-label="In the app"><span class="chip" role="listitem">Thumbnails A and B</span><span class="chip" role="listitem">3D scenes</span><span class="chip" role="listitem">Shorts from long videos</span><span class="chip" role="listitem">Phone teleprompter</span><span class="chip" role="listitem">Keyword captions</span><span class="chip" role="listitem">Upload check</span><span class="chip" role="listitem">Your style pack</span><span class="chip" role="listitem">Blog post, planned</span></div>
       </div>
       <div class="scene">
         <picture>
@@ -128,25 +105,27 @@
           <p class="lead">Eight Claude Code agents with one job each. Every tile shows that job in the app.</p>
         </div>
         <ul class="crew">
-          <li class="role"><img class="role__bg" src="media/crew/showrunner.jpg" alt="" loading="lazy"><img class="role__av" src="assets/brand/crew/showrunner.svg" alt="" width="70" height="70"><div class="role__tx"><h3>Showrunner</h3><p>Plans the episode with you and keeps the crew on track.</p></div></li>
-          <li class="role"><img class="role__bg" src="media/crew/scout.jpg" alt="" loading="lazy"><img class="role__av" src="assets/brand/crew/scout.svg" alt="" width="70" height="70"><div class="role__tx"><h3>Scout</h3><p>Finds what your viewers search for and what already works.</p></div></li>
-          <li class="role"><img class="role__bg" src="media/crew/writer.jpg" alt="" loading="lazy"><img class="role__av" src="assets/brand/crew/writer.svg" alt="" width="70" height="70"><div class="role__tx"><h3>Writer</h3><p>Writes the script in your voice, from your links and notes.</p></div></li>
-          <li class="role"><img class="role__bg" src="media/crew/editor.jpg" alt="" loading="lazy"><img class="role__av" src="assets/brand/crew/editor.svg" alt="" width="70" height="70"><div class="role__tx"><h3>Editor</h3><p>Cuts your takes, adds keywords and keeps your pace.</p></div></li>
-          <li class="role"><img class="role__bg" src="media/crew/designer.jpg" alt="" loading="lazy"><img class="role__av" src="assets/brand/crew/designer.svg" alt="" width="70" height="70"><div class="role__tx"><h3>Designer</h3><p>Builds thumbnails from your face and your style pack.</p></div></li>
-          <li class="role"><img class="role__bg" src="media/crew/critic.jpg" alt="" loading="lazy"><img class="role__av" src="assets/brand/crew/critic.svg" alt="" width="70" height="70"><div class="role__tx"><h3>Critic</h3><p>Checks every cut against your best video before you see it.</p></div></li>
-          <li class="role"><img class="role__bg" src="media/crew/brand.jpg" alt="" loading="lazy"><img class="role__av" src="assets/brand/crew/brand.svg" alt="" width="70" height="70"><div class="role__tx"><h3>Brand</h3><p>Keeps colours, fonts and words the way your channel uses them.</p></div></li>
-          <li class="role"><img class="role__bg" src="media/crew/publisher.jpg" alt="" loading="lazy"><img class="role__av" src="assets/brand/crew/publisher.svg" alt="" width="70" height="70"><div class="role__tx"><h3>Publisher</h3><p>Prepares title, chapters and upload, then waits for your yes.</p></div></li>
+          <li class="role"><img class="role__bg" src="media/crew/showrunner.jpg" alt="" loading="lazy"><div class="role__tx"><div class="role__head"><img class="role__av" src="assets/brand/crew/showrunner.svg" alt="" width="36" height="36"><h3>Showrunner</h3></div><p>Plans the episode with you and keeps the crew on track.</p></div></li>
+          <li class="role"><img class="role__bg" src="media/crew/scout.jpg" alt="" loading="lazy"><div class="role__tx"><div class="role__head"><img class="role__av" src="assets/brand/crew/scout.svg" alt="" width="36" height="36"><h3>Scout</h3></div><p>Finds what your viewers search for and what already works.</p></div></li>
+          <li class="role"><img class="role__bg" src="media/crew/writer.jpg" alt="" loading="lazy"><div class="role__tx"><div class="role__head"><img class="role__av" src="assets/brand/crew/writer.svg" alt="" width="36" height="36"><h3>Writer</h3></div><p>Writes the script in your voice, from your links and notes.</p></div></li>
+          <li class="role"><img class="role__bg" src="media/crew/editor.jpg" alt="" loading="lazy"><div class="role__tx"><div class="role__head"><img class="role__av" src="assets/brand/crew/editor.svg" alt="" width="36" height="36"><h3>Editor</h3></div><p>Cuts your takes, adds keywords and keeps your pace.</p></div></li>
+          <li class="role"><img class="role__bg" src="media/crew/designer.jpg" alt="" loading="lazy"><div class="role__tx"><div class="role__head"><img class="role__av" src="assets/brand/crew/designer.svg" alt="" width="36" height="36"><h3>Designer</h3></div><p>Builds thumbnails from your face and your style pack.</p></div></li>
+          <li class="role"><img class="role__bg" src="media/crew/critic.jpg" alt="" loading="lazy"><div class="role__tx"><div class="role__head"><img class="role__av" src="assets/brand/crew/critic.svg" alt="" width="36" height="36"><h3>Critic</h3></div><p>Checks every cut against your best video before you see it.</p></div></li>
+          <li class="role"><img class="role__bg" src="media/crew/brand.jpg" alt="" loading="lazy"><div class="role__tx"><div class="role__head"><img class="role__av" src="assets/brand/crew/brand.svg" alt="" width="36" height="36"><h3>Brand</h3></div><p>Keeps colours, fonts and words the way your channel uses them.</p></div></li>
+          <li class="role"><img class="role__bg" src="media/crew/publisher.jpg" alt="" loading="lazy"><div class="role__tx"><div class="role__head"><img class="role__av" src="assets/brand/crew/publisher.svg" alt="" width="36" height="36"><h3>Publisher</h3></div><p>Prepares title, chapters and upload, then waits for your yes.</p></div></li>
         </ul>
     </div>
   </section>
 
-  <section class="render" id="render" aria-label="Rendering and recording">
+  <section class="render" id="render" aria-label="Rendering">
     <div class="wrap">
-      <div class="two">
+      <div class="solo">
         <article class="feat card">
           <img class="feat__bg" src="media/wallpapers/green-dusk-1280.jpg" srcset="media/wallpapers/green-dusk-1280.jpg 1280w, media/wallpapers/green-dusk-2560.jpg 2560w" sizes="(max-width: 760px) 1100px, 1180px" alt="" loading="lazy">
-          <h3 class="display">Fast with a rented GPU. Free without one.</h3>
-          <p>3D scenes render on your own machine for free, or in minutes on a rented graphics card. You see the price first. The machine is deleted as soon as the frames are home.</p>
+          <div class="feat__text">
+            <h3 class="display">Fast with a rented GPU. Free without one.</h3>
+            <p>3D scenes render on your own machine for free, or in minutes on a rented graphics card. You see the price first. The machine is deleted as soon as the frames are home.</p>
+          </div>
           <div class="feat__vis">
             <div class="gpucard" role="img" aria-label="A card from the Editor: 3 hours 10 minutes on this machine for free, or 12 minutes on a rented RTX 4090 for about $0.60 with a cap of $1.50">
               <div class="gpucard__opts">
@@ -155,16 +134,6 @@
               </div>
               <div class="gpucard__renders"><img src="media/frames/waterfront.jpg" alt="" loading="lazy"><img src="media/frames/chair.jpg" alt="" loading="lazy"><img src="media/frames/interior.jpg" alt="" loading="lazy"><img src="media/frames/street.jpg" alt="" loading="lazy"></div>
               <div class="gpucard__go"><span class="gpucard__btn">Rent for $0.60</span><small>Or keep it free and wait</small></div>
-            </div>
-          </div>
-        </article>
-        <article class="feat card">
-          <img class="feat__bg" src="media/wallpapers/rhine-evening-1280.jpg" srcset="media/wallpapers/rhine-evening-1280.jpg 1280w, media/wallpapers/rhine-evening-2560.jpg 2560w" sizes="(max-width: 760px) 1100px, 1180px" alt="" loading="lazy">
-          <h3 class="display">Your phone is the Crewcut teleprompter</h3>
-          <p>Crewcut serves the script as a page on your own network. Scan the QR code with any phone and read at your pace, with a remote if you like.</p>
-          <div class="feat__vis">
-            <div class="phone feat__phone" aria-hidden="true">
-              <div class="phone__f"><div class="phone__s"><img class="phone__shot" src="media/app/prompter-phone-script.webp" alt="" width="390" height="844" loading="lazy"><div class="phone__island"></div></div></div>
             </div>
           </div>
         </article>
