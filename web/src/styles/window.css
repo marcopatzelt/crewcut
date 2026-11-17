@@ -495,10 +495,10 @@
 }
 
 .home-scroll {
-  padding: 6px 30px 24px 22px;
+  padding: 6px 30px 20px 22px;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 20px;
 }
 
 .home-head {
@@ -665,7 +665,7 @@
 .need-media {
   position: relative;
   display: block;
-  aspect-ratio: 16 / 7.4;
+  aspect-ratio: 16 / 6.8;
   background: var(--media-ground);
 }
 
@@ -1043,12 +1043,24 @@
   color: var(--ink-3);
 }
 
-/* Working now scrolls inside its card; Spend stays whole at the foot (rule 14). */
+/* Working now scrolls inside its card and fades out at its foot when there is more; Spend stays whole (rule 14). */
 .rail-card.working {
   flex: 0 1 auto;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.crew-rail {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  padding-bottom: 18px;
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 18px), transparent);
+  mask-image: linear-gradient(to bottom, black calc(100% - 18px), transparent);
 }
 
 .rail .hint,
@@ -1306,8 +1318,8 @@
 .media-scroll {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 4px 22px 12px 10px;
+  gap: 12px;
+  padding: 4px 22px 8px 10px;
 }
 
 .ep-head {
@@ -1743,7 +1755,7 @@
   grid-template-columns: 1.7fr 1fr 1fr;
   grid-template-rows: 1fr 1fr;
   gap: 10px;
-  height: 196px;
+  height: 184px;
   margin: 0;
   padding: 0;
   list-style: none;
