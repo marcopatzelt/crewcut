@@ -2,12 +2,13 @@
 
     plan    show inserts, frames, cues and what is already rendered
     2d      render the 2D inserts (Chromium) and encode them
+    motion  render the motion graphics inserts (EffectCraft): here or on one rented machine (render.location)
     3d      render the 3D inserts: here (--local) or on rented GPUs (--rented); without a flag the estimate decides,
             and a card asks the user before any money is spent
     probe   still frames at half size, to look at before the big render
     cut     the finished video with sound
     shown   lock the output right after someone has seen it
-    all     2d, 3d, cut
+    all     2d, motion, 3d, cut
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from .. import approvals, db, events, paths
-from . import assemble, blender, html, measure, media
+from . import assemble, blender, html, measure, media, motion
 from .plan import Plan, PlanError
 
 RENT_FOR = "render-3d"
@@ -56,6 +57,50 @@ def progress_fn(plan: Plan) -> Callable[[str, float | None], None]:
 def render_2d(plan: Plan, ids: list[str] | None = None, images_only: bool = False,
               runner: media.Runner = media.run, log: Callable = print) -> list[dict]:
     return html.render_2d(plan, ids, images_only, runner, log)
+
+
+# ---- motion graphics: here or on one rented machine --------------------------------------------------------------
+def render_motion(plan: Plan, ids: list[str] | None = None, draft: bool = False, location: str | None = None,
+                  compute=None, runner: media.Runner = media.run, log: Callable = print, backend=None,
+                  max_usd: float | None = None) -> dict:
+    """crewcut.render.motion.render_motion with the job's progress line; a spend card or a refusal of the compute
+    session becomes Waiting (exit code 3)."""
+    where = motion.location(location)
+    if where == "rented" and compute is None:
+        compute = load_compute()
+    try:
+        return motion.render_motion(plan, ids, draft, where, compute, runner=runner, log=log,
+                                    progress=progress_fn(plan), backend=backend, max_usd=max_usd)
+    except Exception as e:
+        mapped = _compute_error(compute, e) if compute is not None else None
+        if mapped:
+            raise mapped from e
+        raise
+
+
+def motion_notes(plan: Plan) -> list[str]:
+    """What `render plan` says about motion graphics: where they render, the engine, sound events, the pack's
+    preference for motion over the HTML counter and keyword."""
+    out = []
+    ms = plan.of_kind("motion")
+    where = motion.location()
+    engine = motion.engine_available()
+    if ms:
+        out.append(f"motion graphics render {'here' if where == 'local' else 'on one rented machine'} "
+                   f"(render.location = {where})")
+        if where == "local" and not engine:
+            skip = plan.p.get("motion_without_engine") == "skip"
+            out.append("effectcraft-cli is missing here: " + ("render all leaves the motion inserts out of the cut "
+                       "(motion_without_engine: skip)" if skip else "render motion and render all will stop"))
+        out += plan.motion_sounds()[1]
+    prefer = plan.motion_style().get("prefer")
+    if prefer == "motion" and (engine or where == "rented"):
+        better = {"counter": "number_roll", "keyword": "keyword_pop"}
+        for x in plan.of_kind("2d"):
+            if x.scene in better:
+                out.append(f"{x.id}: the pack prefers motion graphics (motion.prefer); {better[x.scene]} does what "
+                           f"the 2D {x.scene} does")
+    return out
 
 
 # ---- 3D: here or rented ------------------------------------------------------------------------------------------

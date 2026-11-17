@@ -3,6 +3,7 @@ compute session with a fake rented machine. Nothing here runs effectcraft-cli, f
 
 from __future__ import annotations
 
+import io
 import json
 import math
 import re
@@ -60,11 +61,24 @@ def frames_between(start: float, end: float, fps: int) -> range:
     return range(math.ceil(start * fps - 1e-9), math.ceil(end * fps - 1e-9))
 
 
+_PNG: dict = {}
+
+
+def png_bytes(size, alpha: bool) -> bytes:
+    key = (tuple(size), alpha)
+    if key not in _PNG:
+        buf = io.BytesIO()
+        Image.new("RGBA" if alpha else "RGB", tuple(size)).save(buf, "PNG")
+        _PNG[key] = buf.getvalue()
+    return _PNG[key]
+
+
 def write_frames(pattern: str, start: float, end: float, fps: int, size, alpha: bool) -> None:
     folder = Path(pattern).parent
     folder.mkdir(parents=True, exist_ok=True)
+    data = png_bytes(size, alpha)
     for f in frames_between(start, end, fps):
-        Image.new("RGBA" if alpha else "RGB", size).save(folder / f"f_{f:05d}.png")
+        (folder / f"f_{f:05d}.png").write_bytes(data)
 
 
 class FakeBackend:
