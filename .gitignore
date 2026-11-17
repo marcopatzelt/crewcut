@@ -29,6 +29,8 @@ web/.vite/
 *.mp4
 # the launch film (README and landing page); the master is a release asset, never in git
 !docs/launch/*.mp4
+# the landing page's meadow loops (hero and close), small web files
+!site/media/meadow/*.mp4
 *.mov
 *.mkv
 *.wav
