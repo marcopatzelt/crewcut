@@ -175,6 +175,72 @@ jobs:
           docker rm -f r2 > /dev/null
           echo "rootless: Crewcut runs as you"
 
+  engine-connect:
+    name: Connect Claude against the real Claude Code CLI (link, code field, a wrong code)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: base
+          platforms: linux/amd64
+          load: true
+          tags: crewcut:ci
+          cache-from: type=gha,scope=base-amd64
+      - name: The container installs the real Claude Code on its first start (no account)
+        run: |
+          mkdir -p s-connect
+          docker run -d --name eng -p 127.0.0.1:4754:4747 -e CREWCUT_INSTALL_SKILLS=0 -v "$PWD/s-connect:/studio" crewcut:ci
+          for i in $(seq 1 150); do curl -fsS http://localhost:4754/api/health > /dev/null 2>&1 && break; sleep 4; done
+          curl -fsS http://localhost:4754/api/health
+          docker exec eng sh -c 'claude --version'
+      - name: The sign-in link comes out, the CLI waits for the code, a wrong code plus Enter gets a clean refusal
+        run: |
+          docker exec -i -e CREWCUT_CONNECT_DEBUG=1 eng python3 - <<'PY'
+          import json, select, subprocess, sys, time
+          p = subprocess.Popen(["crewcut", "engine", "connect", "claude", "--print-token"], text=True,
+                               stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=sys.stderr)
+          def step(timeout):
+              end = time.time() + timeout
+              while time.time() < end:
+                  if select.select([p.stdout], [], [], 1)[0]:
+                      line = p.stdout.readline()
+                      if not line:
+                          return None
+                      try:
+                          return json.loads(line)
+                      except ValueError:
+                          continue
+              return None
+          first = step(180)
+          print("first step:", first, flush=True)
+          assert first and first["step"] == "url", first
+          time.sleep(3)
+          assert p.poll() is None, "the CLI stopped instead of waiting for the code"
+          p.stdin.write("wrong-code-from-ci-0000#state-ci\n"); p.stdin.flush()
+          start = time.time()
+          answer = step(150)
+          print("answer:", answer, "after", round(time.time() - start, 1), "s", flush=True)
+          assert answer and answer["step"] == "error", answer
+          text = answer["text"]
+          assert text.startswith("Claude did not accept the code"), text   # the Enter went in and Claude answered
+          assert "*" not in text and "wrong-code" not in text and "state-ci" not in text and "\x1b" not in text, text
+          print("ok: link, code field, Enter, clean refusal")
+          PY
+      - if: always()
+        run: docker logs eng 2>&1 | tail -30; docker rm -f eng > /dev/null 2>&1 || true
+
   base-arm64:
     name: base, linux/arm64 (native runner)
     runs-on: ubuntu-24.04-arm

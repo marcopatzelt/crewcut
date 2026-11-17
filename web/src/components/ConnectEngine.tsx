@@ -4,7 +4,7 @@
 import { Button } from "@astryxdesign/core/Button";
 import { LoaderCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { api } from "../api/client";
+import { api, ApiError } from "../api/client";
 import type { ClaudeAccount, EngineLogin } from "../api/types";
 import { desktop } from "../lib/desktop";
 import { messageOf, refreshState } from "../store/actions";
@@ -21,9 +21,10 @@ function ConnectCodex() {
   const [login, setLogin] = useState<EngineLogin["codex"] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const waiting = login?.status === "waiting" || login?.status === "starting" || login?.status === "installing";
+  const inApp = Boolean(desktop()?.codexWait);
 
   useEffect(() => {
-    if (!waiting) return;
+    if (!waiting || inApp) return; // in the desktop app codexWait answers; the web page asks the server
     const t = setInterval(() => {
       api
         .engineLogin()
@@ -40,12 +41,25 @@ function ConnectCodex() {
         .catch(() => undefined);
     }, 3000);
     return () => clearInterval(t);
-  }, [waiting]);
+  }, [waiting, inApp]);
 
   async function start() {
     setError(null);
     const bridge = desktop();
     try {
+      if (bridge?.codexBegin && bridge.codexWait) {
+        setLogin({ installed: true, connected: false, status: "starting" });
+        const r = await bridge.codexBegin();
+        if (!r.url) {
+          setLogin({ installed: true, connected: false, status: "failed", text: r.text });
+          return;
+        }
+        setLogin({ installed: true, connected: false, status: "waiting", url: r.url, code: r.code });
+        const done = await bridge.codexWait();
+        setLogin({ installed: true, connected: done.connected, status: done.connected ? "connected" : "failed", text: done.text });
+        if (done.connected) refreshState();
+        return;
+      }
       if (bridge) {
         const r = await bridge.connect("codex");
         setLogin({ installed: true, connected: r.connected, status: r.connected ? "connected" : "failed", text: r.text });
@@ -109,7 +123,27 @@ export function ConnectEngine() {
 
   async function connect() {
     setError(null);
+    setCode(""); // a new sign-in has a new code
     const bridge = desktop();
+    if (bridge?.claudeBegin) {
+      // the desktop app: it opens Claude's page in the browser itself; the field appears as soon as the link is out
+      void bridge.cancelSignIn?.().catch(() => undefined);
+      setPhase("opening");
+      try {
+        const r = await bridge.claudeBegin();
+        if (!r.url) {
+          setError(r.text ?? "Couldn't start the sign-in.");
+          setPhase("idle");
+          return;
+        }
+        setUrl(r.url);
+        setPhase("code");
+      } catch (e) {
+        setError(`Couldn't start the sign-in. ${messageOf(e)}`);
+        setPhase("idle");
+      }
+      return;
+    }
     if (bridge) {
       setPhase("opening");
       try {
@@ -147,18 +181,40 @@ export function ConnectEngine() {
   }
 
   async function send() {
-    if (!code.trim()) return;
+    const value = code.replace(/\s+/g, "");
+    if (!value) return;
     setError(null);
     setPhase("sending");
+    const bridge = desktop();
+    if (bridge?.claudeCode) {
+      try {
+        const r = await bridge.claudeCode(value);
+        if (r.connected) {
+          setAccount(r.account);
+          setCode("");
+          setPhase("done");
+          refreshState();
+          return;
+        }
+        // a malformed code keeps the field; anything else ended this sign-in: start again
+        setError(r.text ?? "Claude did not accept the code.");
+        setPhase(r.text?.startsWith("That does not look like") ? "code" : "idle");
+      } catch (e) {
+        setError(messageOf(e));
+        setPhase("idle");
+      }
+      return;
+    }
     try {
-      const r = await api.claudeCode(code.trim());
+      const r = await api.claudeCode(value);
       setAccount(r.account);
       setCode("");
       setPhase("done");
       refreshState();
     } catch (e) {
       setError(messageOf(e));
-      setPhase("code");
+      // 400: the code had the wrong shape and the sign-in still waits; otherwise it has ended: start again
+      setPhase(e instanceof ApiError && e.status === 400 ? "code" : "idle");
     }
   }
 
@@ -205,7 +261,7 @@ export function ConnectEngine() {
           Opening Claude's sign-in…
         </p>
       ) : (
-        <Button label="Connect Claude" variant="primary" clickAction={() => void connect()} />
+        <Button label={error ? "Start again" : "Connect Claude"} variant="primary" clickAction={() => void connect()} />
       )}
       {error ? (
         <p className="connect-error" role="alert">

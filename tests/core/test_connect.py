@@ -2,6 +2,7 @@
 
 import json
 import stat
+import sys
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,29 +11,45 @@ from crewcut.engines import connect
 
 TOKEN = "sk-ant-oat01-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abc"
 
-FAKE_CLAUDE = r"""#!/bin/sh
-if [ "$1" = "setup-token" ]; then
-  [ "$BROWSER" = "true" ] || { echo "BROWSER is not true"; exit 9; }
-  [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ] || { echo "an old token leaked in"; exit 9; }
-  printf '\033[1mBrowser didn'"'"'t open? Use the url below to sign in:\033[0m\n\n'
-  printf 'https://evil.example/oauth/authorize?x=1\n'
-  printf 'https://claude.ai/oauth/authorize?code=true&client_id=abc&state=xyz\n\nPaste code here if prompted > '
-  read code
-  [ "$code" = "goodcode#state1" ] || { printf '\nInvalid code\n'; exit 1; }
-  printf '\n\033[32mLong-lived authentication token created successfully\033[0m\n\nYour OAuth token (valid for 1 year):\n\n'
-  printf 'sk-ant-oat01-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abc\n'
-  exit 0
-fi
-if [ "$1" = "auth" ]; then
-  printf '{"loggedIn": true, "email": "me@example.org", "authMethod": "oauth_token", "secret": "x"}\n'
-fi
+# A stand-in for the real CLI's terminal UI: it switches its terminal to raw mode, echoes the pasted code masked (as
+# the real one does, with charset bytes), and submits only on an Enter key that arrives on its own; text and Enter in
+# one chunk count as pasted text, as in the real CLI.
+FAKE_CLAUDE = r"""#!PYTHON
+import os, sys, termios, tty, json
+if sys.argv[1:2] == ["auth"]:
+    print(json.dumps({"loggedIn": True, "email": "me@example.org", "authMethod": "oauth_token", "secret": "x"}))
+    sys.exit(0)
+assert sys.argv[1:2] == ["setup-token"]
+if os.environ.get("BROWSER") != "true" or os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+    print("bad environment"); sys.exit(9)
+out = sys.stdout
+out.write("\x1b[1mBrowser didn't open? Use the url below to sign in:\x1b[0m\r\n\r\n")
+out.write("https://evil.example/oauth/authorize?x=1\r\n")
+out.write("\x1b]8;;https://claude.ai/oauth/authorize?code=true&client_id=abc&state=xyz\x07"
+          "https://claude.ai/oauth/authorize?code=true&client_id=abc&state=xyz\x1b]8;;\x07\r\n\r\n")
+out.write("Paste code here if prompted > "); out.flush()
+fd = sys.stdin.fileno()
+tty.setraw(fd)
+typed = ""
+while True:
+    chunk = os.read(fd, 4096).decode()
+    if chunk == "\r":
+        break
+    typed += chunk.replace("\r", "")
+    out.write("\r\x1b[2KPaste code here if prompted > \x1b(B\x0f" + "*" * max(0, len(typed) - 6) + typed[-6:])
+    out.flush()
+if typed != "goodcode#state1":
+    out.write("\r\n\x1b[31mOAuth error: Invalid code\x1b[0m\r\n"); out.flush(); sys.exit(1)
+out.write("\r\n\x1b[32mLong-lived authentication token created successfully\x1b[0m\r\n\r\n")
+out.write("Your OAuth token (valid for 1 year):\r\n\r\nsk-ant-oat01-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abc\r\n")
+out.flush()
 """
 
 
 @pytest.fixture
 def fake_claude(tmp_path):
     p = tmp_path / "claude"
-    p.write_text(FAKE_CLAUDE)
+    p.write_text(FAKE_CLAUDE.replace("#!PYTHON", "#!" + sys.executable))
     p.chmod(p.stat().st_mode | stat.S_IEXEC)
     return str(p)
 
@@ -96,11 +113,26 @@ def test_the_sign_in_gives_a_link_then_a_token(fake_claude, engine_dir, monkeypa
     assert s.finish("goodcode#state1", timeout=10) == TOKEN
 
 
-def test_a_wrong_code_says_so(fake_claude, engine_dir):
+def test_a_wrong_code_says_so_without_echoing_the_code(fake_claude, engine_dir):
     s = connect.ClaudeSignIn(fake_claude)
     s.start(timeout=10)
-    with pytest.raises(RuntimeError, match="did not accept the code"):
+    with pytest.raises(RuntimeError) as err:
         s.finish("wrongcode#state1", timeout=10)
+    text = str(err.value)
+    assert text == "Claude did not accept the code. Claude Code says: OAuth error: Invalid code"
+    assert "*" not in text and "state1" not in text and "\x1b" not in text
+
+
+def test_spaces_and_line_breaks_from_copying_are_dropped(fake_claude, engine_dir):
+    s = connect.ClaudeSignIn(fake_claude)
+    s.start(timeout=10)
+    assert s.finish("  goodcode#\nstate1 \n", timeout=10) == TOKEN
+
+
+def test_cleaning_drops_charset_switches_and_control_bytes():
+    assert connect.clean("a\x1b(B\x0fb\x1b[31mc\x1b[0m\r\n") == "abc\n\n"
+    assert connect.cli_error("Paste > \x1b(B\x0f*****IgFcAg\r\nOAuth error: 400\r\n") == "OAuth error: 400"
+    assert connect.cli_error("Paste > *****IgFcAg error") is None
 
 
 def test_the_stored_token_is_private_and_the_environment_wins(engine_dir, monkeypatch):

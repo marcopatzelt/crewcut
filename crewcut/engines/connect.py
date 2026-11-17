@@ -34,6 +34,10 @@ URL_RE = re.compile(r"https://[^\s\"'<>\x1b]+")
 TOKEN_RE = re.compile(r"sk-ant-oat\d\d-[A-Za-z0-9_\-]{20,}")
 CODE_RE = re.compile(r"^[A-Za-z0-9_\-#.:]{8,1024}$")
 ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[=>]")
+# character-set switches (ESC ( B, SI, SO) and other control bytes a terminal UI sends besides its text
+CTRL_RE = re.compile(r"\x1b[()*+][0-9A-Za-z]|[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+# a line of the CLI that says what went wrong (never the echo of the pasted code, which it masks with asterisks)
+ERROR_RE = re.compile(r"\b(error|invalid|failed|expired|denied|unauthori[sz]ed|not valid|try again)\b", re.I)
 TOKEN_ENV = "CLAUDE_CODE_OAUTH_TOKEN"
 
 _from_store = False  # True when the token in os.environ came from the stored file (so disconnect may remove it)
@@ -131,7 +135,16 @@ def drop_to_studio_owner() -> None:
 # ---------- the Claude sign-in, driven in a pseudo-terminal ----------
 
 def clean(text: str) -> str:
-    return ANSI_RE.sub("", text).replace("\r", "")
+    return CTRL_RE.sub("", ANSI_RE.sub("", text).replace("\r", "\n"))
+
+
+def cli_error(text: str) -> str | None:
+    """The CLI's own error line in its output, if there is one; never a line with the masked echo of the code."""
+    for line in reversed(clean(text).splitlines()):
+        line = line.strip()
+        if line and ERROR_RE.search(line) and "*" not in line and len(line) <= 240:
+            return line
+    return None
 
 
 def sign_in_url(text: str) -> str | None:
@@ -204,31 +217,45 @@ class ClaudeSignIn:
         self.reader.start()
         url = self._wait_for(sign_in_url, timeout)
         if not url:
-            tail = clean(self.out).strip()[-300:]
+            err = cli_error(self.out)
             self.close()
-            raise RuntimeError("Claude Code did not show a sign-in link." + (f" It said: {tail}" if tail else ""))
+            raise RuntimeError("Claude Code did not show a sign-in link." + (f" It says: {err}" if err else ""))
         return url
 
     def finish(self, code: str, timeout: float = 90) -> str:
-        code = code.strip()
+        """Types the code into the CLI and presses Enter, then waits for the token. The code is the whole text Claude's
+        page shows (code#state); spaces and line breaks from copying are dropped."""
+        code = re.sub(r"\s+", "", code)
         if not CODE_RE.fullmatch(code):
             raise ValueError("That does not look like the code from Claude's page. Copy it again.")
         if self.master is None or not self.proc or self.proc.poll() is not None:
             raise RuntimeError("The sign-in has ended. Start it again.")
         with self.lock:
             seen = len(self.out)
-        os.write(self.master, code.encode() + b"\r")
-        def found(text: str) -> str | None:
-            m = TOKEN_RE.search(clean(text[seen:]))
-            return m.group(0) if m else None
+        # The terminal UI reads its input in raw mode: text and Enter in one write would count as pasted text, so the
+        # Enter key (a carriage return) goes in its own write after a moment.
+        os.write(self.master, code.encode())
+        time.sleep(0.5)
+        os.write(self.master, b"\r")
 
-        token = self._wait_for(found, timeout)
-        if not token:
-            tail = clean(self.out[seen:]).strip()[-300:]
-            self.close()
-            raise RuntimeError("Claude did not accept the code." + (f" It said: {tail}" if tail else ""))
+        def found(text: str) -> tuple[str, str] | None:
+            new = text[seen:]
+            m = TOKEN_RE.search(clean(new))
+            if m:
+                return ("token", m.group(0))
+            err = cli_error(new)
+            return ("error", err) if err else None
+
+        hit = self._wait_for(found, timeout)
+        exited = self.proc.poll() is not None
         self.close()
-        return token
+        if hit and hit[0] == "token":
+            return hit[1]
+        if hit:
+            raise RuntimeError(f"Claude did not accept the code. Claude Code says: {hit[1]}")
+        if exited:
+            raise RuntimeError("Claude did not accept the code. Copy the whole code from Claude's page and start again.")
+        raise RuntimeError("Claude did not answer after the code was sent. Start again.")
 
     def close(self) -> None:
         if self.proc and self.proc.poll() is None:
@@ -301,6 +328,8 @@ def cli_connect(name: str, print_token: bool) -> int:
         token = session.finish(line)
     except (RuntimeError, ValueError) as e:
         _say({"step": "error", "text": str(e)})
+        if os.environ.get("CREWCUT_CONNECT_DEBUG") == "1":  # CI: what the CLI showed, cleaned (its echo is masked)
+            print(clean(session.out)[-2000:], file=sys.stderr, flush=True)
         return 1
     finally:
         session.close()

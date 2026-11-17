@@ -272,9 +272,16 @@ async function restartWithToken(): Promise<boolean> {
 
 // ---------- Connect Claude and Codex (crewcut engine connect, JSON lines) ----------
 
+/** Ends a running sign-in: the docker client, and inside the container the CLI it started (a killed
+ *  `docker compose exec` client does not stop the process in the container by itself). */
 function stopSignIn(): void {
-  signIn?.steps.stop();
+  if (!signIn) return;
+  signIn.steps.stop();
   signIn = null;
+  const kill = stack.exec(stackConfig(), ["sh", "-c",
+    // [c]: the pattern must not match this shell's own command line
+    "pkill -f '[c]rewcut engine connect' ; pkill -f '[c]laude setup-token' ; pkill -f '[c]odex login --device-auth' ; true"]);
+  kill.on("error", () => undefined);
 }
 
 async function claudeBegin(): Promise<{ url?: string; text?: string }> {
@@ -283,7 +290,8 @@ async function claudeBegin(): Promise<{ url?: string; text?: string }> {
   const steps = new Steps(stack.exec(stackConfig(), ["crewcut", "engine", "connect", "claude",
     ...(keychain ? ["--print-token"] : [])]));
   signIn = { engine: "claude", steps };
-  const s = await steps.next((x) => x.step === "url", 15 * 60_000);
+  // the link comes within seconds; a first start may install Claude Code before (a "status" step), so 5 minutes
+  const s = await steps.next((x) => x.step === "url", 5 * 60_000);
   if (s.step !== "url" || !s.url) {
     stopSignIn();
     return { text: s.text ?? "Claude Code did not show a sign-in link." };
@@ -298,7 +306,7 @@ async function claudeBegin(): Promise<{ url?: string; text?: string }> {
 
 async function claudeCode(code: string): Promise<{ connected: boolean; text?: string; account?: Step["account"] }> {
   if (!signIn || signIn.engine !== "claude") return { connected: false, text: "The sign-in has ended. Start it again." };
-  const clean = String(code ?? "").trim();
+  const clean = String(code ?? "").replace(/\s+/g, "");
   if (!CODE_RE.test(clean)) return { connected: false, text: "That does not look like the code from Claude's page." };
   const steps = signIn.steps;
   steps.sendLine(clean);
@@ -409,11 +417,12 @@ function registerIpc(): void {
     if (r.ok && !settings.get().onboarded) settings.set({ onboarded: true });
     return r;
   });
-  own("claude:begin", () => claudeBegin());
-  own("claude:code", (_e, code: string) => claudeCode(code));
-  own("codex:begin", () => codexBegin());
-  own("codex:wait", () => codexWait());
-  own("signin:cancel", () => stopSignIn());
+  // the sign-in steps: from the app's own pages and from the local Crewcut page (its Connect Claude card)
+  page("claude:begin", () => claudeBegin());
+  page("claude:code", (_e, code: string) => claudeCode(code));
+  page("codex:begin", () => codexBegin());
+  page("codex:wait", () => codexWait());
+  page("signin:cancel", () => stopSignIn());
   own("engine:disconnect", (_e, engine: "claude" | "codex") => disconnect(engine === "codex" ? "codex" : "claude"));
   own("app:open", () => {
     void main?.loadURL(APP_URL);

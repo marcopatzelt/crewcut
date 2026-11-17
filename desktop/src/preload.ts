@@ -13,6 +13,13 @@ const forPage = {
   connect: (engine: "claude" | "codex") => call("page:connect", engine),
   openSettings: () => void call("page:settings"),
   setTheme: (theme: "light" | "dark") => void call("page:theme", theme),
+  // Connect Claude in the page itself: the app opens the sign-in in the browser and keeps the token in the keychain;
+  // the page only ever sees the link and the answer, never the token.
+  claudeBegin: () => call("claude:begin"),
+  claudeCode: (code: string) => call("claude:code", code),
+  codexBegin: () => call("codex:begin"),
+  codexWait: () => call("codex:wait"),
+  cancelSignIn: () => call("signin:cancel"),
 };
 
 const forOwnPages = {
@@ -30,11 +37,6 @@ const forOwnPages = {
     ipcRenderer.on("stack:progress", handler);
     return () => ipcRenderer.off("stack:progress", handler);
   },
-  claudeBegin: () => call("claude:begin"),
-  claudeCode: (code: string) => call("claude:code", code),
-  codexBegin: () => call("codex:begin"),
-  codexWait: () => call("codex:wait"),
-  cancelSignIn: () => call("signin:cancel"),
   disconnect: (engine: "claude" | "codex") => call("engine:disconnect", engine),
   openCrewcut: () => call("app:open"),
   closeSettings: (result: unknown) => call("settings:close", result),

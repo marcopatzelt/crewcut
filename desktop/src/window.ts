@@ -121,7 +121,7 @@ export function createSettingsWindow(parent: BrowserWindow, preload: string, uiD
   const theme = themeNow();
   const win = new BrowserWindow({
     parent,
-    modal: !isMac,
+    modal: false,
     width: 560,
     height: 640,
     resizable: false,
@@ -136,6 +136,9 @@ export function createSettingsWindow(parent: BrowserWindow, preload: string, uiD
     webPreferences: { preload, contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false },
   });
   win.once("ready-to-show", () => win.show());
+  setTimeout(() => {
+    if (!win.isDestroyed() && !win.isVisible()) win.show(); // never a settings window nobody sees
+  }, 2000);
   void win.loadFile(join(uiDir, "onboarding.html"), { hash: `settings${focus ? `-${focus}` : ""}` });
   return win;
 }

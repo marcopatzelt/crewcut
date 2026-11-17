@@ -176,12 +176,24 @@ describe("Connect Claude", () => {
     expect(calls.filter((c) => c.path === "/api/engine/claude/code")).toHaveLength(2);
   });
 
-  it("in the desktop app the app signs in itself (keychain) and the page never sees the token", async () => {
-    const connect = vi.fn(async () => ({ connected: true, account: { email: "me@example.org" } }));
-    Object.assign(window, { crewcutDesktop: { platform: "darwin", connect, openSettings: vi.fn(), setTheme: vi.fn() } });
+  it("in the desktop app: the field comes with the link, the app keeps the token, a refused code says so", async () => {
+    let tries = 0;
+    const claudeBegin = vi.fn(async () => ({ url: "https://claude.ai/oauth/authorize?code=true&state=s" }));
+    const claudeCode = vi.fn(async (code: string) => {
+      tries += 1;
+      return tries === 1
+        ? { connected: false, text: "Claude did not accept the code. Claude Code says: OAuth error: Invalid code" }
+        : { connected: code === "abcdefgh#s", account: { email: "me@example.org" } };
+    });
+    const cancelSignIn = vi.fn(async () => undefined);
+    Object.assign(window, {
+      crewcutDesktop: { platform: "linux", connect: vi.fn(), openSettings: vi.fn(), setTheme: vi.fn(), claudeBegin, claudeCode,
+        cancelSignIn },
+    });
     onTestFinished(() => {
       delete (window as Window & { crewcutDesktop?: unknown }).crewcutDesktop;
     });
+    vi.stubGlobal("open", vi.fn());
     const calls = mockApi({
       "GET /api/state": notConnected(),
       "GET /api/episodes/_onboarding/messages": [],
@@ -191,8 +203,17 @@ describe("Connect Claude", () => {
     render(<App />);
     expect(await screen.findByRole("heading", { level: 1, name: "Connect Claude first." })).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Connect Claude" }));
+    let field = await screen.findByRole("textbox", { name: "Code from Claude's page" });
+    expect(window.open).not.toHaveBeenCalled(); // the app opened Claude's page in the browser itself
+    await userEvent.type(field, "wrongcode#s{Enter}");
+    expect(await screen.findByText(/Claude did not accept the code\. Claude Code says: OAuth error: Invalid code/)).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Start again" }));
+    expect(cancelSignIn).toHaveBeenCalledTimes(2); // each start ends an older sign-in first
+    field = await screen.findByRole("textbox", { name: "Code from Claude's page" });
+    await userEvent.type(field, "  abcdefgh#s \n");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
     expect(await screen.findByText(/Claude is connected as me@example.org/)).toBeTruthy();
-    expect(connect).toHaveBeenCalledWith("claude");
+    expect(claudeCode).toHaveBeenLastCalledWith("abcdefgh#s");
     expect(calls.some((c) => c.path.startsWith("/api/engine/"))).toBe(false);
   });
 

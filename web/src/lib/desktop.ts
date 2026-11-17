@@ -5,8 +5,15 @@ import type { ClaudeAccount } from "../api/types";
 export interface DesktopBridge {
   /** "darwin", "win32" or "linux". */
   platform: string;
-  /** The app's own sign-in: it keeps the Claude token in the system keychain and restarts the container with it. */
+  /** Older apps: the app's settings window signs in (the token goes to the system keychain). */
   connect(engine: "claude" | "codex"): Promise<{ connected: boolean; account?: ClaudeAccount; text?: string }>;
+  /** Connect Claude in the page: the app runs the CLI's sign-in in the container and opens Claude's page in the
+   *  browser; the page gets the link, then sends the code. The token stays in the app (system keychain). */
+  claudeBegin?(): Promise<{ url?: string; text?: string }>;
+  claudeCode?(code: string): Promise<{ connected: boolean; account?: ClaudeAccount; text?: string }>;
+  codexBegin?(): Promise<{ url?: string; code?: string | null; text?: string }>;
+  codexWait?(): Promise<{ connected: boolean; text?: string }>;
+  cancelSignIn?(): Promise<void>;
   /** Opens the app's settings (Claude and Codex, the studio folder, keep working in the background). */
   openSettings(): void;
   /** The page's theme, so the window's own controls match it. */
