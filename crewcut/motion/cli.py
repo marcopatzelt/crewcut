@@ -25,6 +25,8 @@ The motion workflow (no engine; docs/motion-workflow.md):
 
     crewcut motion plan EPISODE [--short] | --check [--file F] [--card]
     crewcut motion library [--no-episodes]
+    crewcut motion new EPISODE INSERT_ID --from brief.md
+    crewcut motion style-frame EPISODE INSERT_ID --ours F [--ours F] [--ref F] [--natural]
 
 Exit codes: 0 ok, 1 error, 2 usage, 3 `render palette` found one hue above the limit (plain output only).
 """
@@ -1097,6 +1099,39 @@ def library_cmd(app: App, no_episodes):
     from . import library as lib
     rows = lib.entries(include_episodes=not no_episodes)
     out(app, rows, "\n".join(lib.line(r) for r in rows) or "the shelf is empty")
+
+
+@cli.command("new")
+@click.argument("episode")
+@click.argument("insert_id")
+@click.option("--from", "brief", required=True, help="The brief: sentence(s), what must be understood in 2 s, "
+              "format(s), length.")
+@click.pass_obj
+@handle_error
+def new_cmd(app: App, episode, insert_id, brief):
+    """A custom motion piece for this video: motion/<insert-id>/ with brief, beat sheet and a comp skeleton."""
+    from . import custom
+    d = custom.new(episode, insert_id, brief)
+    out(app, {"folder": str(d), "comp": str(d / "comp.jsx"), "source": f"motion/{insert_id}/comp.jsx"},
+        f"motion/{insert_id}/: brief.md, beats.md, refs/, review/, notes.md, comp.jsx (the ground and a slow push, "
+        f"landscape and portrait). Plan source: motion/{insert_id}/comp.jsx. Next: one real frame, then "
+        f"`crewcut motion style-frame {episode} {insert_id} --ours <frame>`.")
+
+
+@cli.command("style-frame")
+@click.argument("episode")
+@click.argument("insert_id")
+@click.option("--ours", multiple=True, required=True, help="Our frame (one per format; repeat for both).")
+@click.option("--ref", multiple=True, help="The reference frame (else refs/, else the bar's frames).")
+@click.option("--natural", is_flag=True, help="Grass, sky or footage: the one-hue limit does not apply.")
+@click.pass_obj
+@handle_error
+def style_frame_cmd(app: App, episode, insert_id, ours, ref, natural):
+    """Open the style-frame card: our frame next to the reference. Nothing animated is built before its yes."""
+    from .. import approvals
+    from . import custom
+    c = custom.style_frame(episode, insert_id, list(ours), list(ref), natural=natural)
+    out(app, approvals.view(c), f"card #{c['id']} is open: {c['title']}")
 
 
 def main(argv: list[str] | None = None) -> int:
