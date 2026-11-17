@@ -34,8 +34,8 @@ def test_demo_plan_has_two_motion_graphics_inside_the_rules(demo):
     for rule in ("apart", "Speaker only", "in the sentence", "the first", "the last", " runs ", "keywords"):
         assert rule not in w, w
     events, _ = plan.motion_sounds()
-    assert events["hits"] == [23.0, 28.4]                       # stand-ins: number_roll lands at 1 s, keyword_pop in
-    assert plan.sound_entries("hits") == ["c1@value", "g1@end", 23.0, 28.4]
+    assert events["hits"] == [22.48, 28.4]                      # number_roll lands on "machine", keyword_pop in
+    assert plan.sound_entries("hits") == ["c1@value", "g1@end", 22.48, 28.4]
 
 
 def test_demo_render_all_passes_without_the_engine(demo, monkeypatch):
