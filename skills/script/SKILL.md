@@ -63,6 +63,10 @@ The user reads from a phone next to the camera.
 - No brackets, stage notes, headings, chapters, timestamps or title line. Dashes only if the pack allows them.
 - Mark the one or two key words of a paragraph in **bold**. The teleprompter's points mode shows them instead of the
   full text, for a user who wants to speak freely.
+- **Motion marks** (optional, below `---`): up to five beats where a picture would say more than the face, as
+  `[[motion: number | "30 cents per million tokens"]]`: the kind of picture, then the words as they are spoken. They
+  are wishes for the Editor's motion pass (skill `motion`), which may drop any of them. The check counts them; a mark
+  above `---` or a sixth mark is an error.
 
 ## Steps
 

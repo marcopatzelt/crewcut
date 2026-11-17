@@ -9,9 +9,9 @@ the skills it loads (`skills/<name>/SKILL.md`).
 | SR | Showrunner | Runs the episode through the ten steps and gives each step to the right crew member. | episode | all | no | no |
 | SC | Scout | Finds the next idea in data, writes the title and thumbnail text, and proves the promise. | idea, title | idea, title, proof | no | no |
 | WR | Writer | Writes the script in the user's own voice, from the approved title and proof. | script | script | no | no |
-| ED | Editor | Ingests the recording and builds the video: speaker cut, 2D and 3D inserts, sound and assembly. | edit, 3d-scene | record, edit | yes: rented GPUs | no |
-| CR | Critic | Checks every version before the user sees it, and is never the one who built it. | cut-check | edit, thumbnail | no | no |
-| DE | Designer | Makes the thumbnail and its test variants. | thumbnail | thumbnail | yes: the paid image API | no |
+| ED | Editor | Ingests the recording and builds the video: speaker cut, 2D and 3D inserts, motion graphics, sound and assembly. | edit, 3d-scene, motion | record, edit | yes: rented GPUs | no |
+| CR | Critic | Checks every version before the user sees it, and is never the one who built it. | cut-check, motion | edit, thumbnail | no | no |
+| DE | Designer | Makes the thumbnail and its test variants, and the look of new motion graphics. | thumbnail, motion | thumbnail | yes: the paid image API | no |
 | PU | Publisher | Uploads the finished episode and reads its results after 48 hours. | upload | upload, results | no | yes |
 | BR | Brand | Sets up the user's style pack from their links and keeps it up to date. | onboarding | (first start) | no | no |
 
@@ -39,7 +39,8 @@ The soul: how I work, in the first person, at most about 1,500 characters.
 ```
 
 `crewcut.team` reads these files. `sources` lists the people whose know-how the identity's skills distil: name, link
-and what was taken. They have no connection to Crewcut and do not endorse it.
+and what was taken. They have no connection to Crewcut and do not endorse it. A source can also be Crewcut's own
+work, such as the launch film the motion method comes from; its name says so.
 
 ## Three rules for every identity
 

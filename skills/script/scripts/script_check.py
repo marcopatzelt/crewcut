@@ -17,6 +17,10 @@ edit-style.json "length_minutes", and voice.md ("## Words to avoid", "## Words t
 visible proof, a time anchor or a number in a series, and the phrase list of the language
 (references/phrases-<language>.txt: phrases that sound written or like filler, "not X but Y" patterns, dashes).
 
+Motion marks: below the "---" line the Writer may mark up to five beats for motion graphics, as wishes for the
+Editor's motion pass: [[motion: number | "30 cents per million tokens"]] (the kind of picture | the spoken words it
+belongs to). Both modes count them (stats "motion_marks"); a mark above the line or a sixth mark is an error.
+
 Levels: error (must go before the user sees the script), warn and hint (read and decide; a hint you keep gets one
 sentence of reason below the "---" line).
 
@@ -39,6 +43,8 @@ DASH = re.compile(r"[–—]|\s-{1,2}\s")
 FILE_NAME = re.compile(r"\b[\w-]+\.(?:py|js|ts|tsx|json|md|ya?ml|sh|toml|env|html|css|txt)\b", re.I)
 FLAG = re.compile(r"(?<![\w-])--[a-z][\w-]*")
 CAMEL = re.compile(r"\b[a-z]+[A-Z][A-Za-z]+\b")
+MOTION_MARK = re.compile(r"\[\[\s*motion\s*:(?P<body>[^\]]*)\]\]", re.I)
+MOTION_MARKS_MAX = 5
 
 
 def _brand():
@@ -62,6 +68,48 @@ def spoken_part(text: str) -> str:
             break
         out.append(line.rstrip())
     return "\n".join(out)
+
+
+def motion_marks(text: str) -> list[dict]:
+    """The Writer's motion marks, [[motion: kind | "spoken words"]], in file order: line, kind, words, and whether the
+    mark stands below the first "---" line (where it belongs)."""
+    out, below = [], False
+    for nr, line in enumerate(text.splitlines(), 1):
+        if not below and line.strip() == "---":
+            below = True
+            continue
+        for m in MOTION_MARK.finditer(line):
+            kind, _, said = m.group("body").partition("|")
+            out.append({"line": nr, "kind": kind.strip(), "words": said.strip().strip('"“”\'').strip(),
+                        "below": below, "mark": m.group(0)})
+    return out
+
+
+def check_motion_marks(text: str, spoken: str, add, passed: list[str], stats: dict) -> None:
+    """At most MOTION_MARKS_MAX marks, all below the --- line, each with a kind and words that are spoken."""
+    marks = motion_marks(text)
+    below = [m for m in marks if m["below"]]
+    stats["motion_marks"] = len(below)
+    if not marks:
+        return
+    above = [m for m in marks if not m["below"]]
+    if above:
+        add("error", "motion", f"motion mark above the --- line (line {above[0]['line']}: {above[0]['mark'][:50]}). "
+            "Marks are notes for the edit: put them below ---.")
+    if len(below) > MOTION_MARKS_MAX:
+        add("error", "motion", f"{len(below)} motion marks; at most {MOTION_MARKS_MAX}. Keep the beats where a "
+            "picture says more than the face.")
+    loose = [m for m in below if not m["kind"] or not m["words"]]
+    if loose:
+        add("warn", "motion", f"motion mark without a kind or without the spoken words (line {loose[0]['line']}). "
+            'Form: [[motion: number | "30 cents per million tokens"]].')
+    said = " " + " ".join(words(spoken.lower())) + " "
+    unheard = [m for m in below if m["words"] and f" {' '.join(words(m['words'].lower()))} " not in said]
+    if unheard:
+        add("hint", "motion", f'the words of a motion mark are not in the spoken text: "{unheard[0]["words"][:50]}" '
+            f"(line {unheard[0]['line']}). Quote the words as they are said.")
+    if not above and len(below) <= MOTION_MARKS_MAX and not loose:
+        passed.append(f"motion marks: {len(below)} below the --- line (at most {MOTION_MARKS_MAX})")
 
 
 def blocks(text: str) -> list[dict]:
@@ -141,7 +189,7 @@ def form_check(raw: str, dash_lv: str, add, passed: list[str]) -> list[str]:
 
     clean = []
     for nr, line in enumerate(raw.split("\n"), 1):
-        s = line.strip()
+        s = MOTION_MARK.sub(" ", line).strip()     # a motion mark here is reported by check_motion_marks
         if not s:
             clean.append("")
             continue
@@ -315,7 +363,10 @@ def check_script(text: str, pack, title: str | None = None, names: list[str] | t
     else:
         passed.append(f"length: {n_words} words, about {stats['minutes']} min")
 
-    # 10. No number without proof.
+    # 10. The Writer's motion marks: at most five, below the --- line.
+    check_motion_marks(text, body, add, passed, stats)
+
+    # 11. No number without proof.
     if proof is not None:
         proof_nums = {norm_number(x) for x in NUMBER.findall(proof)}
         script_nums = [x for x in dict.fromkeys(NUMBER.findall(body)) if len(norm_number(x)) >= 2 or "%" in x
@@ -509,6 +560,9 @@ def check_short(text: str, pack, lang: str | None = None, proof: str | None = No
     else:
         add(short_level(pack, "time_anchor", "warn"), "anchor",
             "no time anchor (\"three weeks ago\") and no number in a series (\"mistake 3 of 10\").")
+
+    # The Writer's motion marks: at most five, below the --- line.
+    check_motion_marks(text, body, add, passed, stats)
 
     # Phrases that sound written or like filler.
     hits = []

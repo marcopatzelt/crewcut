@@ -1,12 +1,13 @@
 ---
 name: edit
-description: "Builds a video version from the user's recording: the speaker cut, then one edit plan with all inserts (2D scenes, 3D scenes, recordings, keywords), sound and music, built with one command (crewcut render). Use for: edit the video, build the cut, speaker cut, rough cut, insert, b-roll, 2D scene, 3D insert, counter, keyword, music bed, sound, assemble, render the preview, new plan version, short from the long video."
+description: "Builds a video version from the user's recording: the speaker cut, then one edit plan with all inserts (2D scenes, 3D scenes, motion graphics, recordings, keywords), sound and music, built with one command (crewcut render). Use for: edit the video, build the cut, speaker cut, rough cut, insert, b-roll, 2D scene, 3D insert, motion insert, counter, keyword, music bed, sound, assemble, render the preview, new plan version, short from the long video."
 ---
 
 # Edit: one plan, one command
 
 The Editor turns the user's recording into a video in two parts. First the **speaker cut**: the best takes, cut at
-pauses, graded. Then the **edit plan** (`edit/plan-vNNN.json`): every insert, its words and cues, the sound. The
+pauses, graded. Then the **edit plan** (`edit/plan-vNNN.json`): every insert, its words and cues, the sound. Motion
+graphics come from their own pass in between (skill `motion`): the video first, then the shelf. The
 workbench `crewcut render` builds the plan. Nothing in this skill holds a colour, a font or a level: those come from
 the style pack (`crewcut brand show`). Taste lives in `brand/rules/edit.md` and `brand/rules/cut.md`.
 
@@ -18,9 +19,11 @@ the style pack (`crewcut brand show`). Taste lives in `brand/rules/edit.md` and 
 | write the plan, choose or build a scene, show a recording | `references/plan-and-scenes.md` (word anchors, count the mix, form per statement, cues, new 2D scene, reuse, recordings) |
 | make music, set levels, or rent a GPU | `references/sound-and-gpu.md` (music along the story, chosen by measurement, levels, GPU pitfalls, the cost card) |
 | build a 3D scene | skill `3d-scene` |
+| plan and build motion graphics: the motion pass, shelf templates, comps made for this video | skill `motion` |
 | check before showing | skill `cut-check` (run by the Critic, never by you) |
 
-Scene names and their data keys: `templates/2d/BLOCKS.md` and `templates/3d/README.md`. Do not copy key lists here.
+Scene names and their data keys: `templates/2d/BLOCKS.md`, `templates/3d/README.md` and, for motion,
+`templates/motion/README.md` (`crewcut motion template show <name>`). Do not copy key lists here.
 
 ## How a version is made
 
@@ -30,25 +33,32 @@ Scene names and their data keys: `templates/2d/BLOCKS.md` and `templates/3d/READ
    come from these words.
 3. **Count the mix, then list the spots** (section below). Send the list as a card before the big render:
    `crewcut card propose --episode $CREWCUT_EPISODE --step edit --kind mix --title "Inserts for v002" --file edit/mix-v002.md`.
-   Keep building while it is open; the card is a look, not a gate.
-4. **Write the plan** with a small generator script (`edit/make_plan.py`) that sets every time from a word anchor.
+   Keep building while it is open; the card is a look, not a gate. The mix list holds clips and HTML scenes; motion
+   has its own plan (step 4).
+4. **The motion pass** (skill `motion`): per beat, what must the viewer understand, then which picture does it, and
+   only then the shelf. Output: the three-column motion plan (`edit/motion-plan-vNNN.md`, from
+   `crewcut motion plan <episode>`) with at least one chosen upgrade over the last video, and its `motion-plan` card.
+5. **Write the plan** with a small generator script (`edit/make_plan.py`) that sets every time from a word anchor.
    Never type seconds by hand. Schema: `docs/architecture.md`, "Edit plan". Values left `null` come from the pack.
-5. `crewcut render plan edit/plan-vNNN.json`: lists every insert with frames and cues. Read it. An insert of half a
+   Motion rows of the approved motion plan become `"kind": "motion"` entries with their `beat` and `column`.
+6. `crewcut render plan edit/plan-vNNN.json`: lists every insert with frames and cues. Read it. An insert of half a
    second is a wrong anchor.
-6. `crewcut render 2d edit/plan-vNNN.json`: 2D inserts, locally.
-7. 3D: `crewcut render probe edit/plan-vNNN.json <id>` gives one still frame at half size. Look at it next to the
+7. `crewcut render 2d edit/plan-vNNN.json`: 2D inserts, locally.
+8. 3D: `crewcut render probe edit/plan-vNNN.json <id>` gives one still frame at half size. Look at it next to the
    reference before anything else (skill `3d-scene`). Then the cost estimate and the card (section "Rented GPU or
    local"), then `crewcut render 3d edit/plan-vNNN.json --rented --gpus N` or `--local`.
-8. `crewcut render cut edit/plan-vNNN.json`: assembly with the music bed, hits, typing, gaps, ducking and the loudness
+9. Motion: `crewcut render motion edit/plan-vNNN.json` (plates first, after their spend card). A piece made for this
+   video goes through its style frame and review rounds first (skill `motion`).
+10. `crewcut render cut edit/plan-vNNN.json`: assembly with the music bed, hits, typing, gaps, ducking and the loudness
    target from the pack. The output is **unchecked**. Tell the Showrunner: "built, unchecked, do not show".
-9. Hand the version to the Critic
+11. Hand the version to the Critic
    (`crewcut job add --episode $CREWCUT_EPISODE --identity critic --step edit "check plan-vNNN"`). Only after both
    checks show 0 ERROR: the preview goes to `export/`, the Showrunner shows it as a card with the file
    (`crewcut card propose … --kind preview --file export/<id>-vNNN-preview.mp4`), and right after showing:
    `crewcut render shown edit/plan-vNNN.json`. From then on every change is a new plan version, even for two frames.
 
-A changed text or number: change the plan (new version), run steps 5 to 9. Only changed inserts render again.
-`crewcut render all <plan>` runs 2d, 3d and cut in one go when nothing needs a look in between.
+A changed text or number: change the plan (new version), run steps 6 to 11. Only changed inserts render again.
+`crewcut render all <plan>` runs 2d, 3d, motion and cut in one go when nothing needs a look in between.
 
 ## Mix first, then the plan
 
@@ -78,8 +88,9 @@ These hold for every plan, before one frame is rendered. The limits come from `e
 
 ## Scenes
 
-2D scenes (HTML, rendered by Chromium, styled by the brand tokens) and 3D scenes (Blender by code, `templates/3d/`).
-Data keys: `templates/2d/BLOCKS.md`, `templates/3d/README.md`. Which form for which statement:
+2D scenes (HTML, rendered by Chromium, styled by the brand tokens), 3D scenes (Blender by code, `templates/3d/`) and
+motion graphics (EffectCraft comps, `templates/motion/`, skill `motion`). Data keys: `templates/2d/BLOCKS.md`,
+`templates/3d/README.md`, `templates/motion/README.md`. Which form for which statement:
 `references/plan-and-scenes.md`, section 3.
 
 | Kind | Scenes |
@@ -89,7 +100,11 @@ Data keys: `templates/2d/BLOCKS.md`, `templates/3d/README.md`. Which form for wh
 | 2D drawn ideas | `area`, `flow`, `untangle` |
 | 2D over the speaker (transparent) | `keyword` |
 | 3D | `object-word`, `row`, `grid3d`, `stack`, `slide`, `box`, `scale` (shared kit `templates/3d/stage.py`) |
+| motion | `"kind": "motion"`: a shelf template as `scene` (`crewcut motion library`) or a comp made for this video as `source`; full frame or overlay over the speaker. Chosen in the motion pass, never per sentence from the list (skill `motion`) |
 | recording | `"kind": "clip"` with `file`, `at`, `speed`: a finished recording full screen |
+
+One statement gets one form: never the same number as `counter` and as a motion `number_roll`. With the motion
+engine present, motion templates are the default for numbers and keywords.
 
 The neutral pack ships few, general 3D scenes. A user's own scenes go to `brand/templates/` (never edit the app's
 templates). A new scene gets a line in `BLOCKS.md` or `templates/3d/README.md` and is not tested until a frame of it
