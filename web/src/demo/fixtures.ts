@@ -339,7 +339,7 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     episode: e012.id,
     identity: "editor",
     step: "edit",
-    doing: "Renders 3D scene 5 of 5 on a rented RTX 4090",
+    doing: "3D scene 5 of 5 on a rented GPU",
     progress: 0.62,
     status: "running",
     started: ago(255),
@@ -827,7 +827,7 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
       cost_usd: 0,
       equiv_usd: 0.02,
     };
-    playRender = { ...renderJob, doing: "Renders 3D scene 5 of 5 on a rented RTX 4090", progress: 0.03, started: null, seconds: 0, cost_usd: 0 };
+    playRender = { ...renderJob, doing: "3D scene 5 of 5 on a rented GPU", progress: 0.03, started: null, seconds: 0, cost_usd: 0 };
     state.activity = activity.filter((a) => a.job !== renderJob.job);
     state.money = { ...state.money, today_usd: 0, month_usd: 3.79, episode_usd: { ...state.money.episode_usd, [e012.id]: 0.61 } };
     messages[e012.id] = (messages[e012.id] ?? []).filter((m) => m.id !== 307);

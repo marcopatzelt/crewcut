@@ -335,7 +335,7 @@ describe("the scripted demo for the README", () => {
     expect(screen.getByText("GPU rental approved · about 12 min for about $0.60")).toBeTruthy();
     await vi.advanceTimersByTimeAsync(800);
     const chat = screen.getByRole("region", { name: "Crew chat" });
-    expect(within(chat).getByText("Renders 3D scene 5 of 5 on a rented RTX 4090")).toBeTruthy();
+    expect(within(chat).getByText("3D scene 5 of 5 on a rented GPU")).toBeTruthy();
     // the rented GPU shows up among the media of the episode
     expect(await screen.findByRole("region", { name: "Rented RTX 4090" })).toBeTruthy();
     expect(window.__crewcutPlayDone).toBeUndefined();

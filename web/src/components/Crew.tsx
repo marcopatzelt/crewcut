@@ -5,7 +5,7 @@
 import { ProgressBar } from "@astryxdesign/core/ProgressBar";
 import { useEffect, useRef, useState } from "react";
 import type { Activity, Episode, Identity, Money } from "../api/types";
-import { clock, countWord, sameDay, usd, usdShort } from "../lib/format";
+import { clock, countWord, usd, usdShort } from "../lib/format";
 import { jumpToOpenCard, navigate } from "../store/actions";
 import { EMPTY, useUi } from "../store/store";
 import { identityOf } from "./bits";
@@ -26,19 +26,11 @@ export function useTicker(active: boolean): number {
   return now;
 }
 
-/**
- * Rows that arrive after the column first showed slide in; the ones already there do not (rule 9). A job that moves
- * from "Working now" to "Done today" counts as arriving there.
- */
+/** Rows that arrive after the column first showed slide in; the ones already there do not (rule 9). */
 function useArrivals(ready: boolean, keys: string[]) {
   const known = useRef<Set<string> | null>(null);
   if (ready && known.current === null) known.current = new Set(keys);
   return (k: string) => known.current !== null && !known.current.has(k);
-}
-
-/** "Cut check v1" becomes "cut check v1" after a name; "API check" stays as it is. */
-function lowerFirst(text: string): string {
-  return /^[A-Z][a-z]/.test(text) ? text.charAt(0).toLowerCase() + text.slice(1) : text;
 }
 
 function elapsed(a: Activity, seenAt: number | undefined, now: number): number {
@@ -145,7 +137,7 @@ function hintFor(active: Activity[], episode: string | null): string {
   return here === 1 ? "One of the crew is on this episode." : `${countWord(here)} of the crew are on this episode.`;
 }
 
-/** The running, waiting and queued jobs, then "Done today". `episode` is the chat in view, if any. */
+/** The running, waiting and queued jobs. `episode` is the chat in view, if any. Finished jobs keep their log. */
 export function WorkingList({ shape, episode }: { shape: Shape; episode: string | null }) {
   const activity = useUi((s) => s.state?.activity ?? EMPTY);
   const team = useUi((s) => s.state?.team);
@@ -159,13 +151,7 @@ export function WorkingList({ shape, episode }: { shape: Shape; episode: string 
     .sort((x, y) => (ORDER[x.status] ?? 9) - (ORDER[y.status] ?? 9));
   const running = active.some((a) => a.status === "running");
   const now = useTicker(running);
-  const today = new Date(now);
-  const done = activity.filter((a) => {
-    if (ACTIVE.has(a.status)) return false;
-    const end = a.ended ?? (a.started ? new Date(Date.parse(a.started) + a.seconds * 1000).toISOString() : null);
-    return sameDay(end, today);
-  });
-  const fresh = useArrivals(boot === "ready", [...active.map((a) => `a${a.job}`), ...done.map((a) => `d${a.job}`)]);
+  const fresh = useArrivals(boot === "ready", active.map((a) => `a${a.job}`));
   // The crew chat shows the jobs of its episode; the others stay one line away (rule 1.5: nothing runs out of sight).
   const shown = shape === "chat" && episode ? active.filter((a) => a.episode === episode) : active;
   const elsewhere = active.length - shown.length;
@@ -202,33 +188,6 @@ export function WorkingList({ shape, episode }: { shape: Shape; episode: string 
         <button type="button" className="elsewhere" onClick={() => navigate({ kind: "episodes" })}>
           {elsewhere === 1 ? "One more job" : `${countWord(elsewhere)} more jobs`} on other episodes
         </button>
-      ) : null}
-      {done.length && shape === "rail" ? (
-        <div className="later">
-          <h3 className="group-label">Done today</h3>
-          {done.map((a) => (
-            <div key={a.job} className={fresh(`d${a.job}`) ? "job-wrap is-new" : "job-wrap"}>
-              <button
-                type="button"
-                className={a.status === "done" ? "fin" : "fin failed"}
-                onClick={() => navigate({ kind: "job", id: a.job })}
-                aria-label={`${identityOf(team, a.identity).name}: ${a.doing}, ${a.status}. Open the log.`}
-              >
-                <Avatar
-                  who={identityOf(team, a.identity)}
-                  size="small"
-                  state={a.status === "done" ? "done" : "plain"}
-                  still={!fresh(`d${a.job}`)}
-                />
-                <span className="one-line">
-                  {identityOf(team, a.identity).name} ·{" "}
-                  {a.status === "done" ? lowerFirst(a.doing ?? "") : `${a.doing ?? "job"}, ${a.status}`}
-                </span>
-                <span>{clock(a.seconds)}</span>
-              </button>
-            </div>
-          ))}
-        </div>
       ) : null}
     </div>
   );

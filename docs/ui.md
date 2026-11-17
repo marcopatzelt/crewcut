@@ -16,7 +16,7 @@ Apple font in the repository.
 | Title bar (46 px) | three decorative dots, breadcrumbs ("Episodes / 012"), the search field that opens the command palette, the view's actions ("Make a Short" and the teleprompter in an episode, "3 at work" on the home) and the right-column toggle | `src/components/TitleBar.tsx` |
 | Sidebar (236 px; 64 px icon rail in an episode and below 1200 px) | the places with counts (Episodes, Shorts, Crew, Style pack, GPU and renders), the channel from the style pack, the crew dock with Slate's faces | `src/components/Sidebar.tsx` |
 | Main | the Episodes home, an episode's media, a read-only page, the onboarding chat or "New episode" | `src/views/Home.tsx`, `src/views/EpisodeView.tsx`, `src/views/EpisodeMedia.tsx`, `src/views/ReadOnlyViews.tsx` |
-| Right column (318 px) | Working now (each running job with its newest picture and progress, then "Done today") and Spend | `src/components/Crew.tsx` |
+| Right column (318 px) | Working now (each running job with its newest picture and progress) and Spend | `src/components/Crew.tsx` |
 | Crew chat (372 px, in an episode) | the working tiles of this episode on top (other jobs as one line that opens the home), the money line, the transcript with cards and previews, the composer at the foot | `src/views/EpisodeView.tsx`, `src/components/ChatPane.tsx`, `src/components/CardView.tsx`, `src/components/Composer.tsx` |
 
 **The Episodes home** is the start view. "Needs you" shows each episode with an open card as a large media card (the
@@ -141,7 +141,7 @@ All optional; the UI works without them.
 | card | `data.profile` (the `GET /api/profile` shape) | profile card rows |
 | card | `data.schedule` (ISO time) | publish card button ("Publish on Friday 17:00") |
 | card | `data.facts` | facts table on any card |
-| activity | `ended` | the "Done today" list |
+| activity | `ended` | the time a finished render job shows under "GPU and renders" |
 | activity | `engine`, `model`, `effort`, `engine_version` | one quiet line in the job log view ("Runs on Claude Code 2.1.325 · model sonnet · effort medium"), never on the row |
 | message | `exchange` (`{topic, result, messages: [{id, sender, recipient, kind, about, text, route, status}]}`) | a finished exchange between two crew members ([crew-talk.md](crew-talk.md)): one collapsed quiet line, "Critic and Editor · fix about review/cut-check-v001.json · 2 messages"; opened, who wrote to whom, the file in mono, the text |
 
@@ -194,7 +194,7 @@ stays still:
 | 0.6 s | the GPU card springs into the crew chat with "On this machine" chosen (50 min against 12 min, so this machine is the honest first choice); the Editor's waiting row appears |
 | 2.0 s | the choice moves to the rented GPU; the button now says "Rent a GPU for $0.60" |
 | 3.3 s | the button is pressed (`data-pressed`), then released: the yes goes out and the card folds to one line |
-| 4.2 s | "Renders 3D scene 5 of 5 on a rented RTX 4090" slides into the working tiles; the GPU card and the render tiles of scene 5 appear among the media |
+| 4.2 s | "3D scene 5 of 5 on a rented GPU" slides into the working tiles; the GPU card and the render tiles of scene 5 appear among the media |
 | 6.9 s | `window.__crewcutPlayDone = true` |
 
 The sequence starts 600 ms after the page has loaded and the screen listens for events. It clicks the real buttons, so

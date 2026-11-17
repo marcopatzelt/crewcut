@@ -59,7 +59,8 @@ The app is one glass window on a desk (rule 18): the rendered wallpaper behind i
   episodes", that opens the home), the money line, the transcript with its cards, the composer at the foot. What
   scrolls up under the tiles fades out; an open card that is the newest item keeps its top in view.
 - **Working now** (the right column of the home) shows each running job with its newest picture (`Activity.preview`)
-  and its progress; a waiting row jumps to its open card, every other row opens the job's log. "Done today" follows.
+  and its progress; a waiting row jumps to its open card, every other row opens the job's log. A finished job keeps
+  its log; render jobs stay listed under "GPU and renders".
 - Style pack, Crew, GPU and renders and a job log open in the main column as read-only pages. They have no edit
   controls: a change is a sentence to the agent. The composer floats at their foot.
 - Headlines are large and bold (rule 5), never italic; emphasis comes from weight.
