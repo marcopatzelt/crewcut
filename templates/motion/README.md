@@ -42,9 +42,9 @@ Templates read it only through `CC.*`:
   "transparent": false,               // overlay: RGBA frames, no ground
   "face": {"x": 0.5, "y": 0.38, "w": 0.32, "h": 0.28},   // face box centre and size, fractions of the frame; null = none
   "backdrop": null,                   // path of the speaker piece (ProRes) when the plan says "backdrop": "speaker"
-  "backdrop_luma": {"cols": 16, "rows": 9, "values": [0.62, ...]},   // optional: luminance 0..1 of the speaker
-                                      // picture (row-major grid, or one number for the free side); overlays pick dark
-                                      // or light type from it, light type when it is missing
+  "backdrop_luma": [[0.62, ...], ...],  // overlays: luminance 0..1 of the speaker picture, 9 rows of 16 values (top
+                                      // to bottom), one number for a colour base, null without a picture; templates
+                                      // pick dark or light type from it (light type when it is null)
   "layer": null,                      // overlays: "behind" (the matte passed: composited under the person),
                                       // "beside" or null (next to the person)
   "plates": {},                       // Blender plates: {"id": {"first": ".../0001.png", "frames": 90, "ready": true}}
@@ -139,13 +139,13 @@ holds; the words sink back through the baseline in `exit_s`, 0.04 s apart.
 | `inAt`, `cueAt`, `outAt` | `0.0`, `null`, `null` | start; a cue moves the start so the last word is complete 1.5 frames before it; the exit ends on the last frame |
 | `stagger` | `0.07` | seconds between the words |
 | `align` | `"auto"` | left on the right side, right on the left side, centred below the face or without one |
-| `behindScale`, `behindMax`, `behindAt` | `1.6`, `300`, `"shoulders"` | with `CC_CTX.layer` `"behind"`: the size and where it sits (`"head"`: `behindMax` at head height) |
+| `behindScale`, `behindMax`, `behindAt` | `1.6`, `300`, `"head"` | with `CC_CTX.layer` `"behind"`: `"head"` sets `behindMax` at head height (only the head covers the word); `"shoulders"` sets `behindScale` × `size` at the contract's shoulder anchor |
 
 Cue: `cueAt` (the last word). Sounds: `pop` on the entrance. Type colour: dark or light from `backdrop_luma` under the
 block, with two glyph shadows in the opposite tone. Limits: three words; a word wider than the free side at `minSize`
 is set smaller, down to 64 px, so it never leaves its side; behind the shoulders a long word is mostly covered by the body
-(a seven-letter word at 224 px showed two letters on each side in the matte test): use `behindAt: "head"` or a
-shorter word there.
+(in the matte test a seven-letter word at 224 px showed one letter on each side), which is why `"head"` is the
+default: there the same word at 300 px lost one letter to the head and read at once.
 
 ### `lower_third` (overlay, 4.5 s, min 3)
 
@@ -165,3 +165,27 @@ and both lines sink.
 
 Sounds: `whoosh` on the entrance. Limits: a name wider than the free side at `minNameSize` (about 22 characters at
 60 px in 16:9) reaches across the body below the face box; it never touches the face box itself.
+
+### `prompt_bar` (full with the speaker as backdrop, 5.0 s, 3 to 6)
+
+"What I asked". The speaker's own picture (`CC_CTX.backdrop`, the piece of the cut) blurs, calms (less saturation,
+a touch darker) and stays registered; a frosted glass bar (`CC.glass`, the one allowed plate: a blurred brighter
+copy of the picture under a rounded matte, a veil, a rim and one soft shadow) rises in with a small scale settle; the
+prompt is typed into it letter by letter with the newest letters in the accent colour and an accent caret that
+follows the measured typing front and blinks afterwards; the camera pushes in on the bar while it types, holds, and
+pulls back; the bar drops away and the picture clears. Frame 0 and the last frame equal the speaker frame, so the cut
+in and out is invisible. Motion blur is on only while the camera moves (the stage is split into five time spans).
+
+| Param | Default | Meaning |
+|---|---|---|
+| `text` | a 10-word prompt | the prompt; wrapped into at most `maxLines` (3) balanced lines by measured word widths |
+| `size`, `minSize` | `54`, `42` | type size (body font); shrinks toward `minSize` before a fourth line would be needed |
+| `typeAt`, `charS`, `typeEnd` | `0.7`, `0.045`, `null` | typing start and seconds per letter, or the end of typing (sets the speed) |
+| `push` | `1.22` | the camera push; limited so the bar keeps 3 % of the frame free on each side |
+| `backdropBlur`, `glassBlur`, `veil` | `26`, `44`, `46` | blur of the picture and of the glass, strength of the frosted veil |
+| `outAt` | `null` | the bar's exit (default 0.45 s before the end, so the picture clears to the speaker frame) |
+
+Sounds: `typing` at `typeAt`. Without a backdrop the bar sits on the pack ground. With `brand.mg.glass` false the
+plate is left out and the text sits on the blurred picture. Limits: about 40 letters per line in 16:9 at 54 px and
+25 in 9:16; longer prompts shrink to 42 px and three lines, then they get tight; prompts over ~120 letters belong in a
+screenshot.

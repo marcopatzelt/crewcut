@@ -2,15 +2,16 @@
  * @description One to three words beside the speaker, on the free side at chest height. Each word rises out of
  *   its own baseline with motion blur and a small scale settle, the group pushes in slowly while it holds, and the
  *   words sink back through the baseline at the end. Words that fit stay on one line, otherwise one word per line.
- *   When the insert goes behind the person (CC_CTX.layer "behind"), the type is 1.6 times larger and centred
- *   behind the shoulders, or with behindAt "head" as large as behindMax at head height (only the head covers it).
+ *   When the insert goes behind the person (CC_CTX.layer "behind"), the type is as large as behindMax at head
+ *   height, where only the head covers it (behindAt "shoulders": 1.6 times larger, centred behind the shoulders,
+ *   where the body covers most of a long word).
  * @kind overlay
  * @formats ["landscape", "portrait", "stage"]
  * @version 1
  * @sounds [{"at": "in", "sound": "pop"}]
  * @params {"comp": "Main", "words": ["runs", "offline"], "accentWord": 1, "size": 140, "minSize": 96,
  *   "inAt": 0.0, "cueAt": null, "outAt": null, "stagger": 0.07, "align": "auto", "behindScale": 1.6, "behindMax": 300,
- *   "behindAt": "shoulders", "layer": "Keyword"}
+ *   "behindAt": "head", "layer": "Keyword"}
  * @end */
 function keyword_pop(P) {
   var c = P.comp, F = CC.frame(), u = F.u;
