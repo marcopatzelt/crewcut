@@ -334,7 +334,7 @@ def create_app(start_worker: bool = True) -> FastAPI:
     @app.get("/api/motion/library")
     def motion_library():
         from ..motion import library
-        return {"templates": library.entries(include_episodes=True)}
+        return {"templates": library.shelf()}
 
     @app.get("/api/motion/ratchet")
     def motion_ratchet():

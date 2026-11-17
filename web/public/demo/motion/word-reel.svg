@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180">
+  <rect width="320" height="180" fill="#111111"/>
+  <g font-family="Inter, Helvetica, Arial, sans-serif" font-weight="700" text-anchor="middle">
+    <text x="160" y="46" font-size="20" fill="#F4F1EA" opacity="0.2">faster</text>
+    <text x="160" y="100" font-size="34" fill="#F4F1EA">private</text>
+    <text x="160" y="150" font-size="20" fill="#F4F1EA" opacity="0.2">cheaper</text>
+  </g>
+  <rect x="104" y="110" width="112" height="3" fill="#E4572E"/>
+</svg>

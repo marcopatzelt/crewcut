@@ -9,6 +9,7 @@ import "./styles/tokens.css";
 import "./styles/astryx-theme.css";
 import "./styles/app.css";
 import "./styles/window.css";
+import "./styles/motion.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";

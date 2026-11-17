@@ -5,12 +5,15 @@ import type {
   Episode,
   EpisodeDetail,
   EpisodeMedia,
+  EpisodeMotion,
   Identity,
   JobLog,
   Message,
   Money,
+  MotionRatchet,
   Profile,
   PrompterLink,
+  ShelfRow,
   State,
   UploadResult,
 } from "./types";
@@ -117,6 +120,15 @@ export const api = {
     ),
   /** "Make a Short": a Short in clip mode from this episode; the Scout starts on the passages. */
   makeShort: (id: string) => request<{ episode: string; job: number }>("POST", `/api/episodes/${enc(id)}/shorts`),
+  /** The motion of an episode: the plan with its three columns, the pieces on the film strip, the report's lines. */
+  motion: (id: string) => request<EpisodeMotion>("GET", `/api/episodes/${enc(id)}/motion`),
+  /** The shelf: the pack's templates first, then the app's, then the pieces made in episodes. */
+  motionLibrary: () => request<{ templates: ShelfRow[] }>("GET", "/api/motion/library"),
+  /** The bar, the lessons and the references. */
+  motionRatchet: () => request<MotionRatchet>("GET", "/api/motion/ratchet"),
+  /** "Not this one": strikes (or brings back) one row of an open motion plan card; the card shows the next version. */
+  strike: (card: number, row: string, struck: boolean) =>
+    request<Card>("POST", `/api/cards/${card}/strike`, { row, struck }),
 
   async upload(episode: string, files: File[]): Promise<UploadResult[]> {
     if (backend) return backend.upload(episode, files);

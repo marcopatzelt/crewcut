@@ -359,6 +359,12 @@ export async function accept(card: Card, choice?: number): Promise<void> {
   upsertCard({ ...card, choice: choice ?? null, ...result, status: result?.status ?? "accepted" });
 }
 
+/** Strikes or brings back one row of an open motion plan card. Throws on failure, so the card can say why. */
+export async function strike(card: Card, row: string, struck: boolean): Promise<void> {
+  const result = await api.strike(card.id, row, struck);
+  upsertCard({ ...card, ...result });
+}
+
 /**
  * Declines a card with the user's words. Used only where the one button means "not this way": a spend card with
  * "On this machine" chosen. Accepting a spend card means "rent", so the local way must never call accept.
@@ -478,6 +484,11 @@ export function jumpToOpenCard(episode: string | null): boolean {
   if (v.kind !== "episode" || v.id !== episode) navigate({ kind: "episode", id: episode });
   scrollToSoon(`[data-open-card="${card.id}"]`);
   return true;
+}
+
+/** Scrolls the crew chat to one open card (the motion panel's "Show the card"). */
+export function jumpToCard(id: number): void {
+  scrollToSoon(`[data-open-card="${id}"]`);
 }
 
 /** A done step dot jumps to the card of that step in the chat, else to its first message. */

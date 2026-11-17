@@ -246,10 +246,16 @@ def resolve_version(name: str, pin: int | None = None) -> Path:
     raise tp.TemplateError(f"no motion template '{want}' in your pack or the app")
 
 
-def uses(name: str) -> list[dict]:
-    """Where a template is used: every motion insert with ``"scene": name`` or ``name@N`` in the episodes' edit plans."""
-    out = []
-    for plan in sorted(paths.episodes_dir().glob("*/edit/plan-v*.json")):
+def uses_index() -> dict[str, list[dict]]:
+    """Where each template is used, in one pass: the motion inserts with ``"scene": name`` or ``name@N`` in the newest
+    edit plan of each episode (an older plan version that the episode moved away from does not count)."""
+    out: dict[str, list[dict]] = {}
+    newest: dict[Path, Path] = {}
+    for plan in paths.episodes_dir().glob("*/edit/plan-v*.json"):
+        ep = plan.parent.parent
+        if ep not in newest or (len(plan.stem), plan.stem) > (len(newest[ep].stem), newest[ep].stem):
+            newest[ep] = plan
+    for ep, plan in sorted(newest.items()):
         try:
             data = json.loads(plan.read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -258,10 +264,20 @@ def uses(name: str) -> list[dict]:
             if not isinstance(e, dict) or e.get("kind") != "motion" or not isinstance(e.get("scene"), str):
                 continue
             n, _, v = e["scene"].partition("@")
-            if n == name:
-                out.append({"episode": plan.parent.parent.name, "plan": plan.name, "insert": e.get("id"),
-                            "version": int(v) if v.isdigit() else None})
+            out.setdefault(n, []).append({"episode": ep.name, "plan": plan.name, "insert": e.get("id"),
+                                          "version": int(v) if v.isdigit() else None})
     return out
+
+
+def uses(name: str) -> list[dict]:
+    """Where a template is used (see ``uses_index``)."""
+    return uses_index().get(name, [])
+
+
+def shelf() -> list[dict]:
+    """The shelf for the web UI (``GET /api/motion/library``): ``entries()``, each template row with ``uses``."""
+    idx = uses_index()
+    return [r if r["origin"] == "episode" else {**r, "uses": idx.get(r["name"], [])} for r in entries()]
 
 
 def last_bundle(ep_dir: Path, insert_id: str) -> tuple[Path | None, int]:

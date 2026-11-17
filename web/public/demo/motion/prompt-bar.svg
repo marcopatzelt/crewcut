@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180">
+  <rect width="320" height="180" fill="#F1F1EF"/>
+  <rect x="40" y="70" width="240" height="40" rx="20" fill="#FFFFFF" stroke="#111111" stroke-opacity="0.15" stroke-width="1"/>
+  <text x="60" y="95" font-family="Inter, Helvetica, Arial, sans-serif" font-weight="500" font-size="14" fill="#111111">Make it better</text>
+  <rect x="160" y="81" width="2" height="18" fill="#E4572E"/>
+  <circle cx="260" cy="90" r="11" fill="#111111"/>
+  <path d="M255 90 L265 90 M261 85 L265 90 L261 95" fill="none" stroke="#F1F1EF" stroke-width="2" stroke-linecap="round"/>
+</svg>

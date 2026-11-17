@@ -1,7 +1,7 @@
 // An in-memory stand-in for the Crewcut server, used with ?demo=1 or when no API answers.
 // It answers the calls from docs/api.md with the fixtures and never runs anything.
 import { ApiError, type Backend, type EventHandler, type EventKind } from "../api/client";
-import type { Activity, Card, Episode, EpisodeMedia, Message, UploadResult } from "../api/types";
+import type { Activity, Card, Episode, EpisodeMedia, EpisodeMotion, Message, UploadResult } from "../api/types";
 import { DEMO_FILES, makeDemo, shortSteps, steps } from "./fixtures";
 
 const REPLY =
@@ -149,6 +149,16 @@ export function createDemoBackend(opts: { latency?: number; play?: boolean } = {
         const none: EpisodeMedia = { thumbnails: [], cut: null, scenes: null, gpu: null };
         return out(data.media[b] ?? none);
       }
+      if (method === "GET" && c === "motion") {
+        if (!data.details[b]) throw notFound(path);
+        const none: EpisodeMotion = { plan: null, pieces: [], report: null, retention: null };
+        return out(data.motion[b] ?? none);
+      }
+    }
+
+    if (a === "motion" && method === "GET") {
+      if (b === "library") return out({ templates: data.shelf });
+      if (b === "ratchet") return out(data.ratchet);
     }
 
     if (a === "cards") {
@@ -159,6 +169,9 @@ export function createDemoBackend(opts: { latency?: number; play?: boolean } = {
       }
       const card = data.cards.find((x) => x.id === Number(b));
       if (!card) throw notFound(path);
+      if (method === "POST" && c === "strike") {
+        strikeRow(card);
+      }
       if (method === "POST" && (c === "accept" || c === "decline")) {
         card.status = c === "accept" ? "accepted" : "declined";
         card.decided_at = new Date().toISOString();
@@ -174,6 +187,16 @@ export function createDemoBackend(opts: { latency?: number; play?: boolean } = {
         if (media && card.kind === "thumbnail" && c === "accept") {
           const at = typeof choice === "number" ? choice : 0;
           media.thumbnails = media.thumbnails.map((t, i) => ({ ...t, picked: i === at }));
+        }
+        // the motion view follows its cards: an approved plan, a style frame with a yes (its piece is built next)
+        const motion = card.episode ? data.motion[card.episode] : undefined;
+        if (motion?.plan && card.kind === "motion-plan" && motion.plan.card?.id === card.id) {
+          motion.plan.card = { id: card.id, status: card.status };
+          motion.plan.approved = card.status === "accepted";
+        }
+        if (motion && card.kind === "style-frame" && c === "accept") {
+          const insert = card.data?.insert;
+          motion.pieces = motion.pieces.map((p) => (p.id === insert ? { ...p, state: "building" } : p));
         }
         if (card.episode) reply(card.episode);
         setTimeout(() => emit("card", card), 0);
@@ -195,6 +218,15 @@ export function createDemoBackend(opts: { latency?: number; play?: boolean } = {
     }
 
     throw notFound(path);
+  }
+
+  /**
+   * "Not this one" on a motion plan card. The demo's plans are all answered (the commercial's has its yes before its
+   * style frame), so a strike is refused as the server refuses it on an answered card.
+   */
+  function strikeRow(card: Card): never {
+    if (card.kind !== "motion-plan") throw new ApiError(409, "Only a motion plan card has rows to strike.");
+    throw new ApiError(409, "This card is answered already.");
   }
 
   // ---------- the scripted sequence for the README animation (?demo=1&play=1) ----------
