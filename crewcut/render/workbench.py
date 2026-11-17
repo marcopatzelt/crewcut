@@ -258,6 +258,39 @@ def _rows_ok(rows: list[dict]) -> bool:
     return all(r.get("frames_ok") and r.get("clip_ok") is not False for r in rows)
 
 
+# ---- behind the speaker: the person matte (rented GPU only) ------------------------------------------------------
+def render_matte(plan: Plan, ids: list[str] | None = None, max_usd: float | None = None, compute=None,
+                 runner: media.Runner = media.run, log: Callable = print) -> dict:
+    """The matte step of every overlay with "layer": "behind" (crewcut/render/behind.py). A card open or a refused
+    spend becomes Waiting (exit 3)."""
+    from . import behind
+    if not behind.behind_inserts(plan, ids):
+        return {"rented": False, "rows": []}
+    compute = compute or load_compute()
+    try:
+        return behind.render_matte(plan, ids, compute=compute, max_usd=max_usd, runner=runner, log=log)
+    except Exception as e:
+        mapped = _compute_error(compute, e)
+        if mapped:
+            raise mapped from e
+        raise
+
+
+def matte_step(plan: Plan, compute=None, runner: media.Runner = media.run, log: Callable = print) -> dict | None:
+    """In `render all`: the matte before the motion inserts. Without a way to rent (no key, no machine) the overlays
+    go beside the person, which is the fallback anyway; an open spend card still stops the run (exit 3)."""
+    from . import behind
+    if not behind.behind_inserts(plan):
+        return None
+    try:
+        return render_matte(plan, compute=compute, runner=runner, log=log)
+    except Waiting:
+        raise
+    except Exception as e:
+        log(f"matte: not made ({e}); the graphics go beside the person")
+        return {"rented": False, "rows": [], "error": str(e)}
+
+
 def render_all(plan: Plan, mode: str | None = None, gpus: int = 2, samples: int | None = None, draft: bool = False,
                max_usd: float | None = None, compute=None, runner: media.Runner = media.run,
                log: Callable = print) -> dict:
@@ -270,6 +303,9 @@ def render_all(plan: Plan, mode: str | None = None, gpus: int = 2, samples: int 
         log("2D inserts failed; not cutting")
         return out
     skipped: list[str] = []
+    out["matte"] = matte_step(plan, compute, runner=runner, log=log)
+    if out["matte"] and out["matte"].get("rented"):
+        plan = Plan(plan.path, pack=plan.pack, episode_dir=plan.episode_dir)   # the decisions change the motion hashes
     try:
         rm = render_motion(plan, None, False, mode, compute, runner=runner, log=log)
     except motion.EngineMissing as e:

@@ -84,6 +84,10 @@ def parser() -> argparse.ArgumentParser:
     g.add_argument("--local", action="store_true", help="render here (needs effectcraft-cli)")
     g.add_argument("--rented", action="store_true", help="render on one rented machine (asks for a yes first)")
     p.add_argument("--max-usd", type=float, help="money cap for this rented run (default $2 a video, $0.50 a Short)")
+    p = plan_cmd("matte", "person matte for overlays behind the speaker, on a rented GPU (asks for a yes first)")
+    p.add_argument("--ids", help="only these inserts, comma separated")
+    p.add_argument("--max-usd", type=float, help="money cap (default $2 a video, $0.50 a Short)")
+    sub.add_parser("motion-review", help="the Critic's review bundle of the motion inserts (see --help)", add_help=False)
     p = plan_cmd("3d", "render the 3D inserts with Blender")
     p.add_argument("--ids", help="only these inserts, comma separated")
     way(p)
@@ -235,6 +239,14 @@ def run(a: argparse.Namespace, out: dict) -> int:
         if not a.json:
             _print_rows("motion", r["rows"])
         return 0 if _rows_ok(r["rows"]) else 1
+    if a.cmd == "matte":
+        r = workbench.render_matte(plan, _ids(a.ids), max_usd=a.max_usd, log=log)
+        out.update(r)
+        if not a.json:
+            for row in r["rows"]:
+                print(f"matte {row['id']}: {row.get('place') or 'failed'}"
+                      + (f"  ({row['reason']})" if row.get("reason") else ""))
+        return 0 if all(row.get("place") for row in r["rows"]) else 1
     if a.cmd == "3d":
         r = workbench.render_3d(plan, mode, a.gpus, _ids(a.ids), a.samples, a.draft, a.max_usd, log=log)
         out.update(r)
@@ -271,6 +283,10 @@ def run(a: argparse.Namespace, out: dict) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] == ["motion-review"]:
+        from ..motion import review
+        return review.main(argv[1:])
     try:
         a = parser().parse_args(argv)
     except SystemExit as e:

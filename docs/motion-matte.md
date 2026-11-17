@@ -199,3 +199,19 @@ At 200 % the shoulders are clean at 0.4; the hair over a graphic shows no bright
 stays in the finest strands. The flicker value sits on the limit for both ratios: the limit is calibrated on drawn
 pictures and one real shot. It needs more real shots (and a person looking at the 200 % crops) before it can be
 called right; until then the gate decides close cases with little margin.
+
+## In the render steps
+
+1. The plan marks an overlay with `"layer": "behind"` (motion inserts only, `transparent` overlays).
+2. `crewcut render matte <plan>` (also the first part of `render all`): for each such overlay it cuts the graded,
+   zoomed speaker piece of the span plus 0.5 s on both sides (exactly what the cut shows) into
+   `render/matte/<id>.mp4`, picture only; rents one RTX 4090 after the spend card that names the picture; makes the
+   matte; runs the edge check; writes `render/matte/<id>/decision.json`. Nothing is rented again for a piece that
+   was already matted.
+3. `crewcut render motion` gives the template `CC_CTX.layer`: `"behind"` only when the decision says so, else
+   `"beside"` (no matte, no key to rent, refused spend, or a failed edge check). The decision is part of the insert's
+   cache key, so a new decision renders the overlay again.
+4. After the overlay is encoded, `"behind"` overlays are composited: speaker piece, then the graphic, then the person
+   (RVM's foreground with its alpha) at the speaker's exact size. The result `render/inserts/<id>-<hash>-behind.mp4`
+   is a full-frame insert for the cut; the sound stays the cut's own.
+5. Code: `crewcut/render/behind.py` (`render_matte`, `composite_behind`), `Plan.layer_for`, `Plan.behind_clip`.

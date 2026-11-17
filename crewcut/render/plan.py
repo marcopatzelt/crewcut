@@ -58,7 +58,7 @@ _COLORS = re.compile(r"^#?[0-9A-Fa-f]{6}$")
 # kind "motion" (motion graphics rendered by EffectCraft, crewcut/render/motion.py)
 STAGE_FORMAT = "stage"                              # proof-top inserts with place "top" render at the stage size
 BACKDROPS = ("speaker",)                            # "backdrop": the comp gets the speaker piece as footage
-LAYERS = ("behind",)                                # "layer": an overlay meant to sit behind the speaker (matte later)
+LAYERS = ("behind",)                                # "layer": an overlay that sits behind the speaker (person matte)
 FACE_BOX = (0.32, 0.28)                             # face box size (fractions of the frame) when the plan gives a centre
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".bmp", ".tif", ".tiff"}
 FOOTAGE_EXT = {".mp4", ".mov", ".mkv", ".webm", ".m4v", ".avi"}
@@ -155,7 +155,7 @@ def motion_context(plan: Plan, ins: Insert, draft: bool = False, backdrop: str |
     return {"format": ins.format or plan.format, "size": [size[0], size[1]], "fps": plan.fps,
             "duration": round(ins.frames / plan.fps, 6), "transparent": ins.transparent, "face": face,
             "backdrop": backdrop, "draft": bool(draft), "right_free": plan.right_free,
-            "brand": brand_context(plan.tokens)}
+            "layer": plan.layer_for(ins), "brand": brand_context(plan.tokens)}
 
 
 def brand_context(tokens: dict) -> dict:
@@ -198,7 +198,7 @@ class Insert:
     source: Path | None = None       # episode-local comp (plan "source"); None for a library template ("scene")
     version: int | None = None       # pinned template version ("scene": "name@N")
     backdrop: str | None = None      # "speaker": the graded, zoomed speaker piece is the comp's footage
-    layer: str | None = None         # "behind": an overlay meant to sit behind the speaker (the matte comes later)
+    layer: str | None = None         # "behind": an overlay behind the speaker (matte step, docs/motion-matte.md)
     plates: tuple = ()               # Blender plates the comp needs: kept as validated data for now
     sound: bool = False              # the template's @sounds become sound events of the cut
     beat: Any = None                 # the motion plan row this insert comes from (for the Critic)
@@ -736,6 +736,35 @@ class Plan:
         """Face centre (fractions of the frame). The plan's `face` is [x, y], [x, y, w, h] or {"x", "y", "w", "h"}."""
         x, y, _, _ = self.face_box()
         return x, y
+
+    # ---- behind the speaker (docs/motion-matte.md) ------------------------------------------------------------
+    def matte_dir(self, ins: Insert) -> Path:
+        """render/matte/<insert id>/: the person matte of the insert's span (alpha, foreground, edge check, decision)."""
+        return self.episode_dir / "render" / "matte" / ins.id
+
+    def matte_decision(self, ins: Insert) -> dict | None:
+        """The matte step's decision for a "behind" overlay ({"place": "behind" | "beside", "reason", ...}) or None."""
+        f = self.matte_dir(ins) / "decision.json"
+        try:
+            d = json.loads(f.read_text(encoding="utf-8")) if f.is_file() else None
+        except ValueError:
+            return None
+        return d if isinstance(d, dict) else None
+
+    def layer_for(self, ins: Insert) -> str | None:
+        """CC_CTX.layer: "behind" only after the matte passed its edge check; an overlay asked to go behind without
+        a passed matte goes "beside" the person (the automatic fallback). None for every other insert."""
+        if ins.layer != "behind":
+            return None
+        d = self.matte_decision(ins) or {}
+        return "behind" if d.get("place") == "behind" else "beside"
+
+    def behind_clip(self, ins: Insert) -> Path | None:
+        """The finished full-frame picture of a "behind" overlay (speaker, graphic, person on top), when it exists."""
+        if self.layer_for(ins) != "behind" or not ins.out_dir:
+            return None
+        p = Path(str(ins.out_dir) + "-behind.mp4")
+        return p if p.is_file() else None
 
     def face_box(self) -> tuple[float, float, float, float]:
         """Face centre and box size (fractions of the frame); the size defaults to FACE_BOX."""

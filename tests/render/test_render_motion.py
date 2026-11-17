@@ -12,7 +12,7 @@ from motion_helpers import FakeCompute, NeedsApproval, backend_factory, install
 from render_helpers import FakeRunner, basic_plan
 
 from crewcut.render import cli, motion, workbench
-from crewcut.render.plan import Plan, PlanError
+from crewcut.render.plan import Plan, PlanError, motion_context
 
 
 def plan_with(episode, studio, *inserts, **over) -> Plan:
@@ -261,17 +261,24 @@ def test_rented_spend_card_is_exit_3(episode, studio, tmp_path, monkeypatch, cap
 
 
 def test_behind_hook(episode, studio, monkeypatch):
-    import sys
-    import types
     plan = plan_with(episode, studio, {**POP, "layer": "behind"})
+    ins = plan.by_id("k2")
+    assert plan.layer_for(ins) == "beside" and motion_context(plan, ins)["layer"] == "beside"   # no matte yet
     lines = []
     r = motion.render_motion(plan, backend=backend_factory([]), runner=FakeRunner(), log=lines.append)
-    assert r["rows"][0]["clip_ok"] and any("laid over the speaker for now" in s for s in lines)
+    assert r["rows"][0]["clip_ok"] and any("beside the person" in s for s in lines)
+    assert plan.behind_clip(ins) is None
+    # a passed matte: the context says behind (new hash), and the composite is built after the overlay
+    d = plan.matte_dir(ins)
+    d.mkdir(parents=True)
+    (d / "decision.json").write_text('{"place": "behind", "reason": "the edge check passed"}')
+    plan2 = plan_with(episode, studio, {**POP, "layer": "behind"})
+    ins2 = plan2.by_id("k2")
+    assert plan2.layer_for(ins2) == "behind" and ins2.hash != ins.hash
     seen = []
-    fake = types.ModuleType("crewcut.motion.matte")
-    fake.composite_behind = lambda plan, ins, runner=None, log=None: seen.append(ins.id) or True
-    monkeypatch.setitem(sys.modules, "crewcut.motion.matte", fake)
-    assert motion.behind_hook(plan, plan.by_id("k2")) and seen == ["k2"]
+    from crewcut.render import behind
+    monkeypatch.setattr(behind, "composite_behind", lambda plan, ins, runner=None, log=None: seen.append(ins.id) or True)
+    assert motion.behind_hook(plan2, ins2) and seen == ["k2"]
 
 
 def test_failed_chunk_reports_and_keeps_the_rest(episode, studio):
@@ -308,3 +315,91 @@ def test_rows_paths_are_strings(episode, studio):
     plan = plan_with(episode, studio, ROLL)
     r = motion.render_motion(plan, backend=backend_factory([]), runner=FakeRunner(), log=lambda *a: None)
     assert Path(r["rows"][0]["clip"]).name == plan.by_id("m1").clip.name
+
+
+# ---- behind the speaker: matte step, composite, assembly ----------------------------------------------------------
+def _decide(plan, ins, place):
+    d = plan.matte_dir(ins)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "decision.json").write_text(json.dumps({"place": place, "reason": "test"}))
+
+
+def test_matte_step_cuts_the_speaker_piece_with_margins_and_rents_through_matte(episode, studio, monkeypatch):
+    from crewcut.motion import matte as mt
+    from crewcut.render import behind
+    plan = plan_with(episode, studio, {**POP, "layer": "behind"})
+    ins = plan.by_id("k2")
+    ext = behind.shot_insert(plan, ins)
+    assert ext.start == ins.start - 12 and ext.end == ins.end + 12 and ext.backdrop == "speaker"   # 0.5 s at 25 fps
+
+    def fake_export(src, a, b, out, runner, fps=None, margin_s=0.5):
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(b"clip")
+        mt.meta_path(out).write_text(json.dumps({"clip_start_s": a, "seconds": b - a, "fps": fps}))
+        return out
+
+    monkeypatch.setattr(mt, "export_shot", fake_export)
+    rented = []
+
+    def fake_rented(shots, compute, cap, log=print, runner=None):
+        rented.append((shots[0].id, cap))
+        (shots[0].out_dir).mkdir(parents=True, exist_ok=True)
+        (shots[0].out_dir / "decision.json").write_text('{"place": "behind", "reason": "the edge check passed"}')
+        return [mt.MatteResult(shots[0].id, True, shots[0].out_dir, frames=63)]
+
+    monkeypatch.setattr(mt, "matte_rented", fake_rented)
+    runner = FakeRunner()
+    r = behind.render_matte(plan, compute=object(), runner=runner, log=lambda s: None)
+    assert rented == [("k2", 2.0)] and r["rows"][0]["place"] == "behind"
+    assert any("prores_ks" in " ".join(c) for c in runner.calls)              # the graded, zoomed speaker piece
+    meta = mt.read_meta(mt.Shot("k2", plan.episode_dir).clip)
+    assert meta["clip_start_s"] == round(ext.start_s, 3) and meta["matted_sha256"]
+    again = behind.render_matte(plan, compute=object(), runner=runner, log=lambda s: None)
+    assert again["rented"] is False and len(rented) == 1                       # nothing new: no second rental
+
+
+def test_composite_behind_and_the_cut_uses_it_as_a_full_frame_insert(episode, studio):
+    from crewcut.motion import matte as mt
+    from crewcut.render import assemble, behind
+    plan = plan_with(episode, studio, {**POP, "layer": "behind"})
+    _decide(plan, plan.by_id("k2"), "behind")
+    plan = plan_with(episode, studio, {**POP, "layer": "behind"})
+    ins = plan.by_id("k2")
+    shot = mt.Shot("k2", plan.episode_dir)
+    shot.clip.parent.mkdir(parents=True, exist_ok=True)
+    shot.clip.write_bytes(b"clip")
+    mt.meta_path(shot.clip).write_text(json.dumps({"clip_start_s": 5.52}))
+    ins.clip.parent.mkdir(parents=True, exist_ok=True)
+    ins.clip.write_bytes(b"overlay")
+    runner = FakeRunner()
+    assert behind.composite_behind(plan, ins, runner=runner, log=lambda s: None)
+    cmd = runner.calls[-1]
+    assert cmd[cmd.index("-ss") + 1] == "0.480" and "alphamerge" in " ".join(cmd) or "overlay" in " ".join(cmd)
+    out = plan.behind_clip(ins)
+    assert out and out.name.endswith("-behind.mp4")
+    full = [x.id for x, _, _ in assemble.visible(plan, 10 ** 6)]
+    assert "k2" in full                                                       # a full-frame insert now
+
+
+def test_beside_keeps_the_overlay_and_never_composites(episode, studio):
+    from crewcut.render import behind
+    plan = plan_with(episode, studio, {**POP, "layer": "behind"})
+    _decide(plan, plan.by_id("k2"), "beside")
+    plan = plan_with(episode, studio, {**POP, "layer": "behind"})
+    ins = plan.by_id("k2")
+    runner = FakeRunner()
+    assert plan.layer_for(ins) == "beside"
+    assert behind.composite_behind(plan, ins, runner=runner, log=lambda s: None) and not runner.calls
+    assert plan.behind_clip(ins) is None
+
+
+def test_render_all_without_a_way_to_rent_goes_beside(episode, studio, monkeypatch):
+    plan = plan_with(episode, studio, {**POP, "layer": "behind"})
+
+    def boom(*a, **k):
+        raise RuntimeError("no Vast.ai key")
+
+    monkeypatch.setattr(workbench, "render_matte", boom)
+    lines = []
+    assert workbench.matte_step(plan, log=lines.append)["rows"] == []
+    assert any("beside the person" in s for s in lines)

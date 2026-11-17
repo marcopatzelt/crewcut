@@ -12,7 +12,8 @@ from render_helpers import basic_plan
 from crewcut import doctor
 from crewcut.render.plan import Plan, PlanError, motion_context
 
-README_KEYS = {"format", "size", "fps", "duration", "transparent", "face", "backdrop", "draft", "right_free", "brand"}
+README_KEYS = {"format", "size", "fps", "duration", "transparent", "face", "backdrop", "draft", "right_free", "layer",
+               "brand"}
 
 
 def roll(**over) -> dict:
@@ -196,7 +197,7 @@ def test_context_matches_the_template_contract(episode, studio):
     assert c["brand"]["mg"]["palette"][0] == c["brand"]["colors"]["accent"]
     k = motion_context(plan, plan.by_id("k2"), draft=True, backdrop="/x/backdrop.mov")
     assert k["face"] == {"x": 0.42, "y": 0.36, "w": 0.2, "h": 0.3} and k["transparent"] and k["draft"]
-    assert k["backdrop"] == "/x/backdrop.mov" and k["right_free"] == 0.18
+    assert k["backdrop"] == "/x/backdrop.mov" and k["right_free"] == 0.18 and k["layer"] is None and c["layer"] is None
     dict_face = make(episode, studio, pop(), face={"x": 0.6, "y": 0.4})
     assert motion_context(dict_face, dict_face.by_id("k2"))["face"] == {"x": 0.6, "y": 0.4, "w": 0.32, "h": 0.28}
     assert dict_face.face == (0.6, 0.4)

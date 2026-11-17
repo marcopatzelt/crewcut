@@ -204,21 +204,10 @@ def backdrop_cmd(plan: Plan, ins: Insert, out: Path) -> list[str]:
 
 
 def behind_hook(plan: Plan, ins: Insert, runner: media.Runner = media.run, log: Callable = print) -> bool:
-    """Hook for overlays with `"layer": "behind"`, called after the overlay clip is encoded.
-
-    Compositing behind the speaker needs a person matte made on this computer (crewcut/motion/matte.py, see
-    docs/motion-matte.md). Contract: `matte.composite_behind(plan, ins, runner=..., log=...) -> bool`; it may replace
-    `ins.clip`. Until that module exists the overlay is laid over the speaker like any overlay."""
-    try:
-        matte = importlib.import_module("crewcut.motion.matte")
-    except ImportError:
-        matte = None
-    fn = getattr(matte, "composite_behind", None)
-    if fn is None:
-        log(f"motion {ins.id}: layer \"behind\" is laid over the speaker for now (the matte step has no "
-            "composite_behind yet; see docs/motion-matte.md)")
-        return True
-    return bool(fn(plan, ins, runner=runner, log=log))
+    """Overlays with `"layer": "behind"`, after the overlay clip is encoded: the composite behind the speaker when the
+    matte passed its edge check (crewcut/render/behind.py), else the overlay stays beside the person."""
+    from . import behind
+    return behind.composite_behind(plan, ins, runner=runner, log=log)
 
 
 def _finish(plan: Plan, ins: Insert, ok: bool, where: str, runner: media.Runner, log: Callable,

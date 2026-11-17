@@ -139,7 +139,7 @@ def visible(plan: Plan, base_end: int) -> list[tuple[Insert, int, int]]:
     limit = face_from(plan, base_end)
     out = []
     for x in plan.inserts:
-        if x.transparent:
+        if x.transparent and not plan.behind_clip(x):
             continue
         a, b = x.start, (min(x.end, limit) if x.place == "top" else x.end)
         if b > a:
@@ -168,7 +168,7 @@ def pieces(plan: Plan, base_end: int, end: int) -> list[Piece]:
     W, H = plan.size
     fps = plan.fps
     full = visible(plan, base_end)
-    over = [x for x in plan.inserts if x.transparent]
+    over = [x for x in plan.inserts if x.transparent and not plan.behind_clip(x)]
     marks = plan.speaker_marks()
     cuts = {0, end} | {a for _, a, _ in full} | {b for _, _, b in full} | {f for f, _ in marks}
     if base_end < end:
@@ -224,7 +224,7 @@ def pieces(plan: Plan, base_end: int, end: int) -> list[Piece]:
             vf = norm + speed_vf(e)
             p = Piece(i, a, b, e.id, "insert", e.clip, e.at + (a - e.start) / fps * e.speed, vf, ov)
         elif e is not None:
-            p = Piece(i, a, b, e.id, "insert", e.clip, (a - e.start) / fps, "", ov)
+            p = Piece(i, a, b, e.id, "insert", plan.behind_clip(e) or e.clip, (a - e.start) / fps, "", ov)
         else:
             if a >= base_end:
                 raise PlanError(f"frame {a}: after the end of the base there is no insert. A tail needs a full-frame "
