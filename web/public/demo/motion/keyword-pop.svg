@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180">
+  <rect width="320" height="180" fill="#2B3A4A"/>
+  <rect y="40" width="320" height="50" fill="#6E6170"/>
+  <rect y="76" width="320" height="56" fill="#C98A5E"/>
+  <g fill="#1E2630"><rect x="0" y="92" width="26" height="40"/><rect x="28" y="80" width="18" height="52"/><rect x="48" y="98" width="30" height="34"/><rect x="80" y="72" width="14" height="60"/><rect x="96" y="90" width="34" height="42"/><rect x="132" y="102" width="24" height="30"/></g>
+  <rect y="132" width="320" height="48" fill="#24303C"/>
+  <rect y="138" width="320" height="2" fill="#E4A06B" opacity="0.5"/>
+  <text x="214" y="70" font-family="Inter, Helvetica, Arial, sans-serif" font-weight="700" font-size="18" fill="#F4F1EA" opacity="0.7">low</text>
+  <text x="214" y="98" font-family="Inter, Helvetica, Arial, sans-serif" font-weight="700" font-size="24" fill="#F4F1EA" opacity="0.85">medium</text>
+  <text x="214" y="128" font-family="Inter, Helvetica, Arial, sans-serif" font-weight="700" font-size="32" fill="#F4F1EA">high</text>
+  <rect x="214" y="134" width="62" height="3" fill="#E4572E"/>
+</svg>

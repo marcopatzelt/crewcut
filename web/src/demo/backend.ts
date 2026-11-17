@@ -1,8 +1,9 @@
 // An in-memory stand-in for the Crewcut server, used with ?demo=1 or when no API answers.
 // It answers the calls from docs/api.md with the fixtures and never runs anything.
 import { ApiError, type Backend, type EventHandler, type EventKind } from "../api/client";
-import type { Activity, Card, Episode, EpisodeMedia, Message, UploadResult } from "../api/types";
+import type { Activity, Card, Episode, EpisodeMedia, EpisodeMotion, Message, MotionPlanData, UploadResult } from "../api/types";
 import { DEMO_FILES, makeDemo, shortSteps, steps } from "./fixtures";
+import { planTitle } from "./motion";
 
 const REPLY =
   "This is the demo. Nothing runs here, so nobody picks this up. Start Crewcut with Docker to work on a real episode.";
@@ -149,6 +150,16 @@ export function createDemoBackend(opts: { latency?: number; play?: boolean } = {
         const none: EpisodeMedia = { thumbnails: [], cut: null, scenes: null, gpu: null };
         return out(data.media[b] ?? none);
       }
+      if (method === "GET" && c === "motion") {
+        if (!data.details[b]) throw notFound(path);
+        const none: EpisodeMotion = { plan: null, pieces: [], report: null, retention: null };
+        return out(data.motion[b] ?? none);
+      }
+    }
+
+    if (a === "motion" && method === "GET") {
+      if (b === "library") return out({ templates: data.shelf });
+      if (b === "ratchet") return out(data.ratchet);
     }
 
     if (a === "cards") {
@@ -159,6 +170,12 @@ export function createDemoBackend(opts: { latency?: number; play?: boolean } = {
       }
       const card = data.cards.find((x) => x.id === Number(b));
       if (!card) throw notFound(path);
+      if (method === "POST" && c === "strike") {
+        const { row, struck } = (body ?? {}) as { row?: string; struck?: boolean };
+        strikeRow(card, String(row ?? ""), struck !== false);
+        setTimeout(() => emit("card", card), 0);
+        return out(card);
+      }
       if (method === "POST" && (c === "accept" || c === "decline")) {
         card.status = c === "accept" ? "accepted" : "declined";
         card.decided_at = new Date().toISOString();
@@ -174,6 +191,16 @@ export function createDemoBackend(opts: { latency?: number; play?: boolean } = {
         if (media && card.kind === "thumbnail" && c === "accept") {
           const at = typeof choice === "number" ? choice : 0;
           media.thumbnails = media.thumbnails.map((t, i) => ({ ...t, picked: i === at }));
+        }
+        // the motion view follows its cards: an approved plan, a style frame with a yes (its piece is built next)
+        const motion = card.episode ? data.motion[card.episode] : undefined;
+        if (motion?.plan && card.kind === "motion-plan" && motion.plan.card?.id === card.id) {
+          motion.plan.card = { id: card.id, status: card.status };
+          motion.plan.approved = card.status === "accepted";
+        }
+        if (motion && card.kind === "style-frame" && c === "accept") {
+          const insert = card.data?.insert;
+          motion.pieces = motion.pieces.map((p) => (p.id === insert ? { ...p, state: "building" } : p));
         }
         if (card.episode) reply(card.episode);
         setTimeout(() => emit("card", card), 0);
@@ -195,6 +222,46 @@ export function createDemoBackend(opts: { latency?: number; play?: boolean } = {
     }
 
     throw notFound(path);
+  }
+
+  /**
+   * "Not this one" on a motion plan card, as the server does it: the row is struck (or comes back), the plan gets the
+   * next version and the same card points at it. Refuses an answered card and the only chosen upgrade.
+   */
+  function strikeRow(card: Card, row: string, struck: boolean) {
+    const mp = card.data?.motion_plan as MotionPlanData | undefined;
+    if (card.kind !== "motion-plan" || !mp) throw new ApiError(409, "Only a motion plan card has rows to strike.");
+    if (card.status !== "open") throw new ApiError(409, "This card is answered already.");
+    const plan: MotionPlanData = JSON.parse(JSON.stringify(mp));
+    const { a, b, c } = plan.columns;
+    const hit = [...a, ...b, ...c].find((x) => x.row === row);
+    if (!hit) throw new ApiError(409, `No row ${row} with motion on this card.`);
+    if (struck && row.startsWith("upgrade:") && !c.some((u) => u.chosen && !u.struck && u.row !== row)) {
+      throw new ApiError(
+        409,
+        "This is the only chosen upgrade, and every video needs one. Say in the chat which other upgrade to take instead.",
+      );
+    }
+    hit.struck = struck;
+    for (const x of [...b, ...c]) if (x.row === row) for (const bt of x.beats) bt.struck = struck;
+    plan.version += 1;
+    const v = String(plan.version).padStart(3, "0");
+    plan.file = `edit/motion-plan-v${v}.json`;
+    plan.md = `edit/motion-plan-v${v}.md`;
+    card.data = {
+      ...card.data,
+      motion_plan: plan,
+      images: a.filter((x) => !x.struck && x.media?.poster).map((x) => x.media?.poster as string).slice(0, 3),
+    };
+    card.title = planTitle(plan);
+    card.file = plan.md ?? card.file;
+    card.sha256 = `${card.sha256 ?? ""}`.slice(0, 6) + v;
+    const view = card.episode ? data.motion[card.episode]?.plan : undefined;
+    if (view && view.card?.id === card.id) {
+      view.version = plan.version;
+      view.file = plan.file;
+      view.columns = plan.columns;
+    }
   }
 
   // ---------- the scripted sequence for the README animation (?demo=1&play=1) ----------

@@ -7,15 +7,19 @@ import type {
   Episode,
   EpisodeDetail,
   EpisodeMedia,
+  EpisodeMotion,
   Identity,
   Message,
+  MotionRatchet,
   Profile,
   PrompterLink,
   PrompterScript,
+  ShelfRow,
   State,
   Step,
   StepStatus,
 } from "../api/types";
+import { makeMotionDemo } from "./motion";
 import profileJson from "./profile.json";
 import { DEMO_QR_SVG } from "./qr";
 
@@ -97,6 +101,10 @@ export interface DemoData {
   prompter: PrompterLink;
   script: PrompterScript;
   media: Record<string, EpisodeMedia>;
+  /** GET /api/episodes/{id}/motion, the shelf and the bar (src/demo/motion.ts) */
+  motion: Record<string, EpisodeMotion>;
+  shelf: ShelfRow[];
+  ratchet: MotionRatchet;
 }
 
 /** What a job's engine reported about itself (docs/api.md). Made-up demo values. */
@@ -276,8 +284,8 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     title: m015?.title_en ?? "Thinking levels commercial",
     step: "edit",
     steps: steps(["done", "done", "done", "done", "skipped", "waiting", "open", "skipped", "open", "open"]),
-    updated: ago(40 * MIN),
-    open_cards: 1,
+    updated: ago(12 * MIN),
+    open_cards: 3,
     cover: pic(m015, true),
     seconds: 25,
     needs: {
@@ -540,7 +548,10 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     choice: 0,
     decided_at: ago(5 * D - 20 * MIN),
   };
-  const cards: Card[] = [titleCard, spend, thumbCard, openingCard];
+  // Motion graphics: the commercial's plan and style frame are open; 013 shows the finished loop (src/demo/motion.ts).
+  const motionDemo = makeMotionDemo({ e015: e015.id, e013: e013.id, e011: e011.id }, ago);
+  Object.assign(DEMO_FILES, motionDemo.files);
+  const cards: Card[] = [titleCard, spend, thumbCard, openingCard, ...motionDemo.cards];
 
   // ----- chats -----
   const messages: Record<string, Message[]> = {
@@ -667,8 +678,10 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     ],
     _onboarding: [],
   };
+  for (const [id, list] of Object.entries(motionDemo.messages)) messages[id] = [...(messages[id] ?? []), ...list];
   for (const e of [...longs, ...shorts]) {
     messages[e.id] = [
+      ...(messages[e.id] ?? []),
       {
         id: 500 + episodes.indexOf(e),
         at: e.updated,
@@ -737,7 +750,17 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     },
     [e015.id]: {
       thumbnails: [],
-      cut: null,
+      cut: scenes.length
+        ? {
+            version: "v1",
+            seconds: 25,
+            shots: scenes.length,
+            frames: Array.from({ length: 10 }, (_, i) => ({ t: 25 * (0.05 + 0.1 * i), url: scenes[Math.min(scenes.length - 1, Math.floor(i / 2))]?.url ?? "" })),
+            peaks: peaks(240, 11),
+            markers: [],
+            facts: ["Keywords only", "-14 LUFS"],
+          }
+        : null,
       scenes: scenes.length
         ? {
             title: "Round 3, 4K",
@@ -868,5 +891,8 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     prompter,
     script,
     media,
+    motion: motionDemo.motion,
+    shelf: motionDemo.shelf,
+    ratchet: motionDemo.ratchet,
   };
 }
