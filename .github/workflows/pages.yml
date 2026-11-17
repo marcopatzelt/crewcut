@@ -10,6 +10,7 @@ name: pages
 #   taste    only for big changes: the Taste skill's finish gate over the built page, screenshots at 1440, 1024, 768
 #            and 390 px. Information only: it writes its findings to the job summary and never fails the run or delays
 #            the deploy. Do not loop on its findings; fix what is visibly wrong and move on.
+#            "[no gate]" in a commit message skips it for that push (when the owner says not to run it).
 on:
   push:
     branches: [main]
@@ -115,7 +116,7 @@ jobs:
   taste:
     name: Taste gate (information only, big changes only; never blocks the deploy)
     needs: decide
-    if: needs.decide.outputs.gate == 'true'
+    if: needs.decide.outputs.gate == 'true' && !contains(join(github.event.commits.*.message, ' '), '[no gate]')
     continue-on-error: true
     runs-on: ubuntu-24.04
     timeout-minutes: 40

@@ -25,7 +25,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Inter+Tight:wght@700;800;900&amp;display=swap">
-<link rel="preload" as="image" href="media/wallpapers/hills-morning-2560.jpg" media="(prefers-color-scheme: light) and (min-width: 761px)">
 <link rel="stylesheet" href="assets/site.css">
 <script>document.documentElement.classList.add('js','m-enter');setTimeout(()=>document.documentElement.classList.add('m-enter-done'),700)</script>
 <script src="assets/site.js" defer></script>
@@ -57,9 +56,10 @@
 <body>
 <!-- Built from the approved design mock (content-suite-plan/design-mock/landing.html, 16 Nov 2026), checked with the
      Taste skill (tasteskill 2.5.1, pinned in CI). Kind: software. Look: the client's own (Crewcut green and mint, the
-     wallpapers, Inter and Inter Tight 800). Hero: centred over the morning sky. Section heads start on the container's left line (Taste's
-     rule; the mock centred them); the close sits on a glass card over the fog. Motion: all own code, no
-     library; it starts at load, nothing waits for the scroll, reduced motion stops it.
+     wallpapers, Inter and Inter Tight 800). Hero: centred over the launch film's meadow (an 8 s loop, the grass moving
+     in the wind; day in light mode, dusk in dark mode; the poster paints first, the loop fades in after the page has
+     loaded). Section heads start on the container's left line (Taste's rule; the mock centred them); the close sits
+     on a glass card over the same meadow. Motion: all own code, no library; reduced motion shows the posters only.
      Sections: hero, the app, film, one window, crew, rendering, steps, closing. The film loads only when it
      comes near the view, plays muted and in a loop; sound only on the button; reduced motion shows the poster. -->
 <header class="nav">
@@ -83,6 +83,19 @@
 
 <main id="main">
   <section class="hero" id="top" data-enter aria-labelledby="hero-h">
+    <div class="meadow meadow--hero" aria-hidden="true">
+      <picture>
+        <source media="(max-width: 760px) and (prefers-color-scheme: dark)" type="image/webp" srcset="media/meadow/meadow-dusk-phone.webp" width="540" height="960">
+        <source media="(max-width: 760px) and (prefers-color-scheme: dark)" srcset="media/meadow/meadow-dusk-phone.jpg" width="540" height="960">
+        <source media="(max-width: 760px)" type="image/webp" srcset="media/meadow/meadow-day-phone.webp" width="540" height="960">
+        <source media="(max-width: 760px)" srcset="media/meadow/meadow-day-phone.jpg" width="540" height="960">
+        <source media="(prefers-color-scheme: dark)" type="image/webp" srcset="media/meadow/meadow-dusk-1920.webp">
+        <source media="(prefers-color-scheme: dark)" srcset="media/meadow/meadow-dusk-1920.jpg">
+        <source type="image/webp" srcset="media/meadow/meadow-day-1920.webp">
+        <img class="meadow__poster" src="media/meadow/meadow-day-1920.jpg" alt="" width="1920" height="1080" fetchpriority="high" decoding="async">
+      </picture>
+      <video class="meadow__video" muted loop playsinline disablepictureinpicture disableremoteplayback preload="none"></video>
+    </div>
     <div class="wrap">
       <div class="hero-text">
         <div class="hero__art"><img class="hero__slate" src="assets/brand/states/wave.svg" alt="Slate, the Crewcut clapperboard, waving" width="104" height="89"></div>
@@ -208,9 +221,19 @@
 </main>
 
 <footer class="closing" id="start" aria-labelledby="start-h">
-  <img class="layer final__bg" id="finalbg" src="media/wallpapers/lilienstein-2560.jpg" data-dark="media/wallpapers/green-dusk-2560.jpg" alt="" aria-hidden="true" decoding="async">
-  <canvas class="layer final__word" id="word" aria-hidden="true"></canvas>
-  <canvas class="layer final__mist" id="mist" aria-hidden="true"></canvas>
+  <div class="meadow meadow--foot" aria-hidden="true">
+    <picture>
+      <source media="(max-width: 760px) and (prefers-color-scheme: dark)" type="image/webp" srcset="media/meadow/meadow-dusk-phone.webp" width="540" height="960">
+      <source media="(max-width: 760px) and (prefers-color-scheme: dark)" srcset="media/meadow/meadow-dusk-phone.jpg" width="540" height="960">
+      <source media="(max-width: 760px)" type="image/webp" srcset="media/meadow/meadow-day-phone.webp" width="540" height="960">
+      <source media="(max-width: 760px)" srcset="media/meadow/meadow-day-phone.jpg" width="540" height="960">
+      <source media="(prefers-color-scheme: dark)" type="image/webp" srcset="media/meadow/meadow-dusk-1920.webp">
+      <source media="(prefers-color-scheme: dark)" srcset="media/meadow/meadow-dusk-1920.jpg">
+      <source type="image/webp" srcset="media/meadow/meadow-day-1920.webp">
+      <img class="meadow__poster" src="media/meadow/meadow-day-1920.jpg" alt="" width="1920" height="1080" loading="lazy" decoding="async">
+    </picture>
+    <video class="meadow__video" muted loop playsinline disablepictureinpicture disableremoteplayback preload="none"></video>
+  </div>
   <div class="wrap">
     <div class="final"><div class="final__card">
       <div class="final__crew" aria-hidden="true"><img src="assets/brand/crew/showrunner.svg" alt="" style="--k:0"><img src="assets/brand/crew/scout.svg" alt="" style="--k:1"><img src="assets/brand/crew/writer.svg" alt="" style="--k:2"><img src="assets/brand/crew/editor.svg" alt="" style="--k:3"><img src="assets/brand/crew/designer.svg" alt="" style="--k:4"><img src="assets/brand/crew/critic.svg" alt="" style="--k:5"><img src="assets/brand/crew/brand.svg" alt="" style="--k:6"><img src="assets/brand/crew/publisher.svg" alt="" style="--k:7"></div>
@@ -220,7 +243,6 @@
         <a class="btn btn--black" href="https://github.com/marcopatzelt/crewcut">Get Crewcut on GitHub</a>
         <a class="btn btn--white" href="https://github.com/marcopatzelt/crewcut#quick-start">Read the quick start</a>
       </div>
-      <p class="final__hint">The glass fogs up again. Wipe it with your mouse or finger.</p>
     </div></div>
     <div class="foot">
       <img class="foot__logo" src="assets/brand/crewcut-lockup.svg" alt="Crewcut" width="135" height="28">

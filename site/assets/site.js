@@ -1,5 +1,4 @@
-/* Crewcut landing page: the fogged glass of the close. Own code, no library.
-   It starts at load; prefers-reduced-motion keeps the fog from coming back. */
+/* Crewcut landing page: the launch film in #film and the meadow loops of the hero and the close. Own code, no library. */
 /* The launch film (#film): loads when it comes within 200 px of the view, plays muted in a loop, pauses when it
    leaves. Sound only on the button (the first time it starts the film from the beginning). With reduced motion
    it never starts by itself: the poster and the Play button. Without this script the video keeps its own controls. */
@@ -32,72 +31,39 @@
   show();
 })();
 
+/* The meadow (hero and close): the poster paints first. Once the page has loaded, an 8 s loop of the launch film's
+   meadow fades in over it: day in light mode, dusk in dark mode, a 540 x 960 crop on phones, VP9 WebM where the
+   browser plays it, else H.264 MP4. Each loop plays only while it is near the view. With reduced motion or Save-Data
+   nothing loads and the poster stays. A change of colour scheme, width or motion setting is followed at once. */
 (function () {
-  const root = document.documentElement;
-  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
-  const paused = false;
-
-  // ---------------------------------------------------------------- the close: the word and the fogged glass
-  // A blurred copy of the wallpaper with drops is painted on a canvas over the word "Crewcut"; the pointer wipes it
-  // away, and the glass slowly fogs up again.
-  const sec = document.getElementById("start"), cv = document.getElementById("mist"), wordCv = document.getElementById("word"), img = document.getElementById("finalbg");
-  if (!sec || !cv || !wordCv || !img || !cv.getContext) return;
-  if (dark && img.dataset.dark) img.src = img.dataset.dark;
-  const ctx = cv.getContext("2d"), wctx = wordCv.getContext("2d");
-  const foot = sec.querySelector(".foot");
-  let W = 0, H = 0, dpr = Math.min(devicePixelRatio || 1, 2), fogged = null, fs = 0, base = 0;
-  const cover = (iw, ih) => { const s = Math.max(W / iw, H / ih); return [(W - iw * s) / 2, (H - ih * s) / 2, iw * s, ih * s]; };
-  function wordAt(c, blur, colour) {
-    c.save(); c.filter = blur ? "blur(" + blur + "px)" : "none"; c.fillStyle = colour;
-    c.font = "900 " + fs + "px 'Inter Tight', Inter, sans-serif"; c.textAlign = "center"; c.textBaseline = "alphabetic";
-    if ("letterSpacing" in c) c.letterSpacing = (-0.06 * fs) + "px";
-    c.fillText("Crewcut", W / 2, base); c.restore();
+  const layers = Array.from(document.querySelectorAll(".meadow"));
+  const probe = document.createElement("video");
+  if (!layers.length || !probe.canPlayType) return;
+  const ext = probe.canPlayType('video/webm; codecs="vp9"') ? "webm" : probe.canPlayType('video/mp4; codecs="avc1.640028"') ? "mp4" : "";
+  if (!ext) return;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)"), dark = matchMedia("(prefers-color-scheme: dark)"), phone = matchMedia("(max-width: 760px)");
+  const saveData = !!(navigator.connection && navigator.connection.saveData);
+  const url = () => new URL("media/meadow/meadow-" + (dark.matches ? "dusk" : "day") + "-" + (phone.matches ? "phone" : "1920") + "." + ext, document.baseURI).href;
+  const loops = layers.map((el) => ({ el, v: el.querySelector("video"), near: false })).filter((l) => l.v);
+  let ready = false;
+  function apply(l) {
+    const v = l.v;
+    if (reduce.matches || saveData) { v.classList.remove("is-on"); if (!v.paused) v.pause(); return; }
+    if (!l.near) { if (!v.paused) v.pause(); return; }
+    const want = url();
+    if (v.src !== want) { v.classList.remove("is-on"); v.src = want; }
+    v.muted = true;
+    const p = v.play(); if (p && p.catch) p.catch(() => {});
   }
-  function paintFog(alpha) { if (!fogged) return; ctx.save(); ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = alpha; ctx.drawImage(fogged, 0, 0, W, H); ctx.restore(); }
-  function buildFog() {
-    const off = document.createElement("canvas"); off.width = W; off.height = H;
-    const o = off.getContext("2d");
-    o.filter = "blur(" + Math.round(22 * dpr) + "px) saturate(0.75) brightness(1.12)";
-    const [x, y, w, h] = cover(img.naturalWidth, img.naturalHeight);
-    o.drawImage(img, x - 40, y - 40, w + 80, h + 80);
-    o.filter = "none";
-    wordAt(o, Math.round(10 * dpr), "rgba(255,255,255,0.9)");
-    o.fillStyle = dark ? "rgba(190,225,215,0.16)" : "rgba(235,248,243,0.28)"; o.fillRect(0, 0, W, H);
-    let seed = 11; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 2600; i++) {
-      const px = r() * W, py = r() * H, rad = (0.6 + r() * r() * 3.2) * dpr;
-      o.beginPath(); o.arc(px, py, rad, 0, 7); o.fillStyle = "rgba(255,255,255," + (0.18 + r() * 0.3) + ")"; o.fill();
-      o.beginPath(); o.arc(px + rad * 0.3, py + rad * 0.35, rad * 0.7, 0, 7); o.fillStyle = "rgba(0,20,15,0.12)"; o.fill();
-    }
-    fogged = off;
-  }
-  function size() {
-    W = Math.round(sec.clientWidth * dpr); H = Math.round(sec.clientHeight * dpr);
-    cv.width = wordCv.width = W; cv.height = wordCv.height = H;
-    // the word: as wide as the screen allows, standing on the footer row
-    fs = Math.min(300, Math.max(104, sec.clientWidth * 0.21)) * dpr;
-    const fr = foot ? foot.getBoundingClientRect() : null, sr = sec.getBoundingClientRect();
-    base = fr ? (fr.top - sr.top) * dpr - 14 * dpr : H - 90 * dpr;
-    wctx.clearRect(0, 0, W, H); wordAt(wctx, 0, "rgba(255,255,255,0.94)");
-    buildFog(); paintFog(1);
-  }
-  function wipe(x, y, rad) {
-    ctx.save(); ctx.globalCompositeOperation = "destination-out";
-    const gr = ctx.createRadialGradient(x, y, 0, x, y, rad);
-    gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(0.65, "rgba(0,0,0,0.9)"); gr.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, rad, 0, 7); ctx.fill(); ctx.restore();
-  }
-  sec.addEventListener("pointermove", (e) => { const b = cv.getBoundingClientRect(); wipe((e.clientX - b.left) * dpr, (e.clientY - b.top) * dpr, 70 * dpr); });
-  let t0 = 0;
-  function frame(t) {
-    // a finger trail draws through the word right away, so the glass is alive from the first frame
-    const k = (t - t0) / 2200;
-    if (k < 1) for (let j = 0; j < 4; j++) { const kk = Math.min(1, k + j * 0.004); wipe(W * (0.12 + 0.76 * kk), base - fs * 0.32 - 0.06 * H * Math.sin(kk * 3.1), 42 * dpr); }
-    if (!reduce && !paused) paintFog(0.0016);
-    requestAnimationFrame(frame);
-  }
-  function start() { (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { size(); t0 = performance.now(); requestAnimationFrame(frame); }); }
-  if (img.complete && img.naturalWidth) start(); else img.addEventListener("load", start, { once: true });
-  addEventListener("resize", () => { if (Math.round(sec.clientWidth * dpr) !== W) size(); });
+  loops.forEach((l) => l.v.addEventListener("playing", () => l.v.classList.add("is-on")));
+  const all = () => { if (ready) loops.forEach(apply); };
+  if ("IntersectionObserver" in window) {
+    const io = new IntersectionObserver((es) => {
+      for (const e of es) { const l = loops.find((x) => x.el === e.target); if (l) { l.near = e.isIntersecting; if (ready) apply(l); } }
+    }, { rootMargin: "200px 0px" });
+    loops.forEach((l) => io.observe(l.el));
+  } else loops.forEach((l) => { l.near = true; });
+  [reduce, dark, phone].forEach((m) => { if (m.addEventListener) m.addEventListener("change", all); });
+  const go = () => setTimeout(() => { ready = true; all(); }, 0);
+  if (document.readyState === "complete") go(); else addEventListener("load", go, { once: true });
 })();

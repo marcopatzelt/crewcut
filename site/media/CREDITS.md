@@ -12,11 +12,17 @@ written for this project. All third-party assets are CC0 (public domain); no att
 Trees: [Island Tree 01](https://polyhaven.com/a/island_tree_01) (Poly Haven, CC0), Rico Cilliers, Rob Tuytel.
 Ground: [Grass004](https://ambientcg.com/view?id=Grass004) (ambientCG, CC0).
 
-**Morning hills** (`wallpapers/hills-morning-*`, the hero): made for this page with ChatGPT image generation from a
-prompt by the author, 16 Nov 2026.
+**The meadow** (`meadow/`, the hero and the close): an 8-second loop of the launch film's meadow, rendered with
+Blender 5.0.1 Cycles from [`examples/launch-film/meadow3d.py`](../../examples/launch-film/meadow3d.py) (Geometry Nodes
+grass with wind, daisies and cornflowers; scene script written for Crewcut, MIT). No new render: the loop is made from
+the film's 300 meadow frames with [`site/tools/meadow/`](../tools/meadow/) (half speed, a 2-second dissolve from the
+end into the start), and the dark-mode dusk is a colour grade of the same frames. VP9 WebM and H.264 MP4, 1920 x 1080
+and a 540 x 960 crop for phones, posters in WebP and JPEG.
 
-**Lilienstein** (`wallpapers/lilienstein-*`): a crop of the [Lilienstein](https://polyhaven.com/a/lilienstein) HDRI
-from Poly Haven (CC0).
+| Part | Source | Licence |
+|---|---|---|
+| Sky | HDRI [Kloofendal 48d Partly Cloudy (Pure Sky)](https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky), Poly Haven; Greg Zaal (original), Jarod Guest (sky edits) | CC0 |
+| Grass, flowers, light, camera | `examples/launch-film/meadow3d.py`, rendered with Blender (used as a tool) | MIT (script); the renders are ours |
 
 **Frames** (`frames/`): 3D scenes the studio rendered for a commercial, cut so that no words show (in the GPU card).
 

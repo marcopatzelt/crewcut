@@ -46,7 +46,7 @@ Small changes go online at once; the design gate is information, not a barrier (
 - **The Taste gate runs only for big changes**: more than about 300 changed lines in `site/` (or `web/`), a section
   added or removed, a design token changed (`site/assets/site.css` custom properties, `web/src/styles/tokens.css`), a
   file added or removed in `web/`, `[gate]` in a commit message, or a manual run with `run_gate`. The rule is in
-  `tools/ci/gate_decide.sh`.
+  `tools/ci/gate_decide.sh`. `[no gate]` in a commit message skips the landing page's gate for that push.
 - **It never blocks**: its findings go to the job summary and a separate artifact. Fix what is visibly wrong in one
   pass, write a waiver with a reason for a finding that does not apply (`site/.taste-skill/waivers.json`,
   `.taste-skill/waivers.json`), and move on. Agents: do not loop on gate findings.
