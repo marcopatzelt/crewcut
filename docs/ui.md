@@ -17,13 +17,14 @@ Apple font in the repository.
 | Sidebar (236 px; 64 px icon rail in an episode and below 1200 px) | the places with counts (Episodes, Shorts, Crew, Style pack, GPU and renders), the channel from the style pack, the crew dock with Slate's faces | `src/components/Sidebar.tsx` |
 | Main | the Episodes home, an episode's media, a read-only page, the onboarding chat or "New episode" | `src/views/Home.tsx`, `src/views/EpisodeView.tsx`, `src/views/EpisodeMedia.tsx`, `src/views/ReadOnlyViews.tsx` |
 | Right column (318 px) | Working now (each running job with its newest picture and progress, then "Done today") and Spend | `src/components/Crew.tsx` |
-| Crew chat (372 px, in an episode) | the working tiles on top, the money line, the transcript with cards and previews, the composer at the foot | `src/views/EpisodeView.tsx`, `src/components/ChatPane.tsx`, `src/components/CardView.tsx`, `src/components/Composer.tsx` |
+| Crew chat (372 px, in an episode) | the working tiles of this episode on top (other jobs as one line that opens the home), the money line, the transcript with cards and previews, the composer at the foot | `src/views/EpisodeView.tsx`, `src/components/ChatPane.tsx`, `src/components/CardView.tsx`, `src/components/Composer.tsx` |
 
 **The Episodes home** is the start view. "Needs you" shows each episode with an open card as a large media card (the
 cover, a tag with the question from `needs.title`, the length from `seconds`, the variants from `needs.images` small
-inside the picture, the title and the step bar below). "In work and published" is a grid of 16:9 covers with the length
+inside the picture, the title and the step bar below). "In work and published" is one complete row of 16:9 covers (the
+grid's column count is read from its CSS; "Show all" opens the rest) with the length
 or, while someone works on it, a Slate line ("Editor is cutting, 6 of 10"). "Shorts" is one row of 9:16 frames with
-the title drawn over them. Filter pills sit on top; the sidebar's "Shorts" is the Shorts pill (`#/episodes/shorts`).
+the title drawn over them, one row as well. Filter pills sit on top; the sidebar's "Shorts" is the Shorts pill (`#/episodes/shorts`).
 "Import footage" appears only when an episode takes footage (the newest long video at the record or edit step); it
 opens that episode and uploads the files into its chat.
 
@@ -174,9 +175,10 @@ used as it is.
 `?demo=1` (or no API answering at the address: a network error, a 404 page or an answer that is not JSON) switches to
 an in-memory backend in `src/demo/`. It answers the same calls, the media route too, with fixtures shaped like api.md.
 Everything in it is English. The pictures come from `src/demo/media.json` (web-sized stills under
-`public/demo/media/`, made by `tools/demo/build_media.py`): episode 012 "Claude improves a website 100 times" with three
+`public/demo/media/`, made by `tools/demo/build_media.py`): episode 012 "Claude improves a website 100 times" with two
 thumbnail variants, ten strip frames, the commercial's five 3D scenes and a running GPU rental; the commercial, an
-episode in work, four published ones and nine Shorts. Chats, jobs and money are made up. Nothing runs; a sentence gets a
+episode in work, four published ones and nine Shorts. Episode 012 shows variants A and B only (C spells its title
+differently). Chats, jobs and money are made up. Nothing runs; a sentence gets a
 reply that says so.
 
 When the demo starts on its own, Working now says "Demo data. Crewcut is not running at this address." With
@@ -207,7 +209,7 @@ python3 -m http.server -d dist 8080      # then open http://localhost:8080/index
 
 CI (`.github/workflows/screens.yml`) screenshots the home (`index.html?demo=1`) and episode 012
 (`#/e/012-website-100-times`) at 1440x900 in light and dark, at 1100 and at 390x844, plus `#/profile` and `#/crew`.
-The README images (the app itself at 1600 x 1000, twice the density: `crewcut-{dark,light}.png` for episode 012,
+The README images (the app itself at 1440 x 1000, twice the density, 2880 x 2000: `crewcut-{dark,light}.png` for episode 012,
 `crewcut-episodes-{dark,light}.png` for the home) and the animation (`crewcut-demo.webp` and `.mp4`, dark, play mode)
 come from `tools/ci/readme_shots.mjs`.
 

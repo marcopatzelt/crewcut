@@ -563,8 +563,7 @@
 }
 
 .more-link {
-  margin-top: 12px;
-  min-height: 32px;
+  min-height: 24px;
   padding: 0;
   border-radius: var(--r-row);
   color: var(--accent);
@@ -611,6 +610,15 @@
   line-height: 18px;
   font-weight: 500;
   color: var(--ink-3);
+}
+
+/* "Show all": at the right end of the section head, after the note when there is one. */
+.section-head .more-link {
+  margin-left: auto;
+}
+
+.section-note + .more-link {
+  margin-left: 6px;
 }
 
 .home-empty,
@@ -1298,8 +1306,8 @@
 .media-scroll {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 4px 22px 18px 10px;
+  gap: 14px;
+  padding: 4px 22px 12px 10px;
 }
 
 .ep-head {
@@ -1735,7 +1743,7 @@
   grid-template-columns: 1.7fr 1fr 1fr;
   grid-template-rows: 1fr 1fr;
   gap: 10px;
-  height: 220px;
+  height: 196px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1936,8 +1944,25 @@
 
 .chat-money {
   flex: none;
-  padding: 0 14px 10px;
+  padding: 0 14px 12px;
   box-shadow: inset 0 -1px 0 var(--line);
+}
+
+.elsewhere {
+  display: block;
+  min-height: 28px;
+  margin-top: 6px;
+  padding: 0 4px;
+  border-radius: var(--r-row);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--accent);
+  font-weight: 500;
+  text-align: left;
+}
+
+.elsewhere:hover {
+  text-decoration: underline;
 }
 
 .crew-chat .group,
@@ -1986,11 +2011,14 @@
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
+  /* What scrolls up under the working tiles fades out; nothing is cut off hard at that edge. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 22px);
+  mask-image: linear-gradient(to bottom, transparent 0, black 22px);
 }
 
 .chatcol .thread {
   margin-top: auto;
-  padding: 14px 16px 8px;
+  padding: 22px 16px 8px;
 }
 
 .chat-dock {

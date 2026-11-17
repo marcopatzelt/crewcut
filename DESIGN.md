@@ -50,12 +50,14 @@ The app is one glass window on a desk (rule 18): the rendered wallpaper behind i
   Everything else is moving."), "Import footage" (only when an episode takes footage: the newest one at the record or
   edit step) and "New episode". Filter pills (All, Needs you, In work, Long videos, Shorts, Published; a pill shows its
   count, empty ones hide; the selected one is filled with `--chip-on`, not the accent). Then three sections:
-  **Needs you** as large media cards (rule 19), **In work and published** as a grid of 16:9 thumbnails (four
-  columns at 1440 px, newest first), **Shorts** as one row of 9:16 frames. The sidebar's "Shorts" is the Shorts pill.
+  **Needs you** as large media cards (rule 19), **In work and published** as one complete row of 16:9 thumbnails
+  (four at 1440 px, newest first), **Shorts** as one row of 9:16 frames (seven at 1440 px); "Show all" in the
+  section head opens the filter with everything. The sidebar's "Shorts" is the Shorts pill.
 - **An episode** (`#/e/<id>`) shows its media first: the title with its facts as chips, the steps as segments, the
   crew on it; then the thumbnail variants, the cut, the 3D scenes and the rented GPU (rule 19). The crew chat on the
-  right: "Working now" tiles of every running job on top (this episode's first), the money line, the transcript with
-  its cards, the composer at the foot.
+  right: "Working now" tiles of this episode's running jobs on top (the others as one line, "One more job on other
+  episodes", that opens the home), the money line, the transcript with its cards, the composer at the foot. What
+  scrolls up under the tiles fades out; an open card that is the newest item keeps its top in view.
 - **Working now** (the right column of the home) shows each running job with its newest picture (`Activity.preview`)
   and its progress; a waiting row jumps to its open card, every other row opens the job's log. "Done today" follows.
 - Style pack, Crew, GPU and renders and a job log open in the main column as read-only pages. They have no edit
@@ -178,8 +180,10 @@ values. Where the browser supports `corner-shape: squircle`, panels and cards us
 - One inset per surface: everything in a column starts and ends at the same edge.
 - Group with space before lines. A divider only between groups that space cannot separate.
 - No cards inside cards.
-- Design at 1440 x 900, check at 1100, 760 and 390. The README images are the app itself at 1600 x 1000, twice the
-  density (3200 x 2000): episode 012 and the home, light and dark (`tools/ci/readme_shots.mjs`).
+- Design at 1440 x 900, check at 1100, 760 and 390. The README images are the app itself at 1440 x 1000, twice the
+  density (2880 x 2000): episode 012 and the home, light and dark (`tools/ci/readme_shots.mjs`). At that size each
+  view fits whole: on the home one complete row of thumbnails and of Shorts ("Show all" opens the rest), in an episode
+  the panels down to the GPU card.
 
 ## 8. Icons
 

@@ -1,6 +1,6 @@
 // README images, rendered in CI only (never on a laptop). The app draws its own desk (the rendered wallpaper) and its
-// glass window, so this script only opens it in demo mode and takes the picture: 1600 x 1000 at twice the pixel
-// density (3200 x 2000 PNG), light and dark, plus a short animation of the scripted demo.
+// glass window, so this script only opens it in demo mode and takes the picture: 1440 x 1000, the width the design
+// is made for, at twice the pixel density (2880 x 2000 PNG), light and dark, plus a short animation of the demo.
 //   node tools/ci/readme_shots.mjs <base url of web/dist> <out dir>
 // Needs the `playwright` package (CI installs it) and ffmpeg for the animation.
 import { chromium } from "playwright";
@@ -10,7 +10,7 @@ import { join } from "node:path";
 
 const [base, out] = process.argv.slice(2);
 mkdirSync(out, { recursive: true });
-const W = 1600;
+const W = 1440;
 const H = 1000;
 // The main demo episode: thumbnails, the cut, the commercial's 3D scenes and a running GPU rental.
 const EPISODE = "#/e/012-website-100-times";
@@ -58,7 +58,7 @@ async function animation(browser) {
     "-vf", "fps=20,scale=1200:-1:flags=lanczos", "-c:v", "libwebp_anim", "-lossless", "0", "-q:v", "72",
     "-loop", "0", "-an", join(out, "crewcut-demo.webp")]);
   execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-ss", "0.4", "-i", join(out, "crewcut-demo.webm"),
-    "-vf", "scale=1600:-2", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "22", "-an", join(out, "crewcut-demo.mp4")]);
+    "-vf", "scale=1440:-2", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "22", "-an", join(out, "crewcut-demo.mp4")]);
 }
 
 const browser = await chromium.launch();

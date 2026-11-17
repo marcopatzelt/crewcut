@@ -239,7 +239,10 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
   const m012 = ep("012");
   const m015 = ep("015");
   // Large variants for the episode view; the small ones where a picture is drawn small (cards, the rail, a phone).
-  const thumbs012 = (m012?.thumbs ?? []).map((t) => ({ ...t, small: t.url, url: t.url_large ?? t.url }));
+  // Only A and B: variant C spells its title differently ("Design-Skills"), so the demo leaves it out.
+  const thumbs012 = (m012?.thumbs ?? [])
+    .filter((t) => t.id === "A" || t.id === "B")
+    .map((t) => ({ ...t, small: t.url, url: t.url_large ?? t.url }));
   const scenes = m012?.scenes ?? m015?.scenes ?? [];
   const sceneUrl = (i: number) => (i === 0 ? scenes[0]?.url_large ?? scenes[0]?.url : scenes[i]?.url) ?? null;
 
@@ -353,14 +356,14 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
       episode: e012.id,
       identity: "designer",
       step: "thumbnail",
-      doing: "Thumbnail variant C, title top left",
+      doing: "Checks A and B at phone size",
       progress: 0.4,
       status: "running",
       started: ago(68),
       seconds: 68,
       cost_usd: 0,
       equiv_usd: 0.06,
-      preview: thumbs012[2]?.small ?? null,
+      preview: thumbs012[0]?.small ?? null,
     },
     {
       job: 43,
@@ -462,7 +465,7 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     body: "Scene 5 is the long one: 840 frames. Both ways give the same picture; the rented one is faster, this machine is free.",
     options: null,
     file: "edit/plan-v005.json",
-    preview: scenes[4] ? "render/inserts/s5/0412.jpg" : null,
+    preview: null, // scene 5 is among the media of the episode
     sha256: "a81e55f0d913",
     status: "accepted",
     created: ago(52 * MIN),
@@ -497,9 +500,9 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
     identity: "designer",
     title: "Pick a thumbnail",
     body: "Recommendation: B. The face stays readable at phone size.",
-    options: thumbs012.length ? thumbs012.map((t) => `${t.id} · ${t.label}`) : ["A", "B", "C"],
+    options: thumbs012.length ? thumbs012.map((t) => `${t.id} · ${t.label}`) : ["A", "B"],
     file: "graphics/thumbnail/v1/B.jpg",
-    preview: thumbs012[1] ? "graphics/thumbnail/v1/B.jpg" : null,
+    preview: null, // the variants are large in the episode's Thumbnail panel
     sha256: "5d0c9a77e2b1",
     status: "open",
     created: ago(6 * MIN),
@@ -621,7 +624,7 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
         at: ago(6 * MIN),
         author: "designer",
         step: "thumbnail",
-        text: "Three thumbnails from your style pack. I would take B: the face stays readable at phone size.",
+        text: "Two thumbnails from your style pack. I would take B: the face stays readable at phone size.",
         card: 31,
       },
       {
@@ -684,7 +687,7 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
   const mediaThumbs = thumbs012.map((t) => ({
     id: t.id,
     label: t.label,
-    note: t.id === "A" ? "Title left, four sites" : t.id === "C" ? "English title, top left" : null,
+    note: t.id === "A" ? "Title left, four sites" : "Title over the face, one site",
     url: t.url,
     recommended: t.id === "B",
     picked: false,
@@ -752,7 +755,7 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
       "Rendering scene 5 of 5: Evening street, 840 frames.",
       "Frame 521 of 840.",
     ],
-    42: ["Read brand/thumbnail.json: at most three words, face on the right.", "Variants A and B done.", "Writing variant C."],
+    42: ["Read brand/thumbnail.json: at most three words, face on the right.", "Variants A and B done.", "Checking both at phone size."],
     43: ["Read 3 clips, 41 min.", "Kept the last full take of every sentence.", "Building speaker cut v1."],
     40: ["Waits for card 31: the thumbnail pick."],
     39: ["Measured cut v5 against your best video.", "Speaker share 58 %, loudness −14.1 LUFS.", "Two notes: 1:12 and 2:36."],

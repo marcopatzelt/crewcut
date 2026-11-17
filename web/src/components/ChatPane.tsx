@@ -168,18 +168,23 @@ export function ChatPane({ id, head, empty }: { id: string; head?: ReactNode; em
   const canDrop = id !== ONBOARDING;
   const isFresh = useFresh(thread?.status === "ready", items.map((i) => i.key), id);
 
+  /** The open card when it is the newest item of the transcript, else null. */
+  const lastOpenCard = (el: HTMLElement) => {
+    const last = el.querySelector(".chat")?.lastElementChild;
+    return last instanceof HTMLElement && last.matches("[data-open-card]") ? last : null;
+  };
+
   /**
-   * To the newest item. When it is an open card taller than the view, its top stays in view: the question and its
-   * choices come before the button (rule 12).
+   * To the newest item. When that is an open card taller than the view, its top stays in view instead: the question
+   * and its choices come before the button (rule 12).
    */
   const toEnd = () => {
     const el = scroller.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-    const chat = el.querySelector(".chat");
-    const last = chat?.lastElementChild;
-    if (last instanceof HTMLElement && last.matches("[data-open-card]")) {
-      const over = last.getBoundingClientRect().top - el.getBoundingClientRect().top - 8;
+    const card = lastOpenCard(el);
+    if (card) {
+      const over = card.getBoundingClientRect().top - el.getBoundingClientRect().top - 12;
       if (over < 0) el.scrollTop += over;
     }
   };
@@ -208,9 +213,8 @@ export function ChatPane({ id, head, empty }: { id: string; head?: ReactNode; em
   function onScroll() {
     const el = scroller.current;
     if (!el) return;
-    const last = el.querySelector(".chat")?.lastElementChild;
-    const cardInView =
-      last instanceof HTMLElement && last.matches("[data-open-card]") && last.getBoundingClientRect().top >= el.getBoundingClientRect().top - 16;
+    const card = lastOpenCard(el);
+    const cardInView = card !== null && Math.abs(card.getBoundingClientRect().top - el.getBoundingClientRect().top - 12) < 4;
     stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80 || cardInView;
   }
 

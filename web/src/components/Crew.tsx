@@ -166,6 +166,9 @@ export function WorkingList({ shape, episode }: { shape: Shape; episode: string 
     return sameDay(end, today);
   });
   const fresh = useArrivals(boot === "ready", [...active.map((a) => `a${a.job}`), ...done.map((a) => `d${a.job}`)]);
+  // The crew chat shows the jobs of its episode; the others stay one line away (rule 1.5: nothing runs out of sight).
+  const shown = shape === "chat" && episode ? active.filter((a) => a.episode === episode) : active;
+  const elsewhere = active.length - shown.length;
   const openCardIn = new Set(Object.values(cards).filter((c) => c.status === "open").map((c) => c.episode));
 
   const metaFor = (a: Activity) => {
@@ -179,9 +182,9 @@ export function WorkingList({ shape, episode }: { shape: Shape; episode: string 
 
   return (
     <div className={`crew-list crew-${shape}`}>
-      {active.length ? (
+      {shown.length ? (
         <div className="group">
-          {active.map((a) => (
+          {shown.map((a) => (
             <JobRow
               key={a.job}
               a={a}
@@ -194,6 +197,11 @@ export function WorkingList({ shape, episode }: { shape: Shape; episode: string 
             />
           ))}
         </div>
+      ) : null}
+      {elsewhere > 0 ? (
+        <button type="button" className="elsewhere" onClick={() => navigate({ kind: "episodes" })}>
+          {elsewhere === 1 ? "One more job" : `${countWord(elsewhere)} more jobs`} on other episodes
+        </button>
       ) : null}
       {done.length && shape === "rail" ? (
         <div className="later">

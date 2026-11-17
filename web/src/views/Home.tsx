@@ -3,7 +3,7 @@
 // picture, never on the thumbnail. A card opens its episode.
 import { Button } from "@astryxdesign/core/Button";
 import { Download, Plus } from "lucide-react";
-import { useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Activity, Episode, Identity } from "../api/types";
 import { StepBar, identityOf } from "../components/bits";
 import { ago, clock, countWord, episodeNumber } from "../lib/format";
@@ -210,6 +210,29 @@ function ImportButton({ target }: { target: Episode }) {
   );
 }
 
+/**
+ * How many columns a grid has right now, read from its laid-out CSS (container queries set them), so the home can
+ * show one complete row. Without layout (tests) it keeps the widest count.
+ */
+function useColumns(widest: number, present: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [cols, setCols] = useState(widest);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || typeof getComputedStyle !== "function") return;
+    const read = () => {
+      const n = getComputedStyle(el).gridTemplateColumns.split(" ").filter(Boolean).length;
+      if (n > 0) setCols(n);
+    };
+    read();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [present]);
+  return [ref, cols] as const;
+}
+
 function headLine(episodes: readonly Episode[]): string {
   if (!episodes.length) return "Nothing here yet. Start with one sentence.";
   const needs = episodes.filter((e) => e.open_cards > 0).length;
@@ -231,12 +254,15 @@ export function Home() {
     return [...episodes].filter(test).sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated));
   }, [episodes, filter]);
   const needs = shown.filter((e) => e.open_cards > 0);
-  const long = shown.filter((e) => e.open_cards === 0 && e.kind !== "short");
-  const allShown = shown.filter((e) => e.open_cards === 0 && e.kind === "short");
-  const SHORTS_ROW = 7;
-  const shorts = filter === "shorts" ? allShown : allShown.slice(0, SHORTS_ROW);
-  const allShorts = episodes.filter((e) => e.kind === "short");
-  const from = new Set(allShorts.map((e) => e.source_episode).filter(Boolean)).size;
+  const allLong = shown.filter((e) => e.open_cards === 0 && e.kind !== "short");
+  const allShorts = shown.filter((e) => e.open_cards === 0 && e.kind === "short");
+  // "All" shows one complete row of each; a filter shows everything.
+  const [gridRef, gridCols] = useColumns(4, allLong.length > 0);
+  const [shortsRef, shortsCols] = useColumns(7, allShorts.length > 0);
+  const long = filter === "all" ? allLong.slice(0, gridCols) : allLong;
+  const shorts = filter === "all" ? allShorts.slice(0, shortsCols) : allShorts;
+  const everyShort = episodes.filter((e) => e.kind === "short");
+  const from = new Set(everyShort.map((e) => e.source_episode).filter(Boolean)).size;
   const target = footageTarget(episodes);
 
   return (
@@ -304,9 +330,15 @@ export function Home() {
           <section className="home-section" aria-labelledby="grid-heading">
             <div className="section-head">
               <h2 id="grid-heading">{filter === "done" ? "Published" : filter === "work" ? "In work" : "In work and published"}</h2>
-              <span className="section-note">Newest first</span>
+              {allLong.length > long.length ? (
+                <button type="button" className="more-link" onClick={() => navigate({ kind: "episodes", filter: "long" })}>
+                  Show all {allLong.length}
+                </button>
+              ) : (
+                <span className="section-note">Newest first</span>
+              )}
             </div>
-            <div className="ep-grid">
+            <div className="ep-grid" ref={gridRef}>
               {long.map((e) => (
                 <EpisodeCard key={e.id} e={e} worker={workerOf(e, activity, team)} />
               ))}
@@ -320,24 +352,20 @@ export function Home() {
               <h2 id="shorts-heading">Shorts</h2>
               <span className="section-note">
                 {from
-                  ? `${allShorts.length} made from ${from === 1 ? "one episode" : `${countWord(from).toLowerCase()} episodes`}`
-                  : `${allShorts.length} in all`}
+                  ? `${everyShort.length} made from ${from === 1 ? "one episode" : `${countWord(from).toLowerCase()} episodes`}`
+                  : `${everyShort.length} in all`}
               </span>
+              {allShorts.length > shorts.length ? (
+                <button type="button" className="more-link" onClick={() => navigate({ kind: "episodes", filter: "shorts" })}>
+                  Show all {allShorts.length}
+                </button>
+              ) : null}
             </div>
-            <div className="shorts">
+            <div className="shorts" ref={shortsRef}>
               {shorts.map((e) => (
                 <ShortCard key={e.id} e={e} />
               ))}
             </div>
-            {allShown.length > shorts.length ? (
-              <button
-                type="button"
-                className="more-link"
-                onClick={() => navigate({ kind: "episodes", filter: "shorts" })}
-              >
-                Show all {allShown.length} Shorts
-              </button>
-            ) : null}
           </section>
         ) : null}
       </div>
