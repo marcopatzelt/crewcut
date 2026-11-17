@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import os
 from collections.abc import Callable
 from pathlib import Path
@@ -60,11 +61,32 @@ def render_2d(plan: Plan, ids: list[str] | None = None, images_only: bool = Fals
 
 
 # ---- motion graphics: here or on one rented machine --------------------------------------------------------------
+def motion_gates(plan: Plan, ids: list[str] | None = None) -> list[str]:
+    """Why motion inserts may not render yet: no row in the approved motion plan (crewcut motion plan), or a custom
+    piece (`source`) whose style-frame card has no yes. Empty: all may render."""
+    from ..motion import custom, director
+    raw = json.loads(plan.path.read_text(encoding="utf-8"))
+    out = list(director.motion_gate(plan.episode_dir, raw))
+    for ins in plan.of_kind("motion", ids):
+        if ins.source:
+            why = custom.style_frame_gate(plan.episode_dir, ins.id)
+            if why:
+                out.append(why)
+    if ids:
+        out = [x for x in out if x.split(":", 1)[0] in ids]
+    return out
+
+
 def render_motion(plan: Plan, ids: list[str] | None = None, draft: bool = False, location: str | None = None,
                   compute=None, runner: media.Runner = media.run, log: Callable = print, backend=None,
-                  max_usd: float | None = None) -> dict:
+                  max_usd: float | None = None, gate: bool = True) -> dict:
     """crewcut.render.motion.render_motion with the job's progress line; a spend card or a refusal of the compute
-    session becomes Waiting (exit code 3)."""
+    session becomes Waiting (exit code 3). With `gate` (always, except tests), inserts without an approved motion plan
+    row or without the yes on their style frame wait (exit 3)."""
+    if gate and plan.of_kind("motion", ids):
+        why = motion_gates(plan, ids)
+        if why:
+            raise Waiting("Motion graphics wait: " + "; ".join(why))
     where = motion.location(location)
     if where == "rented" and compute is None:
         compute = load_compute()
@@ -313,7 +335,7 @@ def matte_step(plan: Plan, compute=None, runner: media.Runner = media.run, log: 
 
 def render_all(plan: Plan, mode: str | None = None, gpus: int = 2, samples: int | None = None, draft: bool = False,
                max_usd: float | None = None, compute=None, runner: media.Runner = media.run,
-               log: Callable = print) -> dict:
+               log: Callable = print, gate: bool = True) -> dict:
     """2d, motion, 3d, cut; stops at the first step that is not complete ({"ok": False, ...}). `mode` (local or
     rented) is for motion and 3D. Without effectcraft-cli the motion step fails with one sentence, unless the plan
     says `"motion_without_engine": "skip"`: then the cut leaves those inserts out and says so in its notes."""
@@ -334,7 +356,7 @@ def render_all(plan: Plan, mode: str | None = None, gpus: int = 2, samples: int 
     if out["matte"] and out["matte"].get("rented"):
         plan = Plan(plan.path, pack=plan.pack, episode_dir=plan.episode_dir)   # the decisions change the motion hashes
     try:
-        rm = render_motion(plan, None, False, mode, compute, runner=runner, log=log)
+        rm = render_motion(plan, None, False, mode, compute, runner=runner, log=log, gate=gate)
     except motion.EngineMissing as e:
         if plan.p.get("motion_without_engine") != "skip":
             raise

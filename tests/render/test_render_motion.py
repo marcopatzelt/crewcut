@@ -142,7 +142,7 @@ def test_engine_missing_is_one_clear_sentence(episode, studio, no_engine, capsys
     with pytest.raises(motion.EngineMissing, match=r"effectcraft-cli is missing here, so the motion graphics "
                                                    r"inserts m1 cannot render \(everything else works\)"):
         motion.render_motion(plan, runner=FakeRunner(), log=lambda *a: None)
-    assert cli.main(["motion", str(plan.path)]) == 1
+    assert cli.main(["motion", str(plan.path), "--no-gate"]) == 1
     assert "render.location = \"rented\"" in capsys.readouterr().err
 
 
@@ -150,13 +150,13 @@ def test_render_all_skips_motion_only_when_the_plan_says_so(episode, studio, no_
     plan = plan_with(episode, studio, {**ROLL, "start": 7.0, "end": 10.0, "cues": {}},
                      sound={"hits": [2.0, "m1"]})                        # "m1" goes with the left-out insert
     with pytest.raises(motion.EngineMissing):                          # default: a clear failure
-        workbench.render_all(plan, "local", runner=FakeRunner(), log=lambda *a: None)
-    assert cli.main(["all", str(plan.path), "--local"]) == 1
+        workbench.render_all(plan, "local", runner=FakeRunner(), log=lambda *a: None, gate=False)
+    assert cli.main(["all", str(plan.path), "--local", "--no-gate"]) == 1
     assert "effectcraft-cli is missing here" in capsys.readouterr().err
     raw = json.loads(plan.path.read_text())
     raw["motion_without_engine"] = "skip"
     plan.path.write_text(json.dumps(raw))
-    out = workbench.render_all(Plan(plan.path), "local", runner=FakeRunner(), log=lambda *a: None)
+    out = workbench.render_all(Plan(plan.path), "local", runner=FakeRunner(), log=lambda *a: None, gate=False)
     assert out["ok"] and out["motion"]["skipped"] == ["m1"]
     notes = json.loads((plan.episode_dir / "export" / "out-v001.cut.json").read_text())["notes"]
     assert any(n.startswith("m1: left out of this cut") for n in notes)
@@ -253,10 +253,10 @@ def test_rented_spend_card_is_exit_3(episode, studio, tmp_path, monkeypatch, cap
     plan = plan_with(episode, studio, ROLL)
     compute = FakeCompute(tmp_path, block=NeedsApproval(5))
     with pytest.raises(workbench.Waiting) as e:
-        workbench.render_motion(plan, location="rented", compute=compute, runner=FakeRunner(), log=lambda *a: None)
+        workbench.render_motion(plan, location="rented", compute=compute, runner=FakeRunner(), log=lambda *a: None, gate=False)
     assert e.value.card_id == 5
     monkeypatch.setattr(workbench, "load_compute", lambda: FakeCompute(tmp_path, block=NeedsApproval(6)))
-    assert cli.main(["motion", str(plan.path), "--rented", "--json"]) == 3
+    assert cli.main(["motion", str(plan.path), "--rented", "--json", "--no-gate"]) == 3
     assert '"card": 6' in capsys.readouterr().out
 
 
@@ -403,3 +403,19 @@ def test_render_all_without_a_way_to_rent_goes_beside(episode, studio, monkeypat
     lines = []
     assert workbench.matte_step(plan, log=lines.append)["rows"] == []
     assert any("beside the person" in s for s in lines)
+
+
+def test_gate_waits_for_the_motion_plan_and_names_the_row(episode, studio):
+    plan = plan_with(episode, studio, ROLL)
+    with pytest.raises(workbench.Waiting, match="m1: no beat and column"):
+        workbench.render_motion(plan, runner=FakeRunner(), log=lambda *a: None)
+    assert cli.main(["motion", str(plan.path)]) == 3
+    assert any("waits: m1" in n for n in (lambda o: (cli.run(cli.parser().parse_args(["plan", str(plan.path)]), o), o)[1])({})["notes"])
+
+
+def test_render_sample_without_the_engine_is_none(tmp_path, no_engine):
+    from crewcut import paths
+    tpl = next((paths.templates_dir() / "motion").glob("*.jsx"), None) or (tmp_path / "t.jsx")
+    if not tpl.is_file():
+        tpl.write_text('/* @template t\\n @params {}\\n @end */\\nfunction t(P) { return null; }\\n')
+    assert motion.render_sample(tpl, "landscape", {}, tmp_path / "s.mp4") is None

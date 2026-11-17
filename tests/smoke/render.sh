@@ -40,7 +40,7 @@ else
   # is missing: the plan says motion_without_engine: skip) on a generated background, assembly, loudness
   mkdir -p "$CREWCUT_STUDIO/episodes"
   cp -r /app/examples/demo "$CREWCUT_STUDIO/episodes/000-demo"
-  if timeout 1500 crewcut render all "$CREWCUT_STUDIO/episodes/000-demo/edit/plan-v001.json" --local \
+  if timeout 1500 crewcut render all "$CREWCUT_STUDIO/episodes/000-demo/edit/plan-v001.json" --local --no-gate \
        > "$OUT/demo.log" 2>&1; then
     cp "$CREWCUT_STUDIO/episodes/000-demo/export/"*.mp4 "$OUT/" 2>/dev/null
     note "demo  ok  $(tail -1 "$OUT/demo.log")"

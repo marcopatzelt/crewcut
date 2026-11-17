@@ -738,3 +738,13 @@ def motion_gate(episode_dir: Path | str, plan_json: dict) -> list[str]:
         else:
             out.append(f"{iid}: no approved motion plan: run `crewcut motion plan {ep_dir.name}`, then its card")
     return out
+
+
+def approved_cap(episode_dir: Path | str) -> float | None:
+    """The money cap of the video's approved motion plan (the number on its motion-plan card), or None."""
+    ep_dir = Path(episode_dir)
+    acc, _ = _plan_cards(ep_dir.name)
+    plan, _why = _card_plan(ep_dir, acc)
+    if plan and plan.get("cap_usd"):
+        return float(plan["cap_usd"])
+    return None

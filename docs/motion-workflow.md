@@ -61,7 +61,7 @@ bar's frame), per format. A frame where one hue holds more than 30 % of the colo
 for grass, sky or footage). Nothing animated is built before this yes (`crewcut.motion.custom.style_frame_gate`).
 
 Blender plates of a piece rent a GPU only after their own `spend` card has a yes; its cap is the motion plan's
-(`crewcut.motion.plates`).
+(`crewcut render plates`, `crewcut/render/plates.py`).
 
 ## 3. Your library
 

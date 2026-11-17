@@ -77,3 +77,10 @@ def test_missing_script_is_named_but_the_plan_parses(episode, studio):
     with pytest.raises(Exception, match="none.py not found"):
         plates.render_plates(plan, location="local", log=lambda s: None)
 
+
+
+def test_cap_defaults_per_format_and_only_goes_down(episode, studio):
+    from crewcut.render import behind
+    plan, _ = make(episode, studio)
+    assert behind.cap_usd(plan) == 2.0 and behind.cap_usd(plan, max_usd=0.8) == 0.8
+    assert behind.cap_usd(plan, max_usd=9.0) == 2.0

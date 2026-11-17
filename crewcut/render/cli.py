@@ -84,6 +84,7 @@ def parser() -> argparse.ArgumentParser:
     g.add_argument("--local", action="store_true", help="render here (needs effectcraft-cli)")
     g.add_argument("--rented", action="store_true", help="render on one rented machine (asks for a yes first)")
     p.add_argument("--max-usd", type=float, help="money cap for this rented run (default $2 a video, $0.50 a Short)")
+    p.add_argument("--no-gate", action="store_true", help="tests only: skip the motion plan and style-frame gates")
     p = plan_cmd("plates", "Blender plates of the motion inserts: here with an own GPU, else one rented RTX 4090")
     p.add_argument("--ids", help="only the plates of these inserts, comma separated")
     p.add_argument("--probe", action="store_true", help="one half-size still per plate first")
@@ -106,6 +107,7 @@ def parser() -> argparse.ArgumentParser:
     plan_cmd("shown", "lock the output after someone has seen it")
     p = plan_cmd("all", "2d, motion, 3d and cut")
     way(p)
+    p.add_argument("--no-gate", action="store_true", help="tests only: skip the motion plan and style-frame gates")
     p = sub.add_parser("measure", help="measure a still against the style pack")
     p.add_argument("image")
     p.add_argument("--pack", help="a style pack folder (default: the active pack)")
@@ -230,6 +232,8 @@ def run(a: argparse.Namespace, out: dict) -> int:
     if a.cmd == "plan":
         s = plan.summary()
         s["notes"] = workbench.motion_notes(plan)
+        if plan.of_kind("motion"):
+            s["notes"] += [f"waits: {x}" for x in workbench.motion_gates(plan)]
         out.update(s)
         if not a.json:
             _print_plan(s)
@@ -241,7 +245,7 @@ def run(a: argparse.Namespace, out: dict) -> int:
             _print_rows("2d", rows)
         return 0 if all(r["frames_ok"] for r in rows) and (a.images_only or _rows_ok(rows)) else 1
     if a.cmd == "motion":
-        r = workbench.render_motion(plan, _ids(a.ids), a.draft, mode, max_usd=a.max_usd, log=log)
+        r = workbench.render_motion(plan, _ids(a.ids), a.draft, mode, max_usd=a.max_usd, log=log, gate=not a.no_gate)
         out.update(r)
         if not a.json:
             _print_rows("motion", r["rows"])
@@ -288,7 +292,7 @@ def run(a: argparse.Namespace, out: dict) -> int:
             print(f"Locked: {r['output']}  sha256 {r['sha256'][:16]}")
         return 0
     if a.cmd == "all":
-        r = workbench.render_all(plan, mode, a.gpus, a.samples, a.draft, a.max_usd, log=log)
+        r = workbench.render_all(plan, mode, a.gpus, a.samples, a.draft, a.max_usd, log=log, gate=not a.no_gate)
         out.update({k: v for k, v in r.items() if k != "ok"})
         if r["ok"] and not a.json:
             print(f"Cut: {out['cut']['output']}")

@@ -72,7 +72,14 @@ def prepare_shot(plan: Plan, ins: Insert, runner: media.Runner = media.run, log:
 
 
 def cap_usd(plan: Plan, max_usd: float | None = None) -> float:
+    """The money cap of rented motion work (plates, matte): the approved motion plan's cap, else $2 a video and
+    $0.50 a Short; the plan's `motion_cap_usd` or `--max-usd` can only lower it."""
     cap = CAP_SHORT_USD if plan.format == "portrait" else CAP_LONG_USD
+    try:
+        from ..motion import director
+        cap = director.approved_cap(plan.episode_dir) or cap
+    except Exception:          # no studio database (tests, a bare plan): the defaults stand
+        pass
     lower = plan.p.get("motion_cap_usd")
     for v in (lower, max_usd):
         if isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0:

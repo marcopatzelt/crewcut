@@ -41,7 +41,7 @@ def test_demo_plan_has_two_motion_graphics_inside_the_rules(demo):
 def test_demo_render_all_passes_without_the_engine(demo, monkeypatch):
     monkeypatch.setattr(motion, "engine_available", lambda cli=None: False)
     run = FakeRunner()
-    out = workbench.render_all(Plan(demo), "local", runner=run, log=lambda *a: None)
+    out = workbench.render_all(Plan(demo), "local", runner=run, log=lambda *a: None, gate=False)
     assert out["ok"] and out["motion"]["skipped"] == ["m1", "m2"]
     notes = json.loads((demo.parent.parent / "export" / "demo-v001-preview.cut.json").read_text())["notes"]
     assert any(n.startswith("m1: left out of this cut") for n in notes)
@@ -51,7 +51,7 @@ def test_demo_render_all_passes_without_the_engine(demo, monkeypatch):
     del raw["motion_without_engine"]
     demo.write_text(json.dumps(raw))
     with pytest.raises(motion.EngineMissing):                          # a real plan stops with one sentence
-        workbench.render_all(Plan(demo), "local", runner=FakeRunner(), log=lambda *a: None)
+        workbench.render_all(Plan(demo), "local", runner=FakeRunner(), log=lambda *a: None, gate=False)
 
 
 def test_demo_motion_renders_with_an_engine(demo):

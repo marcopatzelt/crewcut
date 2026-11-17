@@ -504,3 +504,52 @@ def render_motion(plan: Plan, ids: list[str] | None = None, draft: bool = False,
 
 def _location(choice: str | None) -> str:
     return location(choice)
+
+
+# ---- samples of a template (library shelf, promotion) ---------------------------------------------------------------
+SAMPLE_FACE = {"landscape": {"x": 0.45, "y": 0.36, "w": 0.18, "h": 0.30},
+               "portrait": {"x": 0.5, "y": 0.30, "w": 0.40, "h": 0.22}, "stage": None}
+
+
+def render_sample(template: Path, fmt: str, params: dict, out: Path, seconds: float = 4.0, fps: int = 30,
+                  backend: Callable[[dict[str, str]], Any] | None = None) -> dict | None:
+    """A sample loop of one template in one format with the active pack (for `crewcut motion promote` and the
+    shelf): an MP4 on the pack's ground (overlays too, so it can be looked at) and a poster frame at 60 % of the
+    length. None when effectcraft-cli is missing here. Renders on this computer."""
+    from .. import brand as brand_mod
+    from ..motion import export as mexport
+    from .plan import FORMATS, STAGE_HEIGHT, brand_context, render_tokens
+    if backend is None and not engine_available():
+        return None
+    out = Path(out)
+    tokens = render_tokens(brand_mod.load())
+    size = (FORMATS["portrait"][0], STAGE_HEIGHT) if fmt == "stage" else FORMATS[fmt]
+    head = mtemplates.parse_header(Path(template).read_text(encoding="utf-8"))
+    overlay = head.get("kind") == "overlay"
+    ctx = {"format": fmt, "size": list(size), "fps": fps, "duration": seconds, "transparent": False,
+           "face": SAMPLE_FACE.get(fmt) if overlay else None, "backdrop": None, "draft": False, "right_free": 0.18,
+           "layer": None, "plates": {}, "brand": brand_context(tokens)}
+    work = out.parent / f".{out.stem}-work"
+    if work.exists():
+        shutil.rmtree(work)
+    (work / "fonts").mkdir(parents=True)
+    for f in font_files(tokens):
+        shutil.copy2(f, work / "fonts" / f.name)
+    be = (backend or (lambda env: Backend(env=env)))(font_env(work / "fonts"))
+    mg = tokens.get("motion_graphics") or {}
+    proj = str(work / "sample.ecproj")
+    mproject.create(be, proj, mproject.comp_params(COMP, None, size[0], size[1], fps, seconds,
+                                                   mg.get("ground") or "#F1F1EF", 180, 16), overwrite=True)
+    code, _ = mtemplates.program_path(template, params, context=ctx)
+    be.script(code, project=proj, save=True, name=f"{Path(template).stem}.jsx")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    mexport.render_video(be, proj, str(out), COMP, 0.0, seconds, fps, chunk=CHUNK_S, jobs=jobs())
+    poster = out.with_suffix(".jpg")
+    be.render_frame(proj, str(poster.with_suffix(".png")), comp=COMP, time=round(seconds * 0.6, 3))
+    png = poster.with_suffix(".png")
+    if png.is_file():
+        from PIL import Image
+        Image.open(png).convert("RGB").save(poster, quality=88)
+        png.unlink()
+    shutil.rmtree(work, ignore_errors=True)
+    return {"video": str(out), "poster": str(poster) if poster.is_file() else None}
