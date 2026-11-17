@@ -45,6 +45,20 @@ def engine_dir(tmp_path, monkeypatch):
     yield tmp_path / "engine"
 
 
+def test_root_switches_to_the_studio_owner(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setenv("CREWCUT_STUDIO", str(tmp_path))
+    monkeypatch.setattr(connect.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(connect.os, "setgroups", lambda g: calls.append(("groups", g)))
+    monkeypatch.setattr(connect.os, "setgid", lambda g: calls.append(("gid", g)))
+    monkeypatch.setattr(connect.os, "setuid", lambda u: calls.append(("uid", u)))
+    monkeypatch.setenv("HOME", "/root")
+    connect.drop_to_studio_owner()
+    uid = tmp_path.stat().st_uid or 1000
+    assert calls[-1] == ("uid", uid) and calls[0] == ("groups", [])
+    assert connect.os.environ["HOME"] == str(tmp_path / ".crewcut" / "home")
+
+
 def test_only_anthropic_sign_in_links_count():
     assert connect.sign_in_url("go to https://evil.example/a then") is None
     assert connect.sign_in_url("\x1b[1mhttps://claude.ai/oauth/authorize?code=true&x=1\x1b[0m.") == \
@@ -98,6 +112,7 @@ def test_cli_connect_prints_json_lines_and_the_token_for_the_desktop_app(fake_cl
     from crewcut import engines
     eng = engines.get("claude")
     monkeypatch.setattr(type(eng), "binary", lambda self: fake_claude)
+    monkeypatch.setattr(connect, "drop_to_studio_owner", lambda: None)  # the image's tests run as root
     monkeypatch.setattr(connect.sys, "stdin", __import__("io").StringIO("goodcode#state1\n"))
     assert connect.cli_connect("claude", print_token=True) == 0
     lines = [json.loads(x) for x in capsys.readouterr().out.splitlines()]
