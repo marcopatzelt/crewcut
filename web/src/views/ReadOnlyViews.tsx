@@ -11,6 +11,7 @@ import { ago, clock, day, usd } from "../lib/format";
 import { messageOf, navigate } from "../store/actions";
 import { EMPTY, useUi } from "../store/store";
 import { Dock } from "./EpisodeView";
+import { MotionShelf } from "./MotionShelf";
 
 const CHANGE_LINE = "To change something, say it in the chat.";
 
@@ -136,6 +137,7 @@ export function ProfileView() {
             </div>
           </section>
         ) : null}
+        <MotionShelf />
         <section className="section" aria-labelledby="profile-rules">
           <h2 id="profile-rules">Rules by step</h2>
           {steps.length ? (

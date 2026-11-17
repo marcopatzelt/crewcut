@@ -192,7 +192,11 @@ export type CardKind =
   | "rule"
   | "profile"
   | "mix"
-  | "other";
+  | "other"
+  | "motion-plan"
+  | "style-frame"
+  | "template"
+  | "baseline";
 
 export type CardStatus = "open" | "accepted" | "declined" | "expired";
 
@@ -371,3 +375,248 @@ export interface PrompterControl {
 
 /** The pseudo-episode that holds the onboarding chat. It never appears in state.episodes. */
 export const ONBOARDING = "_onboarding";
+
+// ---------- motion graphics (docs/api.md "Motion cards" and "Motion") ----------
+
+/** A loop and its still. Either may be null (a template without samples). */
+export interface MotionMedia {
+  loop: string | null;
+  poster: string | null;
+}
+
+/** One beat of a motion plan: what the viewer must understand or feel, and the picture that does it. */
+export interface MotionBeat {
+  /** the id to strike: "beat:N" */
+  row: string;
+  beat: number;
+  time: string; // "0:06"
+  purpose: string | null;
+  picture: string | null;
+  struck: boolean;
+  piece?: string | null;
+  params?: Record<string, unknown>;
+  length_s?: number | null;
+  cost_usd?: number;
+  /** column (a) only: a loop of the shelf piece */
+  media?: MotionMedia | null;
+}
+
+/** Column (b): a piece built new for this video. */
+export interface MotionNew {
+  row: string; // "new:handoff"
+  id: string;
+  beat: number | null;
+  brief: string | null;
+  why_new: string | null;
+  kind: "full" | "overlay" | string;
+  plates: number;
+  effort: string | null; // "S", "M", "L"
+  cost_usd: number;
+  cap_usd: number | null;
+  struck: boolean;
+  beats: MotionBeat[];
+}
+
+export type MotionSourceKind = "lesson" | "reference" | "baseline" | "retention";
+
+/** Column (c): what makes this video clearly better than the last one. */
+export interface MotionUpgrade {
+  row: string; // "upgrade:u1"
+  id: string;
+  upgrade: string;
+  source: { kind: MotionSourceKind | string; ref: string | null } | null;
+  effort: string | null;
+  cost_usd: number;
+  chosen: boolean;
+  struck: boolean;
+  beats: MotionBeat[];
+}
+
+export interface MotionColumns {
+  a: MotionBeat[];
+  b: MotionNew[];
+  c: MotionUpgrade[];
+}
+
+/** card.data.motion_plan of a motion-plan card. */
+export interface MotionPlanData {
+  version: number;
+  file: string;
+  md?: string;
+  json_sha256?: string;
+  columns: MotionColumns;
+  /** the beats left to the speaker (most beats) */
+  quiet: MotionBeat[];
+  density: string | null;
+  budget: string | null;
+  estimate_usd: number | null;
+  cap_usd: number | null;
+  /** the episode that is the bar */
+  bar: string | null;
+  short: boolean;
+}
+
+/** One format of a style-frame card: our frame next to the reference (or the bar's frame). */
+export interface StyleFrame {
+  format: string; // "landscape", "portrait", "stage"
+  ours: string;
+  ours_url: string;
+  ref: string | null;
+  ref_url: string | null;
+  /** "reference", "the bar", or the sentence for no reference */
+  ref_label: string;
+  hue?: { dominant_share: number; ok: boolean } | null;
+}
+
+export interface StyleFrameData {
+  insert: string;
+  round: number;
+  frames: StyleFrame[];
+}
+
+/** card.data.template of a template card ("Keep it in your library?"). */
+export interface MotionTemplate {
+  name: string;
+  title: string;
+  version: number;
+  kind: string;
+  formats: string[];
+  params: Record<string, unknown>;
+  samples: Record<string, string>;
+  poster: string | null;
+  made_from: { episode: string; insert: string } | null;
+  sha256?: string;
+  /** the version this one replaces, if any */
+  replaces: number | null;
+}
+
+export interface Strength {
+  name: string;
+  time: number | null;
+  /** a picture of it, a path inside that episode or an /api/ URL */
+  frame: string | null;
+}
+
+/** One side of a baseline card: the bar now, or the video that would become it. */
+export interface BaselineSide {
+  episode: string;
+  report?: string;
+  strengths: Strength[];
+  measured?: Record<string, number | null>;
+  better?: { what: string; time: number | null; against: string | null; frame: string | null }[];
+}
+
+export interface BaselineData {
+  old: BaselineSide | null;
+  new: BaselineSide;
+}
+
+/** GET /api/episodes/{id}/motion: the plan with its columns, the pieces on the film strip, the report. */
+export interface EpisodeMotion {
+  plan: MotionPlanView | null;
+  pieces: MotionPiece[];
+  report: MotionReport | null;
+  retention: MotionRetention | null;
+}
+
+export interface MotionPlanView {
+  file: string;
+  md_url: string | null;
+  version: number;
+  card: { id: number; status: CardStatus } | null;
+  approved: boolean;
+  columns: MotionColumns;
+  quiet: MotionBeat[];
+  density: string | null;
+  budget: string | null;
+  estimate_usd: number | null;
+  cap_usd: number | null;
+  bar: string | null;
+  short: boolean;
+}
+
+export type MotionState = "planned" | "style frame" | "building" | "in review" | "done";
+
+/** A word anchor: the time sits on a spoken word, with an offset in seconds. */
+export interface WordAnchor {
+  word: string;
+  offset?: number;
+}
+
+export interface MotionPiece {
+  id: string;
+  kind: "library" | "custom";
+  scene: string | null;
+  source: string | null;
+  beat: number | null;
+  column: "a" | "b" | "c" | null;
+  state: MotionState;
+  /** custom pieces: the first line of the brief */
+  brief: string | null;
+  loop: string | null;
+  poster: string | null;
+  start: number | WordAnchor | null;
+  end: number | WordAnchor | null;
+  transparent: boolean;
+}
+
+export interface MotionReport {
+  better: string | null;
+  behind: string | null;
+  next: string | null;
+  verdict: string | null;
+  file: string;
+  url: string | null;
+}
+
+export interface MotionRetention {
+  fetched: string | null;
+  summary: { moments: number; held: number; dropped: number; held_share: number | null } | null;
+  unproven: boolean;
+}
+
+/** One row of the shelf (GET /api/motion/library). */
+export interface ShelfRow {
+  name: string;
+  origin: "app" | "pack" | "episode";
+  title: string;
+  description: string;
+  kind: string;
+  formats: string[];
+  version: number;
+  versions?: number[];
+  params: Record<string, unknown>;
+  path?: string;
+  samples: { landscape?: string; portrait?: string; stage?: string; poster?: string };
+  made_from?: { episode: string; insert: string } | null;
+  /** null until the template card's yes */
+  approved?: { date?: string; by?: string; card?: number } | null;
+  needs_plates?: boolean;
+  notes?: { date?: string; text: string; source?: string }[];
+  /** app rows: the pack has its own copy */
+  overridden?: boolean;
+  /** episode rows */
+  episode?: string;
+  insert?: string;
+  promoted_as?: string | null;
+  header_ok?: boolean;
+  /** pack and app rows: the videos whose newest edit plan uses it */
+  uses?: { episode: string; insert: string | null; version: number | null }[];
+}
+
+export interface MotionLesson {
+  id: string;
+  date: string;
+  rule: string;
+  evidence?: string;
+  source?: string;
+  line?: string;
+}
+
+/** GET /api/motion/ratchet: the bar, the lessons and the references. */
+export interface MotionRatchet {
+  bar: { episode: string; strengths?: Strength[]; report?: string; measured?: Record<string, number | null> } | null;
+  lessons: MotionLesson[];
+  merge_needed: boolean;
+  references: { id: string; link?: string | null; file?: string | null; by?: string; reason?: string }[];
+}

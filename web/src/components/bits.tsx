@@ -84,12 +84,23 @@ function whereIs(episode: string, path: string): string {
  * A video or image from the episode folder, through /api/files. While it loads, a placeholder of the same size shows
  * the run shimmer, but only after 300 ms (rule 11). A broken file says where it is and offers to try again.
  */
-export function Media({ episode, path, label }: { episode: string; path: string; label: string }) {
+export function Media({
+  episode,
+  path,
+  label,
+  src,
+}: {
+  episode: string;
+  path: string;
+  label: string;
+  /** the address to load when the server already gave one (an /api/ URL); `path` still names the file on errors */
+  src?: string | null;
+}) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [slow, setSlow] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const url = api.fileUrl(episode, path);
+  const url = src || api.fileUrl(episode, path);
 
   useEffect(() => {
     setFailed(false);

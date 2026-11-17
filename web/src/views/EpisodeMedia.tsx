@@ -8,12 +8,13 @@ import { ProgressBar } from "@astryxdesign/core/ProgressBar";
 import { Cpu } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { api, ApiError } from "../api/client";
-import type { Card, EpisodeMedia, MediaCut, MediaGpu, MediaScenes, MediaThumb } from "../api/types";
+import type { Card, EpisodeMedia, MediaCut, MediaGpu, MediaScenes, MediaThumb, MotionPiece } from "../api/types";
 import { ErrorLine, Loading } from "../components/bits";
 import { clock, usd } from "../lib/format";
 import { accept, messageOf, upsertCard } from "../store/actions";
 import { EMPTY, useUi } from "../store/store";
 import { Avatar, SlateFigure } from "../slate/Slate";
+import { hasMotion, MotionBands, MotionLane, MotionPanel, useMotion } from "./EpisodeMotion";
 
 /** What the GPU card says after Stop: the machines are deleted, what came home stays. */
 export function stoppedText(n: number, cost: number): string {
@@ -232,7 +233,7 @@ function ruler(seconds: number): number[] {
   return marks;
 }
 
-export function CutPanel({ cut }: { cut: MediaCut }) {
+export function CutPanel({ cut, motion = [] }: { cut: MediaCut; motion?: MotionPiece[] }) {
   const frames = cut.frames;
   const span = cut.seconds / Math.max(1, frames.length);
   const notes = cut.markers.filter((m) => m.level !== "error");
@@ -275,6 +276,7 @@ export function CutPanel({ cut }: { cut: MediaCut }) {
           </ol>
           {cut.peaks.length ? (
             <div className="wave">
+              <MotionBands pieces={motion} seconds={cut.seconds} />
               <svg viewBox="0 0 1000 40" preserveAspectRatio="none" aria-hidden="true">
                 <path d={wavePath(cut.peaks)} />
               </svg>
@@ -308,6 +310,7 @@ export function CutPanel({ cut }: { cut: MediaCut }) {
           {cut.pending ? "Frames come as soon as the cut is read." : "No frames from this cut yet."}
         </p>
       )}
+      <MotionLane pieces={motion} />
     </section>
   );
 }
@@ -477,12 +480,20 @@ export function GpuCard({ gpu, episode, frame }: { gpu: MediaGpu; episode: strin
 
 export function EpisodeMediaPanels({ id }: { id: string }) {
   const { status, media, error, reload } = useMedia(id);
+  const motion = useMotion(id);
   if (status === "loading") return <Loading label="Loading the pictures" />;
   if (status === "error") {
     return <ErrorLine text={`Couldn't load the pictures of this episode. ${error ?? ""}`} onRetry={() => void reload()} />;
   }
   const { thumbnails, cut, scenes, gpu } = media;
-  const nothing = !thumbnails.length && !cut && !scenes && !gpu;
+  const moving = hasMotion(motion.motion) ? motion.motion : null;
+  const nothing = !thumbnails.length && !cut && !scenes && !gpu && !moving;
+  if (nothing && motion.status === "loading") return <Loading label="Loading the pictures" />;
+  const motionError =
+    motion.status === "error" ? (
+      <ErrorLine text={`Couldn't load the motion of this episode. ${motion.error ?? ""}`} onRetry={() => void motion.reload()} />
+    ) : null;
+  if (nothing && motionError) return motionError;
   if (nothing) {
     return (
       <div className="media-empty">
@@ -498,7 +509,9 @@ export function EpisodeMediaPanels({ id }: { id: string }) {
   return (
     <>
       {thumbnails.length ? <ThumbnailPanel episode={id} thumbs={thumbnails} /> : null}
-      {cut ? <CutPanel cut={cut} /> : null}
+      {cut ? <CutPanel cut={cut} motion={moving?.pieces} /> : null}
+      {moving ? <MotionPanel motion={moving} inCut={Boolean(cut)} /> : null}
+      {motionError}
       {scenes || gpu ? (
         <div className={scenes && gpu ? "media-row" : "media-row solo"}>
           {scenes ? <ScenesPanel scenes={scenes} /> : null}

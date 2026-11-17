@@ -3,12 +3,14 @@ import { Check, FileText, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Card, CardKind, Identity, Step } from "../api/types";
 import { api } from "../api/client";
-import { about, usd, versionOf, when } from "../lib/format";
+import { about, episodeNumber, usd, versionOf, when } from "../lib/format";
 import { reducedMotion } from "../lib/platform";
 import { accept, decline, messageOf } from "../store/actions";
 import { ErrorLine, Facts, identityOf, Keys, Media } from "./bits";
 import { Avatar } from "../slate/Slate";
 import { Humanized } from "./Humanized";
+import { baselineOf, styleFrameOf, templateOf } from "./Motion";
+import { BaselinePreview, MotionPlanPreview, StyleFramePreview, TemplatePreview } from "./MotionCards";
 
 const NOUN: Record<CardKind, string> = {
   topic: "Topic",
@@ -24,7 +26,14 @@ const NOUN: Record<CardKind, string> = {
   profile: "Profile",
   mix: "Mix",
   other: "Request",
+  "motion-plan": "Motion plan",
+  "style-frame": "Style frame",
+  template: "Motion template",
+  baseline: "Motion bar",
 };
+
+/** Kinds whose body only repeats what their preview shows (the rule text; the plan's lines; the better list). */
+const BODY_IN_PREVIEW = new Set<CardKind>(["rule", "motion-plan", "baseline"]);
 
 /** The two ways of a spend card. Accepting a spend card means "rent"; the local way never calls accept. */
 export type Way = "local" | "rented";
@@ -63,6 +72,18 @@ export function acceptLabel(card: Card, way: Way = "rented"): string {
       return "Use this profile";
     case "mix":
       return "Use this mix";
+    case "motion-plan":
+      return "Build this motion plan";
+    case "style-frame":
+      return "Build from this frame";
+    case "template":
+      return "Keep it in the library";
+    case "baseline": {
+      const b = baselineOf(card);
+      const n = b ? episodeNumber(b.new.episode) ?? b.new.episode : null;
+      if (!n) return "Raise the bar";
+      return b?.old ? `Raise the bar to ${n}` : `Make ${n} the bar`;
+    }
     default:
       return "Approve this";
   }
@@ -83,8 +104,27 @@ export function foldedText(card: Card): string {
   }
   const chosen =
     typeof card.choice === "number" && card.options ? card.options[card.choice] ?? null : null;
-  const detail = chosen ?? versionOf(card.file) ?? card.title;
+  const detail = chosen ?? motionDetail(card) ?? versionOf(card.file) ?? card.title;
   return `${noun} ${verb} · ${detail}`;
+}
+
+/** What a decided motion card was about: "dial, round 1", "Board build, version 2", "from 011 to 013". */
+function motionDetail(card: Card): string | null {
+  if (card.kind === "style-frame") {
+    const sf = styleFrameOf(card);
+    return sf?.insert ? `${sf.insert}, round ${sf.round}` : null;
+  }
+  if (card.kind === "template") {
+    const t = templateOf(card);
+    return t ? `${t.title}, version ${t.version}` : null;
+  }
+  if (card.kind === "baseline") {
+    const b = baselineOf(card);
+    if (!b) return null;
+    const n = (id: string) => episodeNumber(id) ?? id;
+    return b.old ? `from ${n(b.old.episode)} to ${n(b.new.episode)}` : `${n(b.new.episode)} is the bar`;
+  }
+  return null;
 }
 
 export function FoldedCard({ card, fresh }: { card: Card; fresh?: boolean }) {
@@ -247,16 +287,22 @@ function CardPreview({
   onChoose,
   way,
   onWay,
+  folding,
 }: {
   card: Card;
   chosen: number;
   onChoose: (i: number) => void;
   way: Way;
   onWay: (w: Way) => void;
+  folding: boolean;
 }) {
   const facts = card.data?.facts;
   const parts = [];
   if (card.kind === "spend") parts.push(<SpendWays key="ways" card={card} way={way} onWay={onWay} />);
+  if (card.kind === "motion-plan") parts.push(<MotionPlanPreview key="motion-plan" card={card} folding={folding} />);
+  if (card.kind === "style-frame") parts.push(<StyleFramePreview key="style-frame" card={card} />);
+  if (card.kind === "template") parts.push(<TemplatePreview key="template" card={card} />);
+  if (card.kind === "baseline") parts.push(<BaselinePreview key="baseline" card={card} />);
   if (card.kind === "rule") {
     parts.push(
       <div key="rule">
@@ -348,8 +394,8 @@ export function OpenCard({
         <span className="card-ask">needs your yes</span>
       </div>
       <h2 className="card-title">{card.title}</h2>
-      {card.body && card.kind !== "rule" ? <p className="card-body">{card.body}</p> : null}
-      <CardPreview card={card} chosen={chosen} onChoose={setChosen} way={way} onWay={setWay} />
+      {card.body && !BODY_IN_PREVIEW.has(card.kind) ? <p className="card-body">{card.body}</p> : null}
+      <CardPreview card={card} chosen={chosen} onChoose={setChosen} way={way} onWay={setWay} folding={Boolean(folding)} />
       <Humanized card={card} folding={Boolean(folding)} />
       <div className="card-actions">
         <button
