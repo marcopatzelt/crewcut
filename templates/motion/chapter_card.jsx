@@ -21,7 +21,8 @@ function chapter_card(P) {
   CC.groundLayer(c);
   var NG = P.layer + " next ground";
   EC.comp({ name: NG, width: W, height: H, fps: EC.compItem(c) ? EC.compItem(c).frameRate : 60, duration: D, bg: next });
-  CC.groundLayer(NG, { color: next, strength: 0.22, name: P.layer + " next" });
+  // pools kept light: on a pastel ground a pool of its own hue turned the whole frame one hue (hue check, image CI)
+  CC.groundLayer(NG, { color: next, strength: 0.14, name: P.layer + " next" });
   var far = 0; var cs = [[0, 0], [W, 0], [0, H], [W, H]];
   for (var q = 0; q < 4; q++) far = Math.max(far, Math.sqrt(Math.pow(cs[q][0] - px, 2) + Math.pow(cs[q][1] - py, 2)));
   var dEnd = 2 * far * 1.04, t0 = P.growAt, tg = t0 + 0.3;
