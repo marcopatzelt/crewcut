@@ -53,6 +53,11 @@ jobs:
           sleep 2
           cp site/tools/screens.mjs /tmp/shots-tool/
           node /tmp/shots-tool/screens.mjs http://localhost:8098/index.html "$GITHUB_WORKSPACE/shots/site"
+      - name: Keep the screenshots at once (before the slower checks)
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-shots
+          path: shots/site/*.png
       - name: Taste finish gate (fails on any FAIL without a written waiver)
         run: |
           # Ubuntu 24.04 runners restrict user namespaces, which Chrome's sandbox needs (Taste starts its own Chrome)
