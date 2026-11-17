@@ -48,7 +48,7 @@ for (const scheme of ['light', 'dark']) {
     console.log(`motion ${w} ${scheme} hero: ${JSON.stringify(await state('.meadow--hero video'))}`);
     await page.evaluate(() => document.getElementById('start').scrollIntoView({ block: 'end' }));
     await playing('.meadow--foot video');
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(2600);   // the finger trail through the fog takes 2.2 s
     await page.screenshot({ path: `${out}/site-${w}-${scheme}-close-motion.png` });
     console.log(`motion ${w} ${scheme} close: ${JSON.stringify(await state('.meadow--foot video'))}`);
     await ctx.close();

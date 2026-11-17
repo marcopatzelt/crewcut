@@ -59,7 +59,7 @@
      wallpapers, Inter and Inter Tight 800). Hero: centred over the launch film's meadow (an 8 s loop, the grass moving
      in the wind; day in light mode, dusk in dark mode; the poster paints first, the loop fades in after the page has
      loaded). Section heads start on the container's left line (Taste's rule; the mock centred them); the close sits
-     on a glass card over the same meadow. Motion: all own code, no library; reduced motion shows the posters only.
+     on a glass card behind fogged glass with rain drops, over the same meadow moving (wipe it). Motion: all own code, no library; reduced motion shows the posters only.
      Sections: hero, the app, film, one window, crew, rendering, steps, closing. The film loads only when it
      comes near the view, plays muted and in a loop; sound only on the button; reduced motion shows the poster. -->
 <header class="nav">
@@ -234,6 +234,8 @@
     </picture>
     <video class="meadow__video" muted loop playsinline disablepictureinpicture disableremoteplayback preload="none"></video>
   </div>
+  <canvas class="layer final__word" id="word" aria-hidden="true"></canvas>
+  <canvas class="layer final__mist" id="mist" aria-hidden="true"></canvas>
   <div class="wrap">
     <div class="final"><div class="final__card">
       <div class="final__crew" aria-hidden="true"><img src="assets/brand/crew/showrunner.svg" alt="" style="--k:0"><img src="assets/brand/crew/scout.svg" alt="" style="--k:1"><img src="assets/brand/crew/writer.svg" alt="" style="--k:2"><img src="assets/brand/crew/editor.svg" alt="" style="--k:3"><img src="assets/brand/crew/designer.svg" alt="" style="--k:4"><img src="assets/brand/crew/critic.svg" alt="" style="--k:5"><img src="assets/brand/crew/brand.svg" alt="" style="--k:6"><img src="assets/brand/crew/publisher.svg" alt="" style="--k:7"></div>
@@ -243,6 +245,7 @@
         <a class="btn btn--black" href="https://github.com/marcopatzelt/crewcut">Get Crewcut on GitHub</a>
         <a class="btn btn--white" href="https://github.com/marcopatzelt/crewcut#quick-start">Read the quick start</a>
       </div>
+      <p class="final__hint">The glass fogs up again. Wipe it with your mouse or finger.</p>
     </div></div>
     <div class="foot">
       <img class="foot__logo" src="assets/brand/crewcut-lockup.svg" alt="Crewcut" width="135" height="28">

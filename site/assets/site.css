@@ -1,8 +1,9 @@
 /* Crewcut landing page, built from Marco's approved design mock (16 Nov 2026) and his changes since: the hero on the
    launch film's meadow (grass moving in the wind, day in light mode, dusk in dark mode), the whole app window, one
-   window of the app, the crew with what each one does, rendering on a rented GPU, the ten steps and the close on the
-   same meadow. Colours stay Crewcut's green and mint. All motion is our own CSS and a few lines of JS: it starts at
-   load, nothing waits for the scroll, prefers-reduced-motion stops it (the meadow shows its poster). */
+   window of the app, the crew with what each one does, rendering on a rented GPU, the ten steps and the close:
+   fogged glass with rain drops over the same meadow, wiped by the pointer. Colours stay Crewcut's green and mint.
+   All motion is our own CSS and a few lines of JS: it starts at load, nothing waits for the scroll,
+   prefers-reduced-motion stops it (the meadow shows its poster, the fog stands still). */
 
 :root {
   color-scheme: light;
@@ -242,6 +243,7 @@ main > section.render { min-height: 0; }
 .render .note strong { color: var(--text-2); }
 
 /* ---------------------------------------------------------------- the ten steps: a calm grid on the page ground */
+.layer { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
 .steps-sec > .wrap { justify-content: center; }
 .steps-sec h2 { font-size: var(--h2); max-width: 760px; }
 .steps__lead { font-size: 19px; line-height: 1.5; color: var(--text-2); max-width: 600px; margin-top: 16px; }
@@ -255,12 +257,13 @@ main > section.render { min-height: 0; }
 .steps li.you span::before { content: "You decide · "; color: var(--green); font-weight: 600; }
 @media (prefers-color-scheme: dark) { .steps li small { color: #4FA894; } .steps li.you span::before { color: var(--mint); } }
 
-/* ---------------------------------------------------------------- the close: a glass card on the meadow, the footer row on glass */
+/* ---------------------------------------------------------------- the close: fogged glass with rain drops over the moving meadow, the footer row on glass */
 footer.closing { overflow: hidden; color: #fff; }
 footer.closing::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 18%; background: linear-gradient(180deg, var(--bg), rgba(0, 0, 0, 0)); z-index: 1; pointer-events: none; }
+.final__mist { touch-action: pan-y; }
 footer.closing > .wrap { justify-content: space-between; gap: 32px; }
 .final { display: flex; justify-content: center; }
-.final__card { width: min(560px, 100%); text-align: center; padding: 28px 32px 30px; border-radius: 32px; background: rgba(6, 22, 18, 0.6); -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), 0 40px 80px -30px rgba(0, 0, 0, 0.5); }
+.final__card { width: min(560px, 100%); text-align: center; padding: 28px 32px 24px; border-radius: 32px; background: rgba(6, 22, 18, 0.6); -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), 0 40px 80px -30px rgba(0, 0, 0, 0.5); }
 .final__crew { display: flex; justify-content: center; margin-bottom: 18px; }
 .final__crew img { width: 54px; height: 54px; margin: 0 -7px; filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.35)); }
 @media (prefers-reduced-motion: no-preference) { .final__crew img { animation: bob 3s ease-in-out infinite; animation-delay: calc(var(--k) * -0.37s); } }
@@ -268,6 +271,7 @@ footer.closing > .wrap { justify-content: space-between; gap: 32px; }
 .final__card h2 { font-size: var(--h2); }
 .final__card > p { font-size: 18px; color: #fff; margin-top: 14px; }
 .final__card .btn-row { justify-content: center; margin-top: 24px; }
+.final__hint { margin-top: 14px; font-size: 13px; color: #fff; }
 .foot { position: relative; display: flex; align-items: center; gap: 24px; padding: 12px 0; color: rgba(255, 255, 255, 0.92); font-size: 13px; }
 .foot::before { content: ""; position: absolute; inset: 0 -20px; z-index: -1; border-radius: 20px; background: rgba(6, 22, 18, 0.74); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); }
 .foot > * { position: relative; }
