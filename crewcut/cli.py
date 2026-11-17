@@ -417,6 +417,10 @@ def _run(a) -> int:
                 print("Spend cards come from the tool that spends (crewcut compute rent, render 3d --rented).",
                       file=sys.stderr)
                 return 2
+            if a.kind in approvals.MOTION_KINDS:
+                print("Motion cards come from their commands: crewcut motion plan --card, style-frame, promote, report.",
+                      file=sys.stderr)
+                return 2
             from . import humanize
             try:
                 card = approvals.propose(_env_episode(a), a.step, a.kind, a.title, body=a.body, file=a.file,

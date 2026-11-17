@@ -130,3 +130,13 @@ def test_cli_reference_and_style_frame(studio, capsys, tmp_path):
     assert "card #" in capsys.readouterr().out
     assert mcli.main(["promote", eid, "m3", "--name", "piece_one"]) == 1
     assert "no Critic bundle" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("kind", ["motion-plan", "style-frame", "template", "baseline"])
+def test_motion_cards_only_come_from_their_commands(studio, capsys, kind):
+    from crewcut import cli
+    eid, _ep = make_episode()
+    rc = cli.main(["card", "propose", "--episode", eid, "--kind", kind, "--title", "x", "--data",
+                   '{"new": {"episode": "' + eid + '"}}'])
+    assert rc == 2 and "Motion cards come from their commands" in capsys.readouterr().err
+    assert approvals.list_cards(episode=eid) == []
