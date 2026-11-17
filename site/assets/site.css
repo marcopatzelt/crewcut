@@ -124,19 +124,25 @@ main > section.g2 { --h: 2; }
 main > section.g2 > .wrap { display: grid; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); row-gap: calc(var(--padt) + var(--padb)); }
 main > section.g2 > .wrap > .group { min-height: 0; display: flex; flex-direction: column; }
 
-/* ---------------------------------------------------------------- the launch film */
-.film__frame { position: relative; margin: 0; }
+/* ---------------------------------------------------------------- the launch film: one screen, the video fitted in */
+.film__frame { margin: 0; display: flex; flex-direction: column; gap: 14px; }
 .film__video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: 18px; background: #0A0F0D; box-shadow: 0 40px 90px -40px rgba(0, 25, 20, 0.55), 0 14px 40px -20px rgba(0, 25, 20, 0.4); }
-.film__ctl { position: absolute; left: 16px; bottom: 16px; display: flex; gap: 10px; }
+/* one screen: heading and film side by side on wide screens (a split from the container's left line to its right
+   line), stacked and centred on phones and tablets */
+section.film { min-height: 100svh; justify-content: center; }
+section.film > .wrap { justify-content: center; }
+@media (min-width: 1024px) and (min-aspect-ratio: 4 / 3) {
+  section.film { height: 100svh; }
+  section.film > .wrap { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 48px; align-items: center; }
+  .film .sh { margin-bottom: 0; }
+}
+.film__ctl { display: flex; gap: 10px; }
 .film__ctl[hidden] { display: none; }
-.film__btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; font: 600 15px/1 var(--font); color: #fff; background: rgba(10, 15, 13, 0.62); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); cursor: pointer; transition: background-color 150ms linear; }
+.film__btn { border: 0; cursor: pointer; font-family: var(--font); background: var(--text); color: var(--bg); }
 .film__btn svg { width: 18px; height: 18px; flex: none; }
-.film__btn[aria-pressed="true"] { background: #fff; color: #0A0F0D; }
+.film__btn[aria-pressed="true"] { background: var(--green); color: #fff; }
 .film__btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
-@media (hover: hover) and (pointer: fine) { .film__btn:hover { background: rgba(10, 15, 13, 0.8); } .film__btn[aria-pressed="true"]:hover { background: #E8EEEB; } }
-.film__cap { margin-top: 14px; font-size: 13.5px; line-height: 1.5; color: var(--text-3); }
-.film__cap a { color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; }
-@media (max-width: 639px) { .film__video { border-radius: 12px; } .film__ctl { left: 10px; bottom: 10px; gap: 8px; } .film__btn { padding: 0 14px; font-size: 14px; } }
+@media (max-width: 639px) { .film__video { border-radius: 12px; } }
 
 /* ---------------------------------------------------------------- hero and stage: one wallpaper over two screens */
 .hero, .stage {

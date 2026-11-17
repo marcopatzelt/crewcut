@@ -109,17 +109,18 @@
     <div class="wrap">
       <div class="sh">
         <h2 id="film-h" class="display">Motion graphics by the crew</h2>
-        <p class="lead">The launch film, 17 seconds. EffectCraft sets the type and the timing, Blender renders the 3D on one rented GPU, and every sound is made by code. Rendering it cost 1.75&nbsp;$.</p>
+        <p class="lead">Numbers that roll, words beside you or behind you, chapter cards and lower thirds: the crew builds them into your videos, in your colours and fonts.</p>
       </div>
       <figure class="film__frame">
-        <video id="film-video" class="film__video" controls muted loop playsinline preload="none" poster="media/film/poster.webp" width="1920" height="1080" aria-label="The Crewcut launch film: a cursor clicks the Crewcut app, Slate the clapperboard spins out in 3D, a prompt is typed over a meadow, cards fly into a grid, a word reel lands on Upload, the word Video lands with a paint splash, and the logo forms from flakes">
-          <source src="media/film/crewcut-launch-web.mp4" type="video/mp4">
-        </video>
-        <div class="film__ctl" hidden>
-          <button type="button" class="film__btn" id="film-play">Play</button>
-          <button type="button" class="film__btn" id="film-sound" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 9v6h4l5 4V5L8 9H4Zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4Zm-2.5-8.8v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6Z"/></svg>Sound</button>
+        <div class="film__media">
+          <video id="film-video" class="film__video" controls muted loop playsinline preload="none" poster="media/film/poster.webp" width="1920" height="1080" aria-label="The Crewcut launch film: a cursor clicks the Crewcut app, Slate the clapperboard spins out in 3D, a prompt is typed over a meadow, cards fly into a grid, a word reel lands on Upload, the word Video lands with a paint splash, and the logo forms from flakes">
+            <source src="media/film/crewcut-launch-web.mp4" type="video/mp4">
+          </video>
         </div>
-        <figcaption class="film__cap">Every sound is synthesized; credits in <a href="https://github.com/marcopatzelt/crewcut/blob/main/docs/launch/SOUNDS.md">SOUNDS.md</a>. <a href="https://github.com/marcopatzelt/crewcut/tree/main/examples/launch-film">How it was built</a>.</figcaption>
+        <div class="film__ctl" hidden>
+          <button type="button" class="btn btn--sm film__btn" id="film-play">Play</button>
+          <button type="button" class="btn btn--sm film__btn" id="film-sound" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 9v6h4l5 4V5L8 9H4Zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4Zm-2.5-8.8v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6Z"/></svg>Sound</button>
+        </div>
       </figure>
     </div>
   </section>
@@ -225,7 +226,7 @@
       <img class="foot__logo" src="assets/brand/crewcut-lockup.svg" alt="Crewcut" width="135" height="28">
       <div class="foot__text">
         <p>MIT licence. Made by Marco Patzelt, <a href="https://striq.de/en/author/marco-patzelt#claude-ambassador">Claude Ambassador</a>, <a href="https://striq.de">STRIQ</a>. Skills built on public playbooks of YouTube creators, <a href="https://github.com/marcopatzelt/crewcut#built-on-the-playbooks-of">not affiliated</a>.</p>
-        <p>Pictures: our renders and CC0 photos (<a href="https://github.com/marcopatzelt/crewcut/blob/main/site/media/CREDITS.md">credits</a>).</p>
+        <p>Pictures: our renders and CC0 photos (<a href="https://github.com/marcopatzelt/crewcut/blob/main/site/media/CREDITS.md">credits</a>). Film: EffectCraft, Blender, sounds made by code (<a href="https://github.com/marcopatzelt/crewcut/blob/main/docs/launch/SOUNDS.md">credits</a>).</p>
       </div>
       <nav class="foot__links" aria-label="More">
         <a href="https://github.com/marcopatzelt/crewcut">GitHub</a>
