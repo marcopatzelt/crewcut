@@ -23,5 +23,6 @@ from Poly Haven (CC0).
 **Thumbnails** (`thumbs/`): the author's own STRIQ thumbnails, shown in English. **Frames** (`frames/`): 3D scenes
 the studio rendered for a commercial, cut so that no words show.
 
-**The app** (`app/`, `crew/`): screenshots of the Crewcut web UI in demo mode, rendered in CI (screens workflow,
-commit 7468fca, run 43982257994, the same run as the README images), cut to the window or to one part of it.
+**The app** (`app/`, `crew/`): screenshots of the Crewcut web UI in demo mode, rendered in CI: the window and four crew
+tiles from the README images in `docs/readme/` (commit 2479819, 2880 x 2000), the drum, phone and other tiles from
+screens run 43982257994; cut to the window or to one part of it.
