@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
 from crewcut import doctor
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -17,6 +19,7 @@ def test_pin_has_commit_and_checksum():
     assert re.fullmatch(r"[0-9a-f]{64}", pin["sha256"])
 
 
+@pytest.mark.skipif(not (ROOT / "docker" / "Dockerfile").is_file(), reason="no docker/ folder (inside the image)")
 def test_dockerfile_tag_matches_pin_and_patch_count():
     pin = doctor.read_pin()
     patches = sorted(EC.glob("patches/*.patch"))
