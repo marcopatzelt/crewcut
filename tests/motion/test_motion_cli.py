@@ -94,8 +94,13 @@ def test_palette_exit_3_above_the_limit(tmp_path, capsys):
 def test_template_list_reads_the_templates_dir(capsys):
     launch = Path(__file__).resolve().parents[2] / "examples" / "launch-film" / "templates"
     assert main(["motion", "--templates-dir", str(launch), "--json", "template", "list"]) == 0
-    names = {t["name"] for t in json.loads(capsys.readouterr().out)}
-    assert len(names) == 13 and {"burst_rings", "word_reel", "glass_prompt_typing"} <= names
+    listed = {t["name"]: t for t in json.loads(capsys.readouterr().out)}
+    own = {p.stem for p in launch.glob("*.jsx")}
+    app = {p.stem for p in (MOTION.parents[1] / "templates" / "motion").glob("*.jsx")}
+    assert len(own) == 13 and own <= set(listed) and set(listed) == own | app
+    assert {"burst_rings", "word_reel", "glass_prompt_typing"} <= set(listed)
+    if "path" in listed["word_reel"]:                      # the --templates-dir copy wins over the app's own
+        assert Path(listed["word_reel"]["path"]).parent == launch
 
 
 def test_no_repl_left():

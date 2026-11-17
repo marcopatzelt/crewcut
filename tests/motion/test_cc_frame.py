@@ -78,3 +78,84 @@ def test_program_injects_context_and_both_libraries(tmp_path):
     assert code.index("var CC_CTX = ") < code.index("var EC = ") < code.index("var CC = ")
     assert '"format": "portrait"' in code
     assert [p.name for p in tp.lib_files()] == ["ec_lib.jsx", "cc_frame.jsx"]
+
+
+def run(ctx: dict | None, expr: str):
+    """Evaluate a JS expression after cc_frame.jsx (with an optional CC_CTX) and return its JSON value."""
+    pre = "" if ctx is None else f"var CC_CTX = {json.dumps(ctx)};\n"
+    src = pre + LIB.read_text() + f"\nconsole.log(JSON.stringify({expr}));"
+    r = subprocess.run([NODE, "-e", src], capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    return json.loads(r.stdout)
+
+
+FACE16 = {"x": 0.48, "y": 0.30, "w": 0.18, "h": 0.34}
+
+
+@needs_node
+def test_behind_centres_on_the_face_at_shoulder_height_landscape():
+    ctx = {"format": "landscape", "size": [1920, 1080], "transparent": True, "face": FACE16, "layer": "behind"}
+    f = run(ctx, "CC.frame()")
+    assert f["side"] == "behind" and f["layer"] == "behind"
+    assert f["anchor"][0] == pytest.approx(0.48 * 1920)
+    assert f["anchor"][1] == pytest.approx((0.30 + 0.22) * 1080)
+    s, b = f["safe"], f["sideBox"]
+    assert b["x"] == pytest.approx(s["x"]) and b["w"] == pytest.approx(s["w"])        # the whole safe width
+    assert s["y"] <= b["y"] and b["y"] + b["h"] <= s["y"] + s["h"] + 1e-6
+    assert run(ctx, "CC.clearOfFace({x: 900, y: 300, w: 100, h: 100})") is True          # the person covers it
+
+
+@needs_node
+def test_behind_portrait_uses_the_smaller_drop_and_stays_in_safe():
+    ctx = {"format": "portrait", "size": [1080, 1920], "transparent": True, "layer": "behind",
+           "face": {"x": 0.5, "y": 0.30, "w": 0.5, "h": 0.36}}
+    f = run(ctx, "CC.frame()")
+    assert f["side"] == "behind"
+    assert f["anchor"][1] == pytest.approx((0.30 + 0.16) * 1920)
+    assert f["anchor"][0] == pytest.approx(540)
+
+
+@needs_node
+def test_beside_and_no_face_behave_like_no_layer():
+    base = {"format": "landscape", "size": [1920, 1080], "transparent": True, "face": FACE16}
+    plain = run(base, "CC.frame()")
+    beside = run({**base, "layer": "beside"}, "CC.frame()")
+    assert beside["side"] == plain["side"] == "right" and beside["anchor"] == plain["anchor"]
+    assert beside["layer"] is None
+    noface = run({"format": "landscape", "size": [1920, 1080], "transparent": True, "layer": "behind"}, "CC.frame()")
+    assert noface["side"] == "center" and noface["layer"] is None
+    assert run({**base, "layer": "beside"}, "CC.clearOfFace({x: 900, y: 300, w: 100, h: 100})") is False
+
+
+@needs_node
+def test_colour_and_time_helpers():
+    out = run({"fps": 25}, "[CC.luma('#FFFFFF'), CC.luma('#000000'), CC.mix('#000000', '#FFFFFF', 0.5), "
+                           "CC.landBy(2.0), CC.driftAt(2), CC.driftAt(1, 9), CC.fit(140, 700, 560, 96), CC.fit(140, 900, 300, 96)]")
+    assert out[0] == pytest.approx(1) and out[1] == 0 and out[2] == "#808080"
+    assert out[3] == pytest.approx(2.0 - 1.5 / 25)                 # complete 1.5 frames before the cue
+    assert out[4] == pytest.approx(1.04) and out[5] == pytest.approx(1.03)    # the push clamps to 1.5..3 %/s
+    assert out[6] == pytest.approx(112) and out[7] == 96            # fits the width, never under the floor
+
+
+@needs_node
+def test_tone_follows_the_picture_under_the_box():
+    grid = {"cols": 2, "rows": 1, "values": [0.2, 0.9]}                # dark left half, light right half
+    ctx = {"format": "landscape", "size": [1920, 1080], "transparent": True, "backdrop_luma": grid,
+           "brand": {"colors": {"ink": "#111111", "paper": "#FFFFFF"}}}
+    left = run(ctx, "CC.tone({x: 100, y: 100, w: 400, h: 200})")
+    right = run(ctx, "CC.tone({x: 1300, y: 100, w: 400, h: 200})")
+    assert left["fill"] == "#FFFFFF" and left["shade"] == "#111111"
+    assert right["fill"] == "#111111" and right["onLight"] is True
+    assert run({**ctx, "backdrop_luma": None}, "CC.tone().fill") == "#FFFFFF"          # unknown: light type
+    assert run({**ctx, "backdrop_luma": 0.7}, "CC.tone().fill") == "#111111"           # one number for the side
+    full = run({"transparent": False, "brand": {"mg": {"ink": "#222222"}}}, "CC.tone().fill")
+    assert full == "#222222"                                                             # full frame: the pack ink
+
+
+@needs_node
+def test_plates_pass_through_and_plate_lookup():
+    plates = {"word": {"first": "/x/plates/word/0001.png", "frames": 90, "ready": True},
+              "late": {"first": "/x/plates/late/0001.png", "frames": 90, "ready": False}}
+    out = run({"plates": plates}, "[CC.plate('word'), CC.plate('late'), CC.plate('none'), CC.ctx().plates.word.frames]")
+    assert out[0]["frames"] == 90 and out[1] is None and out[2] is None and out[3] == 90
+    assert run(None, "CC.ctx().plates") == {}
