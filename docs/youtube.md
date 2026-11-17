@@ -39,7 +39,7 @@ for Linux). Use the manual way below.
 ### By hand (any engine)
 
 1. Open the Google Cloud console and create a project (any name).
-2. "APIs & Services" > "Library": enable **YouTube Data API v3** (and **YouTube Analytics API** for the 48-hour check).
+2. "APIs & Services" > "Library": enable **YouTube Data API v3** (and **YouTube Analytics API** for retention and the 48-hour check).
 3. "OAuth consent screen": user type **External**, fill in the app name and your e-mail, add yourself as a **test user**.
 4. "Credentials" > "Create credentials" > "OAuth client ID" > application type **Desktop app**. Download the JSON file.
 5. Save it in your studio folder as `config/youtube-client.json`.
@@ -57,12 +57,35 @@ The token is stored in `studio/.crewcut/youtube-token.json` (owner-only permissi
 | Thumbnail | `thumbnails.set` | the thumbnail card before |
 | Captions (SRT) | `captions.insert` | part of the publish card |
 | "Altered or synthetic content" answer | `status.containsSyntheticMedia` | shown on the publish card with a reason |
-| 48-hour check: views, click rate, retention | YouTube Analytics API | planned |
+| Retention around the motion moments (`crewcut youtube retention <episode>`) | YouTube Analytics API, read-only | none (unproven: see below) |
+| 48-hour check: views, click rate | YouTube Analytics API | planned |
 | A/B test "Test & compare" | no public API | Crewcut builds the variants and links you to the right page in YouTube Studio |
 
 `crewcut youtube upload` refuses to run unless there is an accepted **publish** card whose file checksum matches the
 current `export/upload.json`: you approve exactly what goes out. Without `--schedule` and without `publish_at` in the
 package, the video is uploaded as **private**.
+
+## Retention around motion moments
+
+`crewcut youtube retention <episode>` reads the audience retention curve of the episode's published video
+(`reports.query`, metric `audienceWatchRatio` by `elapsedVideoTimeRatio`) and lays it over the motion moments of the
+newest edit plan: how many points of the audience were kept over each moment and the 5 s after it, against the video's
+own slope around it. Code: `crewcut/youtube/analytics.py`.
+
+- It needs the read-only permission `https://www.googleapis.com/auth/yt-analytics.readonly`. Crewcut asks for it in
+  the sign-in (`crewcut/youtube/auth.py` `SCOPES`), and the YouTube Analytics API must be enabled in the Google Cloud
+  project. **A login made before you enabled that API, or with a client that did not ask for this permission, must sign
+  in once more** (`crewcut youtube auth`, or "connect YouTube" in the chat) to grant it; the command says so when the
+  permission is missing.
+- The video id comes from `export/upload-result.json` (or `--video ID`). The result goes to `review/retention.json`,
+  into the motion report (`crewcut motion report`) and into the notes of the library templates ("number_roll: held
+  viewers in 3 of 4 uses").
+- **A hint, not proof.** Every finding is "watch". The same finding (template and direction) becomes a lesson in
+  `brand/rules/motion.md` only after it repeats in 3 videos.
+- **No data** (a new video, a Short without a per-second curve, a channel without the permission): it prints "no
+  retention data" and writes nothing.
+- **Unproven:** built and tested against a recorded answer of the API (`tests/core/data/`), never against a real
+  channel. It stays marked unproven here until a published video has returned data.
 
 ## Honest limits
 
