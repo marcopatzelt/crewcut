@@ -203,6 +203,54 @@ def backdrop_cmd(plan: Plan, ins: Insert, out: Path) -> list[str]:
             "-frames:v", str(n), "-c:v", "prores_ks", "-profile:v", "3", str(out)]
 
 
+LUMA_GRID = (16, 9)
+
+
+def speaker_luma(plan: Plan, ins: Insert, runner: media.Runner = media.run) -> list | float | None:
+    """CC_CTX.backdrop_luma of an overlay: the brightness (0..1) of the speaker picture under it as a 16x9 grid (rows
+    top to bottom), from the frame in the middle of the insert, zoomed like the cut shows it; one number for a
+    generated colour base; None when there is no picture. Overlay templates pick dark or light type from it.
+    Cached per span in render/motion-work/."""
+    if not ins.transparent:
+        return None
+    color = plan.base_color()
+    if color:
+        r, g, b = (int(color.lstrip("#")[i:i + 2], 16) / 255 for i in (0, 2, 4))
+        return round(0.2126 * r + 0.7152 * g + 0.0722 * b, 3)
+    if not plan.p.get("base"):
+        return None
+    base = plan.local(plan.p["base"])
+    if not base.is_file():
+        return None
+    import hashlib
+    key = hashlib.sha1(plan.backdrop_key(ins.start, ins.render_frames).encode()).hexdigest()[:10]
+    cache = plan.episode_dir / "render" / "motion-work" / f"luma-{ins.id}-{key}.json"
+    if cache.is_file():
+        try:
+            return json.loads(cache.read_text(encoding="utf-8"))
+        except ValueError:
+            pass
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    pgm = cache.with_suffix(".pgm")
+    mid = (ins.start + ins.frames // 2) / plan.fps
+    w, h = LUMA_GRID
+    vf = speaker_vf(plan, plan.zoom_at(ins.start)) + f"scale={w}:{h}:flags=area,format=gray"
+    rc, _ = runner([media.ffmpeg(), "-y", "-loglevel", "error", "-ss", f"{mid:.3f}", "-i", str(base), "-frames:v", "1",
+                    "-vf", vf, str(pgm)], timeout=120)
+    if rc != 0 or not pgm.is_file():
+        return None
+    try:
+        from PIL import Image
+        img = Image.open(pgm).convert("L").resize(LUMA_GRID)
+        grid = [[round(img.getpixel((x, y)) / 255, 3) for x in range(w)] for y in range(h)]
+    except Exception:
+        return None
+    finally:
+        pgm.unlink(missing_ok=True)
+    cache.write_text(json.dumps(grid), encoding="utf-8")
+    return grid
+
+
 def behind_hook(plan: Plan, ins: Insert, runner: media.Runner = media.run, log: Callable = print) -> bool:
     """Overlays with `"layer": "behind"`, after the overlay clip is encoded: the composite behind the speaker when the
     matte passed its edge check (crewcut/render/behind.py), else the overlay stays beside the person."""
@@ -247,7 +295,7 @@ def render_insert_local(plan: Plan, ins: Insert, backend: Callable[[dict[str, st
                 return False
             tmp.replace(bd)
         backdrop = str(bd)
-    ctx = motion_context(plan, ins, draft=draft, backdrop=backdrop)
+    ctx = motion_context(plan, ins, draft=draft, backdrop=backdrop, luma=speaker_luma(plan, ins, runner))
     proj = str(work / "insert.ecproj")
     try:
         code, _ = mtemplates.program_path(ins.template, ins.data, context=ctx)
@@ -348,7 +396,7 @@ def stage_remote(plan: Plan, inserts: list[Insert], draft: bool = False) -> Path
         params, _ = _remote_paths(ins, stage)
         own = ins.template.parent / "assets"
         shutil.copytree(own if own.is_dir() else mtemplates.assets_dir(), d / "ec_assets")
-        ctx = motion_context(plan, ins, draft=draft)
+        ctx = motion_context(plan, ins, draft=draft, luma=speaker_luma(plan, ins))
         for pid, pl in (ctx.get("plates") or {}).items():          # Blender plates go up with the comp
             src = Path(pl["first"]).parent
             if src.is_dir():

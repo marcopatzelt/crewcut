@@ -142,7 +142,8 @@ def font_files(tokens: dict) -> list[Path]:
     return out
 
 
-def motion_context(plan: Plan, ins: Insert, draft: bool = False, backdrop: str | None = None) -> dict:
+def motion_context(plan: Plan, ins: Insert, draft: bool = False, backdrop: str | None = None,
+                   luma: list | float | None = None) -> dict:
     """CC_CTX of a motion insert (templates/motion/README.md): format, size, fps, duration (seconds of the insert),
     transparent, face (only where the speaker is in the picture: overlays and speaker backdrops), backdrop (path of the
     speaker piece, given by the renderer), draft, right_free and the brand (colours, fonts as family and weight,
@@ -155,7 +156,8 @@ def motion_context(plan: Plan, ins: Insert, draft: bool = False, backdrop: str |
     return {"format": ins.format or plan.format, "size": [size[0], size[1]], "fps": plan.fps,
             "duration": round(ins.frames / plan.fps, 6), "transparent": ins.transparent, "face": face,
             "backdrop": backdrop, "draft": bool(draft), "right_free": plan.right_free,
-            "layer": plan.layer_for(ins), "plates": _plates(plan, ins), "brand": brand_context(plan.tokens)}
+            "layer": plan.layer_for(ins), "plates": _plates(plan, ins), "backdrop_luma": luma,
+            "brand": brand_context(plan.tokens)}
 
 
 def _plates(plan: Plan, ins: Insert) -> dict:
@@ -658,7 +660,7 @@ class Plan:
         """Cache key of a motion insert: its params, the context (the backdrop by what it is made of, not by its
         path), the .jsx and every lib file, the look tokens, the engine pin and the pack's font files."""
         extra = [f"{p}:{p.stat().st_size}:{p.stat().st_mtime_ns}" for p in ins.assets] + self._engine_keys()
-        if ins.backdrop:
+        if ins.backdrop or (ins.transparent and (self.p.get("base") or self.base_color())):
             extra.append(self.backdrop_key(ins.start, ins.render_frames))
         key = {"params": ins.data, "context": motion_context(self, ins, draft=draft)}
         return insert_hash(key, [ins.template, *ins.shared], tokens_for_hash(self.tokens, "motion"), extra)

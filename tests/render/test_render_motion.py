@@ -419,3 +419,33 @@ def test_render_sample_without_the_engine_is_none(tmp_path, no_engine):
     if not tpl.is_file():
         tpl.write_text('/* @template t\\n @params {}\\n @end */\\nfunction t(P) { return null; }\\n')
     assert motion.render_sample(tpl, "landscape", {}, tmp_path / "s.mp4") is None
+
+
+def test_backdrop_luma_grid_from_the_speaker_picture(episode, studio):
+    from PIL import Image
+    assert motion.speaker_luma(plan_with(episode, studio, POP), plan_with(episode, studio, POP).by_id("k2")) \
+        == pytest.approx(0.95, abs=0.03)                                      # a generated colour base: one number
+    plan = plan_with(episode, studio, POP, base="work/base.mp4")
+    ins = plan.by_id("k2")
+
+    class LumaRunner(FakeRunner):
+        def __call__(self, cmd, timeout=600, cwd=None):
+            if str(cmd[-1]).endswith(".pgm"):
+                img = Image.new("L", (16, 9), 40)
+                img.paste(230, (8, 0, 16, 9))                       # the right half is bright
+                img.save(cmd[-1])
+                self.calls.append([str(c) for c in cmd])
+                return 0, ""
+            return super().__call__(cmd, timeout, cwd)
+
+    base = plan.local(plan.p["base"])
+    base.parent.mkdir(parents=True, exist_ok=True)
+    if not base.is_file():
+        base.write_bytes(b"video")
+    r = LumaRunner()
+    grid = motion.speaker_luma(plan, ins, r)
+    assert len(grid) == 9 and len(grid[0]) == 16 and grid[0][0] < 0.2 and grid[0][15] > 0.85
+    assert "scale=16:9" in " ".join(r.calls[0])
+    assert motion.speaker_luma(plan, ins, FakeRunner(fail="ffmpeg")) == grid          # cached
+    full = plan_with(episode, studio, ROLL, base="work/base.mp4")
+    assert motion.speaker_luma(full, full.by_id("m1")) is None                  # full frame: none
