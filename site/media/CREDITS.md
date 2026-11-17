@@ -24,4 +24,4 @@ from Poly Haven (CC0).
 the studio rendered for a commercial, cut so that no words show.
 
 **The app** (`app/`, `crew/`): screenshots of the Crewcut web UI in demo mode, rendered in CI (screens workflow,
-commit 81336ee), cut to the window or to one part of it.
+commit 7468fca, run 43982257994, the same run as the README images), cut to the window or to one part of it.
