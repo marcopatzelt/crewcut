@@ -1,7 +1,12 @@
 """The edit plan (episodes/<id>/edit/plan-vNNN.json): parse it, resolve cues to frames, decide what is rendered where.
 
-Pure Python: nothing here runs ffmpeg, Chromium or Blender. The schema is in docs/architecture.md ("Edit plan").
-Values the plan leaves out or sets to null come from the active style pack.
+Pure Python: nothing here runs ffmpeg, Chromium, Blender or EffectCraft. The schema is in docs/architecture.md ("Edit
+plan"). Values the plan leaves out or sets to null come from the active style pack.
+
+Kind "motion" (EffectCraft comps, rendered by crewcut/render/motion.py): a library template (`scene`, `name@N` pins a
+version) or an episode comp (`source`); cues become template params in seconds local to the insert; `motion_context`
+builds the template's CC_CTX; the hash covers params, context, template and lib files, motion tokens, the engine pin
+and the pack's font files. Density warnings come from crewcut/motion/density.py.
 
 Layouts (portrait only, `layout` in the plan, else the pack's `edit_style.shorts.layout`, else "full"):
 - "full": a full-frame insert covers the whole picture (the only layout of landscape plans).
