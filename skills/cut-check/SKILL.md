@@ -1,6 +1,6 @@
 ---
 name: cut-check
-description: "Checks a speaker cut and an edited video version before the user sees it: word rests and doubled words at cuts, tone over take changes, faces at cuts, graphics that wait still, speaker flashes, text and keyword limits, music length and rights, loudness, the shown-file lock. General checks for every style plus taste checks from the style pack (edit-style.json, rules/cut.md). Use for: check the cut, check the edit, before the preview, review the version, QA the export, is the cut ready, can this go to the user, cut errors."
+description: "Checks a speaker cut and an edited video version before the user sees it: word rests and doubled words at cuts, tone over take changes, faces at cuts, graphics that wait still, speaker flashes, text and keyword limits, music length and rights, loudness, the shown-file lock, and the review bundle for motion graphics (sheets, 60 fps strips, hue, text size, sharpness, web-look lint, density). General checks for every style plus taste checks from the style pack (edit-style.json, rules/cut.md). Use for: check the cut, check the edit, before the preview, review the version, QA the export, is the cut ready, can this go to the user, cut errors, review the motion graphics."
 ---
 
 # Cut check
@@ -14,6 +14,8 @@ version. Aim: the user never has to report the same fault twice. Be harsh: compa
 - A speaker cut, before anything is built on it: `cut_check.py`.
 - Every edit plan version and its video, also after small corrections: `style_check.py`.
 - The final, before the upload: `style_check.py <plan> --video export/<id>-vNNN-final.mp4`.
+- Every plan with motion inserts (`"kind": "motion"`), after they are rendered: the review bundle and `motion_check.py`
+  (section "Motion review").
 
 ## Run
 
@@ -21,11 +23,15 @@ version. Aim: the user never has to report the same fault twice. Be harsh: compa
 python3 skills/cut-check/scripts/cut_check.py work/edit-decisions-vNNN.json     # speaker cut
 python3 skills/cut-check/scripts/style_check.py edit/plan-vNNN.json            # picture, plan, output
 python3 skills/cut-check/scripts/style_check.py edit/plan-vNNN.json --no-media # plan only, before rendering
+python3 -m crewcut.motion.review edit/plan-vNNN.json [--ids m1,m2] [--ref refs/x.mp4 --ref-offset S]  # bundle
+python3 skills/cut-check/scripts/motion_check.py review/motion-vNNN              # motion machine checks
 ```
 
-Both read the active style pack (`studio/brand`, else `packs/neutral`; `--pack DIR` for another). Output: ERROR, CHECK,
-NOTE, OK per area, the listening list (every CHECK with a time), then the manual list with the rules of
-`rules/cut.md`. Reports: `review/speaker-cut-check-vNNN.json` and `review/cut-check-vNNN.json`. Exit 1 on any ERROR.
+The scripts read the active style pack (`studio/brand`, else `packs/neutral`; `--pack DIR` for another). Output: ERROR,
+CHECK, NOTE, OK per area, the listening list (every CHECK with a time), then the manual list with the rules of
+`rules/cut.md`. Reports: `review/speaker-cut-check-vNNN.json`, `review/cut-check-vNNN.json`, and
+`review/motion-check-vNNN.json` (a plan) or `review/motion-vNNN/motion-check.json` (a bundle). Exit 1 on any ERROR.
+`motion_check.py` also takes the plan itself (no engine; the bundle adds the engine's measurements).
 
 ## General checks (every style)
 
@@ -58,10 +64,47 @@ NOTE, OK per area, the listening list (every CHECK with a time), then the manual
 | `logo:*` | `brand.logo.file`, `logo.placement`, `logo.size` | no logo, so no check |
 | `end-card` | `edit_style.cut_words.end_card_cue` | empty, so no check |
 | `mix`, `pace` (NOTE) | `edit_style.graphics_mix`, `pace_cuts_per_minute` | |
+| `motion-*` (density) | `edit_style.motion` (lengths, big moments, per minute, gap, per sentence, heroes, sounds) | 3 to 6 s full frame, 1.5 s overlay; 3 to 5 big moments; 2 per minute; never 2 inside 6 s; 1 per sentence; heroes once, 2 in total; 1 sound per motion. Short: 2 big, 3 to 5 in total, 1 hero |
 | `loudness` | `edit_style.loudness_lufs`, `loudness_window_lu`, `true_peak_db` | -14, -2 to +0.5, -1.5 |
 | word lists | `edit_style.cut_words` (`fillers`, `same_meaning`, `transcript_noise`, `same_spelling`) | empty |
 
 Rules that are not measurable stay text in `rules/cut.md` and are printed as the manual list.
+`keywords_max` counts the 2D `keyword` chips and the motion `keyword_pop` together.
+
+## Motion review
+
+The Critic reviews every motion insert, and never one it built. The bundle command writes
+`review/motion-vNNN/<id>/` (the next free NNN) from the rendered frames, the `.jsx` source and the plan:
+
+| File | What | Fails when |
+|---|---|---|
+| `sheet.jpg` | every 0.25 s of the insert | a frame is empty; a hold shows no change for 0.5 s ("the camera stopped") |
+| `strip-in.jpg`, `strip-out.jpg`, `strip-t<N>.jpg`, `strip-cue-<name>.jpg` | 60 fps, 30 frames, every 2nd, built from the comp at 60 fps (engine only) | stutter, missing blur, a hold longer than planned, glyphs waiting before their cue |
+| `compare.jpg` | ours next to the reference at matched times (`--ref`, reference time = insert time + `--ref-offset`); else the library sample or the baseline's motion frames | the required sentence per big moment |
+| `hue.json` | hue shares at 5 times | one hue above 30 % of the coloured pixels; `"natural": true` and the end lockup are exempt |
+| `text.json` | every text layer's smallest size on screen (engine), overlay pixels on the face box or outside the safe box | below `min_text_px`, outside the safe box, over the face box (overlays) |
+| `sharp.json` | Laplace variance, frame difference and content per frame | under 35 % of the mean outside the entrance, the exit and the declared `transitions`; more than 3 such frames in a row is an ERROR |
+| `web-look.md` | 8 frames with the four questions as an empty form | any yes |
+| `lint.json` | the `.jsx`: hard-coded 1920/1080, a font name, Shatter, Temporal Motion Blur (ERROR); a rounded rect or a filled box with text (candidate) | any ERROR; candidates are for the Critic |
+| `density.json` | the density counts over the whole plan, and this insert's neighbours | over a limit |
+
+At the bundle root: `critic.md` (the form) and `bundle.json` (files, skipped steps, every finding). Without
+`effectcraft-cli` the strips and the text sizes from the engine are skipped with a line in the bundle; everything else
+works from the PNG frames. Never run the engine on the user's laptop for this: the image or a rented machine.
+
+The Critic's own look, written into `critic.md`:
+1. The sheet and the strips: stutter, blur, holds, cues.
+2. The four web-look questions for each of the 8 frames: could it be a screenshot of a web page or an app; is there a
+   rounded rectangle with text in it; does a word stand in a filled box; do all shadows share one shape although the
+   depths differ. Any yes: back to the builder with the frame named.
+3. For every big moment (full-frame insert), one sentence on what the reference still does better. Required.
+4. The ratchet: a video that is not better than the bar in at least one named way goes back. Name the way, with time
+   and frame.
+5. What I cannot check: sound. The listening list in `critic.md` (every motion's in, cues, out and its sound events)
+   goes to the user.
+
+At most 3 review rounds per piece (the bundle counts them). After the third, the Showrunner asks the user instead of a
+fourth round.
 
 ## Order
 
@@ -71,6 +114,7 @@ Rules that are not measurable stay text in `rules/cut.md` and are printed as the
 3. The listening list: each spot from 5 s before to 5 s after. This session cannot hear: never claim a listening check.
    Give the user the open spots with times.
 4. The manual list, and the contact sheet of the video (one frame every 10 s). Put scene frames next to the reference.
+   With motion inserts: the bundle, `motion_check.py` on it, and `critic.md` filled in (section "Motion review").
 5. **Only at 0 ERROR** does the version go to the user. Until then tell the Showrunner "unchecked, do not show". Say in
    one sentence what is checked and what stays open.
 6. Right after it was shown: `crewcut render shown <plan>`. Every change after that is a new plan version.
@@ -89,6 +133,9 @@ without a reason.
 - Face: a skin-colour measure in the plan's face window, not a face detector. If the speaker sits elsewhere than the
   plan says, it gives false errors: measure `face` again.
 - Logo: the script finds "something" in the logo corner, not the logo itself.
+- Motion lint: the web-look rules read the source, not the picture. A rounded or filled shape tied to a text layer
+  is a candidate; the Critic decides with the frames. The overlay face check counts visible pixels in the face box, so
+  a deliberate pointer near the face needs an exception with a reason.
 - What the checks do not find: double sentence starts inside a select (use `crewcut cut doubles` before building), music
   that is too loud, a weak choice of recordings, a slide-deck feeling. Only a person sees and hears that.
 
