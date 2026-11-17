@@ -140,7 +140,8 @@ jobs:
           echo "XDG_RUNTIME_DIR=$rt" >> "$GITHUB_ENV"
           sudo mkdir -p /mnt/rootless-docker && sudo chown "$me" /mnt/rootless-docker
           PATH=/tmp/rootless/docker:/tmp/rootless/docker-rootless-extras:$PATH XDG_RUNTIME_DIR="$rt" \
-            nohup dockerd-rootless.sh --data-root /mnt/rootless-docker > /tmp/rootless.log 2>&1 &
+            nohup dockerd-rootless.sh --data-root /mnt/rootless-docker --exec-opt native.cgroupdriver=cgroupfs \
+            > /tmp/rootless.log 2>&1 &   # the runner has no systemd user session for the systemd cgroup driver
           for i in $(seq 1 60); do
             DOCKER_HOST="unix://$rt/docker.sock" /tmp/rootless/docker/docker info > /dev/null 2>&1 && break; sleep 2
           done
