@@ -39,8 +39,8 @@ Open source, one Docker container, on your own computer.**
 </div>
 
 **Crewcut is for people who make YouTube videos alone and appear in them.** You bring the idea and the recording. The
-crew does the rest: it finds the topic in data, writes title and script, cuts your takes, builds 2D and 3D graphics in
-your style, checks every version, makes the thumbnail and uploads through the YouTube API. It runs on the Claude Code
+crew does the rest: it finds the topic in data, writes title and script, cuts your takes, builds 2D, 3D and motion
+graphics in your style, checks every version, makes the thumbnail and uploads through the YouTube API. It runs on the Claude Code
 subscription you already pay for, so the crew needs no API keys.
 
 You see who works on what, live. Every decision is one card with one button: no forms, no settings dialogs. Nothing is
@@ -106,7 +106,7 @@ flowchart TB
 | 3 Proof | Runs the test the title promises and collects the numbers that go into the video | what goes in |
 | 4 Script | The Writer writes in your voice, then runs [Humanizer](https://github.com/blader/humanizer) over the draft with your own spoken words as the sample | the script; the card shows what Humanizer changed |
 | 5 Record | Puts the script on your phone as a teleprompter (QR code, with a remote) | you record |
-| 6 Edit | The Editor transcribes, cuts to the last full take of each sentence, builds 2D and 3D, mixes the sound; the Critic checks every version against your best video before you see it | the preview |
+| 6 Edit | The Editor transcribes, cuts to the last full take of each sentence, plans the motion graphics from what each moment must show (what fits from the shelf, what to build new, what makes this video better than the last), builds 2D, 3D and motion, mixes the sound; the Critic checks every version against your best video before you see it | the motion plan, style frames, the preview |
 | 7 Thumbnail | The Designer makes the thumbnail and test variants | the thumbnail |
 | 8 Blog | *planned* | |
 | 9 Upload | The Publisher uploads through the API: video, thumbnail, captions, schedule, YouTube's altered-or-synthetic-content answer | publish, every time |
@@ -252,6 +252,17 @@ applies one ("Scout: niche check after Vexian's growth stages").
 Crewcut is not affiliated with or endorsed by any of these creators. The skills contain our own summaries, not their
 content.
 
+## Motion graphics
+
+The film at the top was made with these tools. Motion graphics in a video start from the video, not from a template
+list: per moment the Editor asks what the viewer must understand, then looks at the shelf, and builds a new piece when
+the idea needs one (with a style-frame card first). Every video gets one named upgrade over your best one so far; the
+Critic writes the lessons the next video reads. Comps render with [EffectCraft](https://github.com/storytold/effectcraft)
+(open source, built from a pinned commit), heavy 3D words with Blender, graphics can sit behind you through a person
+matte with its own edge check (it falls back to beside you when the edges are not clean), and every sound effect is
+made by code. [Motion graphics](docs/motion.md) · [The workflow](docs/motion-workflow.md) ·
+[Behind the speaker](docs/motion-matte.md) · [Templates](templates/motion/README.md)
+
 ## Under the hood
 
 ```mermaid
@@ -322,6 +333,7 @@ straight to the Editor, with hard limits. See [docs/crew-talk.md](docs/crew-talk
 [Style packs](docs/style-packs.md) ·
 [Recording and cut](docs/recording.md) ·
 [Rendering](docs/rendering.md) ·
+[Motion graphics](docs/motion.md) ·
 [Compute](docs/compute.md) ·
 [YouTube](docs/youtube.md) ·
 [Web UI](docs/ui.md) ·
@@ -346,4 +358,9 @@ Blender (GPL, called as a program, not linked), Chromium (BSD), Inter (SIL Open 
 by blader (MIT; the newest release is downloaded at start and loaded as a skill, its text is not part of this
 repository), yt-dlp (Unlicense, reads the captions of your own videos for the voice sample). The app's wallpapers were
 rendered for Crewcut in Blender from CC0 assets of Poly Haven and ambientCG ([credits](web/public/wallpapers/CREDITS.md)).
+Motion graphics: EffectCraft by the ArtCraft Team and the EffectCraft contributors (MIT OR Apache-2.0; built by our CI
+from a pinned upstream commit with our patch files, licences and NOTICE shipped next to the binary), the harness made
+with the method of CLI-Anything by HKUDS, RobustVideoMatting (GPL-3.0, downloaded and run as its own program on rented
+machines only, never shipped), and the HDRI of the launch film from Poly Haven (CC0). Details:
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 The demo pictures are frames and thumbnails of the author's own videos.
