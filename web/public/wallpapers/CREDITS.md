@@ -27,5 +27,5 @@ Downloaded but not used in the final renders (close-up grass looked dark and fak
 Poly Haven `grass_medium_01`, `grass_medium_02`, `dandelion_01`, `celandine_01` (all CC0).
 
 Files in this folder: `<name>-2560.jpg` (2560 x 1440) and `<name>-1280.jpg` (1280 x 720), copied unchanged by
-`tools/sample/build_media.py`. The app uses `green-dusk` (dark) and `mint-dawn` (light); `tests/web-sample/media.json`
+`tools/sample/build_media.py`. The app uses `green-dusk` (dark) and `mint-dawn` (light); the sample data of the CI
 lists all five.

@@ -12,7 +12,8 @@ def to_srgb(c):
     c = np.clip(c, 0, 1)
     return np.where(c <= 0.0031308, c * 12.92, 1.055 * np.power(c, 1 / 2.4) - 0.055)
 def sstep(e0, e1, x):
-    t = np.clip((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t)
+    t = np.clip((x - e0) / (e1 - e0), 0, 1)
+    return t * t * (3 - 2 * t)
 
 def masks(lin, hz=HZ):
     H, W, _ = lin.shape
@@ -41,7 +42,8 @@ def day(img, hz=HZ):
     # graduated sky, as with a grad filter: the open blue gets deeper towards the top, the clouds a little darker
     k = (sstep(hz, 0.0, y) ** 0.9)[..., None] * np.ones_like(lum)[..., None]
     c = cloud[..., None]
-    f_open = np.array([0.42, 0.56, 0.84]); f_cloud = np.array([0.74, 0.77, 0.84])
+    f_open = np.array([0.42, 0.56, 0.84])
+    f_cloud = np.array([0.74, 0.77, 0.84])
     f = 1 + ((f_open * (1 - c) + f_cloud * c) - 1) * k
     s = sky[..., None]
     out = lin * (1 - s) + lin * f * s
@@ -54,8 +56,11 @@ def dusk(img, hz=HZ):
     x = (np.arange(W, dtype=np.float32) / (W - 1))[None, :]
     # sky: deep blue at the top, a dusky violet in the middle, a warm glow at the horizon; clouds lit from below
     t = np.broadcast_to(np.clip(y / hz, 0, 1), lum.shape)[..., None]      # 0 top .. 1 horizon
-    top = np.array([0.010, 0.026, 0.070]); mid = np.array([0.075, 0.060, 0.105]); low = np.array([0.62, 0.30, 0.10])
-    a = np.clip(t / 0.6, 0, 1); b2 = np.clip((t - 0.6) / 0.4, 0, 1) ** 1.7
+    top = np.array([0.010, 0.026, 0.070])
+    mid = np.array([0.075, 0.060, 0.105])
+    low = np.array([0.62, 0.30, 0.10])
+    a = np.clip(t / 0.6, 0, 1)
+    b2 = np.clip((t - 0.6) / 0.4, 0, 1) ** 1.7
     base = (top * (1 - a) + mid * a) * (1 - b2) + low * b2
     cl = (cloud * sstep(0.25, 0.9, lum))[..., None]
     lit = np.array([0.24, 0.14, 0.15]) * (1 - t) + np.array([0.95, 0.56, 0.27]) * t   # mauve high, peach low
