@@ -63,7 +63,7 @@ VIDEO_008 = "episodes/008-graphify/05-graphics/craft-v007/008-graphify-v007-fina
 
 # Film strip of episode 012 (cut v005, 4:34): seconds where the frame shows only the author, with no text overlay
 # (217 s shows the English chip "Taste Skill"). Every other part of 012 shows the German demo website, German
-# keyword cards or third-party designs : those parts are left out. Checked frame by frame
+# keyword cards or third-party designs: those parts are left out. Checked frame by frame
 # (one exact frame per second, ffmpeg -ss); the last second fades in a German end card, so it is not used.
 STRIP_012 = [4, 14, 18, 71, 137, 141, 196, 215, 217, 258]
 

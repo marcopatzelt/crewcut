@@ -57,7 +57,7 @@ The green Slate and the crew avatars come from [`docs/brand/`](../../docs/brand/
 [`docs/launch/SOUNDS.md`](../../docs/launch/SOUNDS.md).
 
 Not in the repository: the plates and renders (made again by `plates.sh` and `deliver_ad.sh`), the thumbnails, Shorts
-covers and renders the author used as cards (bring your own with `CARDS_SRC`), and the reference clip (see below).
+covers and renders the author used as cards (bring your own with `CARDS_SRC`).
 
 ## Rebuild it on one rented RTX 4090
 
@@ -84,10 +84,7 @@ Fetch `$WORK/out/ad/v1/` and delete the machine right away. Idle GPU time while 
 part: build cheap, render in bursts.
 
 Review the sheets, not only the clip: `strip-*.jpg` show every 2nd frame at 60 fps across each transition,
-`framesheet.jpg` one frame every 0.25 s. With `REF=/path/to/local.mp4 bash deliver_ad.sh v2 sheets`,
-`compare-beat*.jpg` put your frames next to a reference clip at matched times. Timing can be measured against
-a reference clip; that clip stays on your own disk and **never enters this repository**. The
-`--ref-times` in `deliver_ad.sh` fit that reference only.
+`framesheet.jpg` one frame every 0.25 s.
 
 ## Measured timings
 
