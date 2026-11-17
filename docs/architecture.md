@@ -14,7 +14,8 @@ Container "crewcut"             web server (FastAPI), conductor, job queue, appr
    │
 Studio folder (mounted)         brand/, episodes/, config/, .crewcut/ (database, logs, keys)
    │
-Rented GPU (optional)           the same image (gpu target), no login data, only scene code and fonts go there
+Rented GPU (optional)           the same image (gpu target), no login data; scene code and fonts go there, and a
+                                picture-only shot only after its own card (person matte, docs/motion-matte.md)
 ```
 
 Two roots:

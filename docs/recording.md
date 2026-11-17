@@ -169,7 +169,8 @@ On a Mac, the container cannot use the Apple graphics chip, so recognition runs 
 untested.
 
 **Rented GPU** (`crewcut transcribe <file> --rented`, untested against a real provider): recognition runs on a rented
-NVIDIA card with the same image. Crewcut's privacy rule sends only scene code and fonts to rented machines, so this path
+NVIDIA card with the same image. Crewcut's privacy rule sends scene code and fonts to rented machines, and media only after a card that names
+the exact file (the voice here, a picture-only shot for the person matte), so this path
 first asks for a yes on its own card: it extracts only the voice (16 kHz mono FLAC, no picture, no metadata) to
 `work/upload/`, and the card shows exactly that file. Without a yes, nothing is sent (exit 3). Renting itself needs the
 usual spend card and stays under the month cap. The machine is destroyed after the run. Without renting, everything
