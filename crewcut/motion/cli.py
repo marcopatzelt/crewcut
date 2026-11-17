@@ -21,6 +21,17 @@ snapshot undo. ``--json`` gives machine output; ``--dry-run`` runs a mutation in
     crewcut motion session status|undo|redo|history
     crewcut motion exec ID --params JSON [--read-only] | batch steps.json | script file.jsx [--with-lib] | commands
 
+The motion workflow (no engine; docs/motion-workflow.md):
+
+    crewcut motion plan EPISODE [--short] | --check [--file F] [--card]
+    crewcut motion library [--no-episodes]
+    crewcut motion new EPISODE INSERT_ID --from brief.md
+    crewcut motion style-frame EPISODE INSERT_ID --ours F [--ours F] [--ref F] [--natural]
+    crewcut motion promote EPISODE INSERT_ID --name NAME [--title T]
+    crewcut motion report EPISODE --skeleton | --from F
+    crewcut motion lessons
+    crewcut motion reference add LINK_OR_FILE --reason R [--by user|scout] [--episode E] | from-chat | list
+
 Exit codes: 0 ok, 1 error, 2 usage, 3 `render palette` found one hue above the limit (plain output only).
 """
 
@@ -1027,6 +1038,220 @@ def session_redo(app: App):
 @handle_error
 def session_history(app: App, last):
     out(app, app.session.data.get("history", [])[-last:])
+
+
+# ── the motion workflow: plan, shelf, custom pieces, library, ratchet ───
+# These commands need no engine. Files live in the user's studio (episodes/<id>/, brand/), never in the app.
+
+def _exit(code: int) -> None:
+    click.get_current_context().exit(code)
+
+
+@cli.command("plan")
+@click.argument("episode")
+@click.option("--short", is_flag=True, help="The short form for a Short (format portrait, cap $0.50).")
+@click.option("--check", "check_", is_flag=True,
+              help="Validate the newest plan (or --file), compute density and budget, write the Markdown.")
+@click.option("--file", "file_", default=None, help="edit/motion-plan-vNNN.json to check (default: the newest).")
+@click.option("--card", is_flag=True, help="Check, then open the motion-plan card (one per video).")
+@click.pass_obj
+@handle_error
+def plan_cmd(app: App, episode, short, check_, file_, card):
+    """The motion pass: a plan skeleton from the words and the Writer's marks, or --check / --card a finished one."""
+    from .. import paths
+    from . import director as dr
+    from . import library as lib
+    if not check_ and not card:
+        p = dr.skeleton(episode, short=short or None)
+        plan = dr.load(p)
+        ep_dir = paths.episode_dir(episode)
+        rel = p.relative_to(ep_dir).as_posix()
+        shelf = lib.entries(include_episodes=False)
+        human = [f"{rel}: {len(plan['beats'])} beats, {len(plan['marks'])} Writer mark(s), cap ${plan['cap_usd']:g}.",
+                 f"bar: {(plan.get('bar') or {}).get('episode') or 'none yet'} · lessons: {len(plan['lessons'])} · "
+                 f"references: {len(plan['references'])}",
+                 "Per beat: purpose, picture, column (a, b, c, or - for none; most beats get none). Then "
+                 f"`crewcut motion plan {episode} --check --card`.", "shelf:"]
+        human += [f"  {lib.line(r)}" for r in shelf] or ["  empty"]
+        out(app, {"plan": rel, "md": dr.md_of(p).relative_to(ep_dir).as_posix(), "beats": len(plan["beats"]),
+                  "marks": plan["marks"], "shelf": plan["shelf"]}, "\n".join(human))
+        return
+    ep_dir = paths.episode_dir(episode)
+    p, errors, warns = dr.run_check(episode, ep_dir / file_ if file_ else None)
+    plan = dr.load(p)
+    data = {"plan": p.relative_to(ep_dir).as_posix(), "errors": errors, "warnings": warns,
+            "density": plan["density"]["line"], "budget": plan["budget"]["line"]}
+    if card and not errors:
+        c = dr.propose_card(episode, p)
+        data["card"] = c["id"]
+    human = [f"{data['plan']}: {len(errors)} error(s), {len(warns)} warning(s)",
+             f"  {data['density']} · {data['budget']}"]
+    human += [f"  error: {e}" for e in errors] + [f"  warning: {w}" for w in warns]
+    if data.get("card"):
+        human.append(f"card #{data['card']} is open: motion plan v{int(plan['version']):03d}")
+    out(app, data, "\n".join(human))
+    if errors:
+        _exit(1)
+
+
+@cli.command("library")
+@click.option("--no-episodes", is_flag=True, help="Only the app's and your pack's templates.")
+@click.pass_obj
+@handle_error
+def library_cmd(app: App, no_episodes):
+    """The shelf: the app's templates, your pack's own, and the custom pieces of your episodes."""
+    from . import library as lib
+    rows = lib.entries(include_episodes=not no_episodes)
+    out(app, rows, "\n".join(lib.line(r) for r in rows) or "the shelf is empty")
+
+
+@cli.command("new")
+@click.argument("episode")
+@click.argument("insert_id")
+@click.option("--from", "brief", required=True, help="The brief: sentence(s), what must be understood in 2 s, "
+              "format(s), length.")
+@click.pass_obj
+@handle_error
+def new_cmd(app: App, episode, insert_id, brief):
+    """A custom motion piece for this video: motion/<insert-id>/ with brief, beat sheet and a comp skeleton."""
+    from . import custom
+    d = custom.new(episode, insert_id, brief)
+    out(app, {"folder": str(d), "comp": str(d / "comp.jsx"), "source": f"motion/{insert_id}/comp.jsx"},
+        f"motion/{insert_id}/: brief.md, beats.md, refs/, review/, notes.md, comp.jsx (the ground and a slow push, "
+        f"landscape and portrait). Plan source: motion/{insert_id}/comp.jsx. Next: one real frame, then "
+        f"`crewcut motion style-frame {episode} {insert_id} --ours <frame>`.")
+
+
+@cli.command("style-frame")
+@click.argument("episode")
+@click.argument("insert_id")
+@click.option("--ours", multiple=True, required=True, help="Our frame (one per format; repeat for both).")
+@click.option("--ref", multiple=True, help="The reference frame (else refs/, else the bar's frames).")
+@click.option("--natural", is_flag=True, help="Grass, sky or footage: the one-hue limit does not apply.")
+@click.pass_obj
+@handle_error
+def style_frame_cmd(app: App, episode, insert_id, ours, ref, natural):
+    """Open the style-frame card: our frame next to the reference. Nothing animated is built before its yes."""
+    from .. import approvals
+    from . import custom
+    c = custom.style_frame(episode, insert_id, list(ours), list(ref), natural=natural)
+    out(app, approvals.view(c), f"card #{c['id']} is open: {c['title']}")
+
+
+def _sample_renderer():
+    """The render path's sample renderer, when it has one (``crewcut.render.motion.render_sample``)."""
+    try:
+        from ..render import motion as rmotion
+    except ImportError:
+        return None
+    return getattr(rmotion, "render_sample", None)
+
+
+@cli.command("promote")
+@click.argument("episode")
+@click.argument("insert_id")
+@click.option("--name", required=True, help="The template name: lower case, digits and _.")
+@click.option("--title", default=None, help="A short title for the shelf.")
+@click.pass_obj
+@handle_error
+def promote_cmd(app: App, episode, insert_id, name, title):
+    """Turn a reviewed custom piece (0 errors) into a template of your pack, then ask with a template card."""
+    from . import library as lib
+    e = lib.promote(episode, insert_id, name, _sample_renderer(), title=title)
+    out(app, e, f"{name} v{e['version']} is in your pack (brand/templates/motion/{name}.jsx), waiting for your yes "
+        f"on card #{e.get('card')}.")
+
+
+@cli.command("report")
+@click.argument("episode")
+@click.option("--from", "from_", default=None, help="The Critic's filled form (JSON).")
+@click.option("--skeleton", is_flag=True, help="Write the form to fill: review/motion-report-input.json.")
+@click.pass_obj
+@handle_error
+def report_cmd(app: App, episode, from_, skeleton):
+    """The motion report of a finished video against the bar; appends the lessons (at least one)."""
+    from .. import paths
+    from . import ratchet
+    ep_dir = paths.episode_dir(episode)
+    if skeleton or not from_:
+        p = ep_dir / "review" / "motion-report-input.json"
+        if p.exists():
+            out(app, {"form": str(p)}, f"review/{p.name} exists already; fill it, then --from review/{p.name}")
+            return
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(ratchet.skeleton(episode), ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        out(app, {"form": str(p)}, f"review/{p.name}: fill it (better, behind, upgrades, lessons with evidence), "
+            f"then `crewcut motion report {episode} --from review/{p.name}`.")
+        return
+    src = ep_dir / from_ if not os.path.isabs(from_) and (ep_dir / from_).is_file() else from_
+    data = parse_json_opt(f"@{src}", "--from")
+    r = ratchet.report(episode, data if isinstance(data, dict) else {})
+    human = [f"{r['file']}: {r['verdict_text']}", f"  better: {r['summary']['better']}",
+             f"  behind: {r['summary']['behind']}", f"  next:   {r['summary']['next']}",
+             "  lessons: " + ", ".join(x["id"] for x in r["lessons"])]
+    if r.get("baseline_card"):
+        human.append(f"card #{r['baseline_card']} asks whether this video becomes the bar")
+    out(app, r, "\n".join(human))
+
+
+@cli.command("lessons")
+@click.pass_obj
+@handle_error
+def lessons_cmd(app: App):
+    """The channel's motion lessons (brand/rules/motion.md) and the bar."""
+    from . import lessons as ls
+    from . import ratchet
+    b = ratchet.bar()
+    rows = ls.read()
+    human = [f"bar: {b['episode']} (since {b.get('since')})" if b else "bar: none yet (the first approved video)"]
+    human += [f"  {x['id'] or '-'}  {x['rule']}" for x in rows] or ["  no lessons yet"]
+    if ls.needs_merge():
+        human.append(f"  {len(rows)} lessons: above {ls.MERGE_ABOVE}, the Critic proposes a merge")
+    out(app, {"bar": b, "lessons": rows}, "\n".join(human))
+
+
+@cli.group("reference")
+def reference_grp():
+    """Motion references: reels and videos to learn timing and look from (they stay on this computer)."""
+
+
+@reference_grp.command("add")
+@click.argument("source")
+@click.option("--reason", required=True, help="What to learn from it (the user's own sentence when they sent it).")
+@click.option("--by", type=click.Choice(["user", "scout"]), default="user")
+@click.option("--episode", default=None, help="The episode it was found for (the Scout: required).")
+@click.option("--tag", "tags", multiple=True)
+@click.option("--no-download", is_flag=True, help="Keep only the link.")
+@click.pass_obj
+@handle_error
+def reference_add(app: App, source, reason, by, episode, tags, no_download):
+    """File a link or a local clip or still."""
+    from . import references as rf
+    e = rf.add(source, reason, by=by, episode=episode or os.environ.get("CREWCUT_EPISODE") or None, tags=list(tags),
+               download=None if no_download else rf.default_download)
+    out(app, e, f"{e['id']}: {e.get('link') or e.get('file')} ({'file kept here' if e.get('file') else 'link only'})")
+
+
+@reference_grp.command("from-chat")
+@click.option("--episode", default=None)
+@click.option("--text", required=True, help="The user's message with the link(s).")
+@click.pass_obj
+@handle_error
+def reference_from_chat(app: App, episode, text):
+    """The Showrunner files what the user dropped in the chat: each link, with the user's sentence as the reason."""
+    from . import references as rf
+    rows = rf.from_message(episode or os.environ.get("CREWCUT_EPISODE") or None, text)
+    out(app, rows, "\n".join(f"{e['id']}: {e['link']} - {e['reason']}" for e in rows) or "no link in the message")
+
+
+@reference_grp.command("list")
+@click.pass_obj
+@handle_error
+def reference_list(app: App):
+    from . import references as rf
+    rows = rf.read()
+    out(app, rows, "\n".join(f"{e['id']}  {e.get('by'):<5} {e.get('link') or e.get('file')}  {e.get('reason')}"
+                             for e in rows) or "no references yet")
 
 
 def main(argv: list[str] | None = None) -> int:

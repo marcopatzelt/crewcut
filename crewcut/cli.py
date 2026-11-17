@@ -249,6 +249,11 @@ def build_parser() -> argparse.ArgumentParser:
     yu.add_argument("--schedule", help="ISO time to publish; without it the video stays private")
     yu.add_argument("--dry-run", action="store_true")
     ysub.add_parser("status")
+    yr = ysub.add_parser("retention", help="audience retention of a published video around its motion moments "
+                         "(YouTube Analytics, read-only)")
+    yr.add_argument("episode")
+    yr.add_argument("--video", help="video id (default: export/upload-result.json)")
+    yr.add_argument("--json", action="store_true")
 
     en = sub.add_parser("engine", help="the engine: Claude Code (default) or Codex (beta), both on your subscription")
     ensub = en.add_subparsers(dest="encmd", required=True)
@@ -410,6 +415,10 @@ def _run(a) -> int:
             data = json.loads(a.data) if a.data else None
             if a.kind == "spend":
                 print("Spend cards come from the tool that spends (crewcut compute rent, render 3d --rented).",
+                      file=sys.stderr)
+                return 2
+            if a.kind in approvals.MOTION_KINDS:
+                print("Motion cards come from their commands: crewcut motion plan --card, style-frame, promote, report.",
                       file=sys.stderr)
                 return 2
             from . import humanize

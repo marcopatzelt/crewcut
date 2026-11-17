@@ -1,4 +1,4 @@
-"""`crewcut youtube connect | auth | upload | status`."""
+"""`crewcut youtube connect | auth | upload | status | retention`."""
 
 from __future__ import annotations
 
@@ -37,6 +37,24 @@ def main(a) -> int:
         print("connected" if auth.connected() else "not connected (say \"connect YouTube\" or run `crewcut youtube connect`)")
         print("client file: " + ("present" if auth.client_file().is_file() else "missing (crewcut youtube connect sets it "
                                  "up through Claude in Chrome; by hand: docs/youtube.md)"))
+        return 0
+    if a.ycmd == "retention":
+        from . import analytics
+        try:
+            res = analytics.retention(a.episode, video=a.video)
+        except analytics.NoData:
+            print(analytics.NO_DATA)
+            return 0
+        except FileNotFoundError as e:
+            print(str(e))
+            return 4
+        except PermissionError as e:
+            print(str(e))
+            return 4
+        except ImportError:
+            print("The YouTube libraries are missing in this image (pip extra 'youtube').")
+            return 1
+        print(json.dumps(res, indent=1, ensure_ascii=False) if a.json else "\n".join(analytics.lines(res)))
         return 0
     if a.ycmd == "upload":
         from ..conductor import queue

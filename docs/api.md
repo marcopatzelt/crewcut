@@ -137,11 +137,150 @@ A card asks the user for one yes. Declining or changing is a sentence in the cha
 | `POST /api/cards/{id}/decline` | `{"reason": "…"}` (optional) | the card |
 
 Card kinds: `topic`, `title`, `proof`, `script`, `mix`, `preview`, `final`, `thumbnail`, `publish`, `spend`, `rule`,
-`profile`, `other`. Optional `data` fields the UI shows: `estimate` (`local_seconds`, `local_source`, `rented_seconds`,
+`profile`, `other`, and the four motion cards `motion-plan`, `style-frame`, `template`, `baseline` (see "Motion cards"
+below). Optional `data` fields the UI shows: `estimate` (`local_seconds`, `local_source`, `rented_seconds`,
 `rented_usd`, `rented_usd_worst`, `gpus`, `gpu_name`), `amount_usd`, `cap_usd` or `budget_usd`, `referral`, `rule`,
 `source`, `profile`, `schedule` (ISO time, publish cards), `facts` (`[{"label", "value"}]`).
 A `spend` card carries `amount_usd` and the two estimates; a `rule` card carries the rule text and its source; a `profile`
 card carries the profile and a 10-second preview video path.
+Any card may carry `data.images` (a list of picture URLs); `needs` on an episode uses them when the card kind has no
+pictures of its own.
+
+| Method and path | Body | Answer |
+|---|---|---|
+| `POST /api/cards/{id}/strike` | `{"row": "beat:4", "struck": true}` (`row` is `beat:N`, `new:ID` or `upgrade:ID`; `struck: false` brings a row back) | the same card, now showing the next motion plan version (new `file`, `sha256`, `data`). 409 when the card is answered, the row is the only chosen upgrade, or the plan would no longer pass its check; 404 for an unknown card |
+
+## Motion cards
+
+Code: `crewcut/motion/cards.py` (what a yes or a no does), `director.py`, `custom.py`, `library.py`, `ratchet.py`. A yes
+goes through `POST /api/cards/{id}/accept` like every card; each motion card refuses a yes (409) when its files changed
+after it was made.
+
+**`motion-plan`** (one per video; `file` is `edit/motion-plan-vNNN.md`). Shows the three columns as media, the
+density and budget in one line, and one yes. A tap on a row strikes it (`/strike`), which writes the next plan version
+and points the same card at it. Shelf pieces (column a) may be built while the card is open; new pieces (b) and
+upgrades (c) wait for the yes.
+
+```json
+{"motion_plan": {
+   "version": 2, "file": "edit/motion-plan-v002.json", "md": "edit/motion-plan-v002.md", "json_sha256": "…",
+   "columns": {
+     "a": [{"row": "beat:2", "beat": 2, "time": "0:06", "purpose": "believe the price",
+            "picture": "the price rolls and lands on thirty as the word is said", "piece": "number_roll",
+            "params": {"value": "30", "unit": "cents"}, "length_s": 3.6, "cost_usd": 0.0,
+            "media": {"loop": "/api/motion/app/samples/number_roll-v2-landscape.mp4", "poster": "…"},
+            "struck": false}],
+     "b": [{"row": "new:handoff", "id": "handoff", "beat": 3, "brief": "Four jobs leave the laptop for a rented GPU.",
+            "why_new": "No shelf piece shows work moving between machines.", "kind": "full", "plates": 1,
+            "effort": "M", "cost_usd": 0.3, "cap_usd": 1.0, "struck": false,
+            "beats": [{"row": "beat:3", "beat": 3, "time": "0:12", "purpose": "…", "picture": "…",
+                       "piece": "handoff", "length_s": 5.0, "struck": false}]}],
+     "c": [{"row": "upgrade:u1", "id": "u1", "upgrade": "Every exit from a full-frame piece is caused by a motion",
+            "source": {"kind": "lesson", "ref": "2026-11-17-3"}, "effort": "S", "cost_usd": 0.0, "chosen": true,
+            "struck": false, "beats": []}]},
+   "quiet": [{"row": "beat:1", "beat": 1, "time": "0:00", "purpose": "know what this is",
+              "picture": "the speaker alone", "struck": false}],
+   "density": "full-frame 2 of max 5 · all motion 3 in 6:10 (max 12) · heroes 0",
+   "budget": "GPU about $0.30, cap $2", "estimate_usd": 0.3, "cap_usd": 2.0, "bar": "002-local-ai", "short": false},
+ "cap_usd": 2.0, "images": ["…"]}
+```
+
+`quiet` are the beats left to the speaker (most beats). `source.kind` is `lesson`, `reference`, `baseline` or
+`retention`. `media.loop`/`poster` may be `null` (a template without samples). The cap is $2 for a long video and
+$0.50 for a Short unless `[motion] cap_usd` / `cap_usd_short` in `config/crewcut.toml` say otherwise; renting a GPU
+still asks with its own `spend` card, with this cap.
+
+**`style-frame`** (one per custom piece and round; `file` is our first frame). Two pictures side by side per format:
+ours and the reference (or the bar's frame when there is no reference). Nothing animated is built before the yes.
+
+```json
+{"insert": "m3", "round": 1,
+ "frames": [{"format": "landscape", "ours": "motion/m3/frame-v1-landscape.png",
+             "ours_url": "/api/files/003-local-ai/motion/m3/frame-v1-landscape.png",
+             "ref": "motion/m3/refs/reel.png", "ref_url": "/api/files/003-local-ai/motion/m3/refs/reel.png",
+             "ref_label": "reference", "hue": {"dominant_share": 0.24, "ok": true}},
+            {"format": "portrait", "ours": "motion/m3/frame-v1-portrait.png", "ours_url": "…", "ref": null,
+             "ref_url": null, "ref_label": "no reference: say what it should beat", "hue": {"…": "…"}}],
+ "images": ["…"]}
+```
+
+`ref_label` is `reference`, `the bar` or the no-reference sentence. A no (`decline` with a reason) goes back to the
+Designer for a new frame and a new card.
+
+**`template`** ("Keep it in your library?"): the promoted piece with its sample loops and its params. Yes sets
+`approved` in `brand/templates/motion/library.json`; no takes the new version out again (the previous version, if
+any, comes back).
+
+```json
+{"template": {"name": "gpu_handoff", "title": "GPU hand-off", "version": 2, "kind": "full",
+              "formats": ["landscape", "portrait"], "params": {"comp": "Main", "jobs": 4, "label": "GPU"},
+              "samples": {"landscape": "/api/files/_onboarding/brand/templates/motion/samples/gpu_handoff-v2-landscape.mp4",
+                          "portrait": "…"},
+              "poster": "/api/files/_onboarding/brand/templates/motion/samples/gpu_handoff-v2.jpg",
+              "made_from": {"episode": "003-local-ai", "insert": "m3"}, "sha256": "…", "replaces": 1},
+ "images": ["…"]}
+```
+
+**`baseline`** ("Raise the motion bar from 002 to 003?"; `file` is the motion report). Old and new episode with their
+named strengths. Only this yes moves the bar, and the server refuses it (409) when the bar moved since, the report
+changed, or a measured value is worse (the bar never moves down).
+
+```json
+{"old": {"episode": "002-local-ai", "strengths": [{"name": "numbers land heavy", "time": 7.0, "frame": "…"}],
+         "measured": {"motion_moments": 5, "critic_errors": 0}},
+ "new": {"episode": "003-local-ai", "report": "review/motion-report-v002.json",
+         "strengths": [{"name": "every exit is caused by a motion", "time": 41.2,
+                        "frame": "review/motion-v002/m3/sheet.jpg"}],
+         "measured": {"motion_moments": 6, "critic_errors": 0, "upgrades_landed_share": 1.0},
+         "better": [{"what": "the number lands on the spoken word", "time": 7.2, "against": "numbers land heavy",
+                     "frame": "…"}]},
+ "report_sha256": "…", "images": ["…"]}
+```
+
+An `other` card with `data.motion_merge: true` (and `lessons`: the count) asks to merge the motion lessons when there
+are more than 40.
+
+## Motion
+
+Code: `crewcut/motion/views.py`, `library.py`, `ratchet.py`. Read-only.
+
+| Method and path | Answer |
+|---|---|
+| `GET /api/episodes/{id}/motion` | `{plan, pieces, report, retention}` (below); 404 for an unknown episode |
+| `GET /api/motion/library` | `{"templates": [row, …]}`: the shelf, the user's pack first, then the app's, then episode pieces |
+| `GET /api/motion/ratchet` | `{"bar": {…} or null, "lessons": [{"id", "date", "rule", "evidence", "source", "line"}], "merge_needed": false, "references": [{"id", "link", "file", "by", "reason", "episode", "tags", "timing", "added", "local_only"}]}` |
+| `GET /api/motion/app/samples/{path}` | a sample loop or poster of an app template (`templates/motion/samples/`) |
+
+```json
+{"plan": {"file": "edit/motion-plan-v002.json", "md_url": "/api/files/003-local-ai/edit/motion-plan-v002.md",
+          "version": 2, "card": {"id": 12, "status": "open"}, "approved": false,
+          "columns": {"a": [], "b": [], "c": []}, "quiet": [], "density": "…", "budget": "…", "estimate_usd": 0.3,
+          "cap_usd": 2.0, "bar": "002-local-ai", "short": false},
+ "pieces": [{"id": "m3", "kind": "custom", "scene": null, "source": "motion/m3/comp.jsx", "beat": 3, "column": "b",
+             "state": "style frame", "brief": "Show how the agent hands a render job to a rented GPU",
+             "loop": null, "poster": "/api/files/003-local-ai/motion/m3/frame-v1-landscape.png",
+             "start": 41.0, "end": 47.5, "transparent": false}],
+ "report": {"better": "the number lands on the spoken word (0:07.2)", "behind": "…", "next": "promote m3 as gpu_handoff",
+            "verdict": "better", "file": "review/motion-report-v002.json",
+            "url": "/api/files/003-local-ai/review/motion-report-v002.md"},
+ "retention": {"fetched": "2026-11-20", "summary": {"moments": 4, "held": 3, "dropped": 0, "held_share": 0.75},
+               "unproven": true}}
+```
+
+- `plan`: the newest `edit/motion-plan-vNNN.json`, with the columns of its card (or computed when it has no card yet);
+  `null` before the motion pass.
+- `pieces`: the motion inserts of the newest edit plan, plus custom pieces (`motion/<id>/`) not in it yet. `state` is
+  `planned`, `style frame` (its card is open or answered with a note), `building`, `in review` (the newest Critic
+  bundle has errors for it) or `done` (0 errors). `kind` is `library` (a `scene`) or `custom` (a `source`); custom ones
+  carry the brief's first line. `loop` is the encoded clip in `render/inserts/`, `poster` the middle rendered frame or
+  the newest style frame.
+- `report`: the newest motion report's three lines (better, behind, next); `null` before the first.
+- `retention`: from `review/retention.json`; marked `unproven` until a real channel's data has been seen.
+
+A shelf row: `{"name", "origin": "app" | "pack" | "episode", "title", "description", "kind": "full" | "overlay",
+"formats", "version", "versions", "params", "path", "samples": {"landscape", "portrait", "poster"} (URLs, each
+optional), "made_from", "approved" (`null` until the template card's yes), "needs_plates", "notes"}`; app rows have
+`overridden` (the pack has its own copy); episode rows have `episode`, `insert`, `promoted_as` and `header_ok`.
 
 ## Team, activity and logs
 

@@ -25,6 +25,9 @@ COMMANDS = {
     "session status", "session undo", "session redo", "session history",
     "exec", "batch", "script", "commands",
 }
+# the motion workflow (motion plan 3.1, 3.3, 3.6, 3.8): no engine needed
+WORKFLOW = {"plan", "library", "new", "style-frame", "promote", "report", "lessons", "reference add",
+            "reference from-chat", "reference list"}
 
 
 def _leaves(group: click.Group, prefix: str = "") -> set[str]:
@@ -59,7 +62,7 @@ def test_crewcut_help_lists_motion(capsys):
 
 def test_all_52_commands_exist():
     assert len(COMMANDS) == 52
-    assert _leaves(mcli.cli) == COMMANDS
+    assert _leaves(mcli.cli) == COMMANDS | WORKFLOW
 
 
 def test_usage_error_is_exit_2(capsys):
