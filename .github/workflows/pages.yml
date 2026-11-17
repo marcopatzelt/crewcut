@@ -1,19 +1,23 @@
 name: pages
 
-# The landing page in site/.
-# On every push that touches it: build it (site/build.sh), render it at 1440 and 390 px in light and dark, run the
-# Taste skill's finish gate over it, and keep the shots and the reports as the artifact "site-screens". The PNGs in
-# site/screens/ are copied from that artifact; no browser renders on a developer laptop.
-# Deploying to GitHub Pages runs only when started by hand (workflow_dispatch) AND only while the repository is
-# public: a page published from the private repository would show the project before its launch.
+# The landing page in site/ (owner's rule, 17 Nov 2026: small changes go online at once).
+#   deploy   every push to main that touches the page (or the film, brand and README pictures) builds site/ and deploys
+#            it to GitHub Pages at once; nothing waits for a check. Only while the repository is public.
+#   shots    after the deploy: screenshots of the live page at 1440 and 390 px, light and dark (artifact "live-shots"),
+#            so a person or an agent can look at what went online.
+#   decide   is this a big change? (tools/ci/gate_decide.sh: more than 300 changed lines in site/, a section added or
+#            removed, a design token in site.css changed, "[gate]" in a commit message, or run_gate on a manual run)
+#   taste    only for big changes: the Taste skill's finish gate over the built page, screenshots at 1440, 1024, 768
+#            and 390 px. Information only: it writes its findings to the job summary and never fails the run or delays
+#            the deploy. Do not loop on its findings; fix what is visibly wrong and move on.
 on:
   push:
     branches: [main]
     paths: ["site/**", "docs/brand/**", "docs/readme/**", "docs/launch/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
     inputs:
-      ship_without_gate:
-        description: "Deploy at once without waiting for the Taste gate (only when the owner says so)"
+      run_gate:
+        description: "Also run the Taste gate (information only; the deploy never waits for it)"
         type: boolean
         default: false
 
@@ -26,8 +30,93 @@ env:
   PRIMARY: "Get Crewcut on GitHub"
 
 jobs:
-  site:
-    name: Landing page, screens and Taste gate
+  deploy:
+    name: Build and deploy the landing page at once
+    if: github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the page
+        run: |
+          sudo apt-get install -y -qq webp > /dev/null
+          sh site/build.sh
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/_site
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  shots:
+    name: Screenshots of the live page (1440 and 390 px, light and dark)
+    needs: deploy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Playwright with Chromium
+        run: |
+          mkdir -p /tmp/shots-tool && cd /tmp/shots-tool && npm init -y > /dev/null && npm i -s playwright@1.50.1
+          npx -y playwright@1.50.1 install --with-deps chromium
+      - name: The live page, after the new version is served
+        env:
+          URL: ${{ needs.deploy.outputs.page_url || format('https://{0}.github.io/{1}/', github.repository_owner, github.event.repository.name) }}
+        run: |
+          want=$(sh site/build.sh > /dev/null && md5sum site/_site/index.html | cut -c1-32)
+          for i in $(seq 1 30); do
+            got=$(curl -fsSL "${URL}index.html?v=$GITHUB_SHA" | md5sum | cut -c1-32 || true)
+            [ "$got" = "$want" ] && break
+            sleep 10
+          done
+          echo "live page: $URL (matches this commit: $([ "$got" = "$want" ] && echo yes || echo 'not yet'))" >> "$GITHUB_STEP_SUMMARY"
+          cp site/tools/screens.mjs /tmp/shots-tool/
+          node /tmp/shots-tool/screens.mjs "${URL}index.html" "$GITHUB_WORKSPACE/shots/live"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: live-shots
+          path: shots/live/*.png
+
+  decide:
+    name: Big change? (the Taste gate runs only for big changes)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      gate: ${{ steps.d.outputs.gate }}
+      why: ${{ steps.d.outputs.why }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: d
+        env:
+          RUN_GATE: ${{ github.event_name == 'workflow_dispatch' && inputs.run_gate || 'false' }}
+          COMMIT_MESSAGES: ${{ join(github.event.commits.*.message, ' ') }}
+        run: |
+          sh tools/ci/gate_decide.sh "${{ github.event.before }}" "$GITHUB_SHA" "site docs/launch" "site/assets/site.css" >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
+
+  taste:
+    name: Taste gate (information only, big changes only; never blocks the deploy)
+    needs: decide
+    if: needs.decide.outputs.gate == 'true'
+    continue-on-error: true
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     concurrency:
@@ -58,7 +147,7 @@ jobs:
         with:
           name: site-shots
           path: shots/site/*.png
-      - name: Taste finish gate (fails on any FAIL without a written waiver)
+      - name: Taste finish gate (information only, the findings go to the job summary)
         run: |
           # Ubuntu 24.04 runners restrict user namespaces, which Chrome's sandbox needs (Taste starts its own Chrome)
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 > /dev/null
@@ -70,11 +159,11 @@ jobs:
           mkdir -p .taste-skill
           if [ -f ../.taste-skill/waivers.json ]; then cp ../.taste-skill/waivers.json .taste-skill/; fi
           node "$S/copy-lint.mjs" index.html --kind software | tee "$R/copy-lint.txt" || true
-          node "$S/gate.mjs" --start index.html --kind software --category "$CATEGORY" --primary "$PRIMARY"
+          node "$S/gate.mjs" --start index.html --kind software --category "$CATEGORY" --primary "$PRIMARY" || true
           node "$S/gate.mjs" index.html 2>&1 | tee "$R/gate.txt" || true
           cp -r .taste-skill/gate "$R/" 2>/dev/null || true
           { echo '### Taste gate, landing page'; echo '```'; tail -60 "$R/gate.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-          tail -1 "$R/gate.txt" | grep -q '^GATE: PASS'
+          echo "Taste gate ran because: ${{ needs.decide.outputs.why }}. Information only; the page is deployed already." >> "$GITHUB_STEP_SUMMARY"
       - name: Taste checker at every width, layout check and speed (reports only)
         if: always()
         run: |
@@ -94,61 +183,3 @@ jobs:
         with:
           name: site-screens
           path: shots/site/
-
-  deploy:
-    name: Deploy to GitHub Pages (by hand, public repository only)
-    needs: site
-    if: github.event_name == 'workflow_dispatch' && github.event.repository.private == false && !inputs.ship_without_gate
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    concurrency:
-      group: pages-deploy
-      cancel-in-progress: false
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build the page
-        run: |
-          sudo apt-get install -y -qq webp > /dev/null
-          sh site/build.sh
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site/_site
-      - id: deployment
-        uses: actions/deploy-pages@v4
-
-  # the owner's call: ship the page as it is, without waiting for the gate (the site job still runs and reports)
-  deploy-now:
-    name: Deploy to GitHub Pages at once (owner's call, gate not waited for)
-    if: github.event_name == 'workflow_dispatch' && github.event.repository.private == false && inputs.ship_without_gate
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    concurrency:
-      group: pages-deploy
-      cancel-in-progress: false
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build the page
-        run: |
-          sudo apt-get install -y -qq webp > /dev/null
-          sh site/build.sh
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site/_site
-      - id: deployment
-        uses: actions/deploy-pages@v4

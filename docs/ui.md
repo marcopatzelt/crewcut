@@ -311,6 +311,8 @@ npm run dev                   # http://localhost:5173, forwards /api to :4747 an
 | `npm run check` | all seven checks |
 | `npm run build` | type check, then the production build into `dist/` |
 
+The Taste design gate is not one of these checks: CI runs it only for big changes and only as information (CONTRIBUTING.md, "Design checks in CI").
+
 The words check reads `.ts` and `.tsx` files with the TypeScript parser, so the `!` operator in code does not count;
 class names, roles and ids in JSX attributes are skipped.
 

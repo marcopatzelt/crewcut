@@ -1,12 +1,21 @@
 name: screens
 
-# Renders screenshots on GitHub's runner, never on a developer laptop:
-# the static mockup now, the built web app in demo mode once web/ exists.
+# Renders screenshots on GitHub's runner, never on a developer laptop: the static mockup, the built web app in demo
+# mode, the README images and the brand PNGs. They are uploaded as the artifact "screens" at once.
+# The Taste gate runs after the upload and only for big changes (tools/ci/gate_decide.sh: more than 300 changed lines
+# in web/, a design token in web/src/styles/tokens.css changed, a file added or removed, "[gate]" in a commit
+# message, or run_gate on a manual run). It is information only: findings go to the job summary, it never fails the
+# run and nothing waits for it (owner's rule, 17 Nov 2026).
 on:
   push:
     branches: [main]
     paths: ["docs/mockup.html", "docs/brand/**", "web/**", "tools/ci/**", ".github/workflows/screens.yml"]
   workflow_dispatch:
+    inputs:
+      run_gate:
+        description: "Also run the Taste gate (information only)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -17,6 +26,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -64,8 +75,23 @@ jobs:
         run: |
           cp "$GITHUB_WORKSPACE/tools/ci/brand_png.mjs" /tmp/shots-tool/
           node /tmp/shots-tool/brand_png.mjs "$GITHUB_WORKSPACE/docs/brand" "$GITHUB_WORKSPACE/shots/brand"
-      - name: Taste gate (design check of the built app; fails on any finding without a written waiver)
-        if: hashFiles('web/package-lock.json') != ''
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screens
+          path: |
+            shots/*.png
+            shots/readme/
+            shots/brand/
+      - name: Big change? (the Taste gate runs only for big changes)
+        id: decide
+        env:
+          RUN_GATE: ${{ github.event_name == 'workflow_dispatch' && inputs.run_gate || 'false' }}
+          COMMIT_MESSAGES: ${{ join(github.event.commits.*.message, ' ') }}
+        run: sh tools/ci/gate_decide.sh "${{ github.event.before }}" "$GITHUB_SHA" "web" "web/src/styles/tokens.css" "^$" >> "$GITHUB_OUTPUT"
+      - name: Taste gate (information only, big changes only; never fails the run)
+        if: steps.decide.outputs.gate == 'true' && hashFiles('web/package-lock.json') != ''
+        continue-on-error: true
         run: |
           # Ubuntu 24.04 runners restrict user namespaces, which Chrome's sandbox needs (Taste starts its own Chrome)
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 > /dev/null
@@ -75,14 +101,10 @@ jobs:
           node /tmp/taste/skills/taste-skill/scripts/consistency.mjs "http://localhost:8099/index.html?demo=1" \
             --page software --widths 1440,1100,390 --profile /tmp/taste-profile --out shots/taste --no-sweep \
             | tee shots/taste/report.txt
-          set -o pipefail   # the gate's own exit code, not tee's
-          python3 tools/ci/taste_waivers.py shots/taste/report.txt .taste-skill/waivers.json | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Taste gate ran because: ${{ steps.decide.outputs.why }}. Information only." >> "$GITHUB_STEP_SUMMARY"
+          python3 tools/ci/taste_waivers.py shots/taste/report.txt .taste-skill/waivers.json | tee -a "$GITHUB_STEP_SUMMARY" || true
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: steps.decide.outputs.gate == 'true'
         with:
-          name: screens
-          path: |
-            shots/*.png
-            shots/readme/
-            shots/brand/
-            shots/taste/
+          name: screens-taste
+          path: shots/taste/

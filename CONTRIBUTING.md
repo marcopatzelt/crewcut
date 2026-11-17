@@ -34,6 +34,23 @@ Actions (`.github/workflows/`). You do not need Blender or a GPU to contribute.
 - **Honest status.** Mark what is not tested as "untested" or "planned" in code comments, docs and the README.
 - Tests for new logic (`tests/`), `ruff check .` clean, plain English in code and docs, no emoji.
 
+## Design checks in CI (the Taste gate)
+
+Small changes go online at once; the design gate is information, not a barrier (owner's rule, 17 Nov 2026).
+
+- **Landing page** (`.github/workflows/pages.yml`): every push to `main` that touches `site/`, the brand, the README
+  pictures or the launch film builds the page and deploys it at once. Then it takes screenshots of the live page at
+  1440 and 390 px (artifact `live-shots`): look at them.
+- **App screenshots** (`.github/workflows/screens.yml`): the README images, brand PNGs and app screenshots are uploaded
+  at once (artifact `screens`).
+- **The Taste gate runs only for big changes**: more than about 300 changed lines in `site/` (or `web/`), a section
+  added or removed, a design token changed (`site/assets/site.css` custom properties, `web/src/styles/tokens.css`), a
+  file added or removed in `web/`, `[gate]` in a commit message, or a manual run with `run_gate`. The rule is in
+  `tools/ci/gate_decide.sh`.
+- **It never blocks**: its findings go to the job summary and a separate artifact. Fix what is visibly wrong in one
+  pass, write a waiver with a reason for a finding that does not apply (`site/.taste-skill/waivers.json`,
+  `.taste-skill/waivers.json`), and move on. Agents: do not loop on gate findings.
+
 ## Commit messages
 
 Short imperative subject in English ("Add the bars scene"), a body when the why is not obvious.

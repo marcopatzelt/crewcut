@@ -5,8 +5,9 @@ follows them, whoever writes it: a maintainer, a contributor or a coding agent. 
 ask for a change. If a rule stops you from doing the right thing, change the rule in the same pull request and say why.
 
 Several rules are enforced by checks (rule 16); the rest rely on review.
-The [Taste skill](https://github.com/Leonxlnx/taste-skill) (MIT) is the design check we run before a release
-(rule 17); we link it, we do not copy it.
+The [Taste skill](https://github.com/Leonxlnx/taste-skill) (MIT) is the design check we run for big changes and
+before a release (rule 17); we link it, we do not copy it. It is information only: it never blocks a deploy or a merge,
+and CI runs it only for big changes (see "Design checks in CI" in CONTRIBUTING.md).
 
 ## 1. Principles
 
@@ -335,7 +336,8 @@ crew); narrow window; light and dark; the engine not logged in.
 ## 17. Before a release
 
 - [ ] Screenshots of the home and an episode in light and dark, at 1440, 1100 and 390 (CI job `screens` makes them).
-- [ ] The Taste skill's checker run over the screenshots or the built page; every FAIL fixed or waived with a reason.
+- [ ] The Taste skill's checker run over the screenshots or the built page (by hand: run the `screens` or `pages`
+      workflow with `run_gate`); fix what a person can see is wrong, waive the rest with a reason. Do not loop on it.
 - [ ] Every state in rule 11 handled.
 - [ ] Screenshots use test data, never real accounts, names or messages.
 - [ ] Once by hand: the new image next to a native Mac app such as Mail or Notes. Does something lie over something
