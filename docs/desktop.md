@@ -65,7 +65,7 @@ others.
 
 CI only: `.github/workflows/desktop.yml` runs the unit tests (`npm test` in `desktop/`: image tags, settings, Docker
 progress, the sign-in lines, the stack's command and environment, the window colours against `tokens.css`), then
-builds on `macos-latest` (dmg and zip, arm64 and x64), `windows-latest` (NSIS) and `ubuntu-24.04` (AppImage and
+builds on `macos-15-intel` (dmg and zip, arm64 and x64; the Apple silicon runners are often short of capacity), `windows-latest` (NSIS) and `ubuntu-24.04` (AppImage and
 .deb), starts each app once to take pictures of its first screens (Linux under xvfb) and uploads everything as
 workflow artifacts. It never publishes anything.
 

@@ -51,7 +51,8 @@ jobs:
       matrix:
         include:
           - name: macOS
-            os: macos-latest
+            # Intel runner: GitHub's Apple silicon runners are short of capacity; it builds both arm64 and x64 alike
+            os: macos-15-intel
             targets: --mac dmg zip --arm64 --x64
           - name: Windows
             os: windows-latest
