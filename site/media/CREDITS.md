@@ -14,6 +14,9 @@ written for this project. All third-party assets are CC0 (public domain); no att
 Trees: [Island Tree 01](https://polyhaven.com/a/island_tree_01) (Poly Haven, CC0), Rico Cilliers, Rob Tuytel.
 Ground: [Grass004](https://ambientcg.com/view?id=Grass004) (ambientCG, CC0).
 
+**Morning hills** (`wallpapers/hills-morning-*`, the hero): made for this page with ChatGPT image generation from a
+prompt by the author, 16 Nov 2026.
+
 **Lilienstein** (`wallpapers/lilienstein-*`): a crop of the [Lilienstein](https://polyhaven.com/a/lilienstein) HDRI
 from Poly Haven (CC0).
 

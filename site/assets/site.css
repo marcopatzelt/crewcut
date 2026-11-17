@@ -11,8 +11,8 @@
   --bg: #F2F5F3; --card: #FFFFFF; --card-2: #E8EEEB;
   --text: #0D1714; --text-2: #3F4B47; --text-3: #48544F;
   --line: rgba(13, 23, 20, 0.08); --chip: rgba(13, 23, 20, 0.06);
-  --sky: #6E95C4;
-  --wall: url("../media/wallpapers/meadow-day-2560.jpg");
+  --sky: #4F8FD6; --grass: #5E8F3A;
+  --wall: url("../media/wallpapers/hills-morning-2560.jpg");
   --hero-tint: linear-gradient(180deg, rgba(8, 52, 44, 0.42) 0%, rgba(8, 52, 44, 0.12) 34%, rgba(0, 0, 0, 0) 52%);
   --hero-scrim: radial-gradient(56% 46% at 50% 50%, rgba(8, 34, 44, 0.58), rgba(8, 34, 44, 0) 80%);
   --dark-band: #06140F;
@@ -45,7 +45,7 @@
   }
 }
 @media (max-width: 760px) {
-  :root { --wall: url("../media/wallpapers/meadow-day-1280.jpg"); --scene: url("../media/wallpapers/mint-dawn-1280.jpg"); }
+  :root { --wall: url("../media/wallpapers/hills-morning-1280.jpg"); --scene: url("../media/wallpapers/mint-dawn-1280.jpg"); }
 }
 @media (max-width: 760px) and (prefers-color-scheme: dark) {
   :root { --wall: url("../media/wallpapers/green-dusk-1280.jpg"); }
@@ -123,17 +123,17 @@ main > section.g2 > .wrap > .group { min-height: 0; display: flex; flex-directio
   background-color: var(--sky);
   background-image: var(--hero-tint), var(--hero-scrim), var(--wall);
   background-repeat: no-repeat;
-  background-size: 100% 100%, 100% 100%, max(100%, 355.56svh) auto;
+  background-size: 100% 100%, 100% 100%, max(100%, 300svh) auto;
 }
 .hero { background-position: 0 0, 0 0, 50% 0; padding: var(--nav) 0 64px; justify-content: center; }
-.stage { background-image: var(--wall); background-size: max(100%, 355.56svh) auto; background-position: 50% 100%; }
+.stage { background-color: var(--grass); background-image: var(--wall); background-size: max(100%, 300svh) auto; background-position: 50% calc(-100svh); }
 .stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 180px; background: linear-gradient(180deg, transparent, var(--bg)); pointer-events: none; z-index: 1; }
 @media (prefers-reduced-motion: no-preference) {
   .hero { animation: drift-hero 38s ease-in-out infinite alternate; }
   .stage { animation: drift-stage 38s ease-in-out infinite alternate; }
 }
 @keyframes drift-hero { from { background-position: 0 0, 0 0, 50% 0; } to { background-position: 0 0, 0 0, 46% 0; } }
-@keyframes drift-stage { from { background-position: 50% 100%; } to { background-position: 46% 100%; } }
+@keyframes drift-stage { from { background-position: 50% calc(-100svh); } to { background-position: 46% calc(-100svh); } }
 
 .hero > .wrap { justify-content: center; }
 .hero-text { text-align: center; color: #fff; display: flex; flex-direction: column; align-items: center; }
