@@ -130,11 +130,15 @@ var CC = (function () {
   C.mix = function (a, b, k) { var x = rgb(a), y = rgb(b); return "#" + hex2(x[0] + (y[0] - x[0]) * k) + hex2(x[1] + (y[1] - x[1]) * k) + hex2(x[2] + (y[2] - x[2]) * k); };
 
   // Mean luminance (0..1) of the speaker picture under a box (px), from the context's `backdrop_luma`: a number
-  // (one value for the free side) or a grid {cols, rows, values} (row-major, 0..1) measured by the workbench on the
-  // speaker frames of the insert. null when the context has none.
+  // (a generated colour base), a list of rows top to bottom (the render path's 16x9 grid) or {cols, rows, values}
+  // (row-major). null when the context has none.
   C.lumaUnder = function (b) {
     var x = typeof CC_CTX !== "undefined" && CC_CTX ? CC_CTX.backdrop_luma : null, F = C.frame();
     if (typeof x === "number") return x;
+    if (x instanceof Array && x.length && x[0] instanceof Array) {          // rows top to bottom, as the render path writes it
+      var flat = []; for (var rr = 0; rr < x.length; rr++) flat = flat.concat(x[rr]);
+      x = { cols: x[0].length, rows: x.length, values: flat };
+    }
     if (!x || !x.values || !x.cols || !x.rows) return null;
     if (!b) b = F.sideBox;
     var cw = F.W / x.cols, ch = F.H / x.rows, sum = 0, n = 0;
@@ -326,7 +330,8 @@ var CC = (function () {
     // leading zeros stay hidden until the count reaches them
     var digitStr = ""; for (var q2 = 0; q2 < items.length; q2++) if (items[q2].digit) digitStr += items[q2].ch;
     var target = parseInt(digitStr, 10) || 0, from = Math.max(0, Math.min(target, Math.round(Number(o.from) || 0)));
-    var vis = function (pw) { return "(" + (target < pw ? "true" : "(k0 + (g0 > 0 ? 1 : 0) >= " + pw + ")") + ")"; };
+    // the units reel always shows; a higher reel shows once the count reaches it (or when the target never does)
+    var vis = function (pw) { return "(" + (pw === 1 || target < pw ? "true" : "(k0 + (g0 > 0 ? 1 : 0) >= " + pw + ")") + ")"; };
     var core = "var t0=" + rollAt + ",tl=" + land + ",fr=" + from + ",to=" + target + ";" +
                "var uu=Math.max(0,Math.min(1,(time-t0)/(tl-t0)));var e=1-Math.pow(1-uu," + pe + ");" +
                "var w=fr+(to-fr)*e+1e-7;var k0=Math.floor(w),f0=w-k0;var g0=f0<0.75?0:(function(x){return x*x*(3-2*x);})((f0-0.75)/0.25);" +
@@ -350,7 +355,7 @@ var CC = (function () {
       EC.expr(c, rl, "transform/position", core + move +
               "if(time>" + tOut + "){var q=time-" + tOut + ";p+=0.5*(26/" + exit + ")*q*q;}" +
               "var m=((p%10)+10)%10;[" + cx + "," + base + "-(m+1)*" + L + "]");
-      EC.expr(c, rl, "transform/opacity", core + vis(pw) + "?100:0");
+      EC.expr(c, rl, "transform/opacity", core + vis(pw) + "?value:0");
       EC.sw(c, rl, "motionBlur", true);
       // the window: opens like a shutter from a slit, closes at the end (a feathered alpha matte, not drawn)
       var wTop = base - cap - 0.26 * s, wBot = base + 0.26 * s;
@@ -358,7 +363,7 @@ var CC = (function () {
       EC.fx(c, win, "Gaussian Blur", { blurriness: 0.035 * s });
       C.child(c, win, o.parent);
       EC.set(c, win, "transform/position", [cx, (wTop + wBot) / 2]);
-      EC.keys(c, win, "transform/scale", [[t0, [100, 18]], [t0 + enter, [100, 100]], [tOut, [100, 100]], [tOut + exit, [100, 0]]],
+      EC.keys(c, win, "transform/scale", [[t0, [100, 40]], [t0 + enter, [100, 100]], [tOut, [100, 100]], [tOut + exit, [100, 0]]],
               [C.ease(), "linear", "expoIn"]);
       EC.matte(c, rl, win, "alpha");
       ids.push(rl);
@@ -373,7 +378,7 @@ var CC = (function () {
       C.legible(c, s1, s, tone);
       C.rise(c, s1, { parent: o.parent, x: o.x + it3.x, y: base, size: s, ink: it3.ink, t: rollAt + 0.05, dur: enter,
                        outAt: tOut, outDur: exit, name: nm + " sep " + k3, pop: false });
-      if (leftPw !== null) EC.expr(c, s1, "transform/opacity", core + vis(leftPw) + "?100:0");
+      if (leftPw !== null) EC.expr(c, s1, "transform/opacity", core + vis(leftPw) + "?value:0");
       ids.push(s1);
     }
     return { ids: ids, width: wx, target: target, from: from };
@@ -385,21 +390,27 @@ var CC = (function () {
     o = o || {};
     var F = C.frame();
     if (F.transparent) return null;
-    var g = C.ground(), k = o.strength === undefined ? 0.42 : o.strength, D = F.duration, W = F.W, H = F.H;
+    var g = C.ground(), k = o.strength === undefined ? 0.3 : o.strength, D = F.duration, W = F.W, H = F.H;
     var id = EC.solid(c, { name: o.name || "ground", color: g, w: Math.round(W * 1.3), h: Math.round(H * 1.3) });
     EC.set(c, id, "transform/position", [W / 2, H / 2]);
     var out = [id];
     if (k > 0) {
-      var d = 1.05 * Math.max(W, H), m = Math.min(W, H);
-      // pools: colour index, start and end centre (fractions of the frame)
-      var pools = [[1, [-0.06, 0.02], [0.00, 0.06]], [2, [1.06, 0.00], [1.00, 0.05]], [3, [0.96, 1.08], [0.92, 1.02]], [0, [0.02, 1.06], [0.06, 1.00]]];
+      var d = 0.78 * Math.max(W, H), m = Math.min(W, H);
+      // pools just outside the corners, drifting a little inward: colour index, start and end centre (frame fractions)
+      var pools = [[1, [-0.10, -0.06], [-0.05, -0.02]], [2, [1.10, -0.04], [1.05, 0.00]], [3, [1.06, 1.10], [1.01, 1.05]], [0, [-0.06, 1.10], [-0.02, 1.05]]];
       for (var i = 0; i < pools.length; i++) {
         var col = C.mix(g, C.color(pools[i][0]), pools[i][0] === 0 ? k * 0.8 : k);
-        var e = EC.shape(c, { kind: "ellipse", size: [d, d * 0.8], fill: col, name: (o.name || "ground") + " light " + i });
-        EC.fx(c, e, "Gaussian Blur", { blurriness: 0.30 * m });
+        var e = EC.shape(c, { kind: "ellipse", size: [d, d * 0.75], fill: col, name: (o.name || "ground") + " light " + i });
+        EC.fx(c, e, "Gaussian Blur", { blurriness: 0.26 * m });
         EC.keys(c, e, "transform/position", [[0, [pools[i][1][0] * W, pools[i][1][1] * H]], [D, [pools[i][2][0] * W, pools[i][2][1] * H]]], "linear");
         out.push(e);
       }
+      // a fine grain over the ground keeps its soft gradients from banding in 8-bit video
+      var gr = EC.solid(c, { name: (o.name || "ground") + " grain", color: "#808080", w: W, h: H });
+      EC.set(c, gr, "transform/position", [W / 2, H / 2]);
+      EC.sw(c, gr, "adjustment", true);
+      EC.fx(c, gr, "Noise", { amount: 1.6, color: false });
+      out.push(gr);
     }
     return out;
   };

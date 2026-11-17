@@ -146,6 +146,9 @@ def test_tone_follows_the_picture_under_the_box():
     right = run(ctx, "CC.tone({x: 1300, y: 100, w: 400, h: 200})")
     assert left["fill"] == "#FFFFFF" and left["shade"] == "#111111"
     assert right["fill"] == "#111111" and right["onLight"] is True
+    rows = [[0.2] * 8 + [0.9] * 8 for _ in range(9)]                     # the render path's 16x9 list of rows
+    assert run({**ctx, "backdrop_luma": rows}, "CC.tone({x: 1300, y: 100, w: 400, h: 200}).fill") == "#111111"
+    assert run({**ctx, "backdrop_luma": rows}, "CC.tone({x: 100, y: 100, w: 400, h: 200}).fill") == "#FFFFFF"
     assert run({**ctx, "backdrop_luma": None}, "CC.tone().fill") == "#FFFFFF"          # unknown: light type
     assert run({**ctx, "backdrop_luma": 0.7}, "CC.tone().fill") == "#111111"           # one number for the side
     full = run({"transparent": False, "brand": {"mg": {"ink": "#222222"}}}, "CC.tone().fill")
