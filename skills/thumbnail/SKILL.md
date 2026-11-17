@@ -45,7 +45,8 @@ upload step uploads. Layouts, colours, face rules, word limits and the reference
 10. **Face** (`face`, `face_position`, `face_min_area`, `max_faces`): one face, large, where the pack says.
 11. **The result shows the topic.** If the video tests several tools, the image shows all tested results with the
     winner marked, built as a real image (screenshots, labels, a frame around the winner), so the image model invents
-    nothing.
+    nothing. A grid only when it reads as ONE focal point at a glance (few large tiles, the winner clearly larger, rule
+    15); otherwise the image shows only the winner, large, and the grid goes into the video.
 12. **Break the pattern of the niche.** Before a new layout or a new round, put the newest thumbnails of the largest
     channels of the niche (`channel.json` `reference_channels`) next to the user's newest. Write three sentences: what
     almost all do (colour, face, text, layout), and how this variant clearly differs. They go into the round's
@@ -53,8 +54,20 @@ upload step uploads. Layouts, colours, face rules, word limits and the reference
 13. **Proof instead of reach.** The image shows a proof that makes up for a small channel: a measured result, a ranking,
     an amount from the test. An image without proof does not go to the user.
 14. **Thumbnail and the first seconds first.** They get the most care; the quality of the rest is not cut for it.
+15. **One or two focal points, the one-second test.** A stranger understands the image in one second: who, what, why
+    click. At most two focal points, for example the face and one object or result. Test: look at the 160 px preview for
+    one second, look away, say in one sentence what the video is about. If you can't, the image is too full.
+16. **No AI look, no clutter.** No collage of several scenes, no whiteboards or screens full of small text, no rows of
+    years ("2024 2025 2026"), no glossy stock-photo light. If the finished image looks generated, it does not go to the
+    user: write a new complete prompt (rule 1).
+17. **One object names the audience and the goal.** One large, instantly recognisable object shows who the video is
+    for and what they get, like a YouTube diamond play button held up for creators (audience: creators; goal: a huge
+    channel). Ask first: who should click, and what do they want (time, money, control, growth)? The object counts as
+    one of the two focal points (rule 15).
+18. **A power word that makes people ask "how?".** Among the few words (`max_words`) there is one power word that
+    raises the question "how?": solved, cracked, replaced, built, without code, in 1 hour. The video must carry it.
 
-When you apply rules 12 to 14 you may cite them in one line:
+When you apply rules 12 to 18 you may cite them in one line:
 `crewcut say --episode $CREWCUT_EPISODE --cite "pattern break and proof after Vexian's packaging advice" "…"`.
 
 ## Layout templates
@@ -112,6 +125,12 @@ From YouTube Help as the studio read it on 8 and 9 Nov 2026 (read it again befor
 - An image under 1280x720 makes YouTube scale every image of the test down to 854x480.
 - Changing the title or thumbnail during a test ends it. One test per video at a time.
 
+**Repackage when a video is flat.** After 7 days and after 30 days the Publisher compares every video with the median of
+the user's other videos at the same age (views). If it is clearly below, the Designer makes a new package: a new
+thumbnail by rules 15 to 18 and, if needed, a new title from the title step. It runs as a "title and thumbnail" test
+against the old package, and only with a card, because it changes the live video. A video that lay flat for 70 days can
+take off after new packaging (Steven Baterina's example, see Sources).
+
 As far as we know there is no public API to start a test. The Publisher prepares the variants (upload copies from
 `--convert`) and a card for the user, who starts the test in Studio. Recording tests and their results is planned
 (`ab_tests.py`). A result becomes a rule only after several finished tests that point the same way, and only with a
@@ -130,6 +149,10 @@ Check by hand on the finished image and the 160 px preview. `thumb_check.py` pri
 8. The result image is real and unchanged: the image model invented no tasks, numbers or text.
 9. The bottom-right corner is free; text is spelled right, with the number format of the channel's language.
 10. At 160 px one sees who, what result, and the verdict (words or number).
+11. At most two focal points; after one second at 160 px you can say in one sentence what the video is about.
+12. No AI look: no collage, no small text, no whiteboards, no stock-photo light.
+13. One large object shows the audience and the goal.
+14. One power word that makes people ask "how?", and the video carries it.
 
 ## Scripts
 
@@ -159,3 +182,7 @@ No connection to or endorsement by these people; we took ideas and wrote our own
   https://www.youtube.com/watch?v=41HMFGbENj4: break the pattern of the niche, proof instead of reach, packaging
   (thumbnail and the first seconds) first, and split tests of thumbnails.
 - fern (YouTube channel), https://www.youtube.com/@fern-tv: inspiration for the clay look of 3D result images only.
+- Steven Baterina (Creo Social), Instagram reel comparing two thumbnails of one video,
+  https://www.instagram.com/reel/DfvkIktPyQH/: one or two focal points, no AI-looking clutter, one object that names the
+  audience and the goal, a power word that raises "how?", and new packaging for a video that lies flat (rules 15 to 18
+  and "Repackage when a video is flat").

@@ -11,6 +11,7 @@ may_spend: false
 may_publish: true
 sources:
   - {name: "Vexian (Grant Owen's podcast)", url: "https://www.youtube.com/watch?v=41HMFGbENj4", used_for: "end screen, fixed upload time, views per unique viewer"}
+  - {name: "Steven Baterina (Creo Social)", url: "https://www.instagram.com/reel/DfvkIktPyQH/", used_for: "repackaging a flat video"}
 ---
 
 I check the package first and upload only after that. Title, description, chapters, tags, captions, thumbnail and
@@ -24,4 +25,6 @@ I answer YouTube's questions about the video myself (made for kids, altered or s
 with its reason on the card.
 
 After 48 hours I compare the video with the user's others and say the result in two sentences: how it does, and what
-that means for the next title and thumbnail.
+that means for the next title and thumbnail. After 7 days and after 30 days I compare it again with the user's videos at
+the same age. If it lies clearly below them, I ask the Designer for a new package and send the user a card for a "title
+and thumbnail" test against the old one.
