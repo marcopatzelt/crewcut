@@ -310,3 +310,71 @@ and moved off the face box when it would touch it.
 
 Sounds: `whoosh` at `drawAt`. Limits: one target; the plan has to know where the thing is (no tracking); a target
 inside the face box is allowed (pointing at a gesture), the word is not.
+
+### `ranking` (full, 6.0 s)
+
+Three to five places on a tilted plane in 2.5D (3D layers, a two-node camera), place 1 on top, numbers right-aligned,
+labels and values in columns. The places come in dim (22 %); the light goes on place by place from the last to the
+first while the list glides so the lit place sits in the middle; on place 1 the camera comes closer, its number is
+the accent and settles with a small scale spring; the hold pushes slowly; at the end the camera pushes through the
+list (motion blur carries the cut).
+
+| Param | Default | Meaning |
+|---|---|---|
+| `items` | four entries | `[{"label", "value"}]` or plain strings, place 1 first, at most 5 |
+| `size`, `minSize` | `120`, `72` | the numbers; labels are 0.7 of it, values 0.42 (never under 48 px, so they stay over 40 at the far start) |
+| `tilt` | `[16, -18, 2]` | the plane's X, Y and Z rotation in degrees |
+| `startAt`, `firstAt`, `dim` | `0.5`, `null`, `22` | the first light; place 1 lit 1.5 frames before `firstAt` (default after 0.62 s per place); the dim opacity |
+| `outAt` | `null` | the push through |
+
+Cues: `firstAt`. Sounds: `hit` at `firstAt` when it is set, else `tick` at `startAt`. Limits: no
+rise from the baseline here (track mattes and 3D layers were left apart); labels longer than ~22 letters shrink the
+whole list.
+
+### `card_gallery` (full, 3.5 s, once per video)
+
+The episode's real screenshots in space: the first picture lands in the middle with a turn and a 3 % scale spring,
+then the others fly in from the camera side into a tilted masonry grid (7 columns in 16:9, 4 in 9:16), staggered by
+their distance from the middle, while the camera pulls back from 155 % to 82 %; the grid turns slowly in the hold and
+the camera pushes through at the end. Cards keep the pictures' own aspect and carry a soft shadow.
+
+| Param | Default | Meaning |
+|---|---|---|
+| `images` | `[]` | paths of the episode's screenshots (the first is the hero); they repeat to fill the grid |
+| `heroAt`, `gridAt`, `fly`, `stagger` | `0.0`, `0.45`, `0.5`, `0.035` | the hero, the grid start, the flight of one card, the stagger per card width |
+| `tilt`, `tiltEnd`, `pull` | `[22, -18, 5]`, `[18, -11, 3]`, `[1.55, 0.82]` | the grid's turn from start to end; the camera pull |
+| `shadow`, `seed`, `outAt` | `26`, `5`, `null` | card shadow, the masonry's random start heights, the exit |
+
+Sounds: `whoosh` at `gridAt`. Limits: without images it renders the ground only and says so in its result; eight or
+more different pictures keep repeats from showing; the cards have square corners (the pictures are content, not
+boxes for words).
+
+### `end_lockup` (full, 2.5 s)
+
+The end card: an optional logo settles with a 3 % scale spring, the channel name cascades in letter by letter out
+of its baseline, a thin accent stroke draws under it and an optional line rises below. The cut in lands on a camera
+settle from 104 %; the push runs to the last frame (no exit: it ends the video).
+
+| Param | Default | Meaning |
+|---|---|---|
+| `name`, `line`, `logo` | `"Crew Notes"`, `"New video every Thursday"`, `""` | the channel name, one line under it, a logo image (as tall as the name's capitals) |
+| `size`, `minSize`, `lineSize` | `150`, `96`, `52` | sizes; name and logo are fitted to the safe width |
+| `inAt`, `cascade` | `0.0`, `0.035` | the start and the seconds between letters |
+
+Sounds: `whoosh` on the entrance. Limits: the particle converge of the launch film needs a Blender plate
+(`CC.plate`) and is not built here; names over ~16 letters shrink toward `minSize`.
+
+### `cursor` (overlay helper, per move 0.4 to 0.8 s)
+
+A pointer for screen recordings: it flies along `path` (points as fractions of the frame, the tip lands on each)
+with an expo ease and motion blur, squashes on each click, and a thin accent ring opens from the tip with every
+click; it leaves the way it came 0.45 s before the end.
+
+| Param | Default | Meaning |
+|---|---|---|
+| `path` | three points | `[[t, x, y], ...]`, times in seconds, x and y as fractions of the frame |
+| `clickAt`, `moreClicks` | `1.0`, `[]` | the click (a number, so the sound can follow it) and any further clicks |
+| `height`, `ease`, `ring`, `leave` | `60`, `"expo"`, `true`, `true` | pointer height, the ease of each move, the click ring, the way out |
+| `image` | `""` | another pointer image (default `assets/cursor.png`, an original drawing) |
+
+Sounds: `click` at `clickAt`. Limits: the ring opens where the path stands at the click (click while resting).
