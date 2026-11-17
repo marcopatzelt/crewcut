@@ -18,5 +18,10 @@
     "check": "card-layout",
     "target": "ul.crew",
     "reason": "The approved mock draws the eight crew members as one family of photo tiles on purpose: one role each, the same frame, so the eight read as one crew."
+  },
+  {
+    "check": "card-layout",
+    "target": "ol.steps",
+    "reason": "The ten steps are one sequence of the same kind of item and are drawn alike on purpose; the steps where you decide stand out in mint."
   }
 ]
