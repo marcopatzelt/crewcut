@@ -167,10 +167,13 @@ depth of field suffer. Eevee as a draft renderer is planned.
 4. Picture and sound together (H.264, CRF from the plan, fast start). `<output stem>.cut.json` lists the shots,
    loudness before and after, the true peak, the music source and every note.
 
-Sound effect files do not ship with Crewcut (no licensed audio in the repo). The plan names them (`hit_file`,
-`typing_file`, `whoosh_file`, relative to the episode) or the pack does (`edit-style.json`
-`"sounds": {"hit": "...", "typing": "...", "whoosh": "..."}`, relative to the pack). A sound without a file is
-skipped with a note.
+Sound effect files are made by code at first use: Crewcut's sound kit (`crewcut/motion/sfx.py`, NumPy only)
+writes `whoosh`, `tick`, `typing`, `pop`, `click`, `hit`, `riser`, `reel_tick` and `bell` as 48 kHz WAV files into
+`studio/.crewcut/sfx/`, with `kit.json` (kit version, seed, sha256 per file). The repository holds no audio file.
+Your own files win: the plan names them (`hit_file`, `typing_file`, `whoosh_file`, relative to the episode) or the
+pack does (`edit-style.json` `"sounds": {"hit": "...", "typing": "...", "whoosh": "..."}`, relative to the pack).
+Only when neither names a file does the cut take the kit's `hit`, `typing` or `whoosh`, with a note. A file that is
+named but missing is skipped with a note. Nobody has listened to the kit yet: [sfx-listening.md](sfx-listening.md).
 
 After the user has seen an output, `crewcut render shown <plan>` writes `<output>.shown`:
 `{"at": "2026-11-16T10:00:00Z", "sha256": "<64 hex>"}`. From then on `cut` refuses to overwrite it. Every change is a

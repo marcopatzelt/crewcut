@@ -1,10 +1,12 @@
 """The cut: shown lock, pieces, ffmpeg argument lists, sound graph, loudness loop. ffmpeg is never run."""
 
+import dataclasses
 import json
 
 import pytest
 from render_helpers import FakeRunner, basic_plan, loudness_text
 
+from crewcut import brand, paths
 from crewcut.render import assemble, media
 from crewcut.render.plan import Plan, PlanError
 
@@ -106,8 +108,9 @@ def test_audio_graph_voice_music_duck_gaps_hits(episode):
     plan = Plan(episode(p))
     g = assemble.audio_graph(plan, end=300)
     assert g.seconds == 12.0
+    kit = paths.state_dir() / "sfx"                                     # typing and whooshes name no file: the kit's
     assert g.inputs == ["-i", str(ep / "audio" / "voice.wav"), "-stream_loop", "-1", "-i", str(ep / "audio" / "music.wav"),
-                        "-i", str(ep / "audio" / "hit.wav")]
+                        "-i", str(ep / "audio" / "hit.wav"), "-i", str(kit / "typing.wav"), "-i", str(kit / "whoosh.wav")]
     f = ";".join(g.filters)
     assert "[0:a]aresample=48000,aformat=sample_rates=48000:channel_layouts=stereo,volume=1.5dB,apad=whole_dur=12.000[voice]" in f
     assert "volume=-16dB" in f                                          # music_db null -> pack value
@@ -115,21 +118,50 @@ def test_audio_graph_voice_music_duck_gaps_hits(episode):
     assert "[mu0][vk]sidechaincompress=threshold=0.04:ratio=2.2" in f
     assert "adelay=1960:all=1" in f                                     # hit at frame 50 = 2.0 s, 40 ms pre-roll
     assert "[hit1]atrim=0:0.200,volume=-9dB,adelay=4040:all=1" in f     # k1 starts at frame 100, +2 = 4.08 s - 40 ms
-    assert g.filters[-1].startswith("[vm][mu][hitd0][hitd1]amix=inputs=4:normalize=0:duration=first")
-    assert any("typing" in n for n in g.notes) and any("whoosh" in n for n in g.notes)
+    assert "[4:a]aresample=48000" in f and "[typing0]atrim=0:1.000,volume=-14dB" in f
+    assert "[whoosh0]atrim=0:0.800,volume=-16dB,adelay=2880:all=1" in f   # 3.0 s, 120 ms pre-roll
+    assert g.filters[-1].startswith("[vm][mu][hitd0][hitd1][typingd0][whooshd0]amix=inputs=6:normalize=0:duration=first")
+    assert any("typing sound(s) from Crewcut's sound kit" in n for n in g.notes)
+    assert any("whoosh sound(s) from Crewcut's sound kit" in n for n in g.notes)
     assert not any("hit sound" in n for n in g.notes)
 
 
 def test_audio_graph_without_voice_or_music(episode):
     p = basic_plan()
-    p["sound"] = {"music": "audio/missing.wav", "hits": ["s1@value"]}
+    p["sound"] = {"music": "audio/missing.wav", "hits": ["s1@value"], "hit_file": "audio/missing-hit.wav"}
     g = assemble.audio_graph(Plan(episode(p)), end=250)
-    assert g.inputs == []
+    assert g.inputs == []                                               # a named file that is missing is not replaced
     assert g.filters[0] == "anullsrc=r=48000:cl=stereo,atrim=0:10.000[voice]"
-    assert any("music file not found" in n for n in g.notes) and any("hit sound(s) skipped" in n for n in g.notes)
+    assert any("music file not found" in n for n in g.notes)
+    assert any("1 hit sound(s) skipped: file not found: audio/missing-hit.wav" in n for n in g.notes)
     assert g.filters[-1].startswith("[voice]amix=inputs=1")
     cmd = assemble.audio_cmd(g, episode.dir / "a.wav")
     assert cmd[-3:] == ["-t", "10.000", str(episode.dir / "a.wav")] and "pcm_s16le" in cmd
+
+
+def test_audio_graph_uses_the_sound_kit_when_nothing_names_a_file(episode):
+    p = basic_plan()
+    p["sound"] = {"hits": ["s1@value"]}
+    g = assemble.audio_graph(Plan(episode(p)), end=250)
+    kit = paths.state_dir() / "sfx"
+    assert g.inputs == ["-i", str(kit / "hit.wav")] and (kit / "hit.wav").is_file() and (kit / "kit.json").is_file()
+    assert "[hit0]atrim=0:1.200,volume=-9dB,adelay=1960:all=1[hitd0]" in ";".join(g.filters)
+    assert any("1 hit sound(s) from Crewcut's sound kit (hit.wav" in n for n in g.notes)
+    assert g.filters[-1].startswith("[voice][hitd0]amix=inputs=2")
+
+
+def test_audio_graph_pack_sound_wins_over_the_kit(episode, tmp_path):
+    pack_dir = tmp_path / "pack"
+    (pack_dir / "sfx").mkdir(parents=True)
+    (pack_dir / "sfx" / "my-hit.wav").write_bytes(b"x")
+    base = brand.load()
+    pack = dataclasses.replace(base, dir=pack_dir, edit_style={**base.edit_style, "sounds": {"hit": "sfx/my-hit.wav"}})
+    p = basic_plan()
+    p["sound"] = {"hits": ["s1@value"], "whooshes": [3.0]}
+    g = assemble.audio_graph(Plan(episode(p), pack=pack), end=250)
+    kit = paths.state_dir() / "sfx"
+    assert g.inputs == ["-i", str(pack_dir / "sfx" / "my-hit.wav"), "-i", str(kit / "whoosh.wav")]
+    assert not any("hit sound(s) from" in n for n in g.notes)
 
 
 def test_audio_from_base_when_no_voice(episode):
