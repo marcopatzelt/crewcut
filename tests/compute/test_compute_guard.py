@@ -22,9 +22,9 @@ def accept(card_id: int) -> None:
 def rented(fake, gpus=1, minutes=30, cap=3.0, detached=False):
     s = session_fn(episode=EP, step="edit", purpose="test", cap_usd=cap, monitor=False, detached=detached).open()
     with pytest.raises(NeedsApproval) as e:
-        s.rent(gpus=gpus, max_minutes=minutes)
+        s.rent(gpus=gpus, max_minutes=minutes, final=gpus > 1)
     accept(e.value.card_id)
-    return s, s.rent(gpus=gpus, max_minutes=minutes)
+    return s, s.rent(gpus=gpus, max_minutes=minutes, final=gpus > 1)
 
 
 def test_no_key_skips(studio):
@@ -62,6 +62,7 @@ def test_live_session_is_kept_and_a_dead_one_is_closed(fake, fssh, clock):
 
 def test_detached_session_lives_until_its_deadline(fake, fssh, clock):
     s, (m,) = rented(fake, minutes=30, detached=True)
+    state.touch(m.rental, busy=True)   # a long render runs: busy machines are never idle
     clock.advance(minutes=20)
     assert m.instance in guard.sweep()["kept"]
     clock.advance(minutes=11)
@@ -134,3 +135,20 @@ def test_background_guard_starts_once_and_sweeps(fake):
     finally:
         guard.stop_background()
     assert not t1.is_alive()
+
+
+def test_an_idle_machine_is_deleted_and_a_busy_one_kept(fake, fssh, clock):
+    s, (m,) = rented(fake, minutes=120, detached=True)
+    state.touch(m.rental, busy=False)                       # the last command ended now
+    clock.advance(minutes=4)
+    assert m.instance in guard.sweep()["kept"]
+    clock.advance(minutes=2)                                # 6 min without work > idle_minutes (5)
+    assert m.instance in guard.sweep()["destroyed"]
+    assert rentals.get(m.rental)["status"] == "destroyed"
+
+
+def test_several_gpus_only_for_the_final_render(fake, fssh, clock):
+    from crewcut.compute.errors import Refused
+    s = session_fn(episode=EP, step="edit", purpose="test", cap_usd=3.0, monitor=False).open()
+    with pytest.raises(Refused, match="final render"):
+        s.rent(gpus=4, max_minutes=30)

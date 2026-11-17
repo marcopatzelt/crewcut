@@ -147,7 +147,7 @@ class FakeCompute:
                 compute.sessions.append((kw, self))
                 return self
 
-            def rent(self, gpus, max_minutes):
+            def rent(self, gpus, max_minutes, **kw):
                 self.rented = (gpus, max_minutes)
                 ms = [FakeMachine(compute.root, i, compute.delays[i % len(compute.delays)],
                                   compute.fails[i % len(compute.fails)], compute.refuse_after) for i in range(gpus)]
@@ -301,3 +301,11 @@ def test_cap_reached_mid_run_stops_every_machine(episode, tmp_path):
     assert compute.sessions[0][1].destroyed
     assert all(len(m.runs) <= 2 for m in compute.machines)          # nobody kept trying after the refusal
     assert plan.missing(plan.by_id("d1"))
+
+
+def test_gpu_renders_of_graphics_shots_use_eevee_cpu_renders_cycles():
+    from crewcut.render import blender
+    gpu = blender.scene_cmd("blender", "stage.py", "d.json", "t.json", "out", frame=3, gpu=True)
+    cpu = blender.scene_cmd("blender", "stage.py", "d.json", "t.json", "out", frame=3, gpu=False)
+    assert "--engine" in gpu and gpu[gpu.index("--engine") + 1] == "eevee" and "--gpu" in gpu
+    assert "--engine" not in cpu and cpu[cpu.index("--samples") + 1] == "128"

@@ -260,3 +260,16 @@ def session_live(sid: str | None) -> bool:
     if rec.get("host") == socket.gethostname() and rec.get("pid") and not _pid_alive(rec["pid"]):
         return False
     return True
+
+
+# ---- machine activity (the idle rule) ------------------------------------------------------------------------------
+def touch(rental_id: int, busy: bool) -> None:
+    """A rented machine starts (busy) or ends (idle since now) a command, upload or download."""
+    def fn(d: dict) -> dict:
+        d[str(int(rental_id))] = {"busy": bool(busy), "at": now()}
+        return d
+    update_json("activity.json", {}, fn)
+
+
+def activity(rental_id: int) -> dict | None:
+    return (read_json("activity.json", {}) or {}).get(str(int(rental_id)))

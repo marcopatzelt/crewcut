@@ -110,6 +110,14 @@ def estimate(kind: str = "blender", frames: int = 0, local_sec_per_frame: float 
     here = fmt_duration(local_s) + " here" + ("" if l_measured else " (not measured on this machine yet)")
     sentence = (f"{frames} {unit}: {here}, or {fmt_duration(rented_s)} on {n} rented GPU{'s' if n > 1 else ''} "
                 f"for about ${rented_usd:.2f}.")
+    # Honest about idle time: boot and setup are paid, and a machine that waits for the crew costs full price until the
+    # idle rule deletes it. That is the worst extra on top of the estimate.
+    idle_min = settings.num("limits.idle_minutes_final" if n > 1 else "limits.idle_minutes")
+    idle_risk = per_hour * (idle_min + settings.num("estimate.overhead_minutes")) / 60
+    cap = rentals.price_cap()
+    idle_note = (f"Paid while it waits: boot and setup, and up to {idle_min:g} min without work before it is deleted "
+                 f"(at most about ${idle_risk:.2f} on top). Price cap ${cap:.2f} per GPU and hour."
+                 + (" Several GPUs only for this final render; they are deleted right after it." if n > 1 else ""))
     return {
         "kind": kind, "frames": frames, "unit": unit,
         "local_seconds": round(local_s, 1), "local_measured": l_measured, "local_source": l_source,
@@ -118,6 +126,8 @@ def estimate(kind: str = "blender", frames: int = 0, local_sec_per_frame: float 
         "rented_usd_worst": round(rented_worst, 2), "gpu_sec_per_frame": round(g_spf, 3),
         "gpus": n, "price_per_hour": round(per_hour / n, 4), "price_source": price_source,
         "suggest_rent": suggest, "reason": why, "sentence": sentence, "referral": referral,
+        "idle_minutes": idle_min, "idle_risk_usd": round(idle_risk, 2), "price_cap_per_gpu_hour": round(cap, 2),
+        "idle_note": idle_note,
     }
 
 

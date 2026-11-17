@@ -53,12 +53,23 @@ def local_gpu(runner: media.Runner = media.run) -> bool:
     return rc == 0 and "GPU" in out
 
 
+def graphics_engine() -> str:
+    """config/compute.toml [render3d] graphics_engine: "eevee" (default) or "cycles" for the template scenes."""
+    try:
+        from ..compute import settings
+        return str((settings.get("render3d") or {}).get("graphics_engine") or "eevee").lower()
+    except Exception:  # noqa: BLE001 - the compute part is optional
+        return "eevee"
+
+
 def scene_cmd(blender: str, scene: str, data: str, tokens: str, out: str, *, frm: int | None = None,
               to: int | None = None, frame: int | None = None, samples: int = 128, gpu: bool = False,
               scale: int | None = None) -> list[str]:
     """Blender in the background with a scene script from templates/3d/. Animation range or one still frame."""
     cmd = [blender, "-b", "--factory-startup", "--python", scene, "--", "--data", data, "--brand", tokens,
            "--out", out, "--samples", str(samples)]
+    if gpu and graphics_engine() == "eevee":
+        cmd += ["--engine", "eevee"]  # the templates are graphics shots: Eevee on a GPU, Cycles on the CPU
     if frame is not None:
         cmd += ["--frame", str(frame)]
     else:
@@ -341,7 +352,7 @@ def render_rented(plan: Plan, compute, ids: list[str] | None = None, gpus: int =
         stop = threading.Event()
         abort: list[Exception] = []
         with compute.session(episode=plan.episode, step="edit", purpose="3D scenes", cap_usd=cap_usd) as s:
-            machines = s.rent(gpus=gpus, max_minutes=max_minutes)
+            machines = s.rent(gpus=gpus, max_minutes=max_minutes, final=True)  # the render itself: several GPUs ok
             ready = []
             for i, m in enumerate(machines or []):
                 try:

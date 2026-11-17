@@ -36,17 +36,17 @@ def messages(episode=EP) -> list[str]:
 def test_approval_flow_then_rent_and_leave(fake, fssh):
     with session_fn(episode=EP, step="edit", purpose="3D scenes", cap_usd=1.5, monitor=False) as s:
         with pytest.raises(NeedsApproval) as e:
-            s.rent(gpus=2, max_minutes=60)
+            s.rent(gpus=2, max_minutes=60, final=True)
         card = approvals.get(e.value.card_id)
         assert card["kind"] == "spend" and card["status"] == "open"
         assert card["data"]["source"] == "compute" and card["data"]["amount_usd"] > 0
         assert not fake.instances, "nothing is rented before the yes"
         with pytest.raises(NeedsApproval) as again:
-            s.rent(gpus=2, max_minutes=60)
+            s.rent(gpus=2, max_minutes=60, final=True)
         assert again.value.card_id == card["id"], "no second card while one is open"
         accept(card["id"])
 
-        machines = s.rent(gpus=2, max_minutes=60)
+        machines = s.rent(gpus=2, max_minutes=60, final=True)
         assert len(machines) == 2
         ips = {rentals.detail(rentals.get(m.rental))["host_ip"] for m in machines}
         assert len(ips) == 2, "never two machines on one host IP"
@@ -123,8 +123,10 @@ def test_identity_without_spend_right_is_refused(fake, fssh, monkeypatch):
 
 def test_cap_stop_destroys_all_and_says_so(fake, fssh, clock):
     s = approved_session(fake, cap_usd=0.5)
-    machines = s.rent(gpus=2, max_minutes=120)
+    machines = s.rent(gpus=2, max_minutes=120, final=True)
     assert len(fake.by_label(state.label())) == 2
+    for m in machines:
+        state.touch(m.rental, busy=True)   # the render runs: the idle rule does not apply
     clock.advance(minutes=20)
     assert s.check() is None
     clock.advance(minutes=30)          # about $0.41/h x 2 x 50 min = $0.68 > $0.50

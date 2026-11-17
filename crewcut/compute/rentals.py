@@ -187,21 +187,42 @@ def plural(n: int, word: str) -> str:
 
 
 # ---- offers --------------------------------------------------------------------------------------------------------
-def search(prov) -> list[dict]:
+def price_cap() -> float:
+    """The hard cap per GPU and hour (dollars). Offers above it are never rented."""
     v = settings.get("vast") or {}
-    return prov.search_offers(gpu_names=list(v.get("gpus") or []), max_price=float(v.get("max_price_per_hour", 0.8)),
+    return float(v.get("max_price_per_gpu_hour") or v.get("max_price_per_hour") or 0.6)
+
+
+def _norm(g: str) -> str:
+    return str(g or "").replace("_", " ").strip().lower()
+
+
+def gpu_names(explicit: str | None = None) -> list[str]:
+    """The GPU models to search: the one the user named, else the configured list without the premium ones."""
+    v = settings.get("vast") or {}
+    if explicit:
+        return [explicit]
+    premium = {_norm(g) for g in v.get("premium_gpus") or []}
+    return [g for g in v.get("gpus") or ["RTX 4090"] if _norm(g) not in premium] or ["RTX 4090"]
+
+
+def search(prov, gpu: str | None = None) -> list[dict]:
+    v = settings.get("vast") or {}
+    return prov.search_offers(gpu_names=gpu_names(gpu), max_price=price_cap(),
                               regions=list(v.get("regions") or []), min_reliability=float(v.get("min_reliability", 0)),
                               min_inet_down=float(v.get("min_inet_down_mbps", 0)),
                               min_inet_up=float(v.get("min_inet_up_mbps", 0)), disk_gb=float(v.get("disk_gb", 40)),
                               verified=bool(v.get("verified", True)))
 
 
-def usable(offers: list[dict], taken_ips: set[str] | None = None) -> list[dict]:
+def usable(offers: list[dict], taken_ips: set[str] | None = None, gpu: str | None = None) -> list[dict]:
     """Filter and order offers: preferred GPU first, then price; one offer per host IP; never a host IP where a
-    machine of this account already runs; no blocked host or machine; no host that leaves soon."""
+    machine of this account already runs; no blocked host or machine; no host that leaves soon; never a premium GPU
+    (RTX 5090 and up) unless the user named it; never above the price cap per GPU and hour."""
     v = settings.get("vast") or {}
-    pref = [str(g).replace("_", " ").lower() for g in v.get("gpus") or []]
-    max_price = float(v.get("max_price_per_hour", 0.8))
+    pref = [_norm(g) for g in gpu_names(gpu)]
+    premium = {_norm(g) for g in v.get("premium_gpus") or []} - ({_norm(gpu)} if gpu else set())
+    max_price = price_cap()
     min_rel = float(v.get("min_reliability", 0))
     min_left = float(v.get("min_hours_left", 0)) * 3600
     taken = {t.strip() for t in taken_ips or set()}
@@ -219,7 +240,10 @@ def usable(offers: list[dict], taken_ips: set[str] | None = None) -> list[dict]:
         end = o.get("end_date")
         if not ip or ip in seen or ip in taken or state.is_blocked(o):
             continue
-        if float(o.get("dph_total") or 99) > max_price:
+        if _norm(o.get("gpu_name")) in premium or (gpu and _norm(o.get("gpu_name")) != _norm(gpu)):
+            continue
+        per_gpu = float(o.get("dph_total") or 99) / max(1, int(o.get("num_gpus") or 1))
+        if per_gpu > max_price:
             continue
         if rel is not None and float(rel) < min_rel:
             continue

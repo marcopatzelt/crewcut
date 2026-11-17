@@ -484,20 +484,40 @@ def _gpu(cy):
     return False
 
 
-def setup_render(sc, samples=128, gpu=False, scale=100, fps=25):
-    sc.render.engine = "CYCLES"
-    cy = sc.cycles
-    cy.samples = int(samples)
-    cy.use_denoising = True
-    try:
-        cy.denoiser = "OPENIMAGEDENOISE"
-    except Exception as e:
-        print("denoiser not available:", e)
-    cy.use_adaptive_sampling = True
-    cy.adaptive_threshold = 0.01
-    cy.max_bounces = 8
-    if gpu:
-        _gpu(cy)
+def _eevee(sc):
+    """Eevee for graphics shots on a GPU: many times faster than Cycles for flat, lit shapes. Its engine id changed
+    between Blender versions; returns False when none is available."""
+    for name in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
+        try:
+            sc.render.engine = name
+            return True
+        except Exception:
+            continue
+    return False
+
+
+def setup_render(sc, samples=128, gpu=False, scale=100, fps=25, engine="cycles"):
+    """Cycles at about 128 samples with the OptiX denoiser on NVIDIA (Open Image Denoise on the CPU), or Eevee for
+    graphics shots when a GPU renders (`--engine eevee`; without a GPU it falls back to Cycles on the CPU)."""
+    on_gpu = False
+    if engine == "eevee" and gpu and _eevee(sc):
+        print("engine: Eevee (graphics shot on a GPU)")
+    else:
+        sc.render.engine = "CYCLES"
+        cy = sc.cycles
+        cy.samples = int(samples)
+        cy.use_adaptive_sampling = True
+        cy.adaptive_threshold = 0.01
+        cy.max_bounces = 8
+        if gpu:
+            on_gpu = _gpu(cy)
+        cy.use_denoising = True
+        for dn in (("OPTIX", "OPENIMAGEDENOISE") if on_gpu else ("OPENIMAGEDENOISE",)):
+            try:
+                cy.denoiser = dn
+                break
+            except Exception as e:
+                print("denoiser not available:", dn, e)
     sc.view_settings.view_transform = "Standard"    # brand colours stay the colours the pack names
     try:
         sc.view_settings.look = "None"
@@ -514,7 +534,7 @@ def setup_render(sc, samples=128, gpu=False, scale=100, fps=25):
 def run(sc, pose, d, still=None):
     """Render --anim (frames --from to --to into the folder --out) or one still (--frame N into the file --out)."""
     setup_render(sc, samples=arg("--samples", STAGE.get("samples") or 128), gpu=flag("--gpu"),
-                 scale=arg("--scale", 100), fps=d["fps"])
+                 scale=arg("--scale", 100), fps=d["fps"], engine=arg("--engine", STAGE.get("engine") or "cycles"))
     frames = d["frames"]
     if flag("--anim"):
         out = arg("--out", "out")

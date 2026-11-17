@@ -151,3 +151,26 @@ def test_fmt_duration():
     assert fmt_duration(3.4 * 3600) == "about 3.4 h"
     assert fmt_duration(34 * 3600) == "about 34 h"
     assert fmt_duration(72 * 3600) == "about 3 days"
+
+
+def test_premium_gpus_only_when_named_and_never_above_the_cap(studio):
+    from crewcut.compute import rentals
+    offers = [
+        {"public_ipaddr": "1.1.1.1", "gpu_name": "RTX 5090", "num_gpus": 1, "dph_total": 0.40},
+        {"public_ipaddr": "2.2.2.2", "gpu_name": "RTX 4090", "num_gpus": 1, "dph_total": 0.55},
+        {"public_ipaddr": "3.3.3.3", "gpu_name": "RTX 4090", "num_gpus": 1, "dph_total": 0.75},
+    ]
+    picked = rentals.usable(offers)
+    assert [o["gpu_name"] for o in picked] == ["RTX 4090"] and picked[0]["dph_total"] == 0.55
+    assert "RTX 5090" not in rentals.gpu_names()
+    named = rentals.usable(offers, gpu="RTX 5090")
+    assert [o["gpu_name"] for o in named] == ["RTX 5090"]
+    assert rentals.price_cap() == 0.60
+
+
+def test_the_estimate_names_the_idle_risk_and_the_cap(studio):
+    e = estimate("blender", 400, local_sec_per_frame=10, gpus=3, gpu_sec_per_frame=5)
+    assert e["idle_risk_usd"] > 0 and e["price_cap_per_gpu_hour"] == 0.60 and e["idle_minutes"] == 2
+    assert "deleted right after" in e["idle_note"] and "waits" in e["idle_note"]
+    one = estimate("blender", 40, local_sec_per_frame=10, gpus=1, gpu_sec_per_frame=5)
+    assert one["idle_minutes"] == 5 and "Several GPUs" not in one["idle_note"]

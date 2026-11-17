@@ -131,6 +131,7 @@ export function spendOf(card: Card) {
     gpuName: est.gpu_name,
     localNote,
     referral: d.referral ?? est.referral ?? null,
+    idleNote: typeof est.idle_note === "string" ? est.idle_note : undefined,
   };
 }
 
@@ -377,6 +378,7 @@ export function OpenCard({
         <Keys keys={["mod", "enter"]} className="card-keys" />
       </div>
       {error ? <ErrorLine text={error} onRetry={() => void onAccept()} /> : null}
+      {spend && spendOf(card).idleNote ? <p className="ref">{spendOf(card).idleNote}</p> : null}
       {referral?.note ? (
         <p className="ref">
           {referral.note}

@@ -47,6 +47,9 @@ def _parser() -> argparse.ArgumentParser:
     p = sub.add_parser("rent", help="rent GPUs for an episode (a spend card first, then within its budget)")
     p.add_argument("--episode", required=True)
     p.add_argument("--gpus", type=int, default=1)
+    p.add_argument("--final", action="store_true", help="the final render of an approved scene: the only case for "
+                                                         "more than one GPU; deleted right after")
+    p.add_argument("--gpu", help="a GPU model the user asked for by name, e.g. \"RTX 5090\" (never chosen otherwise)")
     p.add_argument("--minutes", type=float, help="deadline per machine (default limits.default_max_minutes)")
     p.add_argument("--max-usd", type=float, help="cap of this session (default limits.session_cap_usd)")
     p.add_argument("--step", default="edit")
@@ -156,7 +159,7 @@ def _dispatch(args, command: list[str]) -> int:
     if c == "rent":
         s = Session(args.episode, args.step, args.purpose, args.max_usd, detached=True, monitor=False).open()
         try:
-            machines = s.rent(gpus=args.gpus, max_minutes=args.minutes)
+            machines = s.rent(gpus=args.gpus, max_minutes=args.minutes, final=args.final, gpu=args.gpu)
         except BaseException:
             s.close("rent did not finish")
             raise

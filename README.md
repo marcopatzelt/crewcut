@@ -182,13 +182,18 @@ is a real, dated style pack from the author's channel (rules and values only). S
 
 Everything runs on your computer. 2D graphics, cutting and sound need no GPU. 3D is the slow part: on a laptop CPU, a
 frame of the author's 3D style took about 144 seconds, so a three-second 3D insert takes about three hours. A rented
-RTX 4090 renders the same frame in about 20 to 70 seconds, at about $0.35 to $0.50 per hour.
+RTX 4090 renders the same frame in about 20 to 70 seconds, at about $0.35 to $0.50 per hour. Crewcut rents the 4090 by
+default and never pays more than $0.60 per GPU-hour (you can change the cap); faster, pricier cards like the RTX 5090
+only when you name them. Scenes are built and tested on your machine or one GPU; several GPUs are rented only for the
+final render and deleted right after, and any machine that waits without work is deleted after a few minutes. The card
+says what waiting would cost.
 
 Before a heavy job the Editor estimates both ways and, only when renting saves a lot, asks once:
 
 > 9 scenes: about 3 h on this machine, or about 12 min for about $0.60 on a rented GPU. **[Rent a GPU]** · Local is fine too.
 
-Choose this machine and it does not ask again in that episode. Every rental has a budget, a monthly cap, a watchdog with
+Choose this machine and it does not ask again in that episode. Every rental has a budget, a monthly cap, a price cap per
+GPU-hour, an idle cut-off, a watchdog with
 a deadline on the machine, a local guard that deletes forgotten machines, and an entry in the cost book with proof that
 nothing is left running.
 

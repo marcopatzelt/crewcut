@@ -248,7 +248,7 @@ def test_media_matches_the_contract(client, eid, ep, monkeypatch):
     assert keys(g) == keys(ts("MediaGpu"))
     assert g == {"name": "RTX 4090", "started": state.iso(NOW - 1800), "minutes_left": 45, "so_far_usd": 0.3,
                  "cap_usd": 1.5, "progress": 0.37, "delete_note": "Deleted when done, frames come home",
-                 "session": rid}
+                 "session": rid, "price_per_hour": 0.6, "cap_per_gpu_hour": 0.6}
 
     # the strip arrives in the background: ten frames 320 px wide and about 240 peaks, louder in the second half
     cut = wait_for_strip(client, eid)

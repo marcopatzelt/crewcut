@@ -106,6 +106,9 @@ export interface MediaGpu {
   cap_usd: number | null;
   progress: number | null;
   delete_note: string;
+  /** dollars per hour of all machines of the rental, and the hard cap per GPU and hour (config/compute.toml) */
+  price_per_hour?: number | null;
+  cap_per_gpu_hour?: number | null;
   session: number;
 }
 
@@ -211,6 +214,10 @@ export interface Estimate {
   gpu_name?: string;
   sentence?: string;
   referral?: Referral | null;
+  /** honest extra cost: boot, setup and the wait before an idle machine is deleted */
+  idle_note?: string;
+  idle_risk_usd?: number;
+  price_cap_per_gpu_hour?: number;
 }
 
 /** What the UI reads from card.data. Every field is optional. */

@@ -98,7 +98,11 @@ class Machine:
         srcs = [Path(s) for s in sources]
         n = privacy.check_upload(srcs)
         self._doing("uploading code")
-        rc, _, err = ssh.run(ssh.rsync_up_argv(srcs, self.host, self.port, self.instance, dest), timeout)
+        state.touch(self.rental, busy=True)
+        try:
+            rc, _, err = ssh.run(ssh.rsync_up_argv(srcs, self.host, self.port, self.instance, dest), timeout)
+        finally:
+            state.touch(self.rental, busy=False)
         self._after()
         if rc != 0:
             raise ComputeError(f"upload to {self.name} failed (rsync {rc}): {scrub.scrub_text(err).strip()[-160:]}")
@@ -108,7 +112,11 @@ class Machine:
         """Run a command over SSH. Returns (exit code, output with secrets removed)."""
         self._check()
         self._doing(doing or "running a command")
-        rc, out, err = ssh.run(ssh.ssh_argv(self.host, self.port, self.instance, command), timeout)
+        state.touch(self.rental, busy=True)
+        try:
+            rc, out, err = ssh.run(ssh.ssh_argv(self.host, self.port, self.instance, command), timeout)
+        finally:
+            state.touch(self.rental, busy=False)
         self._after()
         return rc, scrub.scrub_text(out + err)
 
@@ -259,9 +267,18 @@ class Session:
                 self.stopped = rec["stopped"]
             if self.stopped:
                 return self.stopped
+            idle_s = settings.num("limits.idle_minutes_final" if rec.get("final") else "limits.idle_minutes") * 60
             for r in self.live_rows():
                 if state.now() >= rentals.deadline_ts(r) and r.get("instance"):
                     rentals.destroy(r["id"], "deadline reached", self.provider())
+                elif r.get("instance") and r.get("status") == "ready" and idle_s > 0:
+                    # Build cheap, render expensive: a ready machine that runs nothing costs full price. Destroy it.
+                    a = state.activity(r["id"])
+                    last = float(a["at"]) if a else rentals.started_ts(r) + settings.num("limits.setup_minutes") * 60
+                    if not (a and a.get("busy")) and state.now() - last > idle_s:
+                        rentals.destroy(r["id"], f"idle for {idle_s / 60:g} min", self.provider())
+                        _say(self.episode, self.identity, f"Rented GPU {r['id']} ran nothing for {idle_s / 60:g} min "
+                             "and was deleted. Build and test on this machine or one GPU; rent again for the render.")
             spent = self.spent()
             if spent >= self.cap_usd - 1e-9:
                 self.stop(f"the session reached its cap: ${spent:.2f} of ${self.cap_usd:.2f}")
@@ -341,9 +358,14 @@ class Session:
             return main
         return str(v.get("fallback_image") or settings.DEFAULTS["vast"]["fallback_image"])
 
-    def rent(self, gpus: int = 1, max_minutes: float | None = None, estimate: dict | None = None) -> list[Machine]:
+    def rent(self, gpus: int = 1, max_minutes: float | None = None, estimate: dict | None = None, *,
+             final: bool = False, gpu: str | None = None) -> list[Machine]:
         """Rent `gpus` machines with one GPU each. Each gets a deadline and passes SSH, a 5 MB upload probe and the
-        setup before it is returned. Raises NeedsApproval, Refused, MissingKey or NoMachine."""
+        setup before it is returned. Raises NeedsApproval, Refused, MissingKey or NoMachine.
+
+        Build cheap, render expensive: more than `limits.build_max_gpus` GPUs only with `final=True` (the final render
+        of an approved scene; those machines are deleted after `limits.idle_minutes_final` without work). `gpu` names
+        one model the user asked for (e.g. "RTX 5090"); without it premium GPUs are never rented."""
         if state.get_session(self.id) is None:
             self.open()
         if self.closed:
@@ -354,6 +376,11 @@ class Session:
         gpus = int(gpus)
         if not 1 <= gpus <= int(settings.num("limits.max_gpus")):
             raise ValueError(f"gpus must be 1 to {int(settings.num('limits.max_gpus'))}")
+        if gpus > int(settings.num("limits.build_max_gpus")) and not final:
+            raise Refused(f"{gpus} GPUs only for the final render of an approved scene (--final). Build the scene, "
+                          "previews and tests on this machine or one GPU: several GPUs would wait at full price.")
+        if final:
+            state.update_session(self.id, final=True)
         max_minutes = float(max_minutes or settings.num("limits.default_max_minutes"))
         if max_minutes <= 0:
             raise ValueError("max_minutes must be above 0")
@@ -365,7 +392,7 @@ class Session:
 
         self.doing(f"Renting {_plural(gpus, 'GPU')}: looking for offers")
         try:
-            offers = rentals.usable(rentals.search(prov), rentals.taken_ips(prov))
+            offers = rentals.usable(rentals.search(prov, gpu), rentals.taken_ips(prov), gpu)
         except vast.VastError as e:
             raise NoMachine(f"could not read offers from Vast ({e})") from e
         if not offers:

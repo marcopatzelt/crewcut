@@ -39,6 +39,13 @@ as a compute job):
 Tools: `crewcut compute estimate|rent|run|fetch|destroy|guard|ledger`. `crewcut render 3d --rented` and `probe` use
 them. Only an identity with `may_spend: true` rents, and only after a spend card was accepted.
 
+**Build cheap, render expensive.** Build the scene, previews and tests on this machine or on ONE rented RTX 4090. Rent
+several GPUs only for the final render of an approved scene (`crewcut render 3d --rented` does this with `--final`
+inside; by hand `crewcut compute rent --gpus N --final`), and let them go right after. A machine that runs nothing for
+a few minutes is deleted: do not rent first and think later. Never ask for an RTX 5090 or bigger yourself; only when the
+user names one (`--gpu "RTX 5090"`). The price cap per GPU-hour ($0.60 by default) is hard. Put the estimate's
+`idle_note` on the spend card: it says honestly what waiting would cost.
+
 The cost card: run `crewcut compute estimate --kind blender --frames N`, write one sentence with the amount and what it
 buys ("Rent 3 GPUs for about 25 minutes, about 1.20 USD, for 840 frames of 3D"), propose it with
 `crewcut card propose --kind spend`, wait with `crewcut card wait`. Declined (exit 3): render locally, render fewer

@@ -8,6 +8,11 @@ Provider: [Vast.ai](https://vast.ai), a marketplace of GPU machines, through its
 
 ## The short version
 
+**Build cheap, render expensive.** One real night: ten 3D runs on four RTX 5090 each cost $89, because the cards
+waited at full price while the agent built the scene. So Crewcut builds scenes, previews and tests on this machine or
+on **one** RTX 4090, rents several GPUs only for the final render of an approved scene, and deletes every machine that
+runs nothing for a few minutes.
+
 1. **Estimate both ways.** Time here and time on rented GPUs, with the price. One sentence, for example
    "840 frames: about 34 h here, or about 87 min on 8 rented GPUs for about $5.21." (config defaults, no probe yet)
 2. **Ask once.** The first rent in an episode makes a spend card. After the yes, the episode has a budget.
@@ -124,7 +129,21 @@ made once per studio. Nothing ever touches a machine without exactly this label:
 
 ## Choosing machines
 
-- Offers: one GPU per machine, preferred GPUs first (`vast.gpus`), then the price; at most `vast.max_price_per_hour`;
+- **The RTX 4090 is the default** (`vast.gpus`: RTX 4090, then RTX 4080S and RTX 3090). **Premium GPUs**
+  (`vast.premium_gpus`: RTX 5090, RTX PRO 6000, L40S, A100, H100, H200, B200) are never rented unless the user names
+  one ("render the final on an RTX 5090" → `crewcut compute rent --gpu "RTX 5090"`); then only that model is rented.
+- **Hard price cap per GPU and hour:** `vast.max_price_per_gpu_hour`, default **$0.60**. Offers above it are never
+  rented. The GPU card shows the price and the cap.
+- **Several GPUs only for the final render** (`limits.build_max_gpus = 1`): more than one GPU needs `--final` (the
+  render workbench sets it for the render itself), and those machines are deleted after `limits.idle_minutes_final`
+  (2) minutes without work. Any rented machine that runs no command, upload or download for `limits.idle_minutes` (5)
+  is deleted, by the session and by the background guard.
+- **Render defaults** (`[render3d]`): Cycles at about 128 samples with the OptiX denoiser on NVIDIA (Open Image Denoise
+  on the CPU); the graphics templates (counters, stacks, scales, boxes) render with Eevee on a GPU and fall back to
+  Cycles on the CPU.
+- **Idle risk on the card:** the estimate states what waiting costs: boot, setup and the minutes before an idle machine
+  is deleted ("at most about $0.10 on top"), and the price cap.
+- Offers: one GPU per machine, preferred GPUs first, then the price; never above the cap;
   regions, reliability, network speed and disk from `[vast]`; no host that leaves within `vast.min_hours_left`.
 - One offer per host IP, and never a host IP where a machine of this account already runs.
 - Hosts that fail us (no SSH while running, failed upload probe, failed setup) go into

@@ -731,6 +731,8 @@ export function makeDemo(now = Date.now(), opts: { play?: boolean } = {}): DemoD
         progress: 0.78,
         delete_note: "Deleted when done, frames come home",
         session: 7,
+        price_per_hour: 0.45,
+        cap_per_gpu_hour: 0.6,
       },
     },
     [e015.id]: {

@@ -7,8 +7,12 @@ vast_template = ""         # a public Vast template link of the Crewcut GPU imag
 label_prefix = "crewcut"   # machines carry the label <prefix>-<studio id>; only those are ever destroyed
 
 [vast]
-gpus = ["RTX 4090", "RTX 5090", "RTX 4080S", "RTX 3090"]   # preference order; one GPU per machine
-max_price_per_hour = 0.80  # dollars per machine and hour, disk included
+gpus = ["RTX 4090", "RTX 4080S", "RTX 3090"]   # preference order; one GPU per machine. The RTX 4090 is the default.
+# Never rented unless you name one yourself ("render the final on an RTX 5090"): they cost more and, while the crew
+# still builds a scene, they idle at full price (one real night: 10 runs on 4 x RTX 5090, $89, mostly idle).
+premium_gpus = ["RTX 5090", "RTX PRO 6000", "L40S", "A100", "H100", "H200", "B200"]
+max_price_per_gpu_hour = 0.60   # hard cap per GPU and hour, disk included; offers above it are never rented
+max_price_per_hour = 0.80  # older key: still read when max_price_per_gpu_hour is missing
 regions = ["SE", "US", "CA", "NO", "NL", "DE", "FI", "DK"]   # host countries (ISO codes)
 min_reliability = 0.98
 min_inet_down_mbps = 300
@@ -31,6 +35,11 @@ probe_mb = 5               # upload probe per new machine
 guard_grace_minutes = 2    # the local guard destroys this long after the deadline
 check_seconds = 20         # how often a live session checks its money and deadlines
 guard_every_minutes = 3
+# Build cheap, render expensive: scene building, previews and tests run on this machine or on ONE GPU. Several GPUs
+# are rented only for the final render of an approved scene (`--final`), and destroyed right after it.
+build_max_gpus = 1
+idle_minutes = 5           # a rented machine that runs no command for this long is destroyed
+idle_minutes_final = 2     # the same for the machines of a final render: they exist only to render
 
 [estimate]
 price_per_hour = 0.45      # used without a key or without live offers (studio: 0.35 to 0.50 per GPU and hour)
@@ -42,6 +51,15 @@ offers_cache_minutes = 5
 # Suggest renting only when it saves a lot: more than this many minutes AND more than this many times faster.
 min_minutes_saved = 15
 min_speedup = 3.0
+
+[render3d]
+# Render defaults for 3D. Photoreal scenes: Cycles at about 128 samples with the OptiX denoiser on NVIDIA (Open Image
+# Denoise on the CPU). Graphics shots (the templates: counters, stacks, scales, boxes): Eevee on a GPU, which is many
+# times faster for flat, lit shapes; without a GPU they fall back to Cycles on the CPU.
+samples = 128
+denoiser_gpu = "OPTIX"
+denoiser_cpu = "OPENIMAGEDENOISE"
+graphics_engine = "eevee"
 
 [kinds.blender]
 unit = "frames"

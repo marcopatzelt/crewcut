@@ -599,7 +599,9 @@ def gpu(episode: str, frames: tuple[int, int] = (0, 0)) -> dict | None:
     return {"name": name, "started": min(str(r.get("started") or "") for r in live), "minutes_left": minutes_left,
             "so_far_usd": round(sum(rentals.cost_so_far(r) for r in every), 4),
             "cap_usd": round(float(cap), 4) if cap is not None else None, "progress": progress,
-            "delete_note": DELETE_NOTE, "session": int(newest["id"])}
+            "delete_note": DELETE_NOTE, "session": int(newest["id"]),
+            "price_per_hour": round(sum(float(r.get("price_per_hour") or 0) for r in live), 3),
+            "cap_per_gpu_hour": round(rentals.price_cap(), 2)}
 
 
 # ---- the whole answer, the episode card, the job picture -------------------------------------------------------------
