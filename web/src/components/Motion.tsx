@@ -212,7 +212,10 @@ export function Loop({
     if (!v || !moving || play !== "view" || typeof IntersectionObserver === "undefined") return;
     const io = new IntersectionObserver(
       (entries) => {
-        for (const e of entries) (e.isIntersecting ? start : stop)(v);
+        for (const e of entries) {
+          if (e.isIntersecting) start(v);
+          else if (!v.paused) stop(v);
+        }
       },
       { threshold: 0.5 },
     );
@@ -224,7 +227,7 @@ export function Loop({
     const v = ref.current;
     if (!v || !moving || play !== "hover") return;
     if (active) start(v);
-    else stop(v);
+    else if (!v.paused) stop(v);
   }, [active, moving, play]);
 
   if (moving && src) {
