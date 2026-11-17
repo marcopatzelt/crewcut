@@ -49,16 +49,16 @@ def motion_engine_status() -> tuple[str, str, str]:
     if not exe or not os.path.isfile(exe):
         return (NOTE, f"effectcraft-cli missing ({pin_txt}): motion graphics inserts cannot render here; "
                 "everything else works", "Use the Crewcut image, or set render.location = rented in config/crewcut.toml.")
-    version = ""
     raw = _run([exe, "--empty", "info", "--json"], 30)
     try:
         info = json.loads(raw) if raw.startswith("{") else {}
-        version = str(info.get("version") or info.get("engine", {}).get("version") or "")
     except ValueError:
         info = {}
-    if not raw:
+    if not info:
         return (WARN, f"effectcraft-cli at {exe} does not start ({pin_txt})", "Rebuild the image.")
-    return (OK, f"effectcraft-cli {version or '(version not reported)'}, {pin_txt}", "")
+    what = ", ".join(f"{info[k]} {k}" for k in ("commands", "effects") if isinstance(info.get(k), int))
+    version = str(info.get("version") or "")
+    return (OK, f"effectcraft-cli{' ' + version if version else ''} ({what or info.get('mode', 'headless')}), {pin_txt}", "")
 
 
 def checks(ci: bool = False, probe: bool = False) -> list[dict]:
