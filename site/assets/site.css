@@ -258,7 +258,7 @@ footer.closing > .wrap { justify-content: space-between; gap: 32px; }
 .foot__text { flex: 1 1 auto; line-height: 1.45; order: 1; }
 .foot__links { margin-left: auto; display: flex; gap: 20px; order: 2; }
 .foot a { color: #fff; display: inline-flex; align-items: center; min-height: 44px; background: linear-gradient(currentColor, currentColor) 0 calc(100% - 12px) / 0 1px no-repeat; transition: background-size 150ms ease; }
-.foot__text a { display: inline; min-height: 0; background-position: 0 100%; background-size: 100% 1px; }
+.foot__text a { display: inline; min-height: 0; background-position: 0 100%; background-size: 100% 1px; white-space: nowrap; }
 
 /* ---------------------------------------------------------------- tablet */
 @media (min-width: 761px) and (max-width: 1100px) {
