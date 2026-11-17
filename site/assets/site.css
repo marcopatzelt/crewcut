@@ -22,8 +22,8 @@
   --mono: ui-monospace, Menlo, Consolas, monospace;
 
   --nav: 96px;
-  --padt: 120px;
-  --padb: 72px;
+  --padt: 104px;
+  --padb: 64px;
   --container: 1200px;
   --gut: 120px;
   --gutter: 16px;
@@ -105,7 +105,8 @@ a, button { scroll-margin-top: 24px; scroll-margin-bottom: 24px; }
 .nav__right { margin-left: auto; display: flex; gap: 18px; align-items: center; }
 
 /* ---------------------------------------------------------------- one section per screen */
-main > section, footer.closing { position: relative; min-height: calc(var(--h, 1) * 100vh); min-height: calc(var(--h, 1) * 100svh); padding: var(--padt) 0 var(--padb); display: flex; flex-direction: column; }
+main > section, footer.closing { position: relative; padding: var(--padt) 0 var(--padb); display: flex; flex-direction: column; }
+footer.closing { min-height: 100svh; }
 main > section > .wrap, footer.closing > .wrap { flex: 1 0 auto; display: flex; flex-direction: column; position: relative; z-index: 2; }
 @media (max-width: 760px) {
   :root { --padt: 72px; --padb: 40px; }
@@ -162,9 +163,9 @@ main > section.g2 > .wrap > .group { min-height: 0; display: flex; flex-directio
 .stage__frame picture { display: contents; }
 .stage__shot { display: block; width: 100%; height: auto; border-radius: 18px; box-shadow: 0 50px 110px -40px rgba(0, 25, 20, 0.65), 0 18px 50px -20px rgba(0, 25, 20, 0.45); }
 /* ---------------------------------------------------------------- one window: the app on the misty morning */
-.scene { flex: 1 1 0; min-height: 0; display: flex; justify-content: center; align-items: flex-start; padding: 48px 64px 0; border-radius: 44px; overflow: hidden; background: #CFE3DA var(--scene) center 70% / cover no-repeat; }
+.scene { display: flex; justify-content: center; align-items: flex-start; padding: 48px 64px 56px; border-radius: 44px; overflow: hidden; background: #CFE3DA var(--scene) center 70% / cover no-repeat; }
 .scene picture { display: contents; }
-.scene img { width: 100%; height: auto; max-height: 100%; object-fit: cover; object-position: 50% 0; border-radius: 14px 14px 0 0; box-shadow: 0 -10px 80px -20px rgba(0, 30, 24, 0.5); }
+.scene img { width: 100%; height: auto; object-fit: cover; object-position: 50% 0; border-radius: 14px; box-shadow: 0 30px 80px -24px rgba(0, 30, 24, 0.5); }
 
 /* ---------------------------------------------------------------- the dark media grid */
 .band { background: var(--dark-band); color: #EEF5F2; }
@@ -310,7 +311,7 @@ footer.closing > .wrap { justify-content: space-between; gap: 32px; }
   .crew-sec { --hm: 2; }
   .crew { grid-template-columns: 1fr 1fr; gap: var(--gutter); }
   .role { border-radius: 20px; height: auto; }
-  .role__bg { height: 96px; }
+  .role__bg { height: 96px; object-position: 0 0; }
   .role__av { width: 28px; height: 28px; }
   .role__head { gap: 6px; }
   .role__tx { padding: 10px 10px 12px; }
