@@ -151,11 +151,13 @@ section.film > .wrap { justify-content: center; }
 .meadow__video.is-on { opacity: 1; }
 .meadow::after { content: ""; position: absolute; inset: 0; }
 /* the hero: the whole frame across the width (never cropped at the sides on a wide screen), its horizon (35.2 % of the
-   frame) at 56 % of the hero; above the frame the sky goes on in its own top colour, below it the grass runs on behind
-   the top of the app window and fades into the page. Narrow windows: the frame grows to reach the hero's foot. */
-.meadow--hero { background: var(--meadow-sky); }
+   frame) at 56 % of the hero; above the frame the sky goes on in its own top colour. The meadow ends with the hero: the
+   last third fades slowly into the page, so the app window below starts on a clean ground. Narrow windows: the frame
+   grows to reach the hero's foot. */
+.meadow--hero { overflow: hidden; background: var(--meadow-sky);
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 66%, rgba(0, 0, 0, 0.55) 84%, transparent 100%); mask-image: linear-gradient(180deg, #000 0, #000 66%, rgba(0, 0, 0, 0.55) 84%, transparent 100%); }
 .meadow--hero .meadow__frame { top: 56%; height: max(56.25vw, 72%); transform: translateY(-35.2%);
-  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 7%, #000 76%, transparent 100%); mask-image: linear-gradient(180deg, transparent 0, #000 7%, #000 76%, transparent 100%); }
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 7%); mask-image: linear-gradient(180deg, transparent 0, #000 7%); }
 .meadow--foot { overflow: hidden; background: var(--meadow-ground); }
 .meadow--foot .meadow__frame { top: 0; bottom: 0; }
 .meadow--foot .meadow__poster, .meadow--foot .meadow__video { object-position: 50% 70%; }
