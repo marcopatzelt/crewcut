@@ -101,3 +101,45 @@ def test_main(tmp_path, capsys):
     assert sc.main([str(p), "--text-only"]) == 0
     assert "notes for the edit" not in capsys.readouterr().out
     assert sc.main([str(tmp_path / "missing.md")]) == 2
+
+
+MARKED = GOOD + """[[motion: number | "five local models"]]
+[[motion: compare | "Cloud models cost money for every request"]]
+"""
+
+
+def test_motion_marks_below_the_line_are_counted(neutral):
+    marks = sc.motion_marks(MARKED)
+    assert [(m["kind"], m["below"]) for m in marks] == [("number", True), ("compare", True)]
+    assert marks[0]["words"] == "five local models"
+    r = sc.check_script(MARKED, neutral, title="Five models for 0 euros", names=["Ollama"])
+    assert r["errors"] == 0, r["findings"]
+    assert r["stats"]["motion_marks"] == 2
+    assert any(p.startswith("motion marks: 2") for p in r["passed"])
+    assert "motion" not in kinds(r)
+
+
+def test_motion_mark_above_the_line_is_an_error_once(neutral):
+    text = 'Ollama runs five local models. [[motion: number | "five local models"]]\n\n---\nnotes\n'
+    r = sc.check_script(text, neutral)
+    errors = [f for f in r["findings"] if f["level"] == "error"]
+    assert [f["area"] for f in errors] == ["motion"] and "above the --- line" in errors[0]["text"]
+    assert r["stats"]["motion_marks"] == 0
+
+
+def test_more_than_five_motion_marks_and_loose_marks(neutral):
+    six = GOOD + "".join('[[motion: number | "five local models"]]\n' for _ in range(6))
+    r = sc.check_script(six, neutral)
+    assert r["stats"]["motion_marks"] == 6
+    assert any(f["area"] == "motion" and f["level"] == "error" and "at most 5" in f["text"] for f in r["findings"])
+    loose = GOOD + "[[motion: number]]\n[[motion: quote | \"words nobody says\"]]\n"
+    r = sc.check_script(loose, neutral)
+    assert ("warn", "motion") in [(f["level"], f["area"]) for f in r["findings"]]
+    assert any(f["area"] == "motion" and f["level"] == "hint" and "nobody says" in f["text"] for f in r["findings"])
+
+
+def test_short_counts_motion_marks_too(neutral):
+    text = "I tried it.\n\n---\n" + "".join('[[motion: number | "tried"]]\n' for _ in range(6))
+    r = sc.check_short(text, neutral)
+    assert r["stats"]["motion_marks"] == 6
+    assert any(f["area"] == "motion" and f["level"] == "error" for f in r["findings"])
