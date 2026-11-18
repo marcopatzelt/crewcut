@@ -35,6 +35,7 @@ export interface Source {
 export interface Episode {
   id: string;
   historical_status?: "published" | "parked" | "paused" | "archived";
+  lifecycle?: "active" | "planned" | "parked" | "archived";
   title: string;
   step: string;
   steps: Step[];

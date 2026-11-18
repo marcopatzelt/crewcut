@@ -114,6 +114,9 @@ def build_parser() -> argparse.ArgumentParser:
     est.add_argument("step")
     est.add_argument("status", choices=["open", "working", "waiting", "done", "skipped"])
     est.add_argument("--next")
+    el = esub.add_parser("lifecycle", help="organize or resume an episode without starting work or granting approval")
+    el.add_argument("episode")
+    el.add_argument("lifecycle", choices=["active", "planned", "parked", "archived"])
 
     sy = sub.add_parser("say", help="a message in the main chat, from the running crew member")
     sy.add_argument("--episode")
@@ -396,6 +399,10 @@ def _run(a) -> int:
         if a.ecmd == "step":
             episodes.set_step(a.episode, a.step, a.status, next_action=a.next)
             print(f"{a.episode}: {a.step} {a.status}")
+            return 0
+        if a.ecmd == "lifecycle":
+            episodes.set_lifecycle(a.episode, a.lifecycle)
+            print(f"{a.episode}: {a.lifecycle}. No work was started.")
             return 0
     if a.cmd == "say":
         ep = _env_episode(a)

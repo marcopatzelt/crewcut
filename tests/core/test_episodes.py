@@ -39,3 +39,34 @@ def test_historical_status_does_not_grant_upload_approval(crew, stage, expected)
     summary = episodes.summary(project["id"])
     assert summary.get("historical_status") == expected
     assert episodes.read(project["id"])["steps"]["upload"]["status"] == "skipped"
+
+
+def test_lifecycle_preserves_history_and_starts_no_work(crew):
+    from crewcut import db
+    project = episodes.create("Earlier episode")
+    project["legacy"] = {"stage": "parked"}
+    project["steps"]["upload"]["status"] = "skipped"
+    episodes.write(project["id"], project)
+    for lifecycle in episodes.LIFECYCLES:
+        result = episodes.set_lifecycle(project["id"], lifecycle)
+        assert result["steps"] == project["steps"]
+        assert result["legacy"] == project["legacy"]
+        assert episodes.summary(project["id"])["lifecycle"] == lifecycle
+    with db.conn() as connection:
+        assert connection.execute("SELECT COUNT(*) FROM jobs").fetchone()[0] == 0
+        assert connection.execute("SELECT COUNT(*) FROM cards").fetchone()[0] == 0
+
+
+def test_lifecycle_refuses_busy_episode(crew):
+    from crewcut.conductor import queue
+    project = episodes.create("Busy episode")
+    queue.add(project["id"], "writer", "script", "Synthetic work")
+    with pytest.raises(ValueError, match="Finish or cancel"):
+        episodes.set_lifecycle(project["id"], "parked")
+    assert "lifecycle" not in episodes.read(project["id"])
+
+
+def test_invalid_lifecycle_is_rejected(crew):
+    project = episodes.create("Example")
+    with pytest.raises(ValueError):
+        episodes.set_lifecycle(project["id"], "published")

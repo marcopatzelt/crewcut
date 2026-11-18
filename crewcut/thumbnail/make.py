@@ -15,7 +15,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from .. import approvals, config, ledger, paths
+from .. import approvals, brand, config, ledger, paths
 
 
 class NoWay(RuntimeError):
@@ -98,6 +98,26 @@ def make_api(prompt: str, refs: list[Path], out: Path, client=None) -> Path:
     return out
 
 
+def reference_images(episode: str, references: list[str]) -> list[Path]:
+    pack = brand.load()
+    images = []
+    for key in ("reference_photo", "style_reference"):
+        if key == "reference_photo" and pack.value("thumbnail.face", True) is False:
+            continue
+        relative = pack.value(f"thumbnail.{key}")
+        if relative:
+            image = paths.inside(paths.brand_dir(), relative)
+            if not image.is_file():
+                raise FileNotFoundError(f"The style pack's {key} image is missing.")
+            images.append(image)
+    for relative in references:
+        image = paths.inside(paths.episode_dir(episode), relative)
+        if not image.is_file():
+            raise FileNotFoundError("An episode reference image is missing.")
+        images.append(image)
+    return list(dict.fromkeys(images))
+
+
 def cli(a) -> int:
     episode = a.episode or os.environ.get("CREWCUT_EPISODE")
     if not episode:
@@ -105,11 +125,11 @@ def cli(a) -> int:
         return 2
     ep = paths.episode_dir(episode)
     prompt = paths.inside(ep, a.prompt).read_text(encoding="utf-8").strip()
-    refs = [paths.inside(ep, r) for r in a.ref]
-    for r in refs:
-        if not r.is_file():
-            print(f"Reference image not found: {r.relative_to(ep)}")
-            return 1
+    try:
+        refs = reference_images(episode, a.ref)
+    except (FileNotFoundError, ValueError) as error:
+        print(str(error))
+        return 1
     try:
         way = choose_way(a.way)
     except NoWay as e:

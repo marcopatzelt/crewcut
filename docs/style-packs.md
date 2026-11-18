@@ -237,3 +237,10 @@ Learned rules of the first steps, in the same format as the other rule files. Th
 the checks do not parse them. The neutral pack ships four general rules per step, dated 2026-11-16, source "Crewcut
 default". `examples/striq/` shows a real, dated set and the values above as one channel set them (`--pack
 examples/striq` on any check).
+# Fixed thumbnail references
+
+`thumbnail.json` can name `reference_photo` and `style_reference` as paths relative to `brand/`.
+`crewcut thumbnail make` automatically attaches the person first (unless `face` is false), then the style reference,
+then episode images from `--ref`. Duplicate paths are removed. A configured missing file or path outside its root
+stops generation before choosing a generator or requesting money. Personal photos belong only in the private pack.
+The pack's thumbnail rules can explicitly request reuse of the reference layout; otherwise it supplies style only.

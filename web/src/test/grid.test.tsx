@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { App } from "../App";
 import { getUi } from "../store/store";
-import { footageTarget } from "../views/Home";
+import { footageTarget, isDone } from "../views/Home";
 import { episode, episodeRoutes, mockApi, resetApp, state } from "./helpers";
 
 beforeEach(() => {
@@ -13,6 +13,20 @@ beforeEach(() => {
 });
 
 describe("the episode grid", () => {
+  it("separates planned and parked work and permits explicit historical resume", async () => {
+    const planned = episode({ id: "001-plan", title: "Future video", lifecycle: "planned", step: "record" });
+    const parked = episode({ id: "002-park", title: "Later video", lifecycle: "parked", step: "record" });
+    const resumed = episode({ id: "003-resume", title: "Review again", lifecycle: "active", historical_status: "published", step: "record" });
+    mockApi({ "GET /api/state": state({ episodes: [planned, parked, resumed] }) });
+    render(<App />);
+    const pills = await screen.findByRole("group", { name: "Show" });
+    expect(within(pills).getByRole("button", { name: /In work\s*1/ })).toBeTruthy();
+    expect(screen.getByText("Planned, not started")).toBeTruthy();
+    expect(screen.getByText("Parked until you resume")).toBeTruthy();
+    expect(screen.getByText("Resumed for review")).toBeTruthy();
+    expect(footageTarget([planned, parked, resumed])).toEqual(resumed);
+    expect(isDone(resumed)).toBe(false);
+  });
   it("shows historical publication without granting a new upload approval", async () => {
     const published = episode({ id: "001-history", title: "Earlier video", historical_status: "published" });
     const parked = episode({ id: "002-parked", title: "Later idea", historical_status: "parked", step: "record" });

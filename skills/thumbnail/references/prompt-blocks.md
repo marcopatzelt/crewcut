@@ -22,7 +22,8 @@ Image 2: my own earlier thumbnail, as the style reference only: <what it gives: 
 Image 3: a real screenshot from my <video/test>: <what it shows, one sentence> (the result).
 ```
 
-Image 2 only when the pack has a `style_reference`. Layouts without a person start with the style reference (if any),
+Image 2 only when the pack has a `style_reference`. Follow the pack's rules about reusing its layout.
+Layouts without a person start with the style reference (if any),
 then the results in the order they appear (left to right, early to late). Upload a logo only when the model draws it
 wrong.
 

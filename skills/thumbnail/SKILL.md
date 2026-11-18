@@ -27,7 +27,9 @@ upload step uploads. Layouts, colours, face rules, word limits and the reference
    image gets a changed full prompt in a new run.
 2. **Fixed images first.** Image 1 is the reference photo of the person (`thumbnail.json` `reference_photo`, a file in
    `brand/`). If the pack has a `style_reference` (the user's best own thumbnail), it is image 2 for style only: the
-   prompt says what it takes (colours, light, type, face size) and that it does NOT take its layout. Then the results.
+   prompt says what it takes (colours, light, type, face size). It does not take the layout unless the user's pack rules
+   explicitly request that layout. Then the results. `crewcut thumbnail make` prepends the pack's fixed images in this
+   order automatically; `--ref` adds episode result images. A missing configured reference stops generation.
    A still frame (`still_frame.py`) only when the person needs other clothes or another pose.
 3. **The face stays the person.** Slightly crisper eyes and a little more expression are fine; face shape, hair and
    clothes stay. Remove microphones and selfie arms.

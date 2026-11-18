@@ -41,3 +41,11 @@ Check the public diff before publishing, including example channel data and scre
 protect files that were already tracked. Publishing remains a separate owner-approved action.
 
 See [the migration gap register](studio-import-gaps.md) for remaining product work and its acceptance checks.
+
+## Planned, parked and resumed work
+
+`crewcut episode lifecycle <id> planned|parked|archived|active` organizes imported and new episodes. Planned,
+parked and archived episodes stay visible but do not count as work or receive the home screen's footage import.
+`active` explicitly resumes an imported episode for review without starting jobs or changing any step approval.
+Historical evidence stays intact. A busy episode must finish or cancel its jobs before changing lifecycle.
+This is not a cancellation command or a new permission to publish.

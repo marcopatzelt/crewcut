@@ -31,6 +31,7 @@ SHORT_STEPS = {
 }
 KINDS = ("episode", "short")
 STATUSES = ("open", "working", "waiting", "done", "skipped")
+LIFECYCLES = ("active", "planned", "parked", "archived")
 FOLDERS = ("brief", "originals", "work", "audio", "broll", "graphics", "edit", "render", "review", "export")
 
 
@@ -141,6 +142,21 @@ def list_ids() -> list[str]:
     return sorted((p.name for p in paths.episodes_dir().iterdir() if (p / "project.json").is_file()), reverse=True)
 
 
+def set_lifecycle(episode: str, lifecycle: str) -> dict:
+    if lifecycle not in LIFECYCLES:
+        raise ValueError(f"lifecycle must be one of {', '.join(LIFECYCLES)}")
+    project = read(episode)
+    with db.conn() as connection:
+        busy = connection.execute("SELECT 1 FROM jobs WHERE episode = ? AND status IN ('queued','running','waiting')",
+                                  (episode,)).fetchone()
+    if busy:
+        raise ValueError("Finish or cancel this episode's jobs before changing its lifecycle.")
+    project["lifecycle"] = lifecycle
+    project["lifecycle_at"] = db.now()
+    write(episode, project)
+    return project
+
+
 def summary(episode: str, project: dict | None = None) -> dict:
     p = project or read(episode)
     with db.conn() as c:
@@ -161,6 +177,8 @@ def summary(episode: str, project: dict | None = None) -> dict:
         out["historical_status"] = "published"
     elif stage in ("parked", "paused", "archived"):
         out["historical_status"] = stage
+    if p.get("lifecycle") in LIFECYCLES:
+        out["lifecycle"] = p["lifecycle"]
     if out["kind"] == "short":
         out.update(mode=p.get("mode"), source_episode=p.get("source_episode"))
     out["cover"] = cover(p["id"])

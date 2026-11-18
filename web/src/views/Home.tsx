@@ -14,7 +14,7 @@ import { Avatar, SlateFigure } from "../slate/Slate";
 const FILTERS: { id: Filter; label: string; test: (e: Episode) => boolean }[] = [
   { id: "all", label: "All", test: () => true },
   { id: "needs", label: "Needs you", test: (e) => e.open_cards > 0 },
-  { id: "work", label: "In work", test: (e) => !isDone(e) && !e.historical_status },
+  { id: "work", label: "In work", test: (e) => !isDone(e) && isActive(e) },
   { id: "long", label: "Long videos", test: (e) => e.kind !== "short" },
   { id: "shorts", label: "Shorts", test: (e) => e.kind === "short" },
   { id: "done", label: "Published", test: (e) => isDone(e) },
@@ -35,7 +35,12 @@ const DOING: Record<string, string> = {
 };
 
 export function isDone(e: Episode): boolean {
-  return e.historical_status === "published" || e.steps.some((s) => s.id === "upload" && s.status === "done");
+  return (e.historical_status === "published" && e.lifecycle !== "active") ||
+    e.steps.some((s) => s.id === "upload" && s.status === "done");
+}
+
+function isActive(e: Episode): boolean {
+  return e.lifecycle ? e.lifecycle === "active" : !e.historical_status;
 }
 
 function current(e: Episode) {
@@ -45,7 +50,7 @@ function current(e: Episode) {
 /** The episode that takes footage now: the newest long video in work at the record or the edit step. */
 export function footageTarget(episodes: readonly Episode[]): Episode | undefined {
   return [...episodes]
-    .filter((e) => e.kind !== "short" && !isDone(e) && !e.historical_status && (e.step === "record" || e.step === "edit"))
+    .filter((e) => e.kind !== "short" && !isDone(e) && isActive(e) && (e.step === "record" || e.step === "edit"))
     .sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated))[0];
 }
 
@@ -65,6 +70,10 @@ function metaOf(e: Episode): string {
 
 /** The quiet line under a thumbnail: published when, or the step in work. */
 function stateLine(e: Episode): string {
+  if (e.lifecycle === "planned") return "Planned, not started";
+  if (e.lifecycle === "parked") return "Parked until you resume";
+  if (e.lifecycle === "archived") return "Archived";
+  if (e.lifecycle === "active" && e.historical_status) return "Resumed for review";
   if (e.historical_status === "published") return "Published in earlier studio";
   if (e.historical_status === "parked" || e.historical_status === "paused") return "Paused in earlier studio";
   if (e.historical_status === "archived") return "Archived in earlier studio";
@@ -176,7 +185,7 @@ function ShortCard({ e }: { e: Episode }) {
     >
       <span className="short-pic" aria-hidden="true">
         {e.cover ? <img src={e.cover} alt="" decoding="async" /> : <Blank />}
-        {done ? null : <span className="glass-tag">In work</span>}
+        {done ? null : <span className="glass-tag">{isActive(e) ? "In work" : stateLine(e)}</span>}
         {/* The app writes the title over the frame: the frames carry no words of their own. */}
         <span className="short-title">{e.title}</span>
       </span>
@@ -239,7 +248,7 @@ function useColumns(widest: number, present: boolean) {
 function headLine(episodes: readonly Episode[]): string {
   if (!episodes.length) return "Nothing here yet. Start with one sentence.";
   const needs = episodes.filter((e) => e.open_cards > 0).length;
-  const moving = episodes.filter((e) => !isDone(e) && e.open_cards === 0).length;
+  const moving = episodes.filter((e) => !isDone(e) && isActive(e) && e.open_cards === 0).length;
   const first = needs ? `${countWord(needs)} ${needs === 1 ? "needs" : "need"} your yes.` : "Nothing needs your yes.";
   const second = moving ? (needs ? " Everything else is moving." : " The crew keeps going.") : "";
   return first + second;
