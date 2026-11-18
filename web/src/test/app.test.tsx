@@ -234,7 +234,7 @@ describe("Connect Claude", () => {
     window.history.replaceState(null, "", "/#/onboarding");
     render(<App />);
     expect(await screen.findByRole("heading", { level: 1, name: "Connect Claude first." })).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Connect Codex (beta) instead" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sign in to Codex" }));
     expect(await screen.findByText("ABCD-1234")).toBeTruthy();
     done = true; // the page asks every 3 s
     expect(await screen.findByText("Codex is connected.", {}, { timeout: 5000 })).toBeTruthy();

@@ -2,7 +2,7 @@
 // picture server (tools/ci/sample_server.mjs) bundles it for Node and answers /api with it. Never part of the app.
 // It answers the calls from docs/api.md with the fixtures and never runs anything.
 import { ApiError, type Backend, type EventHandler, type EventKind } from "../../web/src/api/client";
-import type { Activity, Card, Episode, EpisodeMedia, EpisodeMotion, Message, UploadResult } from "../../web/src/api/types";
+import type { Activity, Card, EngineLogin, Episode, EpisodeMedia, EpisodeMotion, Message, UploadResult } from "../../web/src/api/types";
 import { CHANNEL } from "../../web/src/api/types";
 import { SAMPLE_FILES, makeSample, shortSteps, steps } from "./fixtures";
 
@@ -24,6 +24,11 @@ export function createSampleBackend(opts: { latency?: number; play?: boolean; ba
   const latency = opts.latency ?? 60;
   const base = opts.base ?? "/";
   const data = makeSample(Date.now(), { play: opts.play });
+  const login: EngineLogin = {
+    chosen: data.state.app.engine,
+    claude: { installed: true, connected: true, source: "stored", signing_in: false },
+    codex: { installed: true, connected: true, status: "connected" },
+  };
   const handlers = new Set<EventHandler>();
   const playing = Boolean(opts.play);
   let nextMessage = 1000;
@@ -61,6 +66,15 @@ export function createSampleBackend(opts: { latency?: number; play?: boolean; ba
     if (method === "GET" && a === "team") return out(data.team);
     if (method === "GET" && a === "profile") return out(data.profile);
     if (method === "GET" && a === "money") return out({ ...data.state.money, rows: [] });
+    if (a === "engine") {
+      if (method === "GET" && b === "login") return out(login);
+      if (method === "POST" && c === "use" && (b === "claude" || b === "codex")) {
+        login.chosen = b;
+        data.state.app.engine = b;
+        data.state.app.engine_ok = true;
+        return out(login);
+      }
+    }
 
     if (a === "channel" && b === "messages" && !c) {
       if (method === "GET") {

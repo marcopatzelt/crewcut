@@ -6,6 +6,7 @@ import { composerTarget, messageOf, send } from "../store/actions";
 import { getUi, setUi, useUi } from "../store/store";
 import { CHANNEL, ONBOARDING } from "../api/types";
 import "../styles/channel.css";
+import { EnginePicker } from "./EnginePicker";
 
 interface Recognition {
   lang: string;
@@ -176,7 +177,10 @@ function ScopedComposer({ target }: { target: string | null }) {
 
   return (
     <>
-      <p className="composer-scope" id="composer-scope" title={scope}>{scope}</p>
+      <div className="composer-toolbar">
+        <p className="composer-scope" id="composer-scope" title={scope}>{scope}</p>
+        <EnginePicker />
+      </div>
       {error ? (
         <p className="composer-error" role="alert">
           {error}

@@ -11,7 +11,7 @@ import { messageOf, navigate } from "../store/actions";
 import { EMPTY, useUi } from "../store/store";
 import { Dock } from "./EpisodeView";
 import { MotionShelf } from "./MotionShelf";
-import { EnginePicker } from "../components/EnginePicker";
+import "../styles/crew.css";
 
 const CHANGE_LINE = "To change something, say it in the chat.";
 
@@ -201,41 +201,60 @@ function SourceItem({ s }: { s: Source | string }) {
   );
 }
 
+const CREW_PURPOSE: Record<string, string> = {
+  showrunner: "Plans with you. Coordinates the crew.",
+  scout: "Finds topics and proof.",
+  writer: "Writes in your voice.",
+  editor: "Cuts and builds graphics.",
+  critic: "Checks the cut.",
+  designer: "Makes thumbnails.",
+  publisher: "Uploads and schedules.",
+  brand: "Builds your style.",
+};
+
 function Person({ p }: { p: Identity }) {
+  const leader = p.id === "showrunner";
   const rights = [
     p.may_spend ? "May rent GPUs and pay for APIs, within your cap" : "Does not spend money",
     p.may_publish ? "May publish, after your yes on the exact file" : "Does not publish",
   ];
   return (
-    <article className="person" aria-labelledby={`person-${p.id}`}>
-      <Avatar who={p} size="big" />
-      <div className="msg-main">
-        <div className="name" id={`person-${p.id}`}>
-          {p.name}
+    <article className={leader ? "crew-person crew-leader" : "crew-person"} aria-labelledby={`person-${p.id}`}>
+      <div className="crew-person-head">
+        <Avatar who={p} size="big" />
+        <div className="crew-person-name">
+          {leader ? <p className="crew-lead-label">Your channel lead</p> : null}
+          <h2 id={`person-${p.id}`} title={p.name}>{p.name}</h2>
+          <p className="crew-role" title={p.role}>{CREW_PURPOSE[p.id] ?? p.role}</p>
         </div>
-        <div className="role">{p.role}</div>
-        {p.soul ? <p className="soul">{p.soul}</p> : null}
-        <dl>
-          <dt>Skills</dt>
-          <dd>{p.skills.length ? p.skills.join(", ") : "None"}</dd>
-          <dt>Rights</dt>
-          <dd>{rights.join(". ")}.</dd>
-          {p.sources?.length ? (
-            <>
-              <dt>Sources</dt>
-              <dd>
-                <ul>
-                  {p.sources.map((s, i) => (
-                    <li key={i}>
-                      <SourceItem s={s} />
-                    </li>
-                  ))}
-                </ul>
-              </dd>
-            </>
-          ) : null}
-        </dl>
       </div>
+      <details className="crew-details">
+        <summary aria-label={`About ${p.name}`}>Role, skills and sources</summary>
+        <div className="crew-detail-body">
+          <p>{p.role}</p>
+          {p.soul ? <p className="crew-soul">{p.soul}</p> : null}
+          <dl>
+            <dt>Skills</dt>
+            <dd>{p.skills.length ? p.skills.join(", ") : "None"}</dd>
+            <dt>Rights</dt>
+            <dd>{rights.join(". ")}.</dd>
+            {p.sources?.length ? (
+              <>
+                <dt>Sources</dt>
+                <dd>
+                  <ul>
+                    {p.sources.map((source, index) => (
+                      <li key={index}>
+                        <SourceItem s={source} />
+                      </li>
+                    ))}
+                  </ul>
+                </dd>
+              </>
+            ) : null}
+          </dl>
+        </div>
+      </details>
     </article>
   );
 }
@@ -248,8 +267,8 @@ export function TeamView() {
   else if (!data.length) content = <p className="meta">No crew members found. Check the team folder of the app.</p>;
   else
     content = (
-      <div className="people">
-        {data.map((p) => (
+      <div className="crew-people">
+        {[...data].sort((first, second) => Number(second.id === "showrunner") - Number(first.id === "showrunner")).map((p) => (
           <Person key={p.id} p={p} />
         ))}
       </div>
@@ -261,10 +280,9 @@ export function TeamView() {
       wide
       label="Crew"
       title="Crew"
-      sub="Who works on your episodes, what they may do, and whose know-how their skills distil."
+      sub="One lead. A crew for every step."
     >
       <BackToChat />
-      <EnginePicker />
       {content}
       {anySources ? <p className="hint-line">Crewcut is not affiliated with or endorsed by these creators.</p> : null}
       <p className={anySources ? "meta" : "hint-line"}>{CHANGE_LINE}</p>

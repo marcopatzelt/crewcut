@@ -1,0 +1,91 @@
+.crew-people {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 12px;
+  align-items: start;
+}
+.crew-person {
+  min-width: 0;
+  padding: 16px;
+  border-radius: var(--r-panel);
+  background: var(--tile);
+}
+.crew-leader {
+  grid-column: 1 / -1;
+  background: var(--card);
+  box-shadow: var(--shadow-1);
+}
+.crew-person-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.crew-person-head .avatar {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+.crew-person-name {
+  min-width: 0;
+}
+.crew-person h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crew-person .crew-role {
+  margin: 4px 0 0;
+  color: var(--ink-2);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crew-person .crew-lead-label {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.crew-details summary {
+  margin-top: 10px;
+  min-height: 40px;
+  padding: 10px 0;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--ink-2);
+  border-radius: var(--r-xs);
+}
+.crew-detail-body {
+  font-size: 13px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.crew-detail-body p {
+  margin: 0 0 12px;
+}
+.crew-detail-body .crew-soul {
+  white-space: pre-line;
+}
+.crew-detail-body dl {
+  margin: 0;
+}
+.crew-detail-body dt {
+  margin-top: 12px;
+  color: var(--ink);
+  font-weight: 600;
+}
+.crew-detail-body dd {
+  margin: 4px 0 0;
+}
+.crew-detail-body ul {
+  padding-left: 18px;
+  margin: 0;
+}
+.crew-detail-body li + li {
+  margin-top: 8px;
+}

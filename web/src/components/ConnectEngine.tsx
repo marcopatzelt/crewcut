@@ -106,7 +106,7 @@ function ConnectCodex() {
         </p>
       ) : (
         <button type="button" className="link-button" onClick={() => void start()}>
-          Connect Codex (beta) instead
+          Sign in to Codex
         </button>
       )}
     </>

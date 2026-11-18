@@ -79,8 +79,11 @@ light `mint-dawn`, the 1280 px versions on small screens) is the background of t
 
 ## 3. Input
 
-- The Crew page also shows account connections and a Claude Code / Codex choice. This must work without an agent
-  subscription already connected. It keeps both sign-ins and applies to new work only.
+- Each composer shows the selected Claude Code / Codex choice beside its scope. Its compact chooser shows both
+  options, connection state and the selected option. Sign-in appears only when requested. Switching keeps both
+  sign-ins and applies to new work in all chats, not work already running.
+- Crew uses compact cards: avatar, name and one role line. Showrunner leads the grid. Skills, rights, sources and
+  the full identity stay in collapsed details, not a wall of text. Connection settings do not occupy the crew grid.
 
 - The composer is the only text field in the app. Its placeholder says "Tell the crew what you want". It has a microphone button
   (browser speech input where available) and a send button.
