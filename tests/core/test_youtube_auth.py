@@ -1,0 +1,56 @@
+import base64
+import hashlib
+import json
+from types import SimpleNamespace
+from urllib.parse import parse_qs, urlparse
+
+import pytest
+from google_auth_oauthlib.flow import Flow
+
+from crewcut import db
+from crewcut.youtube import auth
+
+
+def test_pkce_survives_a_new_flow_instance(studio, monkeypatch):
+    auth.client_file().parent.mkdir(parents=True)
+    auth.client_file().write_text(json.dumps({"installed": {
+        "client_id": "synthetic-client", "client_secret": "synthetic-secret",
+        "auth_uri": "https://accounts.example.test/authorize",
+        "token_uri": "https://accounts.example.test/token",
+    }}))
+    url = auth.start()
+    query = parse_qs(urlparse(url).query)
+    verifier = db.kv_get("youtube_oauth_verifier")
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
+    assert query["code_challenge"] == [challenge]
+    assert query["code_challenge_method"] == ["S256"]
+    seen = []
+
+    def exchange(flow, **kwargs):
+        seen.append((flow.code_verifier, kwargs["code"]))
+
+    monkeypatch.setattr(Flow, "fetch_token", exchange)
+    monkeypatch.setattr(Flow, "credentials", property(lambda flow: SimpleNamespace(to_json=lambda: '{"test":true}')))
+    auth.finish("synthetic-code", query["state"][0])
+    assert seen == [(verifier, "synthetic-code")]
+    assert auth.token_file().stat().st_mode & 0o777 == 0o600
+    assert db.kv_get("youtube_oauth_state") == ""
+    assert db.kv_get("youtube_oauth_verifier") == ""
+    with pytest.raises(PermissionError):
+        auth.finish("synthetic-code", query["state"][0])
+
+
+def test_missing_verifier_requires_a_new_login(studio):
+    db.kv_set("youtube_oauth_state", "synthetic-state")
+    with pytest.raises(PermissionError, match="incomplete"):
+        auth.finish("synthetic-code", "synthetic-state")
+    assert not auth.token_file().exists()
+
+
+def test_foreign_callback_cannot_use_the_pending_verifier(studio):
+    db.kv_set("youtube_oauth_state", "synthetic-state")
+    db.kv_set("youtube_oauth_verifier", "synthetic-verifier")
+    with pytest.raises(PermissionError):
+        auth.finish("synthetic-code", "different-state")
+    assert not auth.token_file().exists()
+    assert db.kv_get("youtube_oauth_verifier") == "synthetic-verifier"

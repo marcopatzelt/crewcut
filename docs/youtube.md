@@ -8,6 +8,11 @@ uploads: an API does not break when YouTube moves a button.
 YouTube only lets an app upload after you allow it with "Sign in with Google". For that, Google needs an "OAuth client"
 from a Google Cloud project of yours. Until a shared, Google-verified project exists (planned), it is created once.
 
+Crewcut keeps the pending sign-in state and PKCE verifier in its private database until the callback completes.
+The verifier must survive between the two requests; a new Flow object alone cannot complete the exchange.
+After upgrading from a version that reported `Missing code verifier`, start a new connection rather than reloading
+the old callback. Successful sign-in clears both pending values. Tests use a synthetic client and no Google account.
+
 ### The easy way: Claude in Chrome sets it up (Claude Code)
 
 Say "connect YouTube" (or run `crewcut youtube connect`). One card: **Set it up in my Chrome**. On your yes:

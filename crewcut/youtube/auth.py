@@ -32,19 +32,23 @@ def redirect_uri() -> str:
     return f"http://localhost:{port}/oauth/youtube"
 
 
-def _flow(state: str | None = None):
+def _flow(state: str | None = None, code_verifier: str | None = None):
     from google_auth_oauthlib.flow import Flow
     if not client_file().is_file():
         raise FileNotFoundError("No YouTube client file. Follow docs/youtube.md once (about ten clicks in Google Cloud), "
                                 "save the file as config/youtube-client.json in your studio folder.")
-    return Flow.from_client_secrets_file(str(client_file()), scopes=SCOPES, redirect_uri=redirect_uri(), state=state)
+    return Flow.from_client_secrets_file(str(client_file()), scopes=SCOPES, redirect_uri=redirect_uri(), state=state,
+                                        code_verifier=code_verifier, autogenerate_code_verifier=False)
 
 
 def start() -> str:
     """The URL the user opens once. The state value protects the callback."""
     state = secrets.token_urlsafe(24)
+    verifier = secrets.token_urlsafe(64)
+    url, _ = _flow(state, verifier).authorization_url(access_type="offline", prompt="consent",
+                                                    include_granted_scopes="true")
+    db.kv_set("youtube_oauth_verifier", verifier)
     db.kv_set("youtube_oauth_state", state)
-    url, _ = _flow(state).authorization_url(access_type="offline", prompt="consent", include_granted_scopes="true")
     return url
 
 
@@ -52,13 +56,17 @@ def finish(code: str, state: str) -> None:
     expected = db.kv_get("youtube_oauth_state")
     if not expected or not secrets.compare_digest(expected, state or ""):
         raise PermissionError("The sign-in link is old or not from this studio. Start again.")
-    flow = _flow(state)
+    verifier = db.kv_get("youtube_oauth_verifier")
+    if not verifier:
+        raise PermissionError("The sign-in link is incomplete. Start the YouTube connection again.")
+    flow = _flow(state, verifier)
     flow.fetch_token(code=code)
     creds = flow.credentials
     p = token_file()
     p.write_text(creds.to_json(), encoding="utf-8")
     os.chmod(p, 0o600)
     db.kv_set("youtube_oauth_state", "")
+    db.kv_set("youtube_oauth_verifier", "")
 
 
 def credentials():
