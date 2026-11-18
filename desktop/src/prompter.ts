@@ -52,10 +52,16 @@ export class DesktopPrompter {
       win.on("closed", () => { if (this.window === win) this.window = null; });
       try {
         await win.loadURL(url);
-        win.setBounds(display.bounds);
         win.show();
+        win.setBounds(display.bounds);
+        await new Promise(resolve => setTimeout(resolve, 250));
+        if (win.isDestroyed()) throw new Error("The teleprompter window was closed.");
+        win.setBounds(display.bounds);
         win.setFullScreen(true);
-        await new Promise(resolve => setTimeout(resolve, 700));
+        for (let attempt = 0; attempt < 15; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+          if (win.isDestroyed() || (win.isFullScreen() && screen.getDisplayMatching(win.getBounds()).id === display.id)) break;
+        }
         if (win.isDestroyed() || screen.getDisplayMatching(win.getBounds()).id !== display.id || !win.isFullScreen()) {
           throw new Error("The desktop could not place the full-screen window on the selected screen.");
         }
