@@ -3,6 +3,16 @@ import pytest
 from crewcut import db, episodes, paths, prompter
 
 
+def test_qr_is_an_inline_svg_without_xml_declaration():
+    from xml.etree import ElementTree
+    svg = prompter.qr_svg("http://localhost:4748/p/synthetic")
+    assert svg.startswith("<svg")
+    assert "<?xml" not in svg
+    root = ElementTree.fromstring(svg)
+    path = root.find("{http://www.w3.org/2000/svg}path")
+    assert path is not None and path.get("d")
+
+
 def test_selected_partial_script_is_visible_without_approval(crew):
     episode = episodes.create("Partial recording")["id"]
     root = paths.episode_dir(episode)
