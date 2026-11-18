@@ -26,7 +26,9 @@ def post(episode: str, text: str, author: str = "showrunner", cite: str | None =
         except (FileNotFoundError, ValueError):
             step = None
     extra = {k: v for k, v in (("preview", preview), ("facts", facts), ("exchange", exchange)) if v}
-    mid = db.insert("messages", at=db.now(), episode=episode, author=author, text=text, cite=cite, card=card, job=job,
+    scope = "channel" if episode == "_channel" else "onboarding" if episode == ONBOARDING else "episode"
+    mid = db.insert("messages", at=db.now(), episode="" if scope == "channel" else episode, scope=scope,
+                    author=author, text=text, cite=cite, card=card, job=job,
                     step=step, data=extra or None)
     events.emit("message", episode=episode, identity=None if author == "user" else author, text=text,
                 data=message(mid))
@@ -35,7 +37,8 @@ def post(episode: str, text: str, author: str = "showrunner", cite: str | None =
 
 def message(mid: int) -> dict:
     m = db.get("messages", mid)
-    out = {"id": m["id"], "at": m["at"], "episode": m["episode"], "author": m["author"], "text": m["text"],
+    out = {"id": m["id"], "at": m["at"], "episode": "_channel" if m["scope"] == "channel" else m["episode"],
+           "scope": m["scope"], "job": m.get("job"), "author": m["author"], "text": m["text"],
            "cite": m.get("cite"), "card": m.get("card"), "step": m.get("step")}
     extra = m.get("data") if isinstance(m.get("data"), dict) else {}
     out.update({k: extra[k] for k in ("preview", "facts", "exchange") if extra.get(k)})
@@ -43,8 +46,10 @@ def message(mid: int) -> dict:
 
 
 def messages(episode: str, after: int = 0, limit: int = 500) -> list[dict]:
+    scope = "channel" if episode == "_channel" else "onboarding" if episode == ONBOARDING else "episode"
     with db.conn() as c:
-        rs = c.execute("SELECT id FROM messages WHERE episode = ? AND id > ? ORDER BY id LIMIT ?", (episode, after, limit))
+        rs = c.execute("SELECT id FROM messages WHERE scope = ? AND episode = ? AND id > ? ORDER BY id LIMIT ?",
+                       (scope, "" if scope == "channel" else episode, after, limit))
         return [message(r["id"]) for r in rs]
 
 
@@ -90,6 +95,9 @@ def new_episode(text: str) -> dict:
 
 
 def user_message(episode: str, text: str) -> dict:
+    if episode == "_channel":
+        from .. import channel
+        return channel.user_message(text)
     mid = post(episode, text, author="user")
     if episode == ONBOARDING:
         start_onboarding(text)
@@ -261,19 +269,28 @@ def _motion_card(episode: str, card: dict, accepted: bool) -> bool:
 
 
 def after_job(job: dict, res) -> None:
+    from .. import channel, engines
+    if channel.is_channel(job):
+        channel.after_job(job, res)
+        return
+    parent = queue.get(job["parent"]) if job.get("parent") else None
+    channel_child = (parent and channel.is_channel(parent)) or (job.get("data") or {}).get("origin_scope") == "channel"
+    if channel_child:
+        channel.child_result(job, res)
     episode = job.get("episode")
     target = episode or (ONBOARDING if job["identity"] == "brand" else None)
     if not target:
         return
     with db.conn() as c:
-        said = c.execute("SELECT COUNT(*) AS n FROM messages WHERE job = ?", (job["id"],)).fetchone()["n"]
+        said = c.execute("SELECT COUNT(*) AS n FROM messages WHERE job = ? AND episode = ?",
+                         (job["id"], target)).fetchone()["n"]
     if not res.ok:
         from .. import team
         name = (team.get(job["identity"]) or {}).get("name", job["identity"])
-        post(target, f"{name} stopped: {res.error[:200]}. Say \"try again\" and I restart it.")
+        post(target, f"{name} stopped: {engines.scrub(res.error)[:200]}. Say \"try again\" and I restart it.")
         return
-    if job["identity"] == "showrunner" and not said and res.text.strip():
-        post(target, res.text.strip()[:2000], job=job["id"])
+    if (job["identity"] == "showrunner" or channel_child) and not said and res.text.strip():
+        post(target, engines.scrub(res.text).strip()[:2000], job=job["id"], author=job["identity"])
 
 
 def on_upload(episode: str, files: list[str]) -> int:

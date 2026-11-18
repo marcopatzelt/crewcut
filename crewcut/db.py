@@ -89,6 +89,13 @@ def conn(path: Path | None = None) -> Iterator[sqlite3.Connection]:
         if p not in _ready:
             c.execute("PRAGMA journal_mode=WAL")
             c.executescript(SCHEMA)
+            c.execute("BEGIN IMMEDIATE")
+            if "scope" not in {r["name"] for r in c.execute("PRAGMA table_info(messages)")}:
+                c.execute("ALTER TABLE messages ADD COLUMN scope TEXT NOT NULL DEFAULT 'episode'")
+                c.execute("UPDATE messages SET scope = 'onboarding' WHERE episode = '_onboarding'")
+                c.execute("UPDATE messages SET scope = 'channel', episode = '' WHERE episode = '_channel'")
+            c.execute("CREATE INDEX IF NOT EXISTS messages_scope ON messages(scope, id)")
+            c.commit()
             _ready.add(p)
         c.execute("PRAGMA busy_timeout=30000")
         yield c

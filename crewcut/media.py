@@ -616,7 +616,8 @@ def episode_media(episode: str) -> dict:
     pack = brand.load()
     scenes, frames = _scenes(episode, ep, pack, project)
     return {"thumbnails": thumbnails(episode), "cut": cut(episode, ep, pack, project), "scenes": scenes,
-            "gpu": gpu(episode, frames)}
+            "gpu": gpu(episode, frames), "cover_preview": episodes.cover(episode),
+            "imported": bool(project.get("legacy"))}
 
 
 def _image_of(episode: str, rel: str | None) -> str | None:

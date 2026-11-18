@@ -30,6 +30,21 @@ Two roots:
 
 ## Layers of knowledge
 
+### Channel coordination and imported history
+
+The Showrunner leads the Channel conversation. It reuses the existing engine and queue, not a second agent service.
+Channel jobs have no episode and work from the studio root. Explicit conversation scope separates their messages and
+session reuse from episode work and brand onboarding. `_channel` is only a transport identifier, never an episode folder.
+The channel context is a bounded index of episodes, publication facts, active jobs, open decisions and costs.
+An episode task retains its episode ID and can reference a parent channel job. Its result returns to both scopes.
+Existing spending and publication gates still apply. Asking a question does not create an episode.
+
+`crewcut.import_history` reconciles imports offline, with a dry-run default, metadata backups and an audit.
+It separates historical production evidence, publication state, lifecycle and permission to execute work.
+Exact provider IDs can supersede stale legacy stage labels. A missing provider record does not prove non-publication.
+Importing and reconciliation never dispatch jobs, grant approvals or repeat uploads.
+Original creation time and import time remain separate. Imported cover previews are not thumbnail approval candidates.
+
 | Layer | Content | Owner |
 |---|---|---|
 | `skills/` and `tools/` | Know-how without taste: how to cut, check, render, upload | the app |

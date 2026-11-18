@@ -42,6 +42,19 @@ protect files that were already tracked. Publishing remains a separate owner-app
 
 See [the migration gap register](studio-import-gaps.md) for remaining product work and its acceptance checks.
 
+## Reconcile imported progress
+
+Run `python -m crewcut.import_history EPISODE` with `CREWCUT_STUDIO` set to the private studio.
+The default is a preview. Add `--evidence FILE.json` for an explicitly matched provider observation.
+Add `--apply` only after reviewing the proposed changes. Each change saves the previous project and an audit
+under the episode's `history-audit/` folder. Active episode jobs block the update.
+Use `--keep-progress` to update historical metadata without replacing steps or the current next action.
+
+An observation binds a YouTube `video_id` to one exact record, with `distribution` and `checked_at`.
+No title matching or network lookup occurs. Missing records and old schedules do not prove publication.
+Dates and historical completion remain separate from new approvals. Unknown work stays explicitly unverified.
+Reconciliation preserves later edits, starts no jobs and never publishes. Keep its evidence and audits private.
+
 ## Desktop profiles
 
 Installed desktop builds default to `CREWCUT_PROFILE=personal`, preserving existing data and login locations.

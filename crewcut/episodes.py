@@ -30,7 +30,7 @@ SHORT_STEPS = {
     "original": ["idea", "title", "proof", "script", "record", "edit", "thumbnail", "upload", "results"],
 }
 KINDS = ("episode", "short")
-STATUSES = ("open", "working", "waiting", "done", "skipped")
+STATUSES = ("open", "working", "waiting", "done", "skipped", "unknown")
 LIFECYCLES = ("active", "planned", "parked", "archived")
 FOLDERS = ("brief", "originals", "work", "audio", "broll", "graphics", "edit", "render", "review", "export")
 
@@ -169,11 +169,17 @@ def summary(episode: str, project: dict | None = None) -> dict:
         "kind": p.get("kind", "episode"),
         "steps": [{"id": s["id"], "n": i + 1, "label": s["label"], "status": st.get(s["id"], {}).get("status", "open")}
                   for i, s in enumerate(shown)],
-        "updated": max([v.get("at", "") for v in st.values()] + [p.get("created", "")]),
+        "updated": max([v.get("at") or "" for v in st.values()] +
+                       [p.get("created") or "", p.get("imported_at") or ""]),
+        "created": p.get("created"), "imported_at": p.get("imported_at"), "history": p.get("history"),
+        "history_conflicts": p.get("history_conflicts", []), "production": p.get("production", {}),
         "open_cards": int(open_cards), "next_action": p.get("next_action"),
     }
     stage = p.get("legacy", {}).get("stage")
-    if stage in ("published", "posted_by_polo"):
+    history = p.get("history") or {}
+    if history.get("distribution") in ("published", "scheduled", "uploaded"):
+        out["historical_status"] = history["distribution"]
+    elif not history and stage in ("published", "posted_by_polo"):
         out["historical_status"] = "published"
     elif stage in ("parked", "paused", "archived"):
         out["historical_status"] = stage

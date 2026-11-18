@@ -61,6 +61,39 @@ const thumbCard = card({
 });
 
 describe("the episode's media", () => {
+  it("shows an imported cover without offering a new thumbnail approval", async () => {
+    mockApi({
+      "GET /api/state": state({ episodes: [ep] }),
+      ...episodeRoutes(ep, [], []),
+      [`GET /api/episodes/${ep.id}/media`]: {
+        thumbnails: [], cut: null, scenes: null, gpu: null,
+        imported: true, cover_preview: "/api/files/example/work/cover-preview.jpg",
+      },
+    });
+    openAt(ep.id);
+    render(<App />);
+    expect(await screen.findByRole("img", { name: "Existing episode cover" })).toBeTruthy();
+    expect(screen.getByText("Reference preview, not a new thumbnail approval.")).toBeTruthy();
+    expect(screen.queryByText(/No pictures yet/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Use A" })).toBeNull();
+  });
+
+  it("shows publication instead of asking to record a published import", async () => {
+    const published = episode({ ...ep, history_conflicts: [{ source: "legacy/project.json:stage", stage: "draft" }], history: {
+      distribution: "published", source: "Synthetic provider record",
+      url: "https://youtu.be/example1234", published_at: "2026-01-01T12:00:00Z",
+    } });
+    mockApi({ "GET /api/state": state({ episodes: [published] }), ...episodeRoutes(published, [], []) });
+    openAt(published.id);
+    render(<App />);
+    expect(await screen.findByRole("link", { name: "View on YouTube" })).toBeTruthy();
+    expect(screen.queryByText(/Step.*of/)).toBeNull();
+    expect(screen.getByText("Production history")).toBeTruthy();
+    await userEvent.click(screen.getByText("History sources · 1 differences"));
+    expect(screen.getByText(/Source: Synthetic provider record/)).toBeTruthy();
+    expect(screen.getByText(/legacy\/project.json:stage: draft/)).toBeTruthy();
+  });
+
   it("opens scripts and browses imported folders without starting work", async () => {
     mockApi({
       "GET /api/state": state({ episodes: [ep] }),
@@ -235,6 +268,7 @@ describe("the Episodes home", () => {
   const needs = { ...ep, cover: "012.jpg", needs: { card: 31, kind: "thumbnail", title: "Pick a thumbnail", images: ["a.jpg", "b.jpg"] } };
 
   it("shows what needs you large, the long videos as thumbnails and the Shorts in 9:16", async () => {
+    window.location.hash = "#/episodes";
     mockApi({
       "GET /api/state": state({
         episodes: [needs, inWork, published, short],

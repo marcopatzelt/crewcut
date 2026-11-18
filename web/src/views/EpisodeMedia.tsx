@@ -485,9 +485,9 @@ export function EpisodeMediaPanels({ id }: { id: string }) {
   if (status === "error") {
     return <ErrorLine text={`Couldn't load the pictures of this episode. ${error ?? ""}`} onRetry={() => void reload()} />;
   }
-  const { thumbnails, cut, scenes, gpu } = media;
+  const { thumbnails, cut, scenes, gpu, cover_preview } = media;
   const moving = hasMotion(motion.motion) ? motion.motion : null;
-  const nothing = !thumbnails.length && !cut && !scenes && !gpu && !moving;
+  const nothing = !thumbnails.length && !cut && !scenes && !gpu && !moving && !cover_preview;
   if (nothing && motion.status === "loading") return <Loading label="Loading the pictures" />;
   const motionError =
     motion.status === "error" ? (
@@ -498,7 +498,7 @@ export function EpisodeMediaPanels({ id }: { id: string }) {
     return (
       <div className="media-empty">
         <SlateFigure state="idle" size={88} />
-        <p>No pictures yet. Thumbnails, the cut and renders show here as the crew makes them.</p>
+        <p>{media.imported ? "No local media imported. Browse the earlier files below; this does not mean the video is unfinished." : "No pictures yet. Thumbnails, the cut and renders show here as the crew makes them."}</p>
       </div>
     );
   }
@@ -509,6 +509,14 @@ export function EpisodeMediaPanels({ id }: { id: string }) {
   return (
     <>
       {thumbnails.length ? <ThumbnailPanel episode={id} thumbs={thumbnails} /> : null}
+      {!thumbnails.length && cover_preview ? (
+        <section className="section" aria-label="Existing cover preview">
+          <h2>Existing cover</h2>
+          <img className="imported-cover" src={cover_preview} alt="Existing episode cover" />
+          <p className="meta">Reference preview, not a new thumbnail approval.</p>
+          {!cut && media.imported ? <p className="meta">Local video file not imported. Earlier files may still be available below.</p> : null}
+        </section>
+      ) : null}
       {cut ? <CutPanel cut={cut} motion={moving?.pieces} /> : null}
       {moving ? <MotionPanel motion={moving} inCut={Boolean(cut)} /> : null}
       {motionError}

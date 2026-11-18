@@ -269,7 +269,7 @@ def test_missing_folders_give_nulls(client, eid, ep):
         if d.is_dir():
             shutil.rmtree(d)
     assert client.get(f"/api/episodes/{eid}/media").json() == {"thumbnails": [], "cut": None, "scenes": None,
-                                                                 "gpu": None}
+                                                                 "gpu": None, "cover_preview": None, "imported": False}
     s = episodes.summary(eid)
     assert s["needs"] is None and s["seconds"] is None
     assert client.get("/api/episodes/999-nothing/media").status_code == 404

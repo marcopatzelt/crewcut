@@ -56,7 +56,7 @@ describe("empty and error states", () => {
     openAt(ep.id);
     render(<App />);
     expect(await screen.findByRole("heading", { level: 1, name: "Local models on a phone" })).toBeTruthy();
-    expect(await screen.findByText("Say an idea below, or ask the Scout for three.")).toBeTruthy();
+    expect(await screen.findByText("Ask about this episode, or tell the crew what to change.")).toBeTruthy();
   });
 
   it("says that nothing runs and nothing costs money, with the money in quiet ink", async () => {
@@ -77,6 +77,7 @@ describe("empty and error states", () => {
   });
 
   it("says when the connection to the container is lost", async () => {
+    window.location.hash = "#/new";
     mockApi({ "GET /api/state": state() });
     render(<App />);
     await screen.findByText("No episodes yet. Say an idea below.");
@@ -136,6 +137,7 @@ describe("the steps and the shortcuts", () => {
   });
 
   it("folds the sidebar and the crew column with Ctrl+B and Ctrl+Alt+B", async () => {
+    window.location.hash = "#/new";
     mockApi({ "GET /api/state": state() });
     const { container } = render(<App />);
     await screen.findByText("No episodes yet. Say an idea below.");
@@ -257,6 +259,7 @@ describe("the command palette", () => {
   });
 
   it("switches the theme and closes with Escape", async () => {
+    window.location.hash = "#/new";
     mockApi({ "GET /api/state": state() });
     render(<App />);
     await screen.findByText("No episodes yet. Say an idea below.");
@@ -342,6 +345,7 @@ describe("the sample data of the README pictures (tests/web-sample, CI only)", (
   });
 
   it("the still scene of the README images: the home, then episode 012", async () => {
+    window.location.hash = "#/episodes";
     setBackend(createSampleBackend({ latency: 0 }));
     render(<App />);
     expect(await screen.findByRole("heading", { level: 1, name: "Episodes" })).toBeTruthy();

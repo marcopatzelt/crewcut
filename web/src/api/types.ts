@@ -1,12 +1,14 @@
 // Shapes from docs/api.md. Fields marked "optional extra" are read when present and never required.
 
-export type StepStatus = "open" | "working" | "waiting" | "done" | "skipped";
+export type StepStatus = "open" | "working" | "waiting" | "done" | "skipped" | "unknown";
 
 export interface Step {
   id: string;
   n: number;
   label: string;
   status: StepStatus;
+  note?: string | null;
+  evidence?: unknown;
 }
 
 export interface Identity {
@@ -33,8 +35,24 @@ export interface Source {
 }
 
 export interface Episode {
+  imported_at?: string | null;
+  history_conflicts?: Array<{
+    source?: string;
+    stage?: string;
+    visibility?: string;
+    note?: string;
+    other?: { source?: string; distribution?: string };
+  }>;
+  history?: {
+    distribution: "published" | "scheduled" | "uploaded" | "unknown";
+    url?: string | null;
+    published_at?: string | null;
+    scheduled_at?: string | null;
+    checked_at?: string | null;
+    source?: string | null;
+  };
   id: string;
-  historical_status?: "published" | "parked" | "paused" | "archived";
+  historical_status?: "published" | "scheduled" | "uploaded" | "parked" | "paused" | "archived";
   lifecycle?: "active" | "planned" | "parked" | "archived";
   title: string;
   step: string;
@@ -56,6 +74,8 @@ export interface Episode {
 
 /** GET /api/episodes/{id}/media: what the episode view shows first (thumbnails, the cut, 3D scenes, the GPU). */
 export interface EpisodeMedia {
+  cover_preview?: string | null;
+  imported?: boolean;
   thumbnails: MediaThumb[];
   cut: MediaCut | null;
   scenes: MediaScenes | null;
@@ -406,6 +426,7 @@ export interface PrompterControl {
 
 /** The pseudo-episode that holds the onboarding chat. It never appears in state.episodes. */
 export const ONBOARDING = "_onboarding";
+export const CHANNEL = "_channel";
 
 // ---------- motion graphics (docs/api.md "Motion cards" and "Motion") ----------
 

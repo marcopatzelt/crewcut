@@ -1,6 +1,6 @@
 // Everything that changes the store: boot, navigation, live events, sending, accepting, uploading.
 import { api, ApiError, connectEvents, type EventKind } from "../api/client";
-import { ONBOARDING, type Activity, type Card, type Episode, type Message, type Money, type State } from "../api/types";
+import { CHANNEL, ONBOARDING, type Activity, type Card, type Episode, type Message, type Money, type State } from "../api/types";
 import { FILTER_IDS, getUi, setUi, type Filter, type Thread, type UiState, type View } from "./store";
 
 export function messageOf(e: unknown): string {
@@ -12,6 +12,8 @@ export function messageOf(e: unknown): string {
 
 export function viewToHash(v: View): string {
   switch (v.kind) {
+    case "channel":
+      return "#/channel";
     case "episode":
       return v.id === ONBOARDING ? "#/onboarding" : `#/e/${encodeURIComponent(v.id)}`;
     case "new":
@@ -36,6 +38,7 @@ export function hashToView(hash: string): View | null {
   if (head === "e" && rest) return { kind: "episode", id: decodeURIComponent(rest) };
   if (head === "onboarding") return { kind: "episode", id: ONBOARDING };
   if (head === "new") return { kind: "new" };
+  if (head === "channel") return { kind: "channel" };
   if (head === "episodes") {
     const filter = (FILTER_IDS as readonly string[]).includes(rest) ? (rest as Filter) : undefined;
     return filter && filter !== "all" ? { kind: "episodes", filter } : { kind: "episodes" };
@@ -47,19 +50,16 @@ export function hashToView(hash: string): View | null {
   return null;
 }
 
-/** The start: the onboarding chat until the user is onboarded, then the Episodes home (or "New episode" when there
- *  is none yet). */
 function defaultView(state: State): View {
   if (!state.app.onboarded) return { kind: "episode", id: ONBOARDING };
-  return state.episodes[0] ? { kind: "episodes" } : { kind: "new" };
+  return { kind: "channel" };
 }
 
 export function navigate(v: View, opts: { replace?: boolean; fromHash?: boolean } = {}): void {
-  setUi((s) => ({
+  setUi({
     view: v,
     menuOpen: false,
-    lastEpisode: v.kind === "episode" ? v.id : s.lastEpisode,
-  }));
+  });
   if (!opts.fromHash && typeof window !== "undefined") {
     const h = viewToHash(v);
     if (window.location.hash !== h) {
@@ -69,6 +69,7 @@ export function navigate(v: View, opts: { replace?: boolean; fromHash?: boolean 
     }
   }
   if (v.kind === "episode") void loadThread(v.id);
+  else if (v.kind !== "new") void loadThread(CHANNEL);
 }
 
 export function onHashChange(): void {
@@ -249,7 +250,7 @@ export function upsertActivity(a: Activity): void {
 }
 
 export function upsertEpisode(e: Episode, first = false): void {
-  if (e.id === ONBOARDING) return;
+  if (e.id === ONBOARDING || e.id === CHANNEL) return;
   setUi((s) =>
     withState(s, (st) => {
       const i = st.episodes.findIndex((x) => x.id === e.id);
@@ -322,7 +323,7 @@ export async function loadThread(id: string, force = false): Promise<void> {
   const t = getUi().threads[id];
   if (t && !force && t.status !== "error") return;
   setThread(id, { status: "loading", error: null, messages: t?.messages ?? [] });
-  if (id !== ONBOARDING && !getUi().details[id]) {
+  if (id !== ONBOARDING && id !== CHANNEL && !getUi().details[id]) {
     api
       .episode(id)
       .then((d) => setUi((s) => ({ details: { ...s.details, [id]: d } })))
@@ -331,10 +332,10 @@ export async function loadThread(id: string, force = false): Promise<void> {
   try {
     const [messages, cards] = await Promise.all([api.messages(id), api.cards(id)]);
     for (const c of cards) upsertCard(c);
-    setThread(id, { status: "ready", error: null, messages: [] });
+    setThread(id, { status: "ready", error: null, messages: getUi().threads[id]?.messages ?? [] });
     addMessages(id, messages);
   } catch (e) {
-    setThread(id, { status: "error", error: messageOf(e), messages: t?.messages ?? [] });
+    setThread(id, { status: "error", error: messageOf(e), messages: getUi().threads[id]?.messages ?? [] });
   }
 }
 
@@ -342,24 +343,23 @@ export async function loadThread(id: string, force = false): Promise<void> {
 export function composerTarget(s: UiState = getUi()): string | null {
   const v = s.view;
   if (v.kind === "episode") return v.id;
-  if (s.state && !s.state.app.onboarded) return ONBOARDING;
   if (v.kind === "new") return null;
-  return s.lastEpisode;
+  return CHANNEL;
 }
 
 /** Sends one sentence. Throws on failure, so the composer keeps the text. */
-export async function send(text: string): Promise<void> {
-  const target = composerTarget();
+export async function send(text: string, target = composerTarget()): Promise<void> {
+  const origin = getUi().view;
   if (!target) {
     const ep = await api.createEpisode(text);
     upsertEpisode(ep, true);
-    navigate({ kind: "episode", id: ep.id });
+    if (getUi().view === origin) navigate({ kind: "episode", id: ep.id });
     await loadThread(ep.id, true);
     return;
   }
+  void loadThread(target);
+  if (target === CHANNEL && origin.kind !== "channel") navigate({ kind: "channel" });
   const msg = await api.say(target, text);
-  const v = getUi().view;
-  if (v.kind !== "episode" || v.id !== target) navigate({ kind: "episode", id: target });
   addMessages(target, [msg]);
 }
 

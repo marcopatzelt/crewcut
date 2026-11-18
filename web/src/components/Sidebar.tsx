@@ -1,7 +1,7 @@
 // The left side of the window (DESIGN.md rule 2): the places with their counts, the channel, and the crew dock with
 // Slate's faces at the bottom. In the episode view it shrinks to an icon rail, so the media have room.
 // Arrow up and down move between the places (rule 15).
-import { Clapperboard, Cpu, Palette, RectangleVertical, Users } from "lucide-react";
+import { Clapperboard, Cpu, MessageCircle, Palette, RectangleVertical, Users } from "lucide-react";
 import type { KeyboardEvent, ReactNode } from "react";
 import type { Activity, Identity } from "../api/types";
 import { countWord } from "../lib/format";
@@ -79,6 +79,7 @@ export function Sidebar({ compact }: { compact: boolean }) {
   const filter = view.kind === "episodes" ? view.filter ?? "all" : null;
 
   const places: Place[] = [
+    { id: "channel", label: "Channel", icon: <MessageCircle size={18} aria-hidden="true" />, to: { kind: "channel" }, on: (view) => view.kind === "channel" },
     {
       id: "episodes",
       label: "Episodes",

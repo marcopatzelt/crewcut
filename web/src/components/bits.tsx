@@ -64,10 +64,10 @@ export function Keys({ keys, className }: { keys: string[]; className?: string }
 export function Facts({ facts }: { facts: Fact[] }) {
   return (
     <dl className="facts">
-      {facts.map((f) => (
-        <div key={f.label}>
-          <dt>{f.label}</dt>
-          <dd>{f.value}</dd>
+      {facts.map((fact, index) => (
+        <div key={`${fact.label}:${fact.value}:${index}`}>
+          <dt>{fact.label}</dt>
+          <dd>{fact.value}</dd>
         </div>
       ))}
     </dl>

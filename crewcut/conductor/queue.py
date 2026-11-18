@@ -6,6 +6,7 @@ take the heavy lane themselves (lanes.py), so a render never competes with anoth
 
 from __future__ import annotations
 
+import json
 import os
 import threading
 import time
@@ -19,6 +20,36 @@ def add(episode: str | None, identity: str, step: str | None, task: str, kind: s
         parent: int | None = None, data: dict | None = None) -> int:
     if team.get(identity) is None:
         raise ValueError(f"unknown crew member {identity}")
+    from .. import channel, episodes
+    parent_job = get(parent) if parent else None
+    if parent_job and channel.is_channel(parent_job):
+        if not episode or episode.startswith("_") or not step:
+            raise ValueError("Channel child work needs an explicit episode and step.")
+        project = episodes.read(episode)
+        with db.conn() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            existing = connection.execute(
+                "SELECT * FROM jobs WHERE episode = ? AND step = ? "
+                "AND status IN ('queued','running','waiting') ORDER BY id LIMIT 1", (episode, step)).fetchone()
+            if existing:
+                existing_data = db.row(existing).get("data") or {}
+                existing_data["origin_scope"] = "channel"
+                connection.execute("UPDATE jobs SET data = ? WHERE id = ?",
+                                   (json.dumps(existing_data), existing["id"]))
+                connection.commit()
+                return existing["id"]
+            waiting = connection.execute(
+                "SELECT id FROM cards WHERE episode = ? AND step = ? AND status = 'open'", (episode, step)).fetchone()
+            if waiting or project.get("steps", {}).get(step, {}).get("status") in ("working", "waiting"):
+                raise ValueError("This episode step is already working or waiting for approval.")
+            child_data = {**(data or {}), "conversation_scope": "episode", "origin_scope": "channel"}
+            jid = connection.execute(
+                "INSERT INTO jobs (episode,identity,step,task,kind,heavy,parent,data,created,doing) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?)", (episode, identity, step, task, kind, int(heavy), parent,
+                                                json.dumps(child_data), db.now(), "Queued")).lastrowid
+            connection.commit()
+        events.emit("activity", episode=episode, identity=identity, text="queued", data=job_view(get(jid)))
+        return jid
     jid = db.insert("jobs", episode=episode, step=step, identity=identity, kind=kind, task=task, heavy=int(heavy),
                     status="queued", doing="Queued", created=db.now(), parent=parent, data=data or {})
     events.emit("activity", episode=episode, identity=identity, text="queued", data=job_view(get(jid)))
@@ -49,6 +80,8 @@ def job_view(j: dict) -> dict:
             "doing": j.get("doing") or "", "progress": j.get("progress"), "status": j["status"],
             "started": j.get("started"), "ended": j.get("ended"), "seconds": secs,
             "cost_usd": round(float(j.get("cost_usd") or 0), 4), "equiv_usd": round(float(j.get("equiv_usd") or 0), 4),
+            "scope": d.get("conversation_scope", "episode" if j["episode"] else "onboarding"),
+            "parent": j.get("parent"),
             "engine": d.get("engine"), "model": info.get("model"), "effort": d.get("effort"),
             "engine_version": info.get("claude_code_version"), "preview": media.job_preview(j)}
 
@@ -106,9 +139,14 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
     cwd = paths.episode_dir(j["episode"]) if j["episode"] else paths.studio_root()
     cwd.mkdir(parents=True, exist_ok=True)
     resume = data.get("resume") or {}
+    from .. import channel
+    channel_job = channel.is_channel(j)
+    if channel_job:
+        resume = {"engine": eng.name, "session": channel.resume(j["identity"], eng.name)}
     env = {"CREWCUT_STUDIO": str(paths.studio_root()), "CREWCUT_APP": str(paths.app_root()),
            "CREWCUT_EPISODE": j["episode"] or "", "CREWCUT_IDENTITY": j["identity"], "CREWCUT_JOB": str(j["id"]),
            **{str(k): str(v) for k, v in (ecfg.get("env") or {}).items()}}
+    env["CREWCUT_CONVERSATION_SCOPE"] = "channel" if channel_job else "episode" if j["episode"] else "onboarding"
     extra = [str(x) for x in (ecfg.get("extra_args") or [])] + [str(x) for x in (ident.get("extra_args") or [])]
     opts: dict = {}
     prompt, agent, with_identity = j["task"], None, True
@@ -144,7 +182,8 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
                 prompt += (f"\n\n---\nSkill `{s['name']}` {s['version']} (github.com/{s['repo']}, {s.get('license')}), "
                            f"use it where your step says so:\n\n{text}")
     task = engines.Task(
-        prompt=prompt, system=prompts.system_prompt(ident_for_prompt, j["episode"], j["step"], with_identity),
+        prompt=prompt, system=prompts.system_prompt(ident_for_prompt, j["episode"], j["step"], with_identity,
+                                                  conversation_scope=env["CREWCUT_CONVERSATION_SCOPE"]),
         cwd=cwd, env=env, model=model or None, effort=ident.get("effort") or None, agent=agent, extra_args=extra,
         resume=resume.get("session") if resume.get("engine") == eng.name else None,
         timeout_s=int(cfg.get("agent_timeout_minutes", 60)) * 60, log_path=paths.logs_dir() / f"job-{j['id']}.log",
@@ -152,6 +191,8 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
         name=None)
     from .. import crewtalk
     task.name = crewtalk.session_name(j["identity"], j["episode"])
+    if channel_job:
+        task.name = f"crewcut-channel-{j['identity']}"
     if eng.name == "claude" and j["episode"] and crewtalk.settings()["enabled"]:
         # reachable for Claude Code's own cross-session messages while it runs; notes kept for this start come along
         opts["settings"] = {"crossSessionInbound": "accept"}
@@ -199,13 +240,15 @@ def _run_agent(j: dict) -> None:
         status = "waiting"  # it proposed a card and stopped; the conductor wakes the owner on the answer
     data.update(engine=eng.name, session=res.session or data.get("session"), usage=res.usage or data.get("usage"),
                 agent=task.agent, effort=task.effort)
-    db.update("jobs", j["id"], status=status, ended=db.now(), equiv_usd=res.cost_usd, result=res.text[:4000],
+    db.update("jobs", j["id"], status=status, ended=db.now(), equiv_usd=res.cost_usd, result=engines.scrub(res.text)[:4000],
               data=data, doing=("Waiting for your answer" if status == "waiting" else
-                                "Done" if res.ok else f"Stopped: {res.error[:160]}"))
+                                "Done" if res.ok else f"Stopped: {engines.scrub(res.error)[:160]}"))
     events.emit("activity", episode=j["episode"], identity=j["identity"], data=job_view(get(j["id"])))
     rolled = versions.note_job(eng.name, res.ok, res.error, res.exit_code)
     if rolled and j["episode"]:
         flow.post(j["episode"], rolled)
+    elif rolled and data.get("conversation_scope") == "channel":
+        flow.post("_channel", rolled)
     flow.after_job(get(j["id"]), res)
 
 
@@ -215,23 +258,33 @@ def _run_tool(j: dict) -> None:
     log_path = paths.logs_dir() / f"job-{j['id']}.log"
     db.update("jobs", j["id"], status="running", started=db.now(), doing=j["task"][:200], log_path=str(log_path))
     env = {**os.environ, "CREWCUT_EPISODE": j["episode"] or "", "CREWCUT_IDENTITY": j["identity"],
-           "CREWCUT_JOB": str(j["id"])}
+           "CREWCUT_JOB": str(j["id"]),
+           "CREWCUT_CONVERSATION_SCOPE": (j.get("data") or {}).get("conversation_scope", "episode")}
     with open(log_path, "a", encoding="utf-8") as log:
         code = subprocess.call(["crewcut", *shlex.split(j["task"])], stdout=log, stderr=subprocess.STDOUT, env=env,
                                cwd=str(paths.studio_root()))
     db.update("jobs", j["id"], status="done" if code == 0 else ("waiting" if code == 3 else "failed"), ended=db.now(),
               doing="Done" if code == 0 else f"Exit {code}")
     events.emit("activity", episode=j["episode"], identity=j["identity"], data=job_view(get(j["id"])))
+    if (j.get("parent") or (j.get("data") or {}).get("conversation_scope") == "channel"
+            or (j.get("data") or {}).get("origin_scope") == "channel"):
+        from . import flow
+        flow.after_job(get(j["id"]), engines.RunResult(ok=code in (0, 3), exit_code=code,
+                                                      text="Waiting for approval." if code == 3 else "Done.",
+                                                      error=f"Exit {code}"))
 
 
 def _start(j: dict) -> None:
     try:
         (_run_agent if j["kind"] == "agent" else _run_tool)(j)
     except Exception as e:  # noqa: BLE001 - a crashed job must never take the worker down
-        db.update("jobs", j["id"], status="failed", ended=db.now(), doing=f"Crashed: {type(e).__name__}: {e}"[:200])
+        error = engines.scrub(str(e))
+        db.update("jobs", j["id"], status="failed", ended=db.now(), doing=f"Crashed: {type(e).__name__}: {error}"[:200])
         with open(paths.logs_dir() / f"job-{j['id']}.log", "a", encoding="utf-8") as log:
-            log.write(traceback.format_exc())
+            log.write(engines.scrub(traceback.format_exc()))
         events.emit("activity", episode=j["episode"], identity=j["identity"], data=job_view(get(j["id"])))
+        from . import flow
+        flow.after_job(get(j["id"]), engines.RunResult(ok=False, exit_code=1, error=error))
 
 
 class Worker:
@@ -242,8 +295,14 @@ class Worker:
     def recover(self) -> None:
         """After a restart, jobs that were running are interrupted; say so instead of pretending."""
         with db.conn() as c:
+            interrupted = db.rows(c.execute("SELECT * FROM jobs WHERE status = 'running'"))
             c.execute("UPDATE jobs SET status = 'failed', ended = ?, doing = 'Interrupted by a restart' "
                       "WHERE status = 'running'", (db.now(),))
+        from .. import channel
+        from . import flow
+        for job in interrupted:
+            if channel.is_channel(job) or job.get("parent") or (job.get("data") or {}).get("origin_scope") == "channel":
+                flow.after_job(job, engines.RunResult(ok=False, exit_code=1, error="Interrupted by a restart"))
 
     def maybe_update_engine(self) -> None:
         """Once a day, while nothing runs: bring in a newer engine version if it passes the smoke test."""
@@ -282,7 +341,19 @@ class Worker:
         if free <= 0:
             return
         with db.conn() as c:
-            queued = db.rows(c.execute("SELECT * FROM jobs WHERE status = 'queued' ORDER BY id LIMIT ?", (free,)))
+            candidates = db.rows(c.execute("SELECT * FROM jobs WHERE status = 'queued' ORDER BY id"))
+            running = db.rows(c.execute("SELECT * FROM jobs WHERE status = 'running'"))
+        from .. import channel
+        channel_busy = any(channel.is_channel(job) for job in running)
+        queued = []
+        for candidate in candidates:
+            if channel.is_channel(candidate):
+                if channel_busy:
+                    continue
+                channel_busy = True
+            queued.append(candidate)
+            if len(queued) >= free:
+                break
         for j in queued:
             db.update("jobs", j["id"], status="running", started=db.now(), doing="Starting")
             t = threading.Thread(target=_start, args=(get(j["id"]),), daemon=True, name=f"job-{j['id']}")

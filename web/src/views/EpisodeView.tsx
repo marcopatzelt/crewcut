@@ -15,6 +15,7 @@ import { jumpToStep, messageOf } from "../store/actions";
 import { EMPTY, useUi } from "../store/store";
 import { Avatar, SlateFigure } from "../slate/Slate";
 import { EpisodeMediaPanels } from "./EpisodeMedia";
+import "../styles/episode-history.css";
 
 const STATUS_WORD: Record<string, string> = {
   done: "done",
@@ -22,6 +23,7 @@ const STATUS_WORD: Record<string, string> = {
   waiting: "waiting for your yes",
   open: "not started",
   skipped: "switched off",
+  unknown: "not verified after import",
 };
 
 function stepTip(s: Step, cards: Card[]): string {
@@ -99,11 +101,17 @@ function EpisodeHead({ id }: { id: string }) {
   const n = episodeNumber(id);
   const short = (episode?.kind ?? detail?.kind) === "short";
   const seconds = episode?.seconds ?? detail?.seconds;
+  const history = episode?.history ?? detail?.history;
+  const conflicts = episode?.history_conflicts ?? detail?.history_conflicts ?? [];
+  const distributed = history && ["published", "scheduled", "uploaded"].includes(history.distribution);
+  const historical = Boolean(detail?.project.legacy);
+  const imported = episode?.imported_at ?? detail?.imported_at;
   const facts = [
     short ? null : n ? `Episode ${n}` : null,
     formatWords(detail?.project?.format, short),
     typeof seconds === "number" ? `${short ? "Clip" : "Cut"} ${clock(seconds)}` : null,
-    detail?.project?.created ? `Started ${ago(detail.project.created)}` : null,
+    detail?.project?.created ? `Started ${ago(detail.project.created)}` : imported ? `Imported ${ago(imported)}` : null,
+    distributed ? history.distribution === "published" ? "Published" : history.distribution === "scheduled" ? "Scheduled" : "Uploaded" : null,
   ].filter((x): x is string => Boolean(x));
   const crew = [...new Set(activity.filter((a) => a.episode === id && a.status !== "done" && a.status !== "failed" && a.status !== "cancelled").map((a) => a.identity))];
   return (
@@ -120,7 +128,24 @@ function EpisodeHead({ id }: { id: string }) {
           </div>
         ) : null}
       </div>
-      <StepStrip steps={steps} current={episode?.step ?? detail?.step} cards={cards} />
+      {distributed ? (
+        <section aria-label="Publication">
+          <p className="meta">{history.distribution === "published" ? "Published" : history.distribution === "scheduled" ? "Scheduled" : "Uploaded · visibility unverified"}
+            {history.published_at || history.scheduled_at ? ` · ${new Date(history.scheduled_at || history.published_at || "").toLocaleString()}` : ""}
+          </p>
+          {history.url && /^https:\/\/(www\.)?(youtube\.com|youtu\.be)\//.test(history.url) ? <a href={history.url} target="_blank" rel="noreferrer">View on YouTube</a> : null}
+          <details><summary>Production history</summary><StepStrip steps={steps} current={undefined} cards={cards} /></details>
+        </section>
+      ) : <StepStrip steps={steps} current={episode?.step ?? detail?.step} cards={cards} />}
+      {historical ? <p className="meta">Earlier work is historical evidence, not a new approval or instruction to start.</p> : null}
+      {history ? <details className="history-evidence">
+        <summary>History sources{conflicts.length ? ` · ${conflicts.length} differences` : ""}</summary>
+        <p className="meta">Source: {history.source ?? "Not recorded"}{history.checked_at ? ` · Checked ${new Date(history.checked_at).toLocaleString()}` : ""}</p>
+        {conflicts.length ? <ul>{conflicts.map((conflict, index) => <li key={index}>
+          {conflict.source ?? conflict.other?.source ?? "Earlier record"}: {conflict.stage ?? conflict.visibility ?? conflict.other?.distribution ?? "Different evidence"}.
+          {conflict.note ? ` ${conflict.note}` : " Kept for review, not used as current proof."}
+        </li>)}</ul> : null}
+      </details> : null}
       {crew.length ? (
         <span className="stack" aria-hidden="true">
           {crew.slice(0, 4).map((who) => (
@@ -146,7 +171,7 @@ function CrewChat({ id }: { id: string }) {
       <div className="chat-money">
         <MoneyLine episode={id} />
       </div>
-      <ChatPane id={id} empty="Say an idea below, or ask the Scout for three." />
+      <ChatPane id={id} empty="Ask about this episode, or tell the crew what to change." />
       <div className="chat-dock">
         <Composer />
       </div>
@@ -219,9 +244,14 @@ function EpisodeMaterial({ id }: { id: string }) {
 }
 
 export function EpisodeView({ id }: { id: string }) {
+  const [panel, setPanel] = useState<"media" | "chat">("media");
   const title = useUi((s) => s.state?.episodes.find((e) => e.id === id)?.title ?? s.details[id]?.title ?? id);
   return (
     <>
+      <nav className="episode-tabs" aria-label="Episode workspace" data-selected={panel}>
+        <button type="button" aria-pressed={panel === "media"} onClick={() => setPanel("media")}>Media and history</button>
+        <button type="button" aria-pressed={panel === "chat"} onClick={() => setPanel("chat")}>Episode chat</button>
+      </nav>
       <main className="main media-main" aria-label={title}>
         <div className="media-scroll">
           <EpisodeHead id={id} />

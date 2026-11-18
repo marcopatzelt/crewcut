@@ -18,6 +18,7 @@ import { PrompterButton } from "./PrompterPopover";
 export const SHORT_STARTED = "Short started. The Scout looks for passages.";
 
 const HERE: Record<string, string> = {
+  channel: "Channel",
   episodes: "Episodes",
   new: "New episode",
   profile: "Style pack",
@@ -58,19 +59,19 @@ function Crumbs() {
   const view = useUi((s) => s.view);
   const title = useEpisodeTitle();
   const current = viewName(view, title, true);
-  const top = view.kind === "episodes";
+  const top = view.kind === "channel";
   return (
     <nav className="crumbs" aria-label="Where you are">
       {top ? null : (
         <>
           <a
-            href="#/episodes"
+            href="#/channel"
             onClick={(e) => {
               e.preventDefault();
-              navigate({ kind: "episodes" });
+              navigate({ kind: "channel" });
             }}
           >
-            Episodes
+            Channel
           </a>
           <span aria-hidden="true">/</span>
         </>

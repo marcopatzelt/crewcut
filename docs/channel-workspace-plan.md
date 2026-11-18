@@ -1,8 +1,12 @@
 # Channel workspace and truthful imported progress
 
-Status: proposed implementation plan, 18 November 2026. No new channel UI is implemented by this document.
+Status: implemented, 18 November 2026. This document records the acceptance criteria and original findings.
 
-## Findings in the current code
+The channel conversation now has dedicated storage, endpoints and a central Showrunner workspace.
+Episode conversations remain separate. Imported previews and evidence-based historical progress are supported.
+Private reconciliation and installed-version verification are deployment steps, not automatic effects of a code update.
+
+## Findings before implementation
 
 - `web/src/store/actions.ts:composerTarget` routes non-episode pages to `lastEpisode` after onboarding.
   With no target, `send` creates an episode. A general channel question can therefore reach the wrong conversation.
@@ -138,7 +142,7 @@ Show episode links, targeted child jobs, visible progress and cancellable work.
 Test repeated requests, explicit target lists, empty/loading/error states, keyboard and small-screen layouts.
 Verify on the desktop window, not only in a full-width browser.
 Update `DESIGN.md`, `docs/architecture.md` and `docs/api.md` with the actual shipped contracts.
-Do not claim this proposed layout is already the current design contract.
+Keep the implemented layout and these design contracts in sync.
 
 ## Source and installed-version discipline
 
@@ -148,4 +152,4 @@ Record source revision, desktop revision and runtime image independently in the 
 "GitHub current" does not mean the installed desktop and runtime already use that revision.
 Display update state and a revision in the future settings/about view.
 Do not push private audits, channel data, credentials or recordings.
-Do not replace the personal running app during this planning task.
+Replace a personal running app only with the owner's agreement, after checking for active jobs.

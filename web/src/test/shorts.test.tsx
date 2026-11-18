@@ -18,6 +18,7 @@ const clipSteps = ["idea", "title", "edit", "thumbnail", "upload", "results"].ma
 
 describe("Shorts", () => {
   it("shows a clip with its source and only its six steps", async () => {
+    window.location.hash = "#/episodes";
     const short = episode({
       id: "005-clip",
       title: "Five models, one laptop",

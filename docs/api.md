@@ -52,11 +52,20 @@ them. The scan is bounded (300 folders, depth 4) and cached per folder until its
 | `POST /api/episodes` | `{"text": "an idea in one sentence"}` | the new episode; the Showrunner starts with the sentence |
 | `GET /api/episodes/{id}/messages?after=ID` | | `[{"id", "at", "author", "text", "card", "cite", "step", "preview", "facts"}]`; `author` is `user` or an identity id; `cite`, `preview` (a file in the episode) and `facts` (`[{"label", "value"}]`) are optional |
 | `POST /api/episodes/{id}/messages` | `{"text": "…"}` | the stored message; the Showrunner answers in later messages |
+| `GET /api/channel/messages?after=ID` | | channel history, independent of episode and onboarding histories |
+| `POST /api/channel/messages` | `{"text": "…"}` | stored channel message; Showrunner runs from the studio root without creating an episode |
+| `GET /api/channel/context` | | bounded episode index, active jobs, open decisions and costs |
 | `GET /api/files/{episode}/{path}` | | the file (video, image, text) for previews; only inside the episode folder |
 | `POST /api/episodes/{id}/upload` | multipart, field `file` (one or more) | `[{"path": "inbox/…", "size"}]`; recordings dropped into the chat land in `studio/inbox/<episode>/` and the Editor ingests them |
 | `GET /api/episodes/{id}/prompter` | | `{"url": "http://<lan-host>:4748/p/<token>", "qr_svg": "<svg …>"}` for the teleprompter on a phone |
 
 ## Episode media
+
+Imported episodes can include `history` with `distribution` (`published`, `scheduled`, `uploaded`, `unknown`),
+`source`, `checked_at`, `url`, `published_at` and `scheduled_at`. Optional `imported_at` is not a creation date.
+Steps may have `unknown` status: historical work not verified after import. This does not mean not started.
+The media response also includes `cover_preview` (safe local preview URL or null) and `imported` (boolean).
+These previews are independent of the approval candidates in `thumbnails`.
 
 `GET /api/episodes/{id}/media` (code: `crewcut/media.py`, UI types: `EpisodeMedia` in `web/src/api/types.ts`). It only
 reads the episode folder and the database. A missing folder or file gives `null` or an empty list, never an error; an

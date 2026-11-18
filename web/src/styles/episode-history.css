@@ -1,0 +1,45 @@
+.imported-cover {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  max-height: 420px;
+  object-fit: contain;
+  object-position: left center;
+  border-radius: var(--r-card);
+}
+
+.episode-tabs {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .episode-tabs {
+    display: flex;
+    gap: 12px;
+    padding: 12px 16px;
+  }
+
+  .episode-tabs button {
+    min-height: 44px;
+    padding: 8px 12px;
+    color: var(--ink);
+    background: var(--chip);
+    border: 1px solid var(--line);
+    border-radius: var(--r-ctl);
+  }
+
+  .episode-tabs button[aria-pressed="true"] {
+    font-weight: 600;
+    color: var(--chip-on-ink);
+    background: var(--chip-on);
+  }
+
+  .win-body:has(.episode-tabs[data-selected="chat"]) .media-main,
+  .win-body:has(.episode-tabs[data-selected="media"]) .chatcol {
+    display: none;
+  }
+
+  .app.crew-hidden .win-body:has(.episode-tabs[data-selected="chat"]) .chatcol {
+    display: flex;
+  }
+}

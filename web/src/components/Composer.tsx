@@ -2,8 +2,10 @@
 // Enter sends, Shift+Enter starts a new line, Ctrl/Cmd+Enter is left to "accept the open card".
 import { ArrowUp, Mic, MicOff } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { messageOf, send } from "../store/actions";
-import { useUi } from "../store/store";
+import { composerTarget, messageOf, send } from "../store/actions";
+import { getUi, setUi, useUi } from "../store/store";
+import { CHANNEL, ONBOARDING } from "../api/types";
+import "../styles/channel.css";
 
 interface Recognition {
   lang: string;
@@ -84,11 +86,22 @@ function useLevel(active: boolean) {
 }
 
 export function Composer() {
-  const onboarding = useUi((s) => s.state !== null && !s.state.app.onboarded);
+  const target = useUi(composerTarget);
+  return <ScopedComposer key={target ?? "_new"} target={target} />;
+}
+
+function ScopedComposer({ target }: { target: string | null }) {
+  const draftKey = target ?? "_new";
+  const onboarding = target === ONBOARDING;
+  const title = useUi((state) => state.state?.episodes.find((episode) => episode.id === target)?.title ?? state.details[target ?? ""]?.title ?? target);
+  const scope = onboarding ? "Style setup" : target === CHANNEL ? "Channel" : target === null ? "New episode" : `Episode: ${title}`;
   const ready = useUi((s) => s.boot === "ready");
-  const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const text = useUi((state) => state.drafts[draftKey] ?? "");
+  const busy = useUi((state) => state.sending[draftKey] ?? false);
+  const error = useUi((state) => state.sendErrors[draftKey]);
+  const setText = (value: string) => setUi((state) => ({ drafts: { ...state.drafts, [draftKey]: value } }));
+  const setBusy = (value: boolean) => setUi((state) => ({ sending: { ...state.sending, [draftKey]: value } }));
+  const setError = (value: string | null) => setUi((state) => ({ sendErrors: { ...state.sendErrors, [draftKey]: value } }));
   const [listening, setListening] = useState(false);
   const area = useRef<HTMLTextAreaElement>(null);
   const recognition = useRef<Recognition | null>(null);
@@ -108,13 +121,13 @@ export function Composer() {
 
   async function submit() {
     const value = text.trim();
-    if (!value || busy || !ready) return;
+    if (!value || getUi().sending[draftKey] || !ready) return;
     recognition.current?.stop();
     setBusy(true);
     setError(null);
     try {
-      await send(value);
-      setText("");
+      await send(value, target);
+      if (getUi().drafts[draftKey] === text) setText("");
     } catch (e) {
       setError(`Couldn't send. ${messageOf(e)}`);
     } finally {
@@ -163,6 +176,7 @@ export function Composer() {
 
   return (
     <>
+      <p className="composer-scope" id="composer-scope" title={scope}>{scope}</p>
       {error ? (
         <p className="composer-error" role="alert">
           {error}
@@ -186,6 +200,7 @@ export function Composer() {
         </label>
         <textarea
           id="composer"
+          aria-describedby="composer-scope"
           ref={area}
           rows={1}
           value={text}

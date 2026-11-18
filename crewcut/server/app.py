@@ -262,6 +262,23 @@ def create_app(start_worker: bool = True) -> FastAPI:
     def get_messages(eid: str, after: int = 0):
         return flow.messages(eid, after=after)
 
+    @app.get("/api/channel/messages")
+    def channel_messages(after: int = Query(0, ge=0), limit: int = Query(500, ge=1, le=500)):
+        return flow.messages("_channel", after=after, limit=limit)
+
+    @app.post("/api/channel/messages")
+    def channel_message(body: TextIn):
+        from .. import channel
+        try:
+            return channel.user_message(body.text)
+        except ValueError as error:
+            raise HTTPException(400, str(error)) from None
+
+    @app.get("/api/channel/context")
+    def channel_context():
+        from .. import channel
+        return channel.context()
+
     @app.post("/api/episodes/{eid}/messages")
     def post_message(eid: str, body: TextIn):
         text = body.text.strip()

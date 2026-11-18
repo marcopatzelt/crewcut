@@ -28,6 +28,7 @@ import { getUi, useUi } from "./store/store";
 import { Dock, EpisodeView, NewEpisodeView, OnboardingView } from "./views/EpisodeView";
 import { SlateFigure } from "./slate/Slate";
 import { Home } from "./views/Home";
+import { ChannelView } from "./views/ChannelView";
 import { JobLogView, ProfileView, RendersView, TeamView } from "./views/ReadOnlyViews";
 
 /** Ctrl/Cmd+Enter accepts the open card in view (rule 15): the lowest open card visible in the chat. */
@@ -163,6 +164,9 @@ function Body() {
   if (view.kind === "episode" && view.id !== ONBOARDING) return <EpisodeView key={view.id} id={view.id} />;
   let middle;
   switch (view.kind) {
+    case "channel":
+      middle = <ChannelView />;
+      break;
     case "episode":
       middle = <OnboardingView />;
       break;

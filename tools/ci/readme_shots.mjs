@@ -81,6 +81,7 @@ const browser = await chromium.launch();
 for (const theme of ["dark", "light"]) {
   await still(browser, theme, EPISODE, "crewcut");
   await still(browser, theme, "#/episodes", "crewcut-episodes");
+  await still(browser, theme, "#/channel", "crewcut-channel");
 }
 await animation(browser);
 await fetch(`${base}/__sample/reset`, { method: "POST" });

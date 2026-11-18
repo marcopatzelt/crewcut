@@ -3,13 +3,13 @@
 // the episode. It stays at the bottom while the user is there and leaves the scroll alone when they read further up.
 import { AlertCircle, Check, LoaderCircle } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
-import { ONBOARDING, type Card, type Episode, type Identity, type Message } from "../api/types";
+import { CHANNEL, ONBOARDING, type Card, type Episode, type Identity, type Message } from "../api/types";
 import { ErrorLine, Facts, identityOf, Loading, Media } from "./bits";
 import { Avatar, SlateFigure } from "../slate/Slate";
 import { CardItem } from "./CardView";
 import { ExchangeLine } from "./Exchange";
 import { ago, bytes, paragraphs } from "../lib/format";
-import { loadThread, uploadFiles } from "../store/actions";
+import { loadThread, uploadFiles, viewToHash } from "../store/actions";
 import { EMPTY, useUi, type UploadLine } from "../store/store";
 
 type Item = { at: string; key: string; message?: Message; card?: Card };
@@ -42,6 +42,12 @@ function IdentityMessage({
   fresh: boolean;
 }) {
   const who = identityOf(team, m.author);
+  const episodes = useUi((state) => state.state?.episodes ?? EMPTY);
+  const linked = episode === CHANNEL ? episodes.filter((item) =>
+    m.facts?.some((fact) => fact.label === "episode" && fact.value === item.id) ||
+    m.text.includes(item.id) || (item.title.length > 0 && m.text.includes(item.title)),
+  ).slice(0, 3) : [];
+  const facts = m.facts?.filter((fact) => fact.label !== "episode" || !linked.some((item) => item.id === fact.value));
   const step = m.step ? steps.find((s) => s.id === m.step) : undefined;
   return (
     <article className={fresh ? "msg is-new" : "msg"} aria-label={`${who.name}`} data-step={m.step ?? undefined}>
@@ -57,10 +63,13 @@ function IdentityMessage({
           ))}
         </div>
         {m.cite ? <p className="cite">{m.cite}</p> : null}
-        {m.preview || m.facts?.length ? (
-          <div className={m.preview && m.facts?.length ? "preview" : "preview solo"}>
+        {linked.length ? <nav className="channel-links" aria-label="Episodes in this reply">
+          {linked.map((item) => <a key={item.id} href={viewToHash({ kind: "episode", id: item.id })}>{item.title}</a>)}
+        </nav> : null}
+        {m.preview || facts?.length ? (
+          <div className={m.preview && facts?.length ? "preview" : "preview solo"}>
             {m.preview ? <Media episode={episode} path={m.preview} label={`Preview from ${who.name}`} /> : null}
-            {m.facts?.length ? <Facts facts={m.facts} /> : null}
+            {facts?.length ? <Facts facts={facts} /> : null}
           </div>
         ) : null}
       </div>
@@ -165,7 +174,7 @@ export function ChatPane({ id, head, empty }: { id: string; head?: ReactNode; em
   const byId = new Map(cards.map((c) => [c.id, c]));
   const items = timeline(messages, cards);
   const mine = uploads.filter((u) => u.episode === id);
-  const canDrop = id !== ONBOARDING;
+  const canDrop = id !== ONBOARDING && id !== CHANNEL;
   const isFresh = useFresh(thread?.status === "ready", items.map((i) => i.key), id);
 
   /** The open card when it is the newest item of the transcript, else null. */

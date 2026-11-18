@@ -41,8 +41,8 @@ light `mint-dawn`, the 1280 px versions on small screens) is the background of t
 
 | Place | Width at 1440 px | Holds |
 |---|---|---|
-| **Sidebar** (left) | 236 px, 64 px as an icon rail in an episode | the brand, the places with their counts (Episodes, Shorts, Crew, Style pack, GPU and renders), the channel, and the crew dock: Slate's faces overlapping, a mint ring on whoever works, one line ("Editor and Designer are working. Six rest until you ask.") |
-| **Main** (center) | the rest | the Episodes home, an episode's media, or a read-only page |
+| **Sidebar** (left) | 236 px, 64 px as an icon rail in an episode | Channel, Episodes, Shorts, Crew, Style pack, GPU and renders, the channel identity and the crew dock |
+| **Main** (center) | the rest | the Channel conversation, Episodes library, an episode's media, or a read-only page |
 | **Right column** | 318 px; the crew chat 372 px | on the home and the read-only pages: Working now and Spend. In an episode: the crew chat |
 
 - **Top bar:** breadcrumbs ("Episodes / 012"), a centred search field that opens the command palette (rule 15), and
@@ -50,7 +50,10 @@ light `mint-dawn`, the 1280 px versions on small screens) is the background of t
   the right-column toggle). No fake window buttons. In an app window it is the window's title bar: its empty parts
   move the window (`app-region: drag`), its controls and the search field do not (`no-drag`), and it keeps clear of
   the system's window buttons (`env(titlebar-area-*)`). The document title is "Crewcut · <view>".
-- **The Episodes home is the start view** (`#/episodes`). Title "Episodes" and one line ("Two need your yes.
+- **Channel is the start view** (`#/channel`) after onboarding. The Showrunner leads a central conversation about the whole channel.
+  Links open episodes without moving or merging their conversations. The right column shows real work and costs.
+  A general question never creates an episode. Only New episode does that. Read-only pages send to Channel, not the last episode.
+- **The Episodes library** (`#/episodes`). Title "Episodes" and one line ("Two need your yes.
   Everything else is moving."), "Import footage" (only when an episode takes footage: the newest one at the record or
   edit step) and "New episode". Filter pills (All, Needs you, In work, Long videos, Shorts, Published; a pill shows its
   count, empty ones hide; the selected one is filled with `--chip-on`, not the accent). Then three sections:
@@ -68,8 +71,11 @@ light `mint-dawn`, the 1280 px versions on small screens) is the background of t
 - Style pack, Crew, GPU and renders and a job log open in the main column as read-only pages. They have no edit
   controls: a change is a sentence to the agent. The composer floats at their foot.
 - Headlines are large and bold (rule 5), never italic; emphasis comes from weight.
-- Below 1200 px the sidebar is the icon rail everywhere. Below 900 px the parts stack in one scrolling column (main,
-  then the right column); the sidebar opens as a menu from the top bar.
+- Below 1200 px the sidebar is the icon rail everywhere. Below 900 px an episode has Media and history / Episode chat
+  switches. Only the selected panel is visible. Other views stack; the sidebar opens from the top bar.
+- Imported cover previews appear in episode detail without becoming thumbnail approval candidates. Published and
+  scheduled episodes lead with distribution status and a platform link, not an instruction to record again.
+  Historical steps live in Production history. Unknown means not verified after import, not not started.
 
 ## 3. Input
 
@@ -78,6 +84,8 @@ light `mint-dawn`, the 1280 px versions on small screens) is the background of t
 
 - The composer is the only text field in the app. Its placeholder says "Tell the crew what you want". It has a microphone button
   (browser speech input where available) and a send button.
+- Each composer names its scope: Channel or the episode title. Drafts stay with their conversation when navigating.
+  Sending and receiving after a navigation never changes the destination. Channel is separate from onboarding.
 - Two exceptions: the search field of the command palette (rule 15), which picks from a list and takes no values,
   and the one field of "Connect Claude" for the code Claude's own sign-in page shows (the only thing only the user
   can copy; it appears after the button and goes away once Claude is connected).

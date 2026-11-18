@@ -1,0 +1,79 @@
+.composer-scope {
+  color: var(--ink-2);
+  font-size: var(--t-meta);
+  margin: 0 12px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.channel-main .channel-head {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.channel-lead {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.channel-lead > div {
+  min-width: 0;
+}
+.channel-lead h1 {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
+.channel-label {
+  color: var(--ink-2);
+  font-size: var(--t-meta);
+}
+.chat-main .chat-scroll,
+.page-scroll {
+  padding-bottom: 136px;
+}
+.channel-main .thread {
+  width: 100%;
+  max-width: 780px;
+  margin-inline: auto;
+}
+.channel-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block: 12px;
+}
+.channel-links a,
+.channel-links button {
+  display: block;
+  max-width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--r-row);
+  background: var(--tile);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.channel-links span {
+  display: block;
+  color: var(--ink-2);
+  font-size: var(--t-meta);
+}
+@media (max-width: 899px) {
+  .channel-main {
+    height: calc(100dvh - var(--bar-h));
+    min-height: 0;
+    container-type: inline-size;
+  }
+  .channel-main .chat-scroll {
+    padding-bottom: 16px;
+  }
+  .channel-main .dock {
+    position: static;
+    flex-shrink: 0;
+    padding-top: 8px;
+  }
+}
+@media (max-width: 759px) {
+  .channel-links { flex-direction: column; }
+  .channel-main .thread { min-width: 0; }
+}

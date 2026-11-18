@@ -3,6 +3,7 @@
 // It answers the calls from docs/api.md with the fixtures and never runs anything.
 import { ApiError, type Backend, type EventHandler, type EventKind } from "../../web/src/api/client";
 import type { Activity, Card, Episode, EpisodeMedia, EpisodeMotion, Message, UploadResult } from "../../web/src/api/types";
+import { CHANNEL } from "../../web/src/api/types";
 import { SAMPLE_FILES, makeSample, shortSteps, steps } from "./fixtures";
 
 export { makeSample };
@@ -60,6 +61,20 @@ export function createSampleBackend(opts: { latency?: number; play?: boolean; ba
     if (method === "GET" && a === "team") return out(data.team);
     if (method === "GET" && a === "profile") return out(data.profile);
     if (method === "GET" && a === "money") return out({ ...data.state.money, rows: [] });
+
+    if (a === "channel" && b === "messages" && !c) {
+      if (method === "GET") {
+        const after = Number(q.get("after") ?? 0);
+        return out((data.messages[CHANNEL] ?? []).filter((message) => message.id > after));
+      }
+      if (method === "POST") {
+        const text = String((body as { text?: string } | undefined)?.text ?? "");
+        const message = addMessage(CHANNEL, "user", text);
+        emit("message", message);
+        reply(CHANNEL);
+        return out(message);
+      }
+    }
 
     if (a === "episodes") {
       if (method === "POST" && !b) {

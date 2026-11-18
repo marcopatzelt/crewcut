@@ -99,24 +99,19 @@ def read_project(source: Path) -> dict:
 
 
 def episode_project(source: Path, old: dict, has_script: bool) -> dict:
+    from .import_history import initialize
+
     short = source.name.startswith("S")
     title = old.get("title")
     readme = source / "LIESMICH.md"
     if not title and readme.is_file() and not readme.is_symlink():
         title = next((line.lstrip("# ").strip() for line in readme.read_text(encoding="utf-8").splitlines()
                       if line.startswith("# ")), None)
-    steps = {step["id"]: {"status": "open"} for step in STEPS}
-    for name in ("idea", "title"):
-        steps[name] = {"status": "done", "note": "Imported; not newly approved."}
-    for name in ("upload", "blog", "results"):
-        steps[name] = {"status": "skipped", "note": "Import never publishes or starts work."}
-    next_step = "record" if has_script else "script"
-    steps[next_step] = {"status": "waiting", "note": "Review imported material before continuing."}
+    steps = {step["id"]: {"status": "unknown"} for step in STEPS}
     project = {
         "id": source.name, "title": title or source.name,
-        "created": datetime.now(UTC).isoformat(), "format": "portrait" if short else "landscape",
-        "fps": 25, "kind": "short" if short else "episode", "steps": steps, "step": next_step,
-        "next_action": "Import prüfen. Keine Aufgabe startet automatisch. Veröffentlichungen bleiben ausgeschaltet.",
+        "imported_at": datetime.now(UTC).isoformat(), "format": "portrait" if short else "landscape",
+        "fps": 25, "kind": "short" if short else "episode", "steps": steps,
         "open_items": old.get("open_items", []), "prompter_token": secrets.token_urlsafe(12),
         "legacy": {"id": source.name, "stage": old.get("stage"), "next_action": old.get("next_action"),
                    "publication": old.get("publication"), "project": "legacy/project.json"},
@@ -124,7 +119,7 @@ def episode_project(source: Path, old: dict, has_script: bool) -> dict:
     if short:
         project.update(mode="original", source_episode=None, step_ids=SHORT_STEPS["original"])
         steps["blog"]["absent"] = True
-    return project
+    return initialize(project, source, old)
 
 
 def import_episode(source: Path, destination: Path) -> dict:
@@ -150,8 +145,12 @@ def import_episode(source: Path, destination: Path) -> dict:
     else:
         script = None
     old = read_project(source)
-    save_json(staging / "project.json", episode_project(source, old, bool(script)))
-    save_json(staging / "legacy-import.json", {"source": str(source), "files": records})
+    from .import_history import initialize
+
+    project = initialize(episode_project(source, old, bool(script)), staging, old)
+    save_json(staging / "project.json", project)
+    save_json(staging / "legacy-import.json", {"source": str(source), "files": records,
+                                              "imported_at": project["imported_at"]})
     (staging / "brief" / "IMPORT.md").write_text(
         f"# Imported: {source.name}\n\nEarlier material is in `legacy/`, with its original structure.\n"
         "Read `legacy/project.json`, `legacy/00-brief/` and `legacy/LIESMICH.md` when present.\n"
@@ -177,6 +176,8 @@ def library_files(source: Path) -> list[Path]:
 
 
 def expose_episode(target: Path) -> dict:
+    from .import_history import safe_file
+
     legacy = target / "legacy"
     old = read_project(legacy)
     marker = target / "legacy-visible.json"
@@ -185,10 +186,15 @@ def expose_episode(target: Path) -> dict:
     copied = []
     delivery = old.get("delivery") or {}
     for key, folder in (("preview", "export"), ("final", "export"), ("cover", "graphics/thumbnail")):
-        relative = Path((delivery.get(key) or "missing").split(" (", 1)[0])
+        value = delivery.get(key)
+        if isinstance(value, dict):
+            value = value.get("path")
+        relative = Path((value or "missing").split(" (", 1)[0])
         if relative.is_absolute() or ".." in relative.parts:
             continue
-        source = legacy / relative
+        source = safe_file(legacy, relative.as_posix())
+        if source is None:
+            continue
         destination = target / folder / source.name
         if source.is_file() and not source.is_symlink() and not destination.exists():
             copy_checked(source, destination)
@@ -196,20 +202,21 @@ def expose_episode(target: Path) -> dict:
     if not any((target / "export").iterdir()):
         candidates = [path for folder in ("08-export", "schnitt") for path in (legacy / folder).glob("*.mp4")
                       if path.name.startswith(target.name.split("-")[0] + "-")
-                      and any(word in path.name for word in ("preview", "final", "short"))]
+                      and any(word in path.name for word in ("preview", "final", "short"))
+                      and safe_file(legacy, path.relative_to(legacy).as_posix())]
         if candidates:
             source = max(candidates, key=lambda path: path.stat().st_mtime_ns)
             destination = target / "export" / source.name
             copy_checked(source, destination)
             copied.append(str(destination.relative_to(target)))
     readme = legacy / "LIESMICH.md"
-    if readme.is_file():
+    if safe_file(legacy, "LIESMICH.md"):
         destination = target / "brief" / "LEGACY-README.md"
         if not destination.exists():
             copy_checked(readme, destination)
     script = script_path(legacy)
     native_script = target / "brief" / "SCRIPT-v001.md"
-    if script and not native_script.exists():
+    if script and safe_file(legacy, script.relative_to(legacy).as_posix()) and not native_script.exists():
         copy_checked(script, native_script)
     index = ["# Earlier studio work", "", "Historical material, not new approvals or instructions to execute.", "",
              "Shared channel knowledge: /studio/library/video-studio/ and /studio/library/studio-rules/.", "",

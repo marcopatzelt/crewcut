@@ -3,6 +3,7 @@ import { useSyncExternalStore } from "react";
 import type { Card, EpisodeDetail, Message, State } from "../api/types";
 
 export type View =
+  | { kind: "channel" }
   | { kind: "episode"; id: string } // a real episode or the onboarding chat
   | { kind: "new" } // no episode selected: the composer starts one
   | { kind: "episodes"; filter?: Filter } // the home: all episodes and Shorts as media cards
@@ -37,8 +38,10 @@ export interface UiState {
   bootError: string | null;
   state: State | null;
   view: View;
-  /** The episode chat the composer talks to when a read-only view is open. */
-  lastEpisode: string | null;
+  lastEpisode: null;
+  drafts: Record<string, string>;
+  sending: Record<string, boolean>;
+  sendErrors: Record<string, string | null>;
   /** The channel name and picture from the style pack, when it has them (the sidebar's "Channel"). */
   channel: { name: string; avatar: string | null } | null;
   threads: Record<string, Thread>;
@@ -64,8 +67,11 @@ export function initialUi(): UiState {
     boot: "loading",
     bootError: null,
     state: null,
-    view: { kind: "new" },
+    view: { kind: "channel" },
     lastEpisode: null,
+    drafts: {},
+    sending: {},
+    sendErrors: {},
     channel: null,
     threads: {},
     cards: {},

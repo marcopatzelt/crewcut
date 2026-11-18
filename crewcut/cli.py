@@ -128,6 +128,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sy = sub.add_parser("say", help="a message in the main chat, from the running crew member")
     sy.add_argument("--episode")
+    sy.add_argument("--channel", action="store_true")
     sy.add_argument("--cite", help="one short line: the method and its source")
     sy.add_argument("--preview", help="a video or image in the episode to show under the message")
     sy.add_argument("--fact", action="append", default=[], help='a row of a small table: "Loudness=-14.1 LUFS"')
@@ -151,6 +152,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     ch = sub.add_parser("chat", help="print the recent chat of an episode")
     ch.add_argument("--episode")
+    ch.add_argument("--channel", action="store_true")
     ch.add_argument("--last", type=int, default=12)
 
     c = sub.add_parser("card", help="ask the user for one yes")
@@ -426,6 +428,15 @@ def _run(a) -> int:
             print(json.dumps(prompter.select_script(a.episode, a.file, a.partial)))
             return 0
     if a.cmd == "say":
+        facts = [{"label": fact.split("=", 1)[0].strip(), "value": fact.split("=", 1)[1].strip()}
+                 for fact in a.fact if "=" in fact]
+        channel_target = a.channel or (not a.episode and os.environ.get("CREWCUT_CONVERSATION_SCOPE") == "channel")
+        if channel_target:
+            if a.episode or a.to or a.preview:
+                print("Channel messages cannot use --episode, --to or --preview.", file=sys.stderr)
+                return 2
+            flow.post("_channel", a.text, author=_identity(), cite=a.cite, job=_job(), facts=facts or None)
+            return 0
         ep = _env_episode(a)
         if not ep:
             print("crewcut say: which episode? Use --episode.", file=sys.stderr)
@@ -448,7 +459,6 @@ def _run(a) -> int:
             else:
                 print(f"message #{m['id']} delivered: {a.to} continues its last session with it")
             return 0
-        facts = [{"label": f.split("=", 1)[0].strip(), "value": f.split("=", 1)[1].strip()} for f in a.fact if "=" in f]
         if a.preview:
             paths.inside(paths.episode_dir(ep), a.preview)
         flow.post(ep, a.text, author=_identity(), cite=a.cite, job=_job(), preview=a.preview, facts=facts or None)
@@ -461,8 +471,13 @@ def _run(a) -> int:
             events.emit("activity", episode=_env_episode(a), identity=_identity(), text=a.text)
         return 0
     if a.cmd == "chat":
-        ep = _env_episode(a)
-        for m in flow.messages(ep)[-a.last:]:
+        if a.channel and a.episode:
+            print("Choose --channel or --episode.", file=sys.stderr)
+            return 2
+        ep = "_channel" if a.channel or (not a.episode and os.environ.get("CREWCUT_CONVERSATION_SCOPE") == "channel") else _env_episode(a)
+        from . import channel
+        history = channel.recent(a.last) if ep == channel.TRANSPORT else flow.messages(ep)[-a.last:]
+        for m in history:
             who = "user" if m["author"] == "user" else m["author"]
             card = f" [card #{m['card']}]" if m.get("card") else ""
             print(f"{m['at']} {who}: {m['text']}{card}")
@@ -520,7 +535,11 @@ def _run(a) -> int:
         print(f"card #{card['id']} is open: {card['title']}")
         return 0
     if a.cmd == "job":
-        jid = queue.add(_env_episode(a), a.identity, a.step, a.task, heavy=a.heavy, parent=_job())
+        try:
+            jid = queue.add(_env_episode(a), a.identity, a.step, a.task, heavy=a.heavy, parent=_job())
+        except (ValueError, FileNotFoundError) as error:
+            print(str(error), file=sys.stderr)
+            return 3
         print(f"job #{jid} queued for {a.identity}")
         return 0
     if a.cmd == "brand":

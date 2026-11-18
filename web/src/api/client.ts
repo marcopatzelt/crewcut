@@ -1,4 +1,5 @@
 // The HTTP client for docs/api.md. Tests can put an in-memory backend in its place (setBackend); the app never does.
+import { CHANNEL } from "./types";
 import type {
   Activity,
   Card,
@@ -92,6 +93,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 }
 
 const enc = encodeURIComponent;
+const messagePath = (id: string) => id === CHANNEL ? "/api/channel/messages" : `/api/episodes/${enc(id)}/messages`;
 const encPath = (p: string) => p.split("/").map(enc).join("/");
 
 export const api = {
@@ -101,10 +103,10 @@ export const api = {
     request<ImportedFiles>("GET", `/api/episodes/${enc(id)}/imported-files?folder=${enc(folder)}&offset=${offset}`),
   createEpisode: (text: string) => request<Episode>("POST", "/api/episodes", { text }),
   messages: (id: string, after?: number) =>
-    request<Message[]>("GET", `/api/episodes/${enc(id)}/messages${after ? `?after=${after}` : ""}`),
-  say: (id: string, text: string) => request<Message>("POST", `/api/episodes/${enc(id)}/messages`, { text }),
+    request<Message[]>("GET", `${messagePath(id)}${after !== undefined ? `?after=${after}` : ""}`),
+  say: (id: string, text: string) => request<Message>("POST", messagePath(id), { text }),
   cards: (episode: string, status?: string) =>
-    request<Card[]>("GET", `/api/cards?episode=${enc(episode)}${status ? `&status=${enc(status)}` : ""}`),
+    episode === CHANNEL ? Promise.resolve<Card[]>([]) : request<Card[]>("GET", `/api/cards?episode=${enc(episode)}${status ? `&status=${enc(status)}` : ""}`),
   accept: (id: number, choice?: number) =>
     request<Card>("POST", `/api/cards/${id}/accept`, choice === undefined ? {} : { choice }),
   decline: (id: number, reason?: string) =>

@@ -25,8 +25,11 @@ def test_import_is_private_paused_and_repeatable(tmp_path):
     assert report["script"]
     assert (target / "brief" / "SCRIPT-v001.md").read_text() == "Recording text"
     assert project["kind"] == "short"
-    assert project["steps"]["upload"]["status"] == "skipped"
-    assert project["steps"]["record"]["status"] == "waiting"
+    assert project["steps"]["upload"]["status"] == "unknown"
+    assert project["steps"]["record"]["status"] == "unknown"
+    assert project["production"]["script"]["scope"] == "draft"
+    assert project["created"] is None
+    assert project["imported_at"]
     assert project["legacy"]["stage"] == "published"
     assert not (destination / ".crewcut" / "crewcut.db").exists()
     assert studio_import.import_episode(source, destination)["status"] == "already imported"
@@ -58,7 +61,7 @@ def test_no_script_is_not_claimed_done(tmp_path):
     source = tmp_path / "015-example"
     source.mkdir()
     project = studio_import.episode_project(source, {}, False)
-    assert project["steps"]["script"]["status"] == "waiting"
+    assert project["steps"]["script"]["status"] == "unknown"
     assert project["kind"] == "episode"
 
 
@@ -117,3 +120,27 @@ def test_delivery_reference_can_have_a_historical_description(tmp_path):
     studio_import.import_episode(source, destination)
     report = studio_import.expose_episode(destination / "episodes" / source.name)
     assert report["visible_media"] == ["export/final.mp4"]
+
+
+def test_expose_rejects_delivery_linked_parent(tmp_path):
+    source = source_episode(tmp_path)
+    (source / "project.json").write_text(json.dumps({"delivery": {"final": "external/final.mp4"}}))
+    destination = tmp_path / "private"
+    studio_import.import_episode(source, destination)
+    target = destination / "episodes" / source.name
+    outside = tmp_path / "external"
+    outside.mkdir()
+    (outside / "final.mp4").write_bytes(b"synthetic media")
+    (target / "legacy" / "external").symlink_to(outside, target_is_directory=True)
+    assert studio_import.expose_episode(target)["visible_media"] == []
+
+
+def test_exposes_structured_historical_delivery(tmp_path):
+    source = source_episode(tmp_path)
+    (source / "final.mp4").write_bytes(b"synthetic final")
+    (source / "project.json").write_text(json.dumps({"delivery": {"final": {
+        "path": "final.mp4", "accepted": True, "accepted_at": "2024-01-02T03:04:05Z"}}}))
+    destination = tmp_path / "private"
+    studio_import.import_episode(source, destination)
+    target = destination / "episodes" / source.name
+    assert studio_import.expose_episode(target)["visible_media"] == ["export/final.mp4"]

@@ -32,6 +32,7 @@ describe("loading", () => {
 describe("empty", () => {
   it("says there are no episodes and nobody is working", async () => {
     mockApi({ "GET /api/state": state() });
+    window.location.hash = "#/new";
     render(<App />);
     expect(await screen.findByText("No episodes yet. Say an idea below.")).toBeTruthy();
     const crew = screen.getByRole("complementary", { name: "Working now" });
@@ -406,7 +407,8 @@ describe("composer", () => {
     expect(screen.getByText(/Shorter intro/)).toBeTruthy();
   });
 
-  it("starts a new episode when none is selected", async () => {
+  it("starts a new episode only from New", async () => {
+    window.location.hash = "#/new";
     const created = episode({ id: "002-new", title: "Local models on a phone" });
     const calls = mockApi({
       "GET /api/state": state(),
@@ -444,6 +446,7 @@ describe("composer", () => {
 
   it("hides the microphone when the browser has no speech input", async () => {
     mockApi({ "GET /api/state": state() });
+    window.location.hash = "#/new";
     render(<App />);
     await screen.findByText("No episodes yet. Say an idea below.");
     expect(screen.queryByRole("button", { name: "Speak" })).toBeNull();

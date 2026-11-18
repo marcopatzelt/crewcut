@@ -45,6 +45,7 @@ function useCommands(): Command[] {
       };
     });
     list.push(
+      { id: "v-channel", group: "Views", label: "Show Channel", run: () => navigate({ kind: "channel" }) },
       { id: "v-episodes", group: "Views", label: "Show all episodes", run: () => navigate({ kind: "episodes" }) },
       { id: "v-shorts", group: "Views", label: "Show the Shorts", run: () => navigate({ kind: "episodes", filter: "shorts" }) },
       { id: "v-profile", group: "Views", label: "Show the style pack", meta: "profile", run: () => navigate({ kind: "profile" }) },

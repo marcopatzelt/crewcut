@@ -35,11 +35,13 @@ const DOING: Record<string, string> = {
 };
 
 export function isDone(e: Episode): boolean {
+  if (e.history && e.history.distribution !== "unknown") return e.history.distribution === "published";
   return (e.historical_status === "published" && e.lifecycle !== "active") ||
     e.steps.some((s) => s.id === "upload" && s.status === "done");
 }
 
 function isActive(e: Episode): boolean {
+  if (e.history && ["published", "scheduled", "uploaded"].includes(e.history.distribution)) return false;
   return e.lifecycle ? e.lifecycle === "active" : !e.historical_status;
 }
 
@@ -70,6 +72,9 @@ function metaOf(e: Episode): string {
 
 /** The quiet line under a thumbnail: published when, or the step in work. */
 function stateLine(e: Episode): string {
+  if (e.history?.distribution === "published") return e.history.published_at ? `Published ${ago(e.history.published_at)}` : "Published";
+  if (e.history?.distribution === "scheduled") return e.history.scheduled_at ? `Scheduled ${new Date(e.history.scheduled_at).toLocaleString()}` : "Scheduled";
+  if (e.history?.distribution === "uploaded") return "Uploaded · visibility unverified";
   if (e.lifecycle === "planned") return "Planned, not started";
   if (e.lifecycle === "parked") return "Parked until you resume";
   if (e.lifecycle === "archived") return "Archived";

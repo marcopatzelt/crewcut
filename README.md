@@ -42,7 +42,7 @@ subscription you already pay for, so the crew needs no API keys.
 You see who works on what, live. Every decision is one card with one button: no forms, no settings dialogs. Nothing is
 published, rented or paid for without your yes.
 
-> **Status: v0.1, pre-release.** Everything in this README is built and unit-tested, and the image is built and
+> **Status: v0.1, pre-release.** Except features marked *planned*, the work is built and unit-tested. The image is built and
 > smoke-tested in CI for amd64 and arm64, with real 2D, 3D and assembly renders. A full episode with real footage has
 > **not** run yet; that is the next step. What does not exist yet is marked *planned*. The pictures show sample data.
 
@@ -152,8 +152,28 @@ These are rules in the code, not settings a prompt can talk around.
 
 ## Meet the crew
 
+### Showrunner leads. The specialists make the episode.
+
 <p align="center">
-  <img src="docs/brand/crew/showrunner.svg" width="64" alt="Showrunner">
+  <img src="docs/brand/crew/showrunner.svg" width="160" alt="Showrunner, the central team lead">
+  <br><strong>Showrunner</strong><br>Channel plans → episode tasks → specialist work
+</p>
+
+Showrunner coordinates channel plans and episode tasks. It is the existing Showrunner, not a ninth crew member.
+The seven specialists work beneath this shared lead, each with its own role.
+
+**Channel conversation:** Showrunner connects the whole channel to focused episode work:
+
+1. **Channel chat:** ask what is ready or discuss what to make next, without choosing an episode.
+2. **Showrunner:** reviews the channel plan and assigns requested work to the relevant episode specialists.
+3. **Episode chat:** open an episode for its media, progress and specific changes.
+
+An ordinary channel question does not start a new episode. Paid actions and publishing still require your approval.
+See the [channel workspace plan](docs/channel-workspace-plan.md) for the design and approval boundaries.
+
+#### Episode specialists
+
+<p align="center">
   <img src="docs/brand/crew/scout.svg" width="64" alt="Scout">
   <img src="docs/brand/crew/writer.svg" width="64" alt="Writer">
   <img src="docs/brand/crew/editor.svg" width="64" alt="Editor">
@@ -169,7 +189,6 @@ with a check when it is done.
 
 | | Crew member | What it does | May |
 |---|---|---|---|
-| <img src="docs/brand/crew/showrunner.svg" width="56" alt=""> | **Showrunner** | Runs the episode through the ten steps and answers you in the chat. Shows you nothing unchecked | |
 | <img src="docs/brand/crew/scout.svg" width="56" alt=""> | **Scout** | Finds the topic in data, writes title and thumbnail text, runs the proof | |
 | <img src="docs/brand/crew/writer.svg" width="56" alt=""> | **Writer** | Writes the script in your voice | |
 | <img src="docs/brand/crew/editor.svg" width="56" alt=""> | **Editor** | Ingests your recordings, cuts the speaker, builds 2D and 3D, sound and assembly | rent a GPU, with your card |
