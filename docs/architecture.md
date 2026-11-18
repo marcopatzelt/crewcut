@@ -30,6 +30,14 @@ Two roots:
 
 ## Layers of knowledge
 
+### Computer media
+
+The native desktop media service discovers standard media folders and removable
+drives on demand. Agent requests use source IDs and relative paths through
+`crewcut media`; the desktop validates them and copies only media into the studio
+inbox. No host shell or whole-home mount is exposed. Both engines share this
+capability. See [desktop media](desktop-media.md).
+
 ### Research workspaces
 
 All crew members may use persistent `studio/workspaces/<name>/` projects for research, code and experiments.

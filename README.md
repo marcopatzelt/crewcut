@@ -174,6 +174,10 @@ See the [channel workspace plan](docs/channel-workspace-plan.md) for the design 
 In the desktop app, choose a monitor once in Teleprompter. The crew can then open the approved script there in
 full screen, without mouse control or starting a recording. See [desktop prompter](docs/desktop-prompter.md).
 
+The crew can also find footage in your computer's media folders and connected cards.
+Ask in chat to browse or import selected takes. **Media folders** connects another folder;
+source files stay untouched. See [computer media](docs/desktop-media.md).
+
 The crew can also research sources, write code and run experiments in persistent projects under your studio's
 `workspaces/` folder. These projects stay separate from Crewcut's code. Both Claude Code and Codex use them.
 See [research and coding projects](docs/workspaces.md). Desktop control and paid services are not granted by this.

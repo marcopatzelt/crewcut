@@ -1,5 +1,9 @@
 # From the recording to the speaker cut
 
+In the desktop app, the crew can browse computer media and connected cards with
+`crewcut media sources`, then copy selected takes before ingesting them. Additional
+folders connect through **Media folders** in Episodes. See [computer media](desktop-media.md).
+
 This page covers step 5 (`record`) and the first half of step 6 (`edit`): what to do before you record, how Crewcut
 saves and checks the files, how it finds what you said, and how it builds the speaker cut that the edit plan stands on.
 The agent rules for the same steps are in `skills/edit/references/record-to-cut.md`.

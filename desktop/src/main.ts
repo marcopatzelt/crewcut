@@ -16,6 +16,7 @@ import { startUpdates } from "./updater";
 import { applyTheme, createMainWindow, createSettingsWindow, guard, isMac, localApp, ownPage, themeNow } from "./window";
 import type { ThemeName } from "./theme";
 import { DesktopPrompter } from "./prompter";
+import { DesktopMedia, removableRoots } from "./media";
 
 if (process.platform === "linux" && process.env.WAYLAND_DISPLAY && process.env.DISPLAY &&
     !app.commandLine.hasSwitch("ozone-platform")) {
@@ -23,6 +24,7 @@ if (process.platform === "linux" && process.env.WAYLAND_DISPLAY && process.env.D
   app.exit(0);
 }
 let desktopPrompter: DesktopPrompter;
+let desktopMedia: DesktopMedia;
 
 const PROFILE = profileConfig(process.env.CREWCUT_PROFILE, app.getPath("userData"), homedir(), app.isPackaged);
 if (PROFILE.development) {
@@ -479,6 +481,14 @@ function registerIpc(): void {
   page("codex:wait", () => codexWait());
   page("signin:cancel", () => stopSignIn());
   page("prompter:displays", () => desktopPrompter.displays());
+  page("media:choose-folder", async () => {
+    const result = await dialog.showOpenDialog({ title: "Connect a media folder", properties: ["openDirectory"] });
+    if (result.canceled || !result.filePaths[0]) return { connected: false };
+    const folders = new Set(settings.get().mediaFolders ?? []);
+    folders.add(result.filePaths[0]);
+    settings.set({ mediaFolders: [...folders] });
+    return { connected: true };
+  });
   page("prompter:select", (_event, id: number) => desktopPrompter.select(id));
   page("prompter:open", (_event, episode: string) => desktopPrompter.open(episode));
   own("engine:disconnect", (_e, engine: "claude" | "codex") => disconnect(engine === "codex" ? "codex" : "claude"));
@@ -537,6 +547,13 @@ if (firstInstance) void app.whenReady().then(async () => {
   await initializeSecrets();
   settings = new SettingsFile(join(app.getPath("userData"), "settings.json"), homedir(), PROFILE.studioDir);
   desktopPrompter = new DesktopPrompter(settings, PORT, PROFILE.prompterPort);
+  desktopMedia = new DesktopMedia(() => settings.get().studioDir, async () => [
+    ...(["videos", "pictures", "music", "downloads", "desktop"] as const).map(name => ({ path: app.getPath(name), label: name })),
+    ...await removableRoots(process.platform, homedir()),
+    ...(settings.get().mediaFolders ?? []).map(path => ({ path, label: path.split(/[\\/]/).filter(Boolean).at(-1) ?? "Media folder" })),
+  ]);
+  const mediaPoll = setInterval(() => { void desktopMedia.poll().catch(error => log(`Media: ${String(error)}`)); }, 300);
+  mediaPoll.unref();
   const prompterPoll = setInterval(() => { void desktopPrompter.poll().catch(() => undefined); }, 1500);
   prompterPoll.unref();
   if (SHOTS) settings.set({ onboarded: false });

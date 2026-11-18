@@ -18,6 +18,7 @@ export interface Settings {
   onboarded: boolean;
   bounds?: Bounds;
   maximized?: boolean;
+  mediaFolders?: string[];
   prompterDisplay?: { id: number; label: string; width: number; height: number };
   /** What Claude Code said about the connected account (shown in the settings; never the token). */
   claude?: { email?: string; orgName?: string; at: string; where: "keychain" | "engine volume" };

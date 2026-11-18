@@ -2,11 +2,12 @@
 // as a 16:9 thumbnail, the Shorts in 9:16, filter pills on top. Pictures come first; the state is a line under the
 // picture, never on the thumbnail. A card opens its episode.
 import { Button } from "@astryxdesign/core/Button";
-import { Download, Plus } from "lucide-react";
+import { Download, FolderOpen, Plus } from "lucide-react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Activity, Episode, Identity } from "../api/types";
 import { StepBar, identityOf } from "../components/bits";
 import { ago, clock, countWord, episodeNumber } from "../lib/format";
+import { desktop } from "../lib/desktop";
 import { importFootage, navigate, newEpisode } from "../store/actions";
 import { EMPTY, useUi, type Filter } from "../store/store";
 import { Avatar, SlateFigure } from "../slate/Slate";
@@ -198,6 +199,19 @@ function ShortCard({ e }: { e: Episode }) {
   );
 }
 
+function MediaFoldersButton() {
+  const [message, setMessage] = useState("");
+  const bridge = desktop();
+  if (!bridge?.mediaChooseFolder) return null;
+  return <>
+    <Button label="Media folders" variant="secondary" icon={<FolderOpen size={16} aria-hidden="true" />}
+      tooltip="The crew can read your media folders and connected cards. Connect another folder."
+      onClick={() => { void bridge.mediaChooseFolder!().then(result => setMessage(result.connected ? "Folder connected. Ask the crew to find your footage." : ""))
+        .catch(() => setMessage("Could not connect the folder. Try again.")); }} />
+    {message ? <span className="meta" role="status">{message}</span> : null}
+  </>;
+}
+
 function ImportButton({ target }: { target: Episode }) {
   const input = useRef<HTMLInputElement>(null);
   return (
@@ -291,6 +305,7 @@ export function Home() {
             <p className="sub">{boot === "ready" ? headLine(episodes) : " "}</p>
           </div>
           <div className="home-actions">
+            <MediaFoldersButton />
             {target ? <ImportButton target={target} /> : null}
             <Button
               label="New episode"

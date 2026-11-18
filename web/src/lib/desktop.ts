@@ -3,6 +3,7 @@
 import type { ClaudeAccount } from "../api/types";
 
 export interface DesktopBridge {
+  mediaChooseFolder?(): Promise<{ connected: boolean }>;
   prompterDisplays?(): Promise<{ displays: Array<{ id: number; label: string; width: number; height: number }>; selected: number | null }>;
   prompterSelectDisplay?(id: number): Promise<void>;
   prompterOpen?(episode: string): Promise<{ ok: boolean; message: string }>;

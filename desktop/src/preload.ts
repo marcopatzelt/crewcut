@@ -10,6 +10,7 @@ const call = (channel: string, ...args: unknown[]) => ipcRenderer.invoke(channel
 
 const forPage = {
   platform: process.platform,
+  mediaChooseFolder: () => call("media:choose-folder"),
   prompterDisplays: () => call("prompter:displays"),
   prompterSelectDisplay: (id: number) => call("prompter:select", id),
   prompterOpen: (episode: string) => call("prompter:open", episode),
