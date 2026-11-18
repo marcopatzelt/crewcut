@@ -1,5 +1,16 @@
 # Prompter on a chosen screen
 
+Phone controls send only the changed setting. Progress reports send only position,
+so they cannot overwrite a newer pause, speed or reading-guide command. Writes
+stay in order; polling waits for each response and rejects reads started before
+a local command. The next read starts after 200 ms, without a fixed settling delay.
+
+For recording pauses, place `SCRIPT-v001.prompter.json` beside `SCRIPT-v001.md`.
+It contains `source_sha256` (the script's SHA-256) and a `paragraphs` array of strings.
+The prompter accepts this layout only when the source hash and the full sequence
+of words match. A changed script or wording falls back to the original paragraphs.
+This keeps the approved script intact while allowing shorter recording sections.
+
 The first spoken line starts at the reading guide. Moving the guide moves
 the text with it, preserving reading progress. The title sits above the script.
 

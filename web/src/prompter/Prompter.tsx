@@ -1,5 +1,5 @@
 // The teleprompter: the script in big letters on a phone. Tap or Space plays and pauses.
-// It follows /p/<token>/control every 500 ms, so the desktop or a second phone (?remote=1) can drive it.
+// Follow shared controls without allowing stale reads or progress reports to undo phone commands.
 import {
   FlipHorizontal2,
   List,
@@ -18,14 +18,14 @@ import type { PrompterControl, PrompterScript } from "../api/types";
 import { guidePercent, ReadingLine } from "./ReadingLine";
 
 export const DEFAULT_CONTROL: PrompterControl = { playing: false, speed: 1, position: 0, mirror: false, size: 1 };
-const POLL_MS = 500;
+const POLL_MS = 200;
 const SPEED = { min: 0.3, max: 3, step: 0.1 };
 const SIZE = { min: 0.6, max: 2, step: 0.1 };
 
 export interface PrompterSource {
   script(): Promise<PrompterScript>;
   getControl(): Promise<PrompterControl>;
-  setControl(c: PrompterControl): Promise<void>;
+  setControl(c: Partial<PrompterControl>): Promise<void>;
   /** false when nothing else follows this screen (a source without a server, as in the tests). */
   shared: boolean;
 }
@@ -39,6 +39,7 @@ export function tokenFromLocation(loc: Pick<Location, "pathname" | "search">): s
 
 export function httpSource(token: string): PrompterSource {
   const base = `/p/${encodeURIComponent(token)}`;
+  let writes = Promise.resolve();
   const json = async <T,>(res: Response): Promise<T> => {
     if (!res.ok) throw new Error(`The server answered ${res.status}.`);
     return (await res.json()) as T;
@@ -47,13 +48,17 @@ export function httpSource(token: string): PrompterSource {
     shared: true,
     script: () => fetch(`${base}/script`).then((r) => json<PrompterScript>(r)),
     getControl: () => fetch(`${base}/control`, { cache: "no-store" }).then((r) => json<PrompterControl>(r)),
-    setControl: async (c) => {
+    setControl: (c) => {
+      const sent = writes.then(async () => {
       const res = await fetch(`${base}/control`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(c),
       });
       if (!res.ok) throw new Error(`The server answered ${res.status}.`);
+      });
+      writes = sent.catch(() => undefined);
+      return sent;
     },
   };
 }
@@ -150,7 +155,8 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
   const scroller = useRef<HTMLDivElement>(null);
   const ctlRef = useRef(ctl);
   const lastSent = useRef<PrompterControl | null>(null);
-  const localAt = useRef(0);
+  const revision = useRef(0);
+  const pending = useRef(0);
   const failures = useRef(0);
   ctlRef.current = ctl;
   const modeRef = useRef(mode);
@@ -204,12 +210,14 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
   const change = useCallback(
     (patch: Partial<PrompterControl>) => {
       const next = { ...ctlRef.current, position: remote ? ctlRef.current.position : position(), ...patch };
+      ctlRef.current = next;
       setCtl(next);
       if ("position" in patch && !remote) jump(next.position);
-      localAt.current = Date.now();
+      revision.current += 1;
       if (source?.shared) {
         lastSent.current = next;
-        source.setControl(next).catch(() => setOffline(true));
+        pending.current += 1;
+        source.setControl(patch).catch(() => setOffline(true)).finally(() => { pending.current -= 1; });
       }
     },
     [jump, position, remote, source],
@@ -219,38 +227,41 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
   useEffect(() => {
     if (!source?.shared) return;
     let stop = false;
+    let timer: ReturnType<typeof setTimeout>;
     const tick = async () => {
       try {
+        if (pending.current) return;
+        const started = revision.current;
         const theirs = await source.getControl();
         failures.current = 0;
         setOffline(false);
-        if (stop) return;
+        if (stop || pending.current || started !== revision.current) return;
         const mine = ctlRef.current;
         const sent = lastSent.current;
-        const settling = Date.now() - localAt.current < 800;
-        if (!settling && (!sent || differs(theirs, sent))) {
+        if (!sent || differs(theirs, sent)) {
           const jumped = !sent || Math.abs(theirs.position - sent.position) > 0.005;
           setCtl({ ...theirs, position: jumped ? theirs.position : mine.position });
           if (jumped && !remote) jump(theirs.position);
           lastSent.current = theirs;
-        } else if (!remote && mine.playing && !settling) {
+        } else if (!remote && mine.playing) {
           // The playing screen reports where it is, so a remote shows the right place.
           const report = { ...mine, position: position() };
           if (!sent || Math.abs(report.position - sent.position) > 0.005) {
             lastSent.current = report;
-            await source.setControl(report);
+            await source.setControl({ position: report.position });
           }
         }
       } catch {
         failures.current += 1;
         if (failures.current >= 3) setOffline(true);
+      } finally {
+        if (!stop) timer = setTimeout(() => void tick(), POLL_MS);
       }
     };
     void tick();
-    const t = setInterval(() => void tick(), POLL_MS);
     return () => {
       stop = true;
-      clearInterval(t);
+      clearTimeout(timer);
     };
   }, [jump, position, remote, source]);
 

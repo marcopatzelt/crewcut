@@ -2,7 +2,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { PrompterControl, PrompterScript } from "../api/types";
-import { DEFAULT_CONTROL, Prompter, tokenFromLocation, type PrompterSource } from "../prompter/Prompter";
+import { DEFAULT_CONTROL, httpSource, Prompter, tokenFromLocation, type PrompterSource } from "../prompter/Prompter";
 
 const script: PrompterScript = {
   title: "Test script",
@@ -20,20 +20,49 @@ function source(over: Partial<PrompterSource> = {}): PrompterSource {
     script: async () => script,
     getControl: async () => control,
     setControl: async (c) => {
-      control = c;
+      control = { ...control, ...c };
     },
     ...over,
   };
 }
 
 describe("teleprompter", () => {
+  it("keeps rapid commands in order on a slow connection", async () => {
+    let finish!: (value: Response) => void;
+    const fetcher = vi.fn().mockImplementationOnce(() => new Promise<Response>(resolve => { finish = resolve; }))
+      .mockResolvedValue(new Response("{}"));
+    vi.stubGlobal("fetch", fetcher);
+    try {
+      const src = httpSource("synthetic");
+      const first = src.setControl({ guide: 35 });
+      const second = src.setControl({ guide: 37 });
+      await Promise.resolve();
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      finish(new Response("{}"));
+      await Promise.all([first, second]);
+      expect(fetcher.mock.calls.map(call => JSON.parse(call[1].body))).toEqual([{ guide: 35 }, { guide: 37 }]);
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it("ignores an older read that arrives after a phone command", async () => {
+    let finish!: (value: PrompterControl) => void;
+    const getControl = vi.fn().mockImplementation(() => new Promise<PrompterControl>(resolve => { finish = resolve; }));
+    const posted = vi.fn().mockResolvedValue(undefined);
+    render(<Prompter source={source({ shared: true, getControl, setControl: posted })} remote />);
+    await screen.findByRole("button", { name: "Move reading line down" });
+    fireEvent.click(screen.getByRole("button", { name: "Move reading line down" }));
+    fireEvent.click(screen.getByRole("button", { name: "Move reading line down" }));
+    await act(async () => { finish({ ...DEFAULT_CONTROL, guide: 33 }); });
+    expect(screen.getByLabelText("Reading line percent").textContent).toBe("37 %");
+    expect(posted).toHaveBeenLastCalledWith({ guide: 37 });
+  });
   it("moves the reading line from the phone without starting playback", async () => {
     const posted = vi.fn().mockResolvedValue(undefined);
     render(<Prompter source={source({ shared: true, setControl: posted })} remote />);
     fireEvent.click(await screen.findByRole("button", { name: "Move reading line down" }));
-    expect(posted).toHaveBeenLastCalledWith(expect.objectContaining({ guide: 35, playing: false }));
+    expect(posted).toHaveBeenLastCalledWith({ guide: 35 });
     fireEvent.click(screen.getByRole("button", { name: "Move reading line up" }));
-    expect(posted).toHaveBeenLastCalledWith(expect.objectContaining({ guide: 33, playing: false }));
+    expect(posted).toHaveBeenLastCalledWith({ guide: 33 });
     fireEvent.click(screen.getByRole("button", { name: "Reset line" }));
     expect(screen.getByLabelText("Reading line percent").textContent).toBe("33 %");
   });
@@ -67,12 +96,12 @@ describe("teleprompter", () => {
   });
 
   it("follows the shared control and posts its own changes", async () => {
-    const posted: PrompterControl[] = [];
+    const posted: Partial<PrompterControl>[] = [];
     const theirs: PrompterControl = { ...DEFAULT_CONTROL, mirror: true, speed: 1.5 };
     const src = source({
       shared: true,
       getControl: vi.fn(async () => theirs),
-      setControl: vi.fn(async (c: PrompterControl) => {
+      setControl: vi.fn(async (c: Partial<PrompterControl>) => {
         posted.push(c);
       }),
     });

@@ -1,6 +1,28 @@
+import hashlib
+import json
+
 import pytest
 
 from crewcut import db, episodes, paths, prompter
+
+
+def test_reading_layout_only_changes_paragraphs(tmp_path):
+    p = tmp_path / "script.md"
+    text = "One sentence. Another sentence.\n\nLast sentence."
+    p.write_text(text)
+    layout = p.with_suffix(".prompter.json")
+    data = {"source_sha256": hashlib.sha256(text.encode()).hexdigest(),
+            "paragraphs": ["One sentence.", "Another sentence.", "Last sentence."]}
+    layout.write_text(json.dumps(data))
+    assert len(prompter.reading_blocks(p)) == 3
+    assert p.read_text() == text
+    data["paragraphs"][0] = "Changed wording."
+    layout.write_text(json.dumps(data))
+    assert prompter.reading_blocks(p) == prompter.parse_script(text)
+    data["paragraphs"][0] = "One sentence."
+    data["source_sha256"] = "outdated"
+    layout.write_text(json.dumps(data))
+    assert prompter.reading_blocks(p) == prompter.parse_script(text)
 
 
 def test_reading_line_and_mirror_persist_without_starting_playback(crew):

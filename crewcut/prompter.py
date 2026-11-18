@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import math
@@ -98,6 +99,28 @@ def parse_script(text: str) -> list[dict]:
     return blocks
 
 
+def reading_blocks(p: Path) -> list[dict]:
+    """Optional paragraph-only layout, tied to the exact script and its words."""
+    text = p.read_text(encoding="utf-8")
+    blocks = parse_script(text)
+    layout = p.with_suffix(".prompter.json")
+    if layout.is_symlink() or not layout.is_file() or layout.stat().st_size > 1_000_000:
+        return blocks
+    try:
+        saved = json.loads(layout.read_text(encoding="utf-8"))
+        paragraphs = saved["paragraphs"]
+        if saved["source_sha256"] != hashlib.sha256(text.encode()).hexdigest():
+            return blocks
+        if not isinstance(paragraphs, list) or not paragraphs or not all(isinstance(s, str) and s.strip() for s in paragraphs):
+            return blocks
+        original = " ".join(b["text"] for b in blocks).split()
+        if " ".join(paragraphs).split() != original:
+            return blocks
+        return [{"text": s, "points": _points(s)} for s in paragraphs]
+    except (ValueError, KeyError, TypeError, OSError):
+        return blocks
+
+
 def script(episode: str) -> dict:
     p = script_file(episode)
     project = episodes.read(episode)
@@ -108,7 +131,7 @@ def script(episode: str) -> dict:
     selected = project.get("recording_script") or {}
     partial = selected.get("file") == relative and selected.get("partial", False)
     return {"title": project.get("title"), "mode": control(episode).get("mode", "full"),
-            "blocks": parse_script(p.read_text(encoding="utf-8")), "file": relative,
+            "blocks": reading_blocks(p), "file": relative,
             "note": "Partial script. The remaining sections are not ready." if partial else None}
 
 
