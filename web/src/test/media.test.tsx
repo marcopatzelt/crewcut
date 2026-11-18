@@ -61,6 +61,29 @@ const thumbCard = card({
 });
 
 describe("the episode's media", () => {
+  it("opens scripts and browses imported folders without starting work", async () => {
+    mockApi({
+      "GET /api/state": state({ episodes: [ep] }),
+      ...episodeRoutes(ep, [], []),
+      [`GET /api/episodes/${ep.id}`]: {
+        ...ep, project: { legacy: { stage: "draft" } },
+        files: [{ path: "brief/SCRIPT-v001.md", size: 12, kind: "text" }],
+      },
+      [`GET /api/episodes/${ep.id}/imported-files`]: ({ path }: { path: string }) => path.includes("folder=brief")
+        ? { folder: "brief", total: 1, entries: [{ path: "brief/older.txt", name: "older.txt", directory: false }] }
+        : { folder: "", total: 1, entries: [{ path: "brief", name: "brief", directory: true }] },
+    });
+    openAt(ep.id);
+    render(<App />);
+    const script = await screen.findByRole("link", { name: "SCRIPT-v001.md" });
+    expect(script.getAttribute("href")).toContain("download=true");
+    await userEvent.click(screen.getByRole("button", { name: "Browse imported files" }));
+    await userEvent.click(await screen.findByRole("button", { name: "brief/" }));
+    expect(await screen.findByRole("link", { name: "older.txt" })).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Back to parent folder" }));
+    expect(await screen.findByRole("button", { name: "brief/" })).toBeTruthy();
+  });
+
   it("shows the thumbnails, the cut with its notes, the 3D scenes and the rented GPU", async () => {
     mockApi({
       "GET /api/state": state({ episodes: [ep] }),

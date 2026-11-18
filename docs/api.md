@@ -27,6 +27,8 @@ the local machine can reach it. The teleprompter has its own port and a token (s
 `status` of a step: `open`, `working`, `waiting` (a card is open), `done`, `skipped`.
 
 Optional fields of an episode, for its card in the grid:
+- `historical_status`: `published`, `parked`, `paused` or `archived`, when explicitly recorded in imported metadata.
+  This affects display only. It does not grant upload approval or set current step statuses.
 - `cover`: URL of the newest thumbnail image, or `null`.
 - `needs`: the first open card with up to three small pictures, or `null`:
   `{"card": 41, "kind": "thumbnail", "title": "Thumbnail A, test B", "images": ["/api/files/…", "…"]}`. The pictures
@@ -46,6 +48,7 @@ them. The scan is bounded (300 folders, depth 4) and cached per folder until its
 |---|---|---|
 | `GET /api/episodes/{id}` | | episode as in `state.episodes[]` plus `project` (the raw `project.json`) and `files` (list of `{path, size, kind}` under `export/`, `graphics/`, `brief/`) |
 | `GET /api/episodes/{id}/media` | | what the episode view shows first: thumbnails, the cut, 3D scenes, the rented GPU (see "Episode media" below) |
+| `GET /api/episodes/{id}/imported-files?folder=&offset=0&limit=100` | | read-only directory listing under `legacy/`: `{folder, total, entries: [{path, name, directory, size?}]}`; at most 100 entries, no hidden files, excluded credential names or links |
 | `POST /api/episodes` | `{"text": "an idea in one sentence"}` | the new episode; the Showrunner starts with the sentence |
 | `GET /api/episodes/{id}/messages?after=ID` | | `[{"id", "at", "author", "text", "card", "cite", "step", "preview", "facts"}]`; `author` is `user` or an identity id; `cite`, `preview` (a file in the episode) and `facts` (`[{"label", "value"}]`) are optional |
 | `POST /api/episodes/{id}/messages` | `{"text": "…"}` | the stored message; the Showrunner answers in later messages |

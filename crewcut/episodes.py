@@ -156,6 +156,11 @@ def summary(episode: str, project: dict | None = None) -> dict:
         "updated": max([v.get("at", "") for v in st.values()] + [p.get("created", "")]),
         "open_cards": int(open_cards), "next_action": p.get("next_action"),
     }
+    stage = p.get("legacy", {}).get("stage")
+    if stage in ("published", "posted_by_polo"):
+        out["historical_status"] = "published"
+    elif stage in ("parked", "paused", "archived"):
+        out["historical_status"] = stage
     if out["kind"] == "short":
         out.update(mode=p.get("mode"), source_episode=p.get("source_episode"))
     out["cover"] = cover(p["id"])
@@ -190,6 +195,34 @@ def files(episode: str) -> list[dict]:
                         ".webp": "image", ".md": "text", ".json": "data", ".srt": "text"}.get(f.suffix.lower(), "file")
                 out.append({"path": str(f.relative_to(d)), "size": f.stat().st_size, "kind": kind})
     return out
+
+
+def imported_files(episode: str, folder: str = "", offset: int = 0, limit: int = 100) -> dict:
+    from .studio_import import EXCLUDED, permitted
+    root = paths.episode_dir(episode) / "legacy"
+    if root.is_symlink():
+        raise ValueError("Imported folders must not be links.")
+    relative = Path(folder)
+    if relative.is_absolute() or any(part.startswith(".") or part.lower() in EXCLUDED for part in relative.parts):
+        raise ValueError("Only imported material can be listed.")
+    current = root
+    for part in relative.parts:
+        current = current / part
+        if current.is_symlink():
+            raise ValueError("Imported folders must not be links.")
+    if not current.is_dir():
+        raise FileNotFoundError("Imported folder not found.")
+    entries = []
+    for item in current.iterdir():
+        if item.is_symlink() or item.name.startswith(".") or item.name.lower() in EXCLUDED:
+            continue
+        if item.is_dir():
+            entries.append({"path": item.relative_to(root).as_posix(), "name": item.name, "directory": True})
+        elif item.is_file() and permitted(item.relative_to(root)):
+            entries.append({"path": item.relative_to(root).as_posix(), "name": item.name,
+                            "directory": False, "size": item.stat().st_size})
+    entries.sort(key=lambda entry: (not entry["directory"], entry["name"].casefold()))
+    return {"folder": folder, "total": len(entries), "entries": entries[offset:offset + limit]}
 
 
 def by_prompter_token(token: str) -> str | None:

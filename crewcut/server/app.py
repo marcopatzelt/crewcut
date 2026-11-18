@@ -11,7 +11,7 @@ import shutil
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -210,6 +210,17 @@ def create_app(start_worker: bool = True) -> FastAPI:
             raise HTTPException(404, "No such episode.") from None
         return {**s, "project": episodes.read(eid), "files": episodes.files(eid)}
 
+    @app.get("/api/episodes/{eid}/imported-files")
+    def get_imported_files(eid: str, folder: str = "", offset: int = Query(0, ge=0),
+                           limit: int = Query(100, ge=1, le=100)):
+        try:
+            episodes.read(eid)
+            return episodes.imported_files(eid, folder, offset, limit)
+        except ValueError:
+            raise HTTPException(403, "Only imported folders can be listed.") from None
+        except FileNotFoundError:
+            raise HTTPException(404, "Imported folder not found.") from None
+
     @app.get("/api/episodes/{eid}/media")
     def get_media(eid: str):
         try:
@@ -312,7 +323,7 @@ def create_app(start_worker: bool = True) -> FastAPI:
         return {"url": url, "qr_svg": prompter.qr_svg(url)}
 
     @app.get("/api/files/{eid}/{rel:path}")
-    def get_file(eid: str, rel: str):
+    def get_file(eid: str, rel: str, download: bool = False):
         try:
             if eid == flow.ONBOARDING:
                 if not rel.startswith("brand/"):
@@ -324,6 +335,8 @@ def create_app(start_worker: bool = True) -> FastAPI:
             raise HTTPException(403, "Only files inside the episode can be shown.") from None
         if not p.is_file():
             raise HTTPException(404, "File not found.")
+        if download or p.suffix.lower() in {".html", ".htm", ".svg", ".js"}:
+            return FileResponse(p, filename=p.name, media_type="application/octet-stream")
         return FileResponse(p)
 
     # ---- cards ------------------------------------------------------------------------------------------------------

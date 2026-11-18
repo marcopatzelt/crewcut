@@ -157,6 +157,10 @@ Imported episodes may also contain `legacy/`, `legacy-import.json` and `legacy-v
 files and provenance without making old plans executable or old approvals current. Shared historical material lives
 under `studio/library/`. See [private studios](private-studio.md) for the import command and boundaries.
 
+The episode view offers script downloads and a read-only, paginated browser for imported folders. Historical publication
+and parked states appear separately from current step approvals. Download links use `?download=true`; active web files
+(HTML, SVG and JavaScript) are always attachments rather than executable pages on the studio origin.
+
 ```json
 {"id": "003-local-llms", "title": "Working title", "created": "2026-11-16T10:00:00Z", "format": "landscape", "fps": 25,
  "step": "script", "steps": {"idea": {"status": "done", "card": 4}}, "next_action": "…", "open_items": []}

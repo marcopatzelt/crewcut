@@ -17,8 +17,8 @@ State: implemented means tested locally, not published or installed as a new app
 | 06 | P0 / implemented | Ordinary episode import starts the next step. Bulk migration must not do that. | Separate offline importer starts no database jobs and disables upload; regression test verifies no database is created. |
 | 07 | P0 / partial | Source material can change during copying. Copies on one disk are not disaster recovery. | Copy checks source size/mtime and records hashes. Add a second-device backup and a verified restore. |
 | 08 | P1 / implemented | Multiple episodes, TXT recording scripts and older directory layouts are not covered by the ordinary importer. | Bulk copy preserves IDs, selects explicit/recording scripts, and records per-file manifests. |
-| 09 | P1 / partial | Historical finished/published/parked states differ from Crewcut's step states. | Preserve the old state without granting new approvals. Add native archived/parked states and an explicit resume action. |
-| 10 | P1 / partial | Imported files under legacy/ are not listed by the normal file browser. | Expose an index, scripts, previews and covers now; add a browsable, searchable imported-material view later. |
+| 09 | P1 / partial | Historical finished/published/parked states differ from Crewcut's step states. | Explicit historical published/parked/paused/archived states now affect display and exclude footage targets, without granting approvals. Native lifecycle and explicit resume remain open. |
+| 10 | P1 / partial | Imported files under legacy/ were not available in the episode view. | Added script downloads and a paginated, read-only folder browser, with traversal/link tests. Full-content search remains open. |
 | 11 | P1 / partial | Video selection by filename/mtime can pick the wrong preview. | Prefer explicit delivery references; let users choose among versions, with duration, approval and missing-file indicators. |
 | 12 | P1 / open | Old plans refer to absolute paths, other episodes and older rendering tools. | Relocate references and validate each supported plan format. Never execute archived plans automatically. |
 | 13 | P1 / open | Original media is preserved but lacks native ingestion records and recording/take associations. | Register imported media and checksums without starting transcription; show missing external originals. |
@@ -36,10 +36,26 @@ State: implemented means tested locally, not published or installed as a new app
 | 25 | P2 / unverified | Music generation, cue placement and mix preferences have not been migrated as an executable workflow. | Generalize episode-specific scripts and confirm ducking, peaks and final listening review. |
 | 26 | P2 / open | External publication packages, captions and thumbnails can live outside the old studio. | Inventory external references and copy only user-authorized assets; do not access credentials. |
 | 27 | P2 / partial | YouTube code exists, but desktop connection and account setup are not proven for this migration. | User performs sign-in; test a read-only channel check first. No uploads during import. |
-| 28 | P2 / open | Blog and long-video results steps are marked planned in the episode workflow. | Specify and implement separately; do not infer parity from Shorts results helpers. |
+| 28 | P2 / partial scope | Blog is excluded from this migration implementation pending clarification of the owner's dictation. Long-video results remain planned. | Do not infer results parity from Shorts helpers. No blog implementation in this work. |
 | 29 | P2 / open | Historical analytics, comments and A/B decisions are not normalized to current data structures. | Add provenance-preserving import and read-only display before making new decisions from them. |
 | 30 | P2 / unverified | Historical cost records do not have reliable mappings to current jobs. | Keep as historical evidence; never add them to current bills without a reviewed mapping. |
 | 31 | P2 / open | Personal feedback and product bug reports lack a dedicated privacy-safe handoff. | Keep personal notes in the studio; reproduce issues with synthetic data, then fix and test public code once. |
 
 No release, upload or paid generation is part of migration. A copied file is not a tested conversion, approval or
 permission to publish. Track private project-specific omissions in the studio, not in this public register.
+
+## Follow-up audit evidence
+
+- Editing checks are not absent: `skills/cut-check/scripts/cut_check.py` and `style_check.py` already cover word rests,
+  doubled words, take changes, speaker flashes, empty/still graphics, colour measurement, music rights, output freshness,
+  loudness and shown-file checks. Tests live in `tests/skills/test_cut_check.py`, `test_style_check.py` and `tests/cut/`.
+  This establishes code coverage, not equivalence on a user's real recordings or a completed listening review.
+- Music assembly is generalized in `crewcut/render/music.py`; an episode-specific legacy generation script is still
+  historical evidence, not a tested portable generator. No paid generation or listening approval was performed.
+- YouTube upload, captions, thumbnails and retention have implementation paths. `skills/upload/SKILL.md` still marks
+  long-video analytics, playlist insertion and live package verification as planned. Do not claim these are finished.
+- The local Python, web and desktop suites passed during this follow-up. A synthetic browser smoke test opened the
+  script list and an imported subfolder. This was not a test of the installed personal desktop app or real publication.
+- A redacted Git-history secret scan inspected 162 commits without findings. This does not certify working files,
+  external data, downloaded credentials, example-pack licensing or the next release.
+- The installed personal runtime has not been replaced. No new program version has been pushed as part of this follow-up.

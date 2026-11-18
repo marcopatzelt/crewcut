@@ -51,6 +51,31 @@ def test_files_stay_inside_the_episode(client, studio):
     assert client.get(f"/api/files/{eid}/brief/BRIEF.md").status_code == 200
 
 
+def test_imported_files_are_bounded_and_read_only(client, studio):
+    eid = client.post("/api/episodes", json={"text": "Imported example"}).json()["id"]
+    root = studio / "episodes" / eid / "legacy"
+    root.mkdir()
+    (root / "brief").mkdir()
+    (root / "brief" / "script.txt").write_text("Earlier script")
+    (root / "token.json").write_text("synthetic excluded value")
+    (root / "outside").symlink_to(studio, target_is_directory=True)
+    (root / "page.html").write_text("<script>notExecuted()</script>")
+    url = f"/api/episodes/{eid}/imported-files"
+    result = client.get(url, params={"limit": 1}).json()
+    assert result["total"] == 2
+    assert result["entries"][0]["path"] == "brief"
+    assert client.get(url, params={"folder": "brief"}).json()["entries"][0]["name"] == "script.txt"
+    for folder in ("..", "/tmp", "outside", ".crewcut"):
+        assert client.get(url, params={"folder": folder}).status_code == 403
+    assert client.get(url, params={"limit": 101}).status_code == 422
+    assert client.get(url, params={"offset": -1}).status_code == 422
+    response = client.get(f"/api/files/{eid}/legacy/page.html")
+    assert response.headers["content-disposition"].startswith("attachment;")
+    response = client.get(f"/api/files/{eid}/legacy/brief/script.txt?download=true")
+    assert response.text == "Earlier script"
+    assert response.headers["content-disposition"].startswith("attachment;")
+
+
 def test_prompter_needs_the_token(client):
     eid = client.post("/api/episodes", json={"text": "A topic"}).json()["id"]
     info = client.get(f"/api/episodes/{eid}/prompter").json()

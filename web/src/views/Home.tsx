@@ -14,7 +14,7 @@ import { Avatar, SlateFigure } from "../slate/Slate";
 const FILTERS: { id: Filter; label: string; test: (e: Episode) => boolean }[] = [
   { id: "all", label: "All", test: () => true },
   { id: "needs", label: "Needs you", test: (e) => e.open_cards > 0 },
-  { id: "work", label: "In work", test: (e) => !isDone(e) },
+  { id: "work", label: "In work", test: (e) => !isDone(e) && !e.historical_status },
   { id: "long", label: "Long videos", test: (e) => e.kind !== "short" },
   { id: "shorts", label: "Shorts", test: (e) => e.kind === "short" },
   { id: "done", label: "Published", test: (e) => isDone(e) },
@@ -35,7 +35,7 @@ const DOING: Record<string, string> = {
 };
 
 export function isDone(e: Episode): boolean {
-  return e.steps.some((s) => s.id === "upload" && s.status === "done");
+  return e.historical_status === "published" || e.steps.some((s) => s.id === "upload" && s.status === "done");
 }
 
 function current(e: Episode) {
@@ -45,7 +45,7 @@ function current(e: Episode) {
 /** The episode that takes footage now: the newest long video in work at the record or the edit step. */
 export function footageTarget(episodes: readonly Episode[]): Episode | undefined {
   return [...episodes]
-    .filter((e) => e.kind !== "short" && !isDone(e) && (e.step === "record" || e.step === "edit"))
+    .filter((e) => e.kind !== "short" && !isDone(e) && !e.historical_status && (e.step === "record" || e.step === "edit"))
     .sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated))[0];
 }
 
@@ -65,6 +65,9 @@ function metaOf(e: Episode): string {
 
 /** The quiet line under a thumbnail: published when, or the step in work. */
 function stateLine(e: Episode): string {
+  if (e.historical_status === "published") return "Published in earlier studio";
+  if (e.historical_status === "parked" || e.historical_status === "paused") return "Paused in earlier studio";
+  if (e.historical_status === "archived") return "Archived in earlier studio";
   if (isDone(e)) return `Published ${ago(e.updated)}`;
   const step = current(e);
   return step ? `In work, step ${step.n} of ${e.steps.length}` : "In work";

@@ -34,6 +34,7 @@ export interface Source {
 
 export interface Episode {
   id: string;
+  historical_status?: "published" | "parked" | "paused" | "archived";
   title: string;
   step: string;
   steps: Step[];
@@ -129,6 +130,12 @@ export interface EpisodeDetail extends Episode {
     [key: string]: unknown;
   };
   files: FileEntry[];
+}
+
+export interface ImportedFiles {
+  folder: string;
+  total: number;
+  entries: { path: string; name: string; directory: boolean; size?: number }[];
 }
 
 export type JobStatus = "queued" | "running" | "waiting" | "done" | "failed" | "cancelled";

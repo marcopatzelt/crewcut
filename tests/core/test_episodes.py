@@ -1,3 +1,5 @@
+import pytest
+
 from crewcut import episodes
 
 
@@ -22,3 +24,18 @@ def test_slug_and_bad_ids():
     from crewcut import paths
     with pytest.raises(ValueError):
         paths.episode_dir("../x")
+
+
+@pytest.mark.parametrize("stage,expected", [
+    ("published", "published"), ("posted_by_polo", "published"),
+    ("parked", "parked"), ("paused", "paused"), ("archived", "archived"),
+    ("final_ready", None), ("awaiting_original", None),
+])
+def test_historical_status_does_not_grant_upload_approval(crew, stage, expected):
+    project = episodes.create("Imported example")
+    project["legacy"] = {"stage": stage}
+    project["steps"]["upload"] = {"status": "skipped"}
+    episodes.write(project["id"], project)
+    summary = episodes.summary(project["id"])
+    assert summary.get("historical_status") == expected
+    assert episodes.read(project["id"])["steps"]["upload"]["status"] == "skipped"

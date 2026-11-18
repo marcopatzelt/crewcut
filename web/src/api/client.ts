@@ -9,6 +9,7 @@ import type {
   EpisodeMedia,
   EpisodeMotion,
   Identity,
+  ImportedFiles,
   JobLog,
   Message,
   Money,
@@ -96,6 +97,8 @@ const encPath = (p: string) => p.split("/").map(enc).join("/");
 export const api = {
   state: () => request<State>("GET", "/api/state"),
   episode: (id: string) => request<EpisodeDetail>("GET", `/api/episodes/${enc(id)}`),
+  importedFiles: (id: string, folder: string, offset: number) =>
+    request<ImportedFiles>("GET", `/api/episodes/${enc(id)}/imported-files?folder=${enc(folder)}&offset=${offset}`),
   createEpisode: (text: string) => request<Episode>("POST", "/api/episodes", { text }),
   messages: (id: string, after?: number) =>
     request<Message[]>("GET", `/api/episodes/${enc(id)}/messages${after ? `?after=${after}` : ""}`),

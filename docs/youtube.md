@@ -89,9 +89,10 @@ own slope around it. Code: `crewcut/youtube/analytics.py`.
 
 ## Honest limits
 
-- **Unverified projects:** Google locks videos uploaded through an API project that has not passed Google's audit to
-  **private**. With your own test project this is expected; you can publish the uploaded video yourself in YouTube Studio,
-  or apply for the audit. A shared verified project for all Crewcut users is planned.
-- **Quota:** an upload costs a large part of the default daily quota (10,000 units). One channel is fine.
+- **Visibility:** Google's current [upload reference](https://developers.google.com/youtube/data/reference/rest/v3/videos/insert)
+  no longer restricts unverified API projects to private uploads. Omitting visibility can default to public at Google;
+  Crewcut explicitly defaults to private and still requires a publish card. Check the returned visibility after upload.
+- **Quota:** limits are project-specific. The current upload reference lists a separate Video Uploads quota bucket;
+  check the project's Google Cloud quotas rather than assuming the older shared 10,000-unit allowance.
 - **Custom thumbnails** need a verified channel (phone verification in YouTube).
 - The upload path is written and unit-tested; an upload against a real channel has **not** been run yet.

@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { App } from "../App";
 import { getUi } from "../store/store";
+import { footageTarget } from "../views/Home";
 import { episode, episodeRoutes, mockApi, resetApp, state } from "./helpers";
 
 beforeEach(() => {
@@ -12,6 +13,21 @@ beforeEach(() => {
 });
 
 describe("the episode grid", () => {
+  it("shows historical publication without granting a new upload approval", async () => {
+    const published = episode({ id: "001-history", title: "Earlier video", historical_status: "published" });
+    const parked = episode({ id: "002-parked", title: "Later idea", historical_status: "parked", step: "record" });
+    const active = episode({ id: "003-active", title: "Current video", step: "record" });
+    mockApi({ "GET /api/state": state({ episodes: [published, parked, active] }) });
+    render(<App />);
+    const pills = await screen.findByRole("group", { name: "Show" });
+    expect(within(pills).getByRole("button", { name: /In work\s*1/ })).toBeTruthy();
+    expect(within(pills).getByRole("button", { name: /Published\s*1/ })).toBeTruthy();
+    expect(screen.getByText("Published in earlier studio")).toBeTruthy();
+    expect(screen.getByText("Paused in earlier studio")).toBeTruthy();
+    expect(footageTarget([parked, active])).toEqual(active);
+    expect(footageTarget([parked])).toBeUndefined();
+  });
+
   it("filters with pills and opens an episode from its card", async () => {
     const long = episode({ id: "003-long", title: "A long video", open_cards: 1, cover: "covers/003.jpg" });
     const short = episode({ id: "005-short", title: "A clip", kind: "short", mode: "clip", source_episode: "003-long" });

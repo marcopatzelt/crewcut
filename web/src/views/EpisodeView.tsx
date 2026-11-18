@@ -2,14 +2,16 @@
 // thumbnail variants, the cut, the 3D scenes and the rented GPU; the crew chat is a slim column on the right with the
 // working tiles on top and the composer at the bottom. The onboarding chat and "New episode" use the main column.
 import { Badge } from "@astryxdesign/core/Badge";
-import type { CSSProperties } from "react";
-import { ONBOARDING, type Card, type Step } from "../api/types";
+import { useEffect, useState, type CSSProperties } from "react";
+import { api } from "../api/client";
+import { ONBOARDING, type Card, type ImportedFiles, type Step } from "../api/types";
+import { ErrorLine, Loading } from "../components/bits";
 import { ChatPane, useFirstStart } from "../components/ChatPane";
 import { Composer } from "../components/Composer";
 import { MoneyLine, WorkingHint, WorkingList } from "../components/Crew";
 import { ConnectEngine } from "../components/ConnectEngine";
 import { ago, clock, episodeNumber } from "../lib/format";
-import { jumpToStep } from "../store/actions";
+import { jumpToStep, messageOf } from "../store/actions";
 import { EMPTY, useUi } from "../store/store";
 import { Avatar, SlateFigure } from "../slate/Slate";
 import { EpisodeMediaPanels } from "./EpisodeMedia";
@@ -152,6 +154,70 @@ function CrewChat({ id }: { id: string }) {
   );
 }
 
+function ImportedMaterial({ id }: { id: string }) {
+  const [folder, setFolder] = useState("");
+  const [offset, setOffset] = useState(0);
+  const [data, setData] = useState<ImportedFiles | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    let live = true;
+    setData(null);
+    setError(null);
+    api.importedFiles(id, folder, offset)
+      .then((result) => live && setData(result))
+      .catch((reason) => live && setError(messageOf(reason)));
+    return () => { live = false; };
+  }, [id, folder, offset, retry]);
+  const open = (path: string) => { setFolder(path); setOffset(0); };
+  return (
+    <div>
+      <p className="meta">Earlier material is reference only. Opening a file does not start work.</p>
+      {folder ? <button type="button" className="text-button" onClick={() => open(folder.split("/").slice(0, -1).join("/"))}>Back to parent folder</button> : null}
+      <p className="meta">{folder || "Imported studio files"}</p>
+      {error ? <ErrorLine text={error} onRetry={() => setRetry(retry + 1)} /> : !data ? <Loading label="Loading imported files" /> : (
+        <>
+          {data.total === 0 ? <p className="meta">No files in this folder.</p> : null}
+          <ul>
+            {data.entries.map((entry) => (
+              <li key={entry.path}>
+                {entry.directory ? <button type="button" className="text-button" onClick={() => open(entry.path)}>{entry.name}/</button> : (
+                  <a href={`${api.fileUrl(id, `legacy/${entry.path}`)}?download=true`} download>{entry.name}</a>
+                )}
+              </li>
+            ))}
+          </ul>
+          {offset > 0 ? <button type="button" className="text-button" onClick={() => setOffset(Math.max(0, offset - 100))}>Previous files</button> : null}
+          {offset + data.entries.length < data.total ? <button type="button" className="text-button" onClick={() => setOffset(offset + 100)}>Next files</button> : null}
+        </>
+      )}
+    </div>
+  );
+}
+
+function EpisodeMaterial({ id }: { id: string }) {
+  const detail = useUi((state) => state.details[id]);
+  const [showImported, setShowImported] = useState(false);
+  const documents = detail?.files.filter((file) => file.path.startsWith("brief/")) ?? [];
+  if (!documents.length && !detail?.project.legacy) return null;
+  return (
+    <section className="section" aria-label="Scripts and reference files">
+      <h2>Scripts and reference files</h2>
+      <ul>
+        {documents.map((file) => <li key={file.path}><a href={`${api.fileUrl(id, file.path)}?download=true`} download>{file.path.slice(6)}</a></li>)}
+      </ul>
+      {detail?.project.legacy ? (
+        <>
+          <button type="button" className="text-button" aria-expanded={showImported} onClick={() => setShowImported(!showImported)}>
+            {showImported ? "Hide imported files" : "Browse imported files"}
+          </button>
+          {showImported ? <ImportedMaterial id={id} /> : null}
+        </>
+      ) : null}
+    </section>
+  );
+}
+
 export function EpisodeView({ id }: { id: string }) {
   const title = useUi((s) => s.state?.episodes.find((e) => e.id === id)?.title ?? s.details[id]?.title ?? id);
   return (
@@ -160,6 +226,7 @@ export function EpisodeView({ id }: { id: string }) {
         <div className="media-scroll">
           <EpisodeHead id={id} />
           <EpisodeMediaPanels key={id} id={id} />
+          <EpisodeMaterial key={`files-${id}`} id={id} />
         </div>
       </main>
       <CrewChat id={id} />
