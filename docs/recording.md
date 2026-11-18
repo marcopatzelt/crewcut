@@ -180,3 +180,15 @@ works on the processor; it only takes longer.
 
 `0` ok, `1` error, `2` usage, or a check that found something to fix (`plan`, `doubles`, `verify`, `loudness`),
 `3` waiting for your yes or refused, `4` missing key (rented path).
+# Register earlier recordings
+
+After an offline studio import, `crewcut ingest <episode> --imported` registers recordings listed under
+`01-originals/` or `originals/` in `legacy-import.json`. It verifies every file's size and SHA-256 and probes its
+media information. Missing, changed or linked files stop registration without writing a report.
+
+The resulting `brief/ingest-legacy.json` uses the native ingest schema and recording groups. Its file paths point
+to the verified copies under `legacy/`; no second media copy is needed. Crewcut's cut commands can use these
+episode-relative paths. A second registration refuses to overwrite the report.
+
+Registration starts no jobs, transcription or audio checks and grants no approval. Microphone/full-track audio
+checks and historical take-selection conversion remain necessary before editing. The original studio is untouched.

@@ -76,6 +76,13 @@ def _version_of(path: Path, data: dict) -> str:
 
 # ---- ingest and transcribe ---------------------------------------------------------------------------------------
 def cmd_ingest(args) -> int:
+    if args.imported:
+        from .legacy import register
+        if args.files or args.inbox:
+            raise CutError("Use --imported without other files or --inbox.")
+        report = register(args.episode)
+        _out(args, report, ingest.describe(report))
+        return 0
     files = [resolve_input(f) for f in args.files]
     if args.inbox or not files:
         files += ingest.inbox_files(args.episode)
@@ -415,6 +422,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("episode")
     p.add_argument("files", nargs="*", help="recordings; none = everything in inbox/<episode>/")
     p.add_argument("--inbox", action="store_true", help="also take the files dropped into inbox/<episode>/")
+    p.add_argument("--imported", action="store_true", help="register verified legacy recordings without starting work")
     p.set_defaults(fn=cmd_ingest)
 
     p = sub.add_parser("transcribe", parents=[common, speech], help="words with times (faster-whisper)")

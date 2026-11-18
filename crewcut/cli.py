@@ -261,6 +261,11 @@ def build_parser() -> argparse.ArgumentParser:
     yv = ysub.add_parser("verify", help="compare uploaded metadata with the package (read-only)")
     yv.add_argument("episode")
     yv.add_argument("--package", default="export/upload.json")
+    results = ysub.add_parser("results", help="read video analytics for an explicit calendar-day period")
+    results.add_argument("episode")
+    results.add_argument("--start", required=True, help="inclusive date YYYY-MM-DD")
+    results.add_argument("--end", required=True, help="inclusive date YYYY-MM-DD")
+    results.add_argument("--video", help="video ID for an earlier publication")
     yr = ysub.add_parser("retention", help="audience retention of a published video around its motion moments "
                          "(YouTube Analytics, read-only)")
     yr.add_argument("episode")

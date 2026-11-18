@@ -73,8 +73,10 @@ measures it after 48 hours. Before this step: the final cut is approved (`skills
 1. After 48 hours: views, likes and comments of the video. Compare views per hour with the user's other videos.
 2. The early signal after 3 days: `python3 skills/idea/scripts/idea.py channel <own channel>` lists the own outliers
    with `x last 5` (views against the average of the five uploads before). Above 1 is a good sign.
-3. Impressions, click rate, unique viewers and average view duration come from the YouTube Analytics API (planned).
-   Views per unique viewer (views / unique viewers, same period) shows how often one person watches.
+3. Run `crewcut youtube results <id> --start YYYY-MM-DD --end YYYY-MM-DD` for views, watch time, average view
+   duration/percentage and engagement. The report names its calendar-day period; never label it an exact rolling
+   48-hour window. Missing data stays missing, not zero. Impressions, click rate and unique viewers require separate
+   YouTube Studio evidence, not invented API fields. Views per unique viewer only makes sense for matching periods.
 4. A finished A/B test: the user drops a screenshot of the result into the chat; the agent reads it. The user never
    types numbers.
 5. Write `review/results-48h.json` and tell the user the result in two sentences: how the video does against the
@@ -82,7 +84,7 @@ measures it after 48 hours. Before this step: the final cut is approved (`skills
 
 ## Planned
 
-- The 48-hour numbers through the YouTube Analytics API (impressions, click rate, unique viewers, view duration).
+- Importing YouTube Studio evidence for thumbnail impressions, click rate and unique viewers.
 - A visual and listening check beyond the implemented metadata check (`crewcut youtube verify`).
 - Adding the video to a playlist (`channel.json` `upload.playlist`) through the API.
 - Opening the A/B test and end screen pages for the user by computer use, as an option.

@@ -63,13 +63,28 @@ The token is stored in `studio/.crewcut/youtube-token.json` (owner-only permissi
 | Captions (SRT) | `captions.insert` | part of the publish card |
 | "Altered or synthetic content" answer | `status.containsSyntheticMedia` | shown on the publish card with a reason |
 | Retention around the motion moments (`crewcut youtube retention <episode>`) | YouTube Analytics API, read-only | none (unproven: see below) |
-| 48-hour check: views, click rate | YouTube Analytics API | planned |
+| Video results for a calendar-day period (`crewcut youtube results`) | YouTube Analytics API, read-only | none |
 | A/B test "Test & compare" | no public API | Crewcut builds the variants and links you to the right page in YouTube Studio |
 
 `crewcut youtube upload` refuses to run unless there is an accepted **publish** card whose file checksum matches the
 current `export/upload.json`: you approve exactly what goes out. Put `publish_at` with its timezone in the package
 before asking for approval. `--schedule` may repeat that exact value, but cannot override it after approval.
 Without a schedule, visibility follows the approved package's `privacy` field, defaulting to **private**.
+
+## Video results
+
+`crewcut youtube results <episode> --start YYYY-MM-DD --end YYYY-MM-DD [--video ID]` reads views, watch time,
+average view duration/percentage, likes, comments, shares and subscriber changes for an explicit calendar-day period.
+The video ID otherwise comes from `export/upload-result.json`. It works for long videos and Shorts.
+
+Reports live in `review/results-<start>-<end>.json`, with source, dates, missing metrics and limitations. Missing rows
+are not invented zeroes and do not overwrite a previous report. No episode step, rule or approval changes.
+Calendar days are not a precise rolling 48-hour window, and YouTube can delay data.
+
+Thumbnail impressions, click-through rate and unique viewers are not part of this query. Use the channel owner's
+YouTube Studio evidence for those instead of substituting unrelated metrics. Supported query metrics follow
+Google's [metric reference](https://developers.google.com/youtube/analytics/metrics) and
+[channel report reference](https://developers.google.com/youtube/analytics/channel_reports).
 
 ## Read back a publication
 

@@ -21,7 +21,7 @@ State: implemented means tested locally, not published or installed as a new app
 | 10 | P1 / partial | Imported files under legacy/ were not available in the episode view. | Added script downloads and a paginated, read-only folder browser, with traversal/link tests. Full-content search remains open. |
 | 11 | P1 / partial | Video selection by filename/mtime can pick the wrong preview. | Prefer explicit delivery references; let users choose among versions, with duration, approval and missing-file indicators. |
 | 12 | P1 / open | Old plans refer to absolute paths, other episodes and older rendering tools. | Relocate references and validate each supported plan format. Never execute archived plans automatically. |
-| 13 | P1 / open | Original media is preserved but lacks native ingestion records and recording/take associations. | Register imported media and checksums without starting transcription; show missing external originals. |
+| 13 | P1 / partial | Imported originals can now receive native ingestion records and split-recording associations without extra copies or transcription. | `ingest --imported` verifies hashes and media metadata; missing/changed/linked files fail safely. Audio checks and historical take selection still need review. |
 | 14 | P1 / open | Short source relationships and exact trim selections are not migrated to the native Short schema. | Preserve historical plans, map source episodes and time ranges, verify the source preview. |
 | 15 | P1 / open | Ideas in shooting plans may have no episode directory. | Create explicit planned entries, preserving dependencies and distinguishing partial scripts from complete scripts. |
 | 16 | P1 / partial | Channel/style data can be copied, but onboarding normally rebuilds it from links. | Add a supported import-existing-profile flow with a review screen; keep known preferences private. |
@@ -36,7 +36,7 @@ State: implemented means tested locally, not published or installed as a new app
 | 25 | P2 / unverified | Music generation, cue placement and mix preferences have not been migrated as an executable workflow. | Generalize episode-specific scripts and confirm ducking, peaks and final listening review. |
 | 26 | P2 / open | External publication packages, captions and thumbnails can live outside the old studio. | Inventory external references and copy only user-authorized assets; do not access credentials. |
 | 27 | P2 / partial | Desktop sign-in and a read-only channel check succeed. Actual upload remains untested. | Persisted PKCE verifier fixes sign-in across requests. Read-only publication verification now compares metadata and caption readiness; synthetic tests pass. No uploads during import. |
-| 28 | P2 / partial scope | Blog is excluded from this migration implementation pending clarification of the owner's dictation. Long-video results remain planned. | Do not infer results parity from Shorts helpers. No blog implementation in this work. |
+| 28 | P2 / partial | Blog remains excluded. Calendar-day results now support both long videos and Shorts, with explicit dates and missing-data handling. | Studio-only impressions, click rate and unique viewers still require separate evidence. No exact rolling 48-hour claim. No blog implementation. |
 | 29 | P2 / open | Historical analytics, comments and A/B decisions are not normalized to current data structures. | Add provenance-preserving import and read-only display before making new decisions from them. |
 | 30 | P2 / unverified | Historical cost records do not have reliable mappings to current jobs. | Keep as historical evidence; never add them to current bills without a reviewed mapping. |
 | 31 | P2 / open | Personal feedback and product bug reports lack a dedicated privacy-safe handoff. | Keep personal notes in the studio; reproduce issues with synthetic data, then fix and test public code once. |
@@ -53,8 +53,9 @@ permission to publish. Track private project-specific omissions in the studio, n
 - Music assembly is generalized in `crewcut/render/music.py`; an episode-specific legacy generation script is still
   historical evidence, not a tested portable generator. No paid generation or listening approval was performed.
 - YouTube upload, captions, thumbnails and retention have implementation paths. `crewcut youtube verify` now compares
-  live metadata and caption track readiness without changing YouTube. Long-video analytics and playlist insertion
-  remain planned. Caption text, thumbnail pixels and audiovisual content are not covered by the metadata check.
+  live metadata and caption track readiness without changing YouTube. Calendar-day results now cover long videos
+  and Shorts. Playlist insertion remains planned. Caption text, thumbnail pixels and audiovisual content are not
+  covered by the metadata check.
 - The local Python, web and desktop suites passed during this follow-up. A synthetic browser smoke test opened the
   script list and an imported subfolder. This was not a test of the installed personal desktop app or real publication.
 - A redacted Git-history secret scan inspected 162 commits without findings. This does not certify working files,

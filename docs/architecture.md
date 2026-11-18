@@ -106,6 +106,7 @@ crewcut onboard <link> [<link> …]
 crewcut render plan|2d|3d|probe|cut|shown|all <plan.json> [--local | --rented] [--gpus N]   (docs/rendering.md)
 crewcut render measure <image.png> | samples [--out DIR]
 crewcut ingest <episode> <file> [<file> …]
+crewcut ingest <episode> --imported                        verify and register copied legacy recordings; no jobs
 crewcut transcribe <file> [--model small] [--device auto|cpu|cuda] [--language xx]
 crewcut cut islands|dips|probe|takes|plan|build|verify|doubles|grade|srt|audio|loudness …   (docs/recording.md)
 crewcut cut candidates <episode> [--retention CSV|JSON] [--min 20 --max 55 --sentences 12]   Short candidates
@@ -128,6 +129,7 @@ crewcut compute ledger [--episode ID]
 crewcut thumbnail make --episode ID --prompt FILE [--ref IMG …] [--way codex|api] [--variants 3]
 crewcut youtube connect [--episode ID] | auth | upload --episode ID [--schedule ISO] | status
 crewcut youtube verify <episode> [--package export/upload.json]   read-only metadata/caption-track comparison
+crewcut youtube results <episode> --start YYYY-MM-DD --end YYYY-MM-DD [--video ID]  read-only calendar-day results
 crewcut humanize record --draft FILE --final FILE [--why "…"]       the Humanizer pass of a script, for its card
 crewcut brand voice add <video link | recording> | list          the user's own spoken words (brand/voice/)
 crewcut skills status | update [<name>]                           skills from other projects (Humanizer), newest
