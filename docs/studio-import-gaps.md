@@ -12,7 +12,7 @@ State: implemented means tested locally, not published or installed as a new app
 | 01 | P0 / implemented | Development previously shared the default project name and could touch the personal runtime. | Separate Compose project, volumes and ports; config test proves no personal bind mounts or inherited credential file. |
 | 02 | P0 / local setup | Development desktop builds follow a mutable runtime tag. | Pin the personal runtime and disable automatic desktop updates; next normal launch must retain the recorded image ID. |
 | 03 | P0 / partial | Personal/Development desktop profiles now separate defaults, app data, browser sessions, locks, credentials, container projects, ports and runtime selection. | Logic and Compose tests pass. Install the new desktop package and test parallel launches; packaged macOS/Windows behavior remains unverified. |
-| 04 | P0 / open | Upgrade and rollback are not coordinated with database migrations. | Backup, compatibility check, explicit upgrade, restore test with synthetic data. |
+| 04 | P0 / partial | A private runtime/database backup and verified logical database restore exist; upgrades are not yet automatically coordinated with migrations. | Add a supported compatibility check and explicit upgrade/rollback flow. Preserve the old runtime as a fallback. |
 | 05 | P0 / open | Filename exclusions are not a content-based secret scan. Existing example packs contain author-specific preferences. | Audit tracked files and history separately before publication; never publish imported fixtures or screenshots. |
 | 06 | P0 / implemented | Ordinary episode import starts the next step. Bulk migration must not do that. | Separate offline importer starts no database jobs and disables upload; regression test verifies no database is created. |
 | 07 | P0 / partial | Source material can change during copying. Copies on one disk are not disaster recovery. | Copy checks source size/mtime and records hashes. Add a second-device backup and a verified restore. |
@@ -30,9 +30,9 @@ State: implemented means tested locally, not published or installed as a new app
 | 19 | P1 / partial | Fixed photos and style references now map to the private pack and are attached automatically before episode images. | Tested missing files, path escapes, image order and layouts without people. Real generated draft and visual approval remain unverified. |
 | 20 | P1 / open | Bulk import has no integrated progress/retry/undo screen. | Add a dry-run summary, exclusions, interrupted-copy recovery and non-destructive undo. Current reruns skip completed episodes. |
 | 21 | P1 / open | There is no incremental synchronization with the old studio. | After verification, designate Crewcut as the sole writing location. Add explicit conflict-aware imports if needed. |
-| 22 | P2 / unverified | Recording to finished video has not been proven with the imported personal footage. | One complete opt-in episode: ingest, transcript, take selection, edit, audio, graphics, review and export. |
+| 22 | P2 / partial | A local 16-second real-footage test passes ingest, audio checks, local transcription, native cut, captions, 2D graphics and portrait/landscape export. | This is not a complete episode, listening approval, take-selection review or proof of final quality parity. Complete those before claiming readiness. |
 | 23 | P2 / unverified | Legacy editing checks may exceed or differ from Crewcut checks. | Map every old rule to a test; include missing words, repeated starts, pauses, flash frames and full-track audio. |
-| 24 | P2 / unverified | Old portrait/landscape graphics and advanced 3D scenes are not automatically native templates. | Convert representative scenes and compare rendered output in both formats. |
+| 24 | P2 / partial | A native 2D overlay renders with the private style pack in portrait and landscape, with frames inspected. | Legacy-template equivalence and advanced 3D scene conversion still need representative comparisons. |
 | 25 | P2 / unverified | Music generation, cue placement and mix preferences have not been migrated as an executable workflow. | Generalize episode-specific scripts and confirm ducking, peaks and final listening review. |
 | 26 | P2 / open | External publication packages, captions and thumbnails can live outside the old studio. | Inventory external references and copy only user-authorized assets; do not access credentials. |
 | 27 | P2 / partial | Desktop sign-in and a read-only channel check succeed. Actual upload remains untested. | Persisted PKCE verifier fixes sign-in across requests. Read-only publication verification now compares metadata and caption readiness; synthetic tests pass. No uploads during import. |
@@ -56,8 +56,11 @@ permission to publish. Track private project-specific omissions in the studio, n
   live metadata and caption track readiness without changing YouTube. Calendar-day results now cover long videos
   and Shorts. Playlist insertion remains planned. Caption text, thumbnail pixels and audiovisual content are not
   covered by the metadata check.
-- The local Python, web and desktop suites passed during this follow-up. A synthetic browser smoke test opened the
-  script list and an imported subfolder. This was not a test of the installed personal desktop app or real publication.
+- Local Python, web and desktop suites pass. Browser checks on the private running app expose scripts and imported
+  material. The real teleprompter check found and fixed an XML-declaration/inline-SVG mismatch that hid the QR code.
+  The packaged desktop shell and real publication still need their own tests.
 - A redacted Git-history secret scan inspected 162 commits without findings. This does not certify working files,
   external data, downloaded credentials, example-pack licensing or the next release.
-- The installed personal runtime has not been replaced. No new program version has been pushed as part of this follow-up.
+- The personal running web runtime receives the tested code after a backup. A small local code-only layer on the
+  original prebuilt image makes the fix durable without copying studio data or credentials. A cold-start check uses
+  disposable data and no network. The installed desktop shell remains unchanged. No GitHub push occurs yet.
