@@ -50,7 +50,9 @@ def validate(episode: str, pkg: dict) -> list[str]:
             errs.append("captions must be inside the episode folder")
     if pkg.get("publish_at"):
         try:
-            datetime.fromisoformat(pkg["publish_at"].replace("Z", "+00:00"))
+            scheduled = datetime.fromisoformat(pkg["publish_at"].replace("Z", "+00:00"))
+            if scheduled.tzinfo is None:
+                errs.append("publish_at must include a timezone")
         except ValueError:
             errs.append("publish_at must be an ISO time, for example 2026-11-20T16:00:00Z")
     if pkg.get("privacy", "private") not in ("private", "unlisted", "public"):
@@ -107,6 +109,9 @@ def upload(episode: str, rel: str = "export/upload.json", publish_at: str | None
     if dry_run:
         return {"dry_run": True, "body": body, "video": pkg["video"], "thumbnail": pkg.get("thumbnail"),
                 "captions": pkg.get("captions") or []}
+    if publish_at and publish_at != pkg.get("publish_at"):
+        raise PermissionError("The schedule differs from the upload package. Put publish_at in the package and "
+                              "request a new publish card before uploading.")
     card = approval(episode, pkg_path, pkg, rel)
     if card is None:
         _ok, why = approvals.standing_covers(episode, pkg)

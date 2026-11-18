@@ -67,8 +67,24 @@ The token is stored in `studio/.crewcut/youtube-token.json` (owner-only permissi
 | A/B test "Test & compare" | no public API | Crewcut builds the variants and links you to the right page in YouTube Studio |
 
 `crewcut youtube upload` refuses to run unless there is an accepted **publish** card whose file checksum matches the
-current `export/upload.json`: you approve exactly what goes out. Without `--schedule` and without `publish_at` in the
-package, the video is uploaded as **private**.
+current `export/upload.json`: you approve exactly what goes out. Put `publish_at` with its timezone in the package
+before asking for approval. `--schedule` may repeat that exact value, but cannot override it after approval.
+Without a schedule, visibility follows the approved package's `privacy` field, defaulting to **private**.
+
+## Read back a publication
+
+`crewcut youtube verify <episode>` compares the recorded video's title, description, tags, category, language,
+visibility, schedule and declared audience with `export/upload.json`. It checks requested caption tracks for a
+matching language/name and a serving, non-draft state. `--package` selects another package within the episode.
+
+The command only reads YouTube. It writes `review/publication-check.json` locally and exits nonzero on differences.
+It never changes a video, starts a job, grants approval or marks the upload step complete. A missing video or failed
+request leaves the previous report untouched. After the scheduled time it expects public visibility; a delayed
+publication is reported as a difference, not silently accepted.
+
+This is a metadata check, not an audiovisual review. Thumbnail pixels, caption text, A/B tests, end screens and playlist
+membership remain explicitly unchecked. It uses Google's [videos.list](https://developers.google.com/youtube/v3/docs/videos/list)
+and [captions.list](https://developers.google.com/youtube/v3/docs/captions/list), with synthetic regression tests.
 
 ## Retention around motion moments
 

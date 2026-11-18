@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import json
+from pathlib import Path
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
 
@@ -54,3 +55,31 @@ def test_foreign_callback_cannot_use_the_pending_verifier(studio):
         auth.finish("synthetic-code", "different-state")
     assert not auth.token_file().exists()
     assert db.kv_get("youtube_oauth_verifier") == "synthetic-verifier"
+
+
+def test_credentials_write_is_private_before_replacement(studio, monkeypatch):
+    original_replace = Path.replace
+    seen = []
+
+    def replace(source, destination):
+        seen.append(source.stat().st_mode & 0o777)
+        return original_replace(source, destination)
+
+    monkeypatch.setattr(Path, "replace", replace)
+    auth._save_credentials(SimpleNamespace(to_json=lambda: '{"synthetic":true}'))
+    assert seen == [0o600]
+    assert auth.token_file().stat().st_mode & 0o777 == 0o600
+
+
+def test_failed_credentials_write_keeps_previous_login(studio, monkeypatch):
+    auth._save_credentials(SimpleNamespace(to_json=lambda: '{"synthetic":"previous"}'))
+    before = auth.token_file().read_bytes()
+
+    def fail_replace(*args):
+        raise OSError("synthetic disk failure")
+
+    monkeypatch.setattr(Path, "replace", fail_replace)
+    with pytest.raises(OSError):
+        auth._save_credentials(SimpleNamespace(to_json=lambda: '{"synthetic":"new"}'))
+    assert auth.token_file().read_bytes() == before
+    assert not list(auth.token_file().parent.glob(".youtube-token-*"))

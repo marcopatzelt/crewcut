@@ -35,7 +35,7 @@ State: implemented means tested locally, not published or installed as a new app
 | 24 | P2 / unverified | Old portrait/landscape graphics and advanced 3D scenes are not automatically native templates. | Convert representative scenes and compare rendered output in both formats. |
 | 25 | P2 / unverified | Music generation, cue placement and mix preferences have not been migrated as an executable workflow. | Generalize episode-specific scripts and confirm ducking, peaks and final listening review. |
 | 26 | P2 / open | External publication packages, captions and thumbnails can live outside the old studio. | Inventory external references and copy only user-authorized assets; do not access credentials. |
-| 27 | P2 / partial | YouTube code exists, but desktop connection and account setup are not proven for this migration. | User performs sign-in; test a read-only channel check first. No uploads during import. |
+| 27 | P2 / partial | Desktop sign-in and a read-only channel check succeed. Actual upload remains untested. | Persisted PKCE verifier fixes sign-in across requests. Read-only publication verification now compares metadata and caption readiness; synthetic tests pass. No uploads during import. |
 | 28 | P2 / partial scope | Blog is excluded from this migration implementation pending clarification of the owner's dictation. Long-video results remain planned. | Do not infer results parity from Shorts helpers. No blog implementation in this work. |
 | 29 | P2 / open | Historical analytics, comments and A/B decisions are not normalized to current data structures. | Add provenance-preserving import and read-only display before making new decisions from them. |
 | 30 | P2 / unverified | Historical cost records do not have reliable mappings to current jobs. | Keep as historical evidence; never add them to current bills without a reviewed mapping. |
@@ -52,8 +52,9 @@ permission to publish. Track private project-specific omissions in the studio, n
   This establishes code coverage, not equivalence on a user's real recordings or a completed listening review.
 - Music assembly is generalized in `crewcut/render/music.py`; an episode-specific legacy generation script is still
   historical evidence, not a tested portable generator. No paid generation or listening approval was performed.
-- YouTube upload, captions, thumbnails and retention have implementation paths. `skills/upload/SKILL.md` still marks
-  long-video analytics, playlist insertion and live package verification as planned. Do not claim these are finished.
+- YouTube upload, captions, thumbnails and retention have implementation paths. `crewcut youtube verify` now compares
+  live metadata and caption track readiness without changing YouTube. Long-video analytics and playlist insertion
+  remain planned. Caption text, thumbnail pixels and audiovisual content are not covered by the metadata check.
 - The local Python, web and desktop suites passed during this follow-up. A synthetic browser smoke test opened the
   script list and an imported subfolder. This was not a test of the installed personal desktop app or real publication.
 - A redacted Git-history secret scan inspected 162 commits without findings. This does not certify working files,

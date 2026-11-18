@@ -38,6 +38,15 @@ def main(a) -> int:
         print("client file: " + ("present" if auth.client_file().is_file() else "missing (crewcut youtube connect sets it "
                                  "up through Claude in Chrome; by hand: docs/youtube.md)"))
         return 0
+    if a.ycmd == "verify":
+        from .verify import verify
+        try:
+            result = verify(a.episode, a.package)
+        except (FileNotFoundError, ValueError, LookupError) as error:
+            print(str(error))
+            return 1
+        print(json.dumps(result, indent=1, ensure_ascii=False))
+        return 0 if result["matches"] else 1
     if a.ycmd == "retention":
         from . import analytics
         try:

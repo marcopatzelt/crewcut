@@ -126,6 +126,7 @@ crewcut compute ledger [--episode ID]
 
 crewcut thumbnail make --episode ID --prompt FILE [--ref IMG …] [--way codex|api] [--variants 3]
 crewcut youtube connect [--episode ID] | auth | upload --episode ID [--schedule ISO] | status
+crewcut youtube verify <episode> [--package export/upload.json]   read-only metadata/caption-track comparison
 crewcut humanize record --draft FILE --final FILE [--why "…"]       the Humanizer pass of a script, for its card
 crewcut brand voice add <video link | recording> | list          the user's own spoken words (brand/voice/)
 crewcut skills status | update [<name>]                           skills from other projects (Humanizer), newest

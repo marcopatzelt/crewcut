@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import os
 import secrets
+import tempfile
+from pathlib import Path
 
 from .. import config, db, paths
 
@@ -25,6 +27,23 @@ def client_file():
 
 def token_file():
     return paths.state_dir() / "youtube-token.json"
+
+
+def _save_credentials(creds) -> None:
+    destination = token_file()
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=destination.parent,
+                                         prefix=".youtube-token-", delete=False) as stream:
+            temporary = Path(stream.name)
+            os.chmod(temporary, 0o600)
+            stream.write(creds.to_json())
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(destination)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def redirect_uri() -> str:
@@ -62,9 +81,7 @@ def finish(code: str, state: str) -> None:
     flow = _flow(state, verifier)
     flow.fetch_token(code=code)
     creds = flow.credentials
-    p = token_file()
-    p.write_text(creds.to_json(), encoding="utf-8")
-    os.chmod(p, 0o600)
+    _save_credentials(creds)
     db.kv_set("youtube_oauth_state", "")
     db.kv_set("youtube_oauth_verifier", "")
 
@@ -78,8 +95,7 @@ def credentials():
     creds = Credentials.from_authorized_user_info(json.loads(p.read_text(encoding="utf-8")), SCOPES)
     if creds.expired and creds.refresh_token:
         creds.refresh(Request())
-        p.write_text(creds.to_json(), encoding="utf-8")
-        os.chmod(p, 0o600)
+        _save_credentials(creds)
     return creds
 
 

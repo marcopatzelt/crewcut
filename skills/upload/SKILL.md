@@ -61,8 +61,10 @@ measures it after 48 hours. Before this step: the final cut is approved (`skills
    click: the A/B test ("Test & compare": upload the variants under "A/B Testing" on the video's details page in
    YouTube Studio), the end screen (the video's editor in Studio). The agent never clicks there.
 5. The upload writes `export/upload-result.json` (video id, link, notes such as a thumbnail that could not be set).
-   Never change `export/upload.json` after the card: its checksum is what the user approved. Then
-   `crewcut episode step <id> upload done`.
+   Never change `export/upload.json` after the card: its checksum is what the user approved. Run
+   `crewcut youtube verify <id>` and review `review/publication-check.json`. Differences need review, not automatic
+   changes on YouTube. This checks metadata and caption track readiness, not video content or caption text.
+   Only after review: `crewcut episode step <id> upload done`.
 6. Between two episodes: write a community post (a poll, a picture from the test, a question). There is no API for
    community posts; the user posts it.
 
@@ -81,7 +83,7 @@ measures it after 48 hours. Before this step: the final cut is approved (`skills
 ## Planned
 
 - The 48-hour numbers through the YouTube Analytics API (impressions, click rate, unique viewers, view duration).
-- A live check of the published video against the package (title, tags, captions, category) through the Data API.
+- A visual and listening check beyond the implemented metadata check (`crewcut youtube verify`).
 - Adding the video to a playlist (`channel.json` `upload.playlist`) through the API.
 - Opening the A/B test and end screen pages for the user by computer use, as an option.
 
