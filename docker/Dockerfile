@@ -71,7 +71,9 @@ COPY pyproject.toml README.md LICENSE ./
 COPY crewcut/ crewcut/
 RUN python3 -m venv /opt/venv \
  && /opt/venv/bin/pip install --upgrade pip \
- && /opt/venv/bin/pip install ".[speech,youtube]"
+ && /opt/venv/bin/pip install ".[speech,youtube]" \
+ && ln -s /opt/venv/bin/crewcut /usr/local/bin/crewcut \
+ && bash -lc 'crewcut workspace --help >/dev/null'
 
 COPY --from=blender /opt/blender /opt/blender
 RUN if [ -x /opt/blender/blender ]; then ln -s /opt/blender/blender /usr/local/bin/blender; fi
