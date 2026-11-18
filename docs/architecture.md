@@ -83,6 +83,7 @@ crewcut episode import <folder> --title "…" [--format portrait] [--script F] [
 crewcut episode status [<id>] [--json]
 crewcut episode lifecycle <id> active|planned|parked|archived  organize or resume; no jobs or approvals
 crewcut episode recording-script <id> <file> [--partial]     choose text; does not replace a different approved script
+crewcut episode refresh-cover <id> [--youtube-id ID] [--image FILE]  fill a missing card preview; no approval
 crewcut episode step <id> <step> <status>                 status: open | working | waiting | done | skipped
 
 crewcut say --episode ID [--cite "<method> (<source>)"] "<text>"   message in the main chat, from $CREWCUT_IDENTITY

@@ -73,6 +73,9 @@ light `mint-dawn`, the 1280 px versions on small screens) is the background of t
 
 ## 3. Input
 
+- The Crew page also shows account connections and a Claude Code / Codex choice. This must work without an agent
+  subscription already connected. It keeps both sign-ins and applies to new work only.
+
 - The composer is the only text field in the app. Its placeholder says "Tell the crew what you want". It has a microphone button
   (browser speech input where available) and a send button.
 - Two exceptions: the search field of the command palette (rule 15), which picks from a list and takes no values,

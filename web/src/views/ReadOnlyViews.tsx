@@ -11,6 +11,7 @@ import { messageOf, navigate } from "../store/actions";
 import { EMPTY, useUi } from "../store/store";
 import { Dock } from "./EpisodeView";
 import { MotionShelf } from "./MotionShelf";
+import { EnginePicker } from "../components/EnginePicker";
 
 const CHANGE_LINE = "To change something, say it in the chat.";
 
@@ -263,6 +264,7 @@ export function TeamView() {
       sub="Who works on your episodes, what they may do, and whose know-how their skills distil."
     >
       <BackToChat />
+      <EnginePicker />
       {content}
       {anySources ? <p className="hint-line">Crewcut is not affiliated with or endorsed by these creators.</p> : null}
       <p className={anySources ? "meta" : "hint-line"}>{CHANGE_LINE}</p>

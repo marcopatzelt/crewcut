@@ -501,6 +501,19 @@ def create_app(start_worker: bool = True) -> FastAPI:
     def engine_login():
         return _login_view()
 
+    @app.post("/api/engine/{name}/use")
+    def engine_use(name: str):
+        try:
+            eng = engines.get(name)
+        except ValueError as error:
+            raise HTTPException(400, str(error)) from None
+        if not eng.installed() or not eng.login_status()[0]:
+            raise HTTPException(409, f"Connect {eng.label} before switching.")
+        engines.use(eng.name)
+        _engine_changed(ok=None)
+        events.emit("activity", text=f"New work uses {eng.label}. Running work keeps its engine.")
+        return _login_view()
+
     @app.post("/api/engine/claude/connect")
     def claude_connect():
         from ..engines import connect

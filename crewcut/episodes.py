@@ -191,11 +191,13 @@ def summary(episode: str, project: dict | None = None) -> dict:
 def cover(episode: str) -> str | None:
     """The newest thumbnail image of an episode, as the URL the UI shows on its card; None when there is none."""
     d = paths.episode_dir(episode) / "graphics" / "thumbnail"
-    if not d.is_dir():
-        return None
-    imgs = [f for f in d.rglob("*") if f.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp") and f.is_file()]
+    root = paths.episode_dir(episode).resolve()
+    imgs = [f for f in d.rglob("*") if f.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp")
+            and f.is_file() and f.resolve().is_relative_to(root)] if d.is_dir() else []
     if not imgs:
-        return None
+        preview = paths.episode_dir(episode) / "work" / "cover-preview.jpg"
+        return (f"/api/files/{episode}/work/cover-preview.jpg"
+                if preview.is_file() and preview.resolve().is_relative_to(root) else None)
     newest = max(imgs, key=lambda f: f.stat().st_mtime)
     return f"/api/files/{episode}/{newest.relative_to(paths.episode_dir(episode)).as_posix()}"
 

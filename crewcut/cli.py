@@ -98,6 +98,10 @@ def build_parser() -> argparse.ArgumentParser:
     es = esub.add_parser("status")
     es.add_argument("episode", nargs="?")
     es.add_argument("--json", action="store_true")
+    cover = esub.add_parser("refresh-cover", help="fill a missing card preview without approving a thumbnail")
+    cover.add_argument("episode")
+    cover.add_argument("--youtube-id")
+    cover.add_argument("--image", help="existing image path inside this episode")
     ei = esub.add_parser("import", help="bring earlier work (script, B-roll, plan) into a new episode")
     ei.add_argument("source", help="a folder the container can read, e.g. /import/episodes/S017-ki-beirat")
     ei.add_argument("--title", required=True)
@@ -408,6 +412,10 @@ def _run(a) -> int:
         if a.ecmd == "step":
             episodes.set_step(a.episode, a.step, a.status, next_action=a.next)
             print(f"{a.episode}: {a.step} {a.status}")
+            return 0
+        if a.ecmd == "refresh-cover":
+            from .covers import refresh
+            _print(refresh(a.episode, a.youtube_id, a.image), True)
             return 0
         if a.ecmd == "lifecycle":
             episodes.set_lifecycle(a.episode, a.lifecycle)

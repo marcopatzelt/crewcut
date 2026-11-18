@@ -118,7 +118,7 @@ function openSettings(focus = ""): void {
   guard(settingsWin.webContents, PORT, UI);
   settingsWin.on("closed", () => {
     settingsWin = null;
-    settingsDone?.({ connected: Boolean(getToken()) || Boolean(settings.get().claude) });
+    settingsDone?.({ connected: Boolean(getToken()) || Boolean(settings.get().claude) || Boolean(settings.get().codex) });
     settingsDone = null;
   });
 }

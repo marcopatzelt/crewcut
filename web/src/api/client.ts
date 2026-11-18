@@ -115,6 +115,7 @@ export const api = {
   jobLog: (id: number) => request<JobLog>("GET", `/api/jobs/${id}/log`),
   profile: () => request<Profile>("GET", "/api/profile"),
   engineLogin: () => request<EngineLogin>("GET", "/api/engine/login"),
+  useEngine: (name: "claude" | "codex") => request<EngineLogin>("POST", `/api/engine/${name}/use`, {}),
   claudeConnect: () => request<{ url: string }>("POST", "/api/engine/claude/connect", {}),
   claudeCode: (code: string) =>
     request<{ connected: boolean; account: ClaudeAccount }>("POST", "/api/engine/claude/code", { code }),

@@ -114,7 +114,7 @@ function ConnectCodex() {
 }
 
 /** The card: one button, then one field for the code Claude's page shows. */
-export function ConnectEngine() {
+export function ConnectEngine({ only }: { only?: "claude" | "codex" } = {}) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [url, setUrl] = useState<string | null>(null);
   const [code, setCode] = useState("");
@@ -218,6 +218,7 @@ export function ConnectEngine() {
     }
   }
 
+  if (only === "codex") return <div className="connect"><ConnectCodex /></div>;
   if (phase === "done") {
     return (
       <div className="connect" role="status">
@@ -268,7 +269,7 @@ export function ConnectEngine() {
           {error}
         </p>
       ) : null}
-      {phase === "idle" ? <ConnectCodex /> : null}
+      {phase === "idle" && only !== "claude" ? <ConnectCodex /> : null}
     </div>
   );
 }

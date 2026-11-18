@@ -127,3 +127,10 @@ recommended); until then only the parts without a login run.
 - Codex device-code login is a beta feature of Codex and must be switched on in your ChatGPT security settings.
 - Whether a subscription may drive an open-source app like this is governed by each provider's terms. Crewcut starts
   your own CLI with your own login, the same way you would in a terminal.
+
+## Adding and switching accounts
+
+Open **Crew** to connect Claude Code, Codex, or both. **Use Codex** and **Use Claude Code** select the engine for new
+work without asking the current engine to perform the switch. Existing chats and both sign-ins stay in the private
+studio and engine volume. Running jobs finish on their original engine. A disconnected account cannot be selected.
+Codex uses its own device sign-in with the user's ChatGPT subscription; a separate API key is not required.

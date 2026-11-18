@@ -362,3 +362,8 @@ Separate port (`4748` by default), reachable from a phone in the same network. E
 |---|---|---|
 | `POST /api/episodes/{id}/gpu/{rental}/stop` | none | `{stopped, rentals: [ids], cost_usd}`: every machine of that render (its compute session) is deleted now; frames that came home stay. 404 when the machine is not of this episode. Never spends money. |
 | `POST /api/episodes/{id}/shorts` | none | `{episode, job}`: a new Short in clip mode from this long episode, and the Scout's queued job (it shows in `/api/jobs` and Working now). 400 on a Short, 404 for an unknown episode. |
+
+## Engine selection
+
+`POST /api/engine/{claude|codex}/use` selects a connected engine for new work. A missing login returns 409, an invalid
+engine returns 400. It starts no job and disconnects neither account. The response matches `GET /api/engine/login`.

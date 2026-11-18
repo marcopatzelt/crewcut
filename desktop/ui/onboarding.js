@@ -336,7 +336,7 @@ async function settingsView(preview) {
   view.replaceChildren(...[
     h("h1", {}, "Settings"),
     claudeCard, codexCard, keepCard, studioCard, about,
-    preview ? null : h("div", { class: "row" }, h("button", { class: "primary", onclick: () => close(s.claudeConnected) }, "Done")),
+    preview ? null : h("div", { class: "row" }, h("button", { class: "primary", onclick: () => close(s.claudeConnected || Boolean(s.codex)) }, "Done")),
   ].filter(Boolean));
   if (HASH === "settings-claude" && !s.claudeConnected && !preview) void claude.start();
   if (HASH === "settings-codex" && !s.codex && !preview) void codex.start();
