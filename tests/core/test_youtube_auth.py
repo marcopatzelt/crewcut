@@ -27,6 +27,13 @@ def test_prompter_uses_public_port(crew, monkeypatch):
     assert prompter.url_for(episode["id"]).startswith("http://localhost:4758/p/")
 
 
+def test_prompter_studio_host_overrides_detected_wifi(crew, monkeypatch):
+    from crewcut import config, prompter
+    monkeypatch.setenv("CREWCUT_LAN_HOST", "192.168.1.20")
+    monkeypatch.setattr(config, "get", lambda *args: "100.64.0.10")
+    assert prompter.lan_host() == "100.64.0.10"
+
+
 def test_pkce_survives_a_new_flow_instance(studio, monkeypatch):
     auth.client_file().parent.mkdir(parents=True)
     auth.client_file().write_text(json.dumps({"installed": {

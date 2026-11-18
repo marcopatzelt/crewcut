@@ -15,7 +15,9 @@ DEFAULT_CONTROL = {"playing": False, "speed": 1.0, "position": 0.0, "mirror": Fa
 
 
 def lan_host() -> str:
-    return os.environ.get("CREWCUT_LAN_HOST") or "localhost"
+    # A stable studio address (for example Tailscale) takes precedence over
+    # the desktop's automatically detected Wi-Fi address.
+    return config.get("crewcut", "server.prompter_host") or os.environ.get("CREWCUT_LAN_HOST") or "localhost"
 
 
 def url_for(episode: str) -> str:

@@ -390,9 +390,12 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
         onClick={() => change({ playing: !ctlRef.current.playing })}
         aria-label="Script. Tap to play or pause."
       >
-        <div className={ctl.mirror ? "pr-text mirror" : "pr-text"} style={{ ["--size" as string]: ctl.size }}>
-          <p className="pr-title">{script.title}</p>
-          {script.note ? <p className="pr-title" role="note">{script.note}</p> : null}
+        <div className={ctl.mirror ? "pr-text mirror" : "pr-text"} style={{ ["--size" as string]: ctl.size, ["--guide" as string]: guidePercent(ctl.guide) }}>
+          <div className="pr-copy">
+          <div className="pr-heading">
+            <p className="pr-title">{script.title}</p>
+            {script.note ? <p className="pr-title" role="note">{script.note}</p> : null}
+          </div>
           {mode === "full"
             ? script.blocks.map((b, i) => <p key={i}>{b.text}</p>)
             : script.blocks.map((b, i) => (
@@ -402,6 +405,7 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
                   ))}
                 </ul>
               ))}
+          </div>
         </div>
       </div>
       <ReadingLine value={ctl.guide} onChange={guide => change({ guide })} />

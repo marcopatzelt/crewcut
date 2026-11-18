@@ -94,7 +94,7 @@ export function PrompterPopover({ episode }: { episode: string }) {
 
   useEffect(() => {
     if (!open) return;
-    if (!link) void load();
+    void load();
     const button = () => document.getElementById("prompter-button");
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {

@@ -57,6 +57,7 @@ svg {
   overflow-y: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  overflow-anchor: none;
 }
 
 .pr-scroll::-webkit-scrollbar {
@@ -70,13 +71,18 @@ svg {
   font-weight: 500;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 33vh max(24px, 6vw) 70vh;
+  /* Centre the first spoken line on the guide. Keep total padding constant
+     so moving the guide preserves the current reading position. */
+  padding: calc(var(--guide, 33) * 1vh - 0.675em) max(24px, 6vw) calc((100 - var(--guide, 33)) * 1vh + 0.675em);
   transform-origin: center;
 }
 
 .pr-text.mirror {
   transform: scaleX(-1);
 }
+
+.pr-copy { position: relative; }
+.pr-heading { position: absolute; bottom: 100%; left: 0; right: 0; }
 
 .pr-text p {
   margin: 0 0 0.9em;

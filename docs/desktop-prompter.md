@@ -1,5 +1,13 @@
 # Prompter on a chosen screen
 
+The first spoken line starts at the reading guide. Moving the guide moves
+the text with it, preserving reading progress. The title sits above the script.
+
+For phones connected through a private network, add a `server` section with
+`prompter_host = "your-private-host"` to the studio's `config/crewcut.toml`.
+This overrides the detected Wi-Fi address for copied links, remote links and
+QR codes. Keep personal addresses in the studio, outside the source repository.
+
 In the desktop app, open Teleprompter, choose a screen once, then select **Open approved script full screen**.
 The saved choice stays in desktop settings, not in the agent's studio. Escape closes the prompter window.
 If that screen is disconnected, Crewcut reports an error instead of using another screen.
