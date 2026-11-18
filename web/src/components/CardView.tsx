@@ -10,6 +10,7 @@ import { ErrorLine, Facts, identityOf, Keys, Media } from "./bits";
 import { Avatar } from "../slate/Slate";
 import { Humanized } from "./Humanized";
 import { DocumentPreview } from "./DocumentPreview";
+import { FormattedText } from "./FormattedText";
 import { baselineOf, styleFrameOf, templateOf } from "./Motion";
 import { BaselinePreview, MotionPlanPreview, StyleFramePreview, TemplatePreview } from "./MotionCards";
 
@@ -400,7 +401,7 @@ export function OpenCard({
         <span className="card-ask">needs your yes</span>
       </div>
       <h2 className="card-title">{card.title}</h2>
-      {card.body && !BODY_IN_PREVIEW.has(card.kind) ? <p className="card-body">{card.body}</p> : null}
+      {card.body && !BODY_IN_PREVIEW.has(card.kind) ? <div className="card-body"><FormattedText text={card.body} /></div> : null}
       <CardPreview card={card} chosen={chosen} onChoose={setChosen} way={way} onWay={setWay} folding={Boolean(folding)} />
       <Humanized card={card} folding={Boolean(folding)} />
       <div className="card-actions">

@@ -30,7 +30,7 @@ it("reads text safely without approving and keeps approval shortcuts outside", a
   const shortcut = vi.fn();
   window.addEventListener("keydown", shortcut);
   render(<DocumentPreview episode="test" file="brief/script.md" onClose={close} />);
-  expect(await screen.findByText(/unsafe/)).toBeTruthy();
+  expect(await screen.findByRole("heading", { name: "Script" })).toBeTruthy();
   expect(document.querySelector("dialog script")).toBeNull();
   fireEvent.keyDown(screen.getByRole("button", { name: "Close" }), { key: "Enter", ctrlKey: true });
   expect(shortcut).not.toHaveBeenCalled();
@@ -45,4 +45,13 @@ it("shows missing files instead of an empty preview", async () => {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 404 })));
   render(<DocumentPreview episode="test" file="brief/missing.md" onClose={() => {}} />);
   expect((await screen.findByRole("alert")).textContent).toBe("This file could not be found.");
+});
+
+it("keeps non-Markdown files unchanged", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response('# literal text\n  **not bold**')));
+  render(<DocumentPreview episode="test" file="brief/notes.txt" onClose={() => {}} />);
+  expect(await screen.findByText(/not bold/)).toBeTruthy();
+  expect(document.querySelector("dialog pre")?.textContent).toBe('# literal text\n  **not bold**');
+  expect(document.querySelector("dialog strong")?.textContent).toBe("brief/notes.txt");
+  expect(screen.queryByRole("heading")).toBeNull();
 });

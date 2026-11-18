@@ -8,7 +8,8 @@ import { ErrorLine, Facts, identityOf, Loading, Media } from "./bits";
 import { Avatar, SlateFigure } from "../slate/Slate";
 import { CardItem } from "./CardView";
 import { ExchangeLine } from "./Exchange";
-import { ago, bytes, paragraphs } from "../lib/format";
+import { ago, bytes } from "../lib/format";
+import { FormattedText } from "./FormattedText";
 import { loadThread, uploadFiles, viewToHash } from "../store/actions";
 import { EMPTY, useUi, type UploadLine } from "../store/store";
 
@@ -58,9 +59,7 @@ function IdentityMessage({
           {[step?.label, ago(m.at)].filter(Boolean).join(" · ")}
         </div>
         <div className="txt">
-          {paragraphs(m.text).map((p, i) => (
-            <p key={i}>{p}</p>
-          ))}
+          <FormattedText text={m.text} />
         </div>
         {m.cite ? <p className="cite">{m.cite}</p> : null}
         {linked.length ? <nav className="channel-links" aria-label="Episodes in this reply">
@@ -99,7 +98,7 @@ function MessageBlock({
       {onlyTitle ? null : m.exchange?.messages?.length ? (
         <ExchangeLine m={m} exchange={m.exchange} team={team} />
       ) : m.author === "user" ? (
-        <div className={fresh ? "user is-new" : "user"}>{m.text}</div>
+        <div className={fresh ? "user is-new" : "user"}><FormattedText text={m.text} /></div>
       ) : (
         <IdentityMessage m={m} team={team} steps={steps} episode={episode} fresh={fresh} />
       )}

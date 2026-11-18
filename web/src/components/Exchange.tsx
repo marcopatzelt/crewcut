@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { useId, useState } from "react";
 import type { Exchange, Identity, Message } from "../api/types";
 import { identityOf } from "./bits";
+import { FormattedText } from "./FormattedText";
 
 export function ExchangeLine({ m, exchange, team }: { m: Message; exchange: Exchange; team: Identity[] | undefined }) {
   const [open, setOpen] = useState(false);
@@ -31,7 +32,7 @@ export function ExchangeLine({ m, exchange, team }: { m: Message; exchange: Exch
               <div className="exchange-who">
                 <b>{name(x.sender)}</b> to <b>{name(x.recipient)}</b> · <code>{x.about}</code>
               </div>
-              <p>{x.text}</p>
+              <FormattedText text={x.text} />
             </li>
           ))}
         </ol>

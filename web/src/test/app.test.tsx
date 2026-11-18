@@ -60,7 +60,8 @@ describe("empty", () => {
         body: { text: "https://example.com and https://youtube.com/@example" },
       }),
     );
-    expect(await screen.findByText("https://example.com and https://youtube.com/@example")).toBeTruthy();
+    expect(await screen.findByRole("link", { name: "https://example.com" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "https://youtube.com/@example" })).toBeTruthy();
   });
 });
 

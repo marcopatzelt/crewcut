@@ -912,28 +912,39 @@ svg.lucide {
   width: min(960px, calc(100vw - 32px));
   max-height: calc(100dvh - 32px);
   margin: auto;
-  padding: 24px;
+  padding: 0;
   color: var(--ink);
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--r-panel);
   box-shadow: var(--shadow-3);
-  overflow: auto;
+  overflow: hidden;
 }
+.document-preview[open] { display: flex; flex-direction: column; }
 .document-preview-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
 }
 .document-preview-head > div { min-width: 0; overflow-wrap: anywhere; }
 .document-preview-head button { flex-shrink: 0; }
+.document-preview-content {
+  padding: 28px clamp(20px, 5vw, 64px) 40px;
+  overflow: auto;
+  min-height: 0;
+  font-size: 16px;
+}
+.document-preview-content > .formatted-text { max-width: 76ch; margin: 0 auto; }
 .document-preview-text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font: inherit;
   line-height: 1.7;
-  margin-top: 24px;
+  margin: 0;
 }
 .file-row {
   display: flex;

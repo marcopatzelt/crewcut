@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api/client";
+import { FormattedText } from "./FormattedText";
 
 export function DocumentPreview({ episode, file, onClose }: {
   episode: string; file: string; onClose: () => void;
@@ -38,8 +39,11 @@ export function DocumentPreview({ episode, file, onClose }: {
         <div><strong>{file}</strong><p className="meta">Reading only. Close this view to review the approval.</p></div>
         <button type="button" onClick={onClose} autoFocus>Close</button>
       </header>
-      {error ? <p role="alert">{error}</p> : text === null ? <p role="status">Opening file…</p> :
-        <pre className="document-preview-text" tabIndex={0}>{text || "This file is empty."}</pre>}
+      <div className="document-preview-content" tabIndex={0}>
+        {error ? <p role="alert">{error}</p> : text === null ? <p role="status">Opening file…</p> :
+          /\.(md|markdown)$/i.test(file) ? <FormattedText text={text || "This file is empty."} /> :
+            <pre className="document-preview-text">{text || "This file is empty."}</pre>}
+      </div>
     </dialog>, document.body,
   );
 }
