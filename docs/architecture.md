@@ -53,6 +53,7 @@ A skill never hard-codes a colour, font, logo, loudness or mix limit. It reads t
 | `approvals.py` | cards: propose, decide, wait, `require_spend()`; checksum of the shown file | core |
 | `ledger.py` | cost book: add, totals for today / episode / month, cap | core |
 | `episodes.py` | create and read episodes, `project.json`, the ten steps | core |
+| `studio_import.py` | offline legacy studio copy, manifests and visible references; no jobs or publication | core |
 | `conductor/` | steps, job queue (one heavy job at a time), engine runner | core |
 | `engines/` | one interface (`base.py`: Task, Event, RunResult; start, stream, stop, resume), two engines on the user's own subscription (`claude_code.py` default, `codex.py` beta) and the version manager (`versions.py`: newest version, smoke test, way back); see [engine.md](engine.md) | core |
 | `plugin.py` | builds Crewcut as a Claude Code plugin (skills, crew agents, guard hook) | core |
@@ -151,6 +152,10 @@ Environment set by the conductor for every agent run: `CREWCUT_STUDIO`, `CREWCUT
 
 Episode folder: `brief/`, `originals/`, `work/`, `audio/`, `broll/`, `graphics/`, `edit/`, `render/`, `review/`,
 `export/`, plus `project.json`:
+
+Imported episodes may also contain `legacy/`, `legacy-import.json` and `legacy-visible.json`. These preserve earlier
+files and provenance without making old plans executable or old approvals current. Shared historical material lives
+under `studio/library/`. See [private studios](private-studio.md) for the import command and boundaries.
 
 ```json
 {"id": "003-local-llms", "title": "Working title", "created": "2026-11-16T10:00:00Z", "format": "landscape", "fps": 25,

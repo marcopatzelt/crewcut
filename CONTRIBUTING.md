@@ -19,6 +19,10 @@ cd web && npm ci && npm run typecheck && npm run check && npm test
 The heavy parts (Chromium renders, Blender, the Docker image on two architectures) are built and tested by GitHub
 Actions (`.github/workflows/`). You do not need Blender or a GPU to contribute.
 
+Keep your personal studio outside the repository. For parallel development, use `bash host/development.sh start`:
+it uses separate volumes and localhost ports 4757/4758, without mounting personal data or reading credential files.
+See [private studios and updates](docs/private-studio.md) and the [migration gap register](docs/studio-import-gaps.md).
+
 ## Rules for pull requests
 
 - **Skills hold know-how, the style pack holds taste.** A skill never hard-codes a colour, a font, a loudness or a channel

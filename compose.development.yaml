@@ -1,0 +1,20 @@
+name: crewcut-development
+services:
+  crewcut:
+    image: ghcr.io/marcopatzelt/crewcut:${CREWCUT_DEV_TAG:-edge}
+    pull_policy: missing
+    environment:
+      CREWCUT_STUDIO: /studio
+    ports:
+      - "127.0.0.1:4757:4747"
+      - "127.0.0.1:4758:4748"
+    volumes:
+      - development-studio:/studio
+      - development-engine:/opt/engine
+    mem_limit: 4g
+    cpus: 2
+    shm_size: 1gb
+    restart: "no"
+volumes:
+  development-studio:
+  development-engine:
