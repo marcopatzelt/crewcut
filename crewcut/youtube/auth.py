@@ -47,7 +47,8 @@ def _save_credentials(creds) -> None:
 
 
 def redirect_uri() -> str:
-    port = int(os.environ.get("CREWCUT_PORT") or config.get("crewcut", "server.port", 4747))
+    port = int(os.environ.get("CREWCUT_PUBLIC_PORT") or os.environ.get("CREWCUT_PORT") or
+               config.get("crewcut", "server.port", 4747))
     return f"http://localhost:{port}/oauth/youtube"
 
 

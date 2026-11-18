@@ -4,3 +4,4 @@ services:
   crewcut:
     build: !reset null
     pull_policy: never
+    env_file: !reset []

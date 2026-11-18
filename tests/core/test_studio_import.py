@@ -79,7 +79,8 @@ def test_development_has_no_personal_mounts_or_credentials():
     service = config["services"]["crewcut"]
     assert config["name"] == "crewcut-development"
     assert "env_file" not in service
-    assert service["environment"] == {"CREWCUT_STUDIO": "/studio"}
+    assert service["environment"] == {"CREWCUT_STUDIO": "/studio", "CREWCUT_PUBLIC_PORT": "4757",
+                                      "CREWCUT_PUBLIC_PROMPTER_PORT": "4758"}
     assert all(mount.split(":")[0] in config["volumes"] for mount in service["volumes"])
     assert service["ports"] == ["127.0.0.1:4757:4747", "127.0.0.1:4758:4748"]
 

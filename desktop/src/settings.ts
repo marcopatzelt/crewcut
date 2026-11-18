@@ -35,8 +35,10 @@ export class SettingsFile {
   constructor(
     private readonly file: string,
     home: string,
+    studioDir?: string,
   ) {
     const base = defaults(home);
+    if (studioDir) base.studioDir = studioDir;
     let loaded: Partial<Settings> = {};
     try {
       if (existsSync(file)) loaded = JSON.parse(readFileSync(file, "utf8")) as Partial<Settings>;

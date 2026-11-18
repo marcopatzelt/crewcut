@@ -12,6 +12,21 @@ from crewcut import db
 from crewcut.youtube import auth
 
 
+def test_redirect_uses_public_port_without_changing_server_port(monkeypatch):
+    monkeypatch.setenv("CREWCUT_PORT", "4747")
+    monkeypatch.setenv("CREWCUT_PUBLIC_PORT", "4757")
+    assert auth.redirect_uri() == "http://localhost:4757/oauth/youtube"
+
+
+def test_prompter_uses_public_port(crew, monkeypatch):
+    from crewcut import episodes, prompter
+    monkeypatch.setenv("CREWCUT_PROMPTER_PORT", "4748")
+    monkeypatch.setenv("CREWCUT_PUBLIC_PROMPTER_PORT", "4758")
+    monkeypatch.setenv("CREWCUT_LAN_HOST", "localhost")
+    episode = episodes.create("Synthetic recording")
+    assert prompter.url_for(episode["id"]).startswith("http://localhost:4758/p/")
+
+
 def test_pkce_survives_a_new_flow_instance(studio, monkeypatch):
     auth.client_file().parent.mkdir(parents=True)
     auth.client_file().write_text(json.dumps({"installed": {

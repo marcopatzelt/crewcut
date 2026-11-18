@@ -19,7 +19,8 @@ def lan_host() -> str:
 
 def url_for(episode: str) -> str:
     token = episodes.read(episode)["prompter_token"]
-    port = int(os.environ.get("CREWCUT_PROMPTER_PORT") or config.get("crewcut", "server.prompter_port", 4748))
+    port = int(os.environ.get("CREWCUT_PUBLIC_PROMPTER_PORT") or os.environ.get("CREWCUT_PROMPTER_PORT") or
+               config.get("crewcut", "server.prompter_port", 4748))
     return f"http://{lan_host()}:{port}/p/{token}"
 
 

@@ -11,7 +11,7 @@ State: implemented means tested locally, not published or installed as a new app
 |---|---|---|---|
 | 01 | P0 / implemented | Development previously shared the default project name and could touch the personal runtime. | Separate Compose project, volumes and ports; config test proves no personal bind mounts or inherited credential file. |
 | 02 | P0 / local setup | Development desktop builds follow a mutable runtime tag. | Pin the personal runtime and disable automatic desktop updates; next normal launch must retain the recorded image ID. |
-| 03 | P0 / open | No first-class Personal/Development desktop profiles. Local launchers are not a portable product feature. | Separate app data, locks, credentials, names and runtime selection on Linux, macOS and Windows. |
+| 03 | P0 / partial | Personal/Development desktop profiles now separate defaults, app data, browser sessions, locks, credentials, container projects, ports and runtime selection. | Logic and Compose tests pass. Install the new desktop package and test parallel launches; packaged macOS/Windows behavior remains unverified. |
 | 04 | P0 / open | Upgrade and rollback are not coordinated with database migrations. | Backup, compatibility check, explicit upgrade, restore test with synthetic data. |
 | 05 | P0 / open | Filename exclusions are not a content-based secret scan. Existing example packs contain author-specific preferences. | Audit tracked files and history separately before publication; never publish imported fixtures or screenshots. |
 | 06 | P0 / implemented | Ordinary episode import starts the next step. Bulk migration must not do that. | Separate offline importer starts no database jobs and disables upload; regression test verifies no database is created. |

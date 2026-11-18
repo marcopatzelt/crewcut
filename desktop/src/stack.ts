@@ -17,6 +17,9 @@ export interface StackConfig {
   image: string;
   tag: string;
   port: number;
+  projectName?: string;
+  prompterPort?: number;
+  prompterBind?: string;
   token?: string | null;
 }
 
@@ -24,7 +27,7 @@ export const PROJECT = "crewcut";
 export const SERVICE = "crewcut";
 
 export function composeArgs(c: StackConfig): string[] {
-  return ["compose", "-p", PROJECT, "--project-directory", c.projectDir, ...c.composeFiles.flatMap((f) => ["-f", f])];
+  return ["compose", "-p", c.projectName ?? PROJECT, "--project-directory", c.projectDir, ...c.composeFiles.flatMap((f) => ["-f", f])];
 }
 
 /** The first IPv4 address in the local network, as ./start.sh finds it (for the teleprompter's QR code). */
@@ -45,6 +48,8 @@ export function composeEnv(c: StackConfig, base: NodeJS.ProcessEnv = process.env
     CREWCUT_STUDIO_DIR: c.studioDir,
     CREWCUT_IMPORT_DIR: join(c.studioDir, "import"),
     CREWCUT_PORT: String(c.port),
+    CREWCUT_PROMPTER_PORT: String(c.prompterPort ?? 4748),
+    CREWCUT_PROMPTER_BIND: c.prompterBind ?? "0.0.0.0",
     CREWCUT_LAN_HOST: lanHost() ?? "",
     // Always set, also when empty: a token in the user's shell must not slip into the container unasked.
     CLAUDE_CODE_OAUTH_TOKEN: c.token ?? "",

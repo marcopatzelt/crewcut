@@ -42,6 +42,26 @@ protect files that were already tracked. Publishing remains a separate owner-app
 
 See [the migration gap register](studio-import-gaps.md) for remaining product work and its acceptance checks.
 
+## Desktop profiles
+
+Installed desktop builds default to `CREWCUT_PROFILE=personal`, preserving existing data and login locations.
+Source launches default to `development`. Set `CREWCUT_PROFILE=development` to run an installed build separately.
+An unknown profile name fails rather than falling back to personal data.
+
+Development uses its own app-data/browser-session directory, instance lock, saved login, default studio folder
+(`~/Crewcut Development`), Compose project (`crewcut-desktop-development`) and engine volume. It uses localhost
+ports 4757/4758, ignores the personal port/tag overrides and disables automatic desktop updates. Use
+`CREWCUT_DEV_TAG` to select its runtime image. Personal remains on 4747/4748 by default. Do not select your personal
+studio folder in a development profile: choose disposable test data only.
+
+Both desktop profiles refuse inherited `.env` files. Their saved login comes only from their own app-data directory.
+No personal data or credentials are copied to development. The browser-only development helper is an alternative,
+not a second service to run simultaneously on ports 4757/4758.
+
+Profile logic, Compose parameters and public callback/teleprompter ports have automated tests. A packaged parallel
+launch on macOS and Windows has not been tested. These desktop changes need a new desktop package; updating the
+running web app alone does not install them.
+
 ## Planned, parked and resumed work
 
 `crewcut episode lifecycle <id> planned|parked|archived|active` organizes imported and new episodes. Planned,

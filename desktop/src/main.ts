@@ -10,12 +10,20 @@ import { bytesWords, checkDocker, docker, dockerEnv, dockerSocket, imageExists, 
 import { IMAGE, imageTag, RELEASES } from "./release";
 import { deleteToken, getToken, keychainAvailable, loginProblem, setToken } from "./secrets";
 import { SettingsFile } from "./settings";
+import { profileConfig } from "./profile";
 import * as stack from "./stack";
 import { startUpdates } from "./updater";
 import { applyTheme, createMainWindow, createSettingsWindow, guard, isMac, localApp, ownPage, themeNow } from "./window";
 import type { ThemeName } from "./theme";
 
-const PORT = Number(process.env.CREWCUT_PORT || 4747);
+const PROFILE = profileConfig(process.env.CREWCUT_PROFILE, app.getPath("userData"), homedir(), app.isPackaged);
+if (PROFILE.development) {
+  mkdirSync(PROFILE.userData, { recursive: true });
+  app.setPath("userData", PROFILE.userData);
+  app.setPath("sessionData", PROFILE.userData);
+  app.setName(PROFILE.title);
+}
+const PORT = PROFILE.development ? PROFILE.port : Number(process.env.CREWCUT_PORT || PROFILE.port);
 const APP_URL = `http://localhost:${PORT}/`;
 const UI = join(__dirname, "ui");
 const PRELOAD = join(__dirname, "preload.js");
@@ -62,10 +70,14 @@ function stackConfig(): stack.StackConfig {
   return {
     composeFiles: files,
     projectDir: join(app.getPath("userData"), "stack"),
+    projectName: PROFILE.projectName,
     studioDir: s.studioDir,
     image: IMAGE,
-    tag: imageTag(app.getVersion(), app.isPackaged, process.env.CREWCUT_TAG),
+    tag: imageTag(app.getVersion(), PROFILE.development ? false : app.isPackaged,
+                  PROFILE.development ? process.env.CREWCUT_DEV_TAG : process.env.CREWCUT_TAG),
     port: PORT,
+    prompterPort: PROFILE.prompterPort,
+    prompterBind: PROFILE.development ? "127.0.0.1" : "0.0.0.0",
     token: getToken(),
   };
 }
@@ -173,6 +185,13 @@ function buildMenu(): void {
 
 function createMain(): void {
   main = createMainWindow(settings, PRELOAD, ICON);
+  if (PROFILE.development) {
+    main.setTitle(PROFILE.title);
+    main.on("page-title-updated", (event, title) => {
+      event.preventDefault();
+      main?.setTitle(`${PROFILE.title} · ${title}`);
+    });
+  }
   guard(main.webContents, PORT, UI);
   main.on("close", (e) => {
     if (quitting) return;
@@ -501,7 +520,7 @@ app.on("window-all-closed", () => {
 });
 
 if (firstInstance) void app.whenReady().then(() => {
-  settings = new SettingsFile(join(app.getPath("userData"), "settings.json"), homedir());
+  settings = new SettingsFile(join(app.getPath("userData"), "settings.json"), homedir(), PROFILE.studioDir);
   if (SHOTS) settings.set({ onboarded: false });
   buildMenu();
   registerIpc();
@@ -510,5 +529,5 @@ if (firstInstance) void app.whenReady().then(() => {
   nativeTheme.on("updated", () => {
     for (const w of [main, settingsWin]) if (w && !w.isDestroyed()) applyTheme(w, themeNow());
   });
-  startUpdates(log);
+  if (!PROFILE.development) startUpdates(log);
 });

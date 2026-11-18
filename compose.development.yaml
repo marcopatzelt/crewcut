@@ -5,6 +5,8 @@ services:
     pull_policy: missing
     environment:
       CREWCUT_STUDIO: /studio
+      CREWCUT_PUBLIC_PORT: "4757"
+      CREWCUT_PUBLIC_PROMPTER_PORT: "4758"
     ports:
       - "127.0.0.1:4757:4747"
       - "127.0.0.1:4758:4748"

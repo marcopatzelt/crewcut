@@ -10,10 +10,47 @@ import { CODE_RE, deviceAllowed, parseStep, signInAllowed, Steps, TOKEN_RE } fro
 import { bytesWords, composeOk, PullProgress, socketFromHost } from "../docker";
 import { imageTag } from "../release";
 import { SettingsFile, visibleBounds } from "../settings";
+import { profileConfig } from "../profile";
 import { composeArgs, composeEnv, failing, parseState } from "../stack";
 import { THEME } from "../theme";
 
 const ROOT = join(__dirname, "..", "..", "..");
+
+test("desktop profiles isolate settings, browser sessions, credentials and container names", () => {
+  const personal = profileConfig(undefined, "/data/Crewcut", "/home/me", true);
+  const development = profileConfig(undefined, "/data/Crewcut", "/home/me", false);
+  assert.equal(personal.userData, "/data/Crewcut");
+  assert.equal(personal.studioDir, join("/home/me", "Crewcut"));
+  assert.equal(personal.projectName, "crewcut");
+  assert.notEqual(development.userData, personal.userData);
+  assert.notEqual(development.studioDir, personal.studioDir);
+  assert.notEqual(development.projectName, personal.projectName);
+  assert.equal(development.port, 4757);
+  assert.equal(development.prompterPort, 4758);
+  assert.deepEqual(profileConfig("development", "/data/Crewcut", "/home/me", true), development);
+  assert.throws(() => profileConfig("typo", "/data/Crewcut", "/home/me", true));
+  const source = readFileSync(join(ROOT, "desktop/src/main.ts"), "utf8");
+  assert.ok(source.indexOf('app.setPath("userData"') < source.indexOf("requestSingleInstanceLock"));
+  assert.match(source, /app.setPath\("sessionData", PROFILE.userData\)/);
+  assert.match(source, /if \(!PROFILE.development\) startUpdates/);
+});
+
+test("development desktop uses its own project, engine volume scope and localhost ports", () => {
+  const profile = profileConfig("development", "/data/Crewcut", "/home/me", true);
+  const config = { composeFiles: [], projectDir: join(profile.userData, "stack"),
+    studioDir: profile.studioDir, projectName: profile.projectName, port: profile.port,
+    prompterPort: profile.prompterPort, prompterBind: "127.0.0.1", image: "synthetic", tag: "edge" };
+  assert.equal(composeArgs(config)[2], "crewcut-desktop-development");
+  const env = composeEnv(config, { CLAUDE_CODE_OAUTH_TOKEN: "synthetic-personal", CREWCUT_PROMPTER_PORT: "4748" });
+  assert.equal(env.CLAUDE_CODE_OAUTH_TOKEN, "");
+  assert.equal(env.CREWCUT_PORT, "4757");
+  assert.equal(env.CREWCUT_PROMPTER_PORT, "4758");
+  assert.equal(env.CREWCUT_PROMPTER_BIND, "127.0.0.1");
+  assert.match(readFileSync(join(ROOT, "desktop/stack/desktop.yaml"), "utf8"), /env_file: !reset \[\]/);
+  const directory = mkdtempSync(join(tmpdir(), "crewcut-profile-"));
+  const settings = new SettingsFile(join(directory, "settings.json"), "/home/me", profile.studioDir);
+  assert.equal(settings.get().studioDir, profile.studioDir);
+});
 
 test("a release runs exactly its own image, everything else :edge", () => {
   assert.equal(imageTag("0.2.1", true), "0.2.1");
