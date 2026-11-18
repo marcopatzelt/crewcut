@@ -117,6 +117,10 @@ def build_parser() -> argparse.ArgumentParser:
     el = esub.add_parser("lifecycle", help="organize or resume an episode without starting work or granting approval")
     el.add_argument("episode")
     el.add_argument("lifecycle", choices=["active", "planned", "parked", "archived"])
+    recording = esub.add_parser("recording-script", help="select an existing recording text without approving it")
+    recording.add_argument("episode")
+    recording.add_argument("file")
+    recording.add_argument("--partial", action="store_true")
 
     sy = sub.add_parser("say", help="a message in the main chat, from the running crew member")
     sy.add_argument("--episode")
@@ -408,6 +412,10 @@ def _run(a) -> int:
         if a.ecmd == "lifecycle":
             episodes.set_lifecycle(a.episode, a.lifecycle)
             print(f"{a.episode}: {a.lifecycle}. No work was started.")
+            return 0
+        if a.ecmd == "recording-script":
+            from . import prompter
+            print(json.dumps(prompter.select_script(a.episode, a.file, a.partial)))
             return 0
     if a.cmd == "say":
         ep = _env_episode(a)

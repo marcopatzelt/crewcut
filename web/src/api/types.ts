@@ -391,6 +391,7 @@ export interface UploadResult {
 
 export interface PrompterScript {
   title: string;
+  note?: string | null;
   mode: "full" | "points";
   blocks: Array<{ text: string; points: string[] }>;
 }

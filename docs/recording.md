@@ -182,6 +182,11 @@ works on the processor; it only takes longer.
 `3` waiting for your yes or refused, `4` missing key (rented path).
 # Register earlier recordings
 
+Select a specific imported reading text with `crewcut episode recording-script <id> <file> [--partial]`.
+The prompter follows that file rather than guessing by filename; a different approved script cannot be replaced
+without review. `--partial` shows a visible warning on both the reading screen and remote. Selecting a file never
+approves the script, marks steps done or starts work. Missing selected files fail instead of silently switching drafts.
+
 After an offline studio import, `crewcut ingest <episode> --imported` registers recordings listed under
 `01-originals/` or `originals/` in `legacy-import.json`. It verifies every file's size and SHA-256 and probes its
 media information. Missing, changed or linked files stop registration without writing a report.

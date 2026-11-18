@@ -43,8 +43,30 @@ def script_file(episode: str) -> Path | None:
         p = paths.inside(d, r["file"])
         if p.is_file():
             return p
+    selected = episodes.read(episode).get("recording_script")
+    if selected:
+        selected_path = paths.inside(d, selected["file"])
+        if not selected_path.is_file():
+            raise FileNotFoundError("The selected recording script is missing. Select another script explicitly.")
+        return selected_path
     drafts = sorted((d / "brief").glob("SCRIPT-v*.md"))
     return drafts[-1] if drafts else None
+
+
+def select_script(episode: str, relative: str, partial: bool = False) -> dict:
+    root = paths.episode_dir(episode)
+    selected = paths.inside(root, relative)
+    if selected.suffix.lower() not in (".md", ".txt") or not selected.is_file():
+        raise ValueError("Select an existing Markdown or text script inside this episode.")
+    with db.conn() as connection:
+        approved = connection.execute("SELECT file FROM cards WHERE episode = ? AND kind = 'script' "
+                                      "AND status = 'accepted' ORDER BY id DESC LIMIT 1", (episode,)).fetchone()
+    if approved and approved["file"] and paths.inside(root, approved["file"]) != selected:
+        raise ValueError("Another script is approved. Request a new script review before replacing it.")
+    project = episodes.read(episode)
+    project["recording_script"] = {"file": selected.relative_to(root).as_posix(), "partial": partial}
+    episodes.write(episode, project)
+    return project["recording_script"]
 
 
 def _points(par: str, n: int = 8) -> list[str]:
@@ -81,8 +103,12 @@ def script(episode: str) -> dict:
     if p is None:
         return {"title": project.get("title"), "mode": "full", "blocks": [],
                 "note": "No script yet. The Writer makes one in step 4."}
+    relative = str(p.relative_to(paths.episode_dir(episode)))
+    selected = project.get("recording_script") or {}
+    partial = selected.get("file") == relative and selected.get("partial", False)
     return {"title": project.get("title"), "mode": control(episode).get("mode", "full"),
-            "blocks": parse_script(p.read_text(encoding="utf-8")), "file": str(p.relative_to(paths.episode_dir(episode)))}
+            "blocks": parse_script(p.read_text(encoding="utf-8")), "file": relative,
+            "note": "Partial script. The remaining sections are not ready." if partial else None}
 
 
 def control(episode: str) -> dict:

@@ -354,6 +354,7 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
     return (
       <div className="pr-remote">
         <h1>{script.title}</h1>
+        {script.note ? <p className="pr-value" role="note">{script.note}</p> : null}
         <p className="pr-value">Remote. The screen with the text follows these buttons.</p>
         <Panel ctl={ctl} mode={mode} change={change} setMode={switchMode} dim={false} />
         {offline ? <p className="pr-value">Not in sync. Trying again.</p> : null}
@@ -371,6 +372,7 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
       >
         <div className={ctl.mirror ? "pr-text mirror" : "pr-text"} style={{ ["--size" as string]: ctl.size }}>
           <p className="pr-title">{script.title}</p>
+          {script.note ? <p className="pr-title" role="note">{script.note}</p> : null}
           {mode === "full"
             ? script.blocks.map((b, i) => <p key={i}>{b.text}</p>)
             : script.blocks.map((b, i) => (

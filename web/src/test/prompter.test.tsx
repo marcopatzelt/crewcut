@@ -27,6 +27,11 @@ function source(over: Partial<PrompterSource> = {}): PrompterSource {
 }
 
 describe("teleprompter", () => {
+  it.each([false, true])("shows partial-script warnings (remote=%s)", async (remote) => {
+    const note = "Partial script. The remaining sections are not ready.";
+    render(<Prompter source={source({ script: async () => ({ ...script, note }) })} remote={remote} />);
+    expect((await screen.findByRole("note")).textContent).toBe(note);
+  });
   it("reads the token from the path or the query", () => {
     expect(tokenFromLocation({ pathname: "/p/abc123", search: "" })).toBe("abc123");
     expect(tokenFromLocation({ pathname: "/p/abc123/", search: "" })).toBe("abc123");
