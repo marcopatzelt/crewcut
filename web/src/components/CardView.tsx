@@ -9,6 +9,7 @@ import { accept, decline, messageOf } from "../store/actions";
 import { ErrorLine, Facts, identityOf, Keys, Media } from "./bits";
 import { Avatar } from "../slate/Slate";
 import { Humanized } from "./Humanized";
+import { DocumentPreview } from "./DocumentPreview";
 import { baselineOf, styleFrameOf, templateOf } from "./Motion";
 import { BaselinePreview, MotionPlanPreview, StyleFramePreview, TemplatePreview } from "./MotionCards";
 
@@ -142,14 +143,19 @@ export function FoldedCard({ card, fresh }: { card: Card; fresh?: boolean }) {
 }
 
 function FileLine({ card }: { card: Card }) {
+  const [open, setOpen] = useState(false);
   if (!card.file || !card.episode) return null;
+  const readable = /\.(md|markdown|txt|json|csv|log|ya?ml|toml)$/i.test(card.file);
   return (
     <div className="file-row">
       <FileText size={14} aria-hidden="true" />
-      <a className="one-line" href={api.fileUrl(card.episode, card.file)} target="_blank" rel="noreferrer">
+      {readable ? <a href={api.fileUrl(card.episode, card.file)} className="document-link one-line" onClick={(event) => { event.preventDefault(); setOpen(true); }} title={`Read ${card.file}`}>
         {card.file}
-      </a>
+      </a> : <a className="one-line" href={api.fileUrl(card.episode, card.file)} target="_blank" rel="noreferrer">
+        {card.file}
+      </a>}
       {card.sha256 ? <span className="meta" title={`sha256 ${card.sha256}`}>{`sha256 ${card.sha256.slice(0, 8)}`}</span> : null}
+      {open ? <DocumentPreview episode={card.episode} file={card.file} onClose={() => setOpen(false)} /> : null}
     </div>
   );
 }
