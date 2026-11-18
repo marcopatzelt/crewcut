@@ -11,10 +11,19 @@ import { bytesWords, composeOk, PullProgress, socketFromHost } from "../docker";
 import { imageTag } from "../release";
 import { SettingsFile, visibleBounds } from "../settings";
 import { profileConfig } from "../profile";
-import { composeArgs, composeEnv, failing, parseState } from "../stack";
+import { composeArgs, composeEnv, failing, parseConnections, parseState } from "../stack";
 import { THEME } from "../theme";
 
 const ROOT = join(__dirname, "..", "..", "..");
+
+test("startup recognizes both engine logins without saved desktop account flags", () => {
+  assert.deepEqual(parseConnections({ claude: { connected: false }, codex: { connected: true }, chosen: "codex" }),
+    { claude: false, codex: true, chosen: "codex" });
+  assert.deepEqual(parseConnections({ claude: { connected: true }, codex: { connected: false }, chosen: "claude" }),
+    { claude: true, codex: false, chosen: "claude" });
+  assert.equal(parseConnections({ chosen: "claude" }), null);
+  assert.equal(parseConnections(null), null);
+});
 
 test("desktop profiles isolate settings, browser sessions, credentials and container names", () => {
   const personal = profileConfig(undefined, "/data/Crewcut", "/home/me", true);

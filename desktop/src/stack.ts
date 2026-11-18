@@ -67,6 +67,40 @@ export async function stop(c: StackConfig): Promise<Ran> {
   return docker([...composeArgs(c), "stop"], { env: composeEnv(c), timeout: 120_000 });
 }
 
+export interface EngineConnections {
+  claude: boolean;
+  codex: boolean;
+  chosen: string;
+}
+
+export function parseConnections(value: unknown): EngineConnections | null {
+  if (!value || typeof value !== "object") return null;
+  const data = value as { claude?: { connected?: unknown }; codex?: { connected?: unknown }; chosen?: unknown };
+  if (typeof data.claude?.connected !== "boolean" || typeof data.codex?.connected !== "boolean") return null;
+  if (data.chosen !== "claude" && data.chosen !== "codex") return null;
+  return { claude: data.claude.connected, codex: data.codex.connected, chosen: data.chosen };
+}
+
+export function engineConnections(port: number): Promise<EngineConnections | null> {
+  return new Promise((resolve) => {
+    const req = get({ host: "127.0.0.1", port, path: "/api/engine/login", headers: { Host: `localhost:${port}` }, timeout: 10_000 },
+      (res) => {
+        let body = "";
+        res.on("data", (chunk: Buffer) => {
+          body += chunk.toString();
+          if (body.length > 64_000) req.destroy();
+        });
+        res.on("end", () => {
+          try { resolve(res.statusCode === 200 ? parseConnections(JSON.parse(body)) : null); }
+          catch { resolve(null); }
+        });
+        res.on("error", () => resolve(null));
+      });
+    req.on("timeout", () => req.destroy());
+    req.on("error", () => resolve(null));
+  });
+}
+
 /** The last lines of the container's log, for a step that takes long (the engine install on the first start). */
 export async function lastLog(c: StackConfig): Promise<string> {
   const r = await docker([...composeArgs(c), "logs", "--no-log-prefix", "--tail", "3", SERVICE], {

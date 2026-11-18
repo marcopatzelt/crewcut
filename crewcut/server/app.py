@@ -108,24 +108,14 @@ def _login_view() -> dict:
 
 
 def _engine_ok() -> bool:
-    """The chosen engine is installed and logged in (a probe at start counts most). Cached for 30 s."""
+    """The chosen engine has a current login. Never use an old probe to hide a missing credential."""
     import time
     name = engines.current_name()
     hit = _ENGINE_CACHE.get(name)
     if hit and time.time() - hit[0] < 30:
         return hit[1]
-    ok = None
-    probe = db.kv_get("engine_probe")
-    if probe:
-        try:
-            d = json.loads(probe)
-            if d.get("engine", "claude") == name:
-                ok = bool(d.get("ok"))
-        except ValueError:
-            pass
-    if ok is None:
-        eng = engines.current()
-        ok = eng.installed() and eng.login_status()[0]
+    eng = engines.current()
+    ok = eng.installed() and eng.login_status()[0]
     _ENGINE_CACHE[name] = (time.time(), ok)
     return ok
 

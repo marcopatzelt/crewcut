@@ -428,10 +428,12 @@ function registerIpc(): void {
   });
   own("app:version", () => ({ version: app.getVersion(), packaged: app.isPackaged, platform: process.platform,
     tag: stackConfig().tag }));
-  own("settings:get", () => {
+  own("settings:get", async () => {
     const s = settings.get();
+    const connections = await stack.engineConnections(PORT);
     return { studioDir: s.studioDir, keepRunning: s.keepRunning, onboarded: s.onboarded, claude: s.claude ?? null,
-      codex: s.codex ?? null, claudeConnected: Boolean(getToken()) || s.claude?.where === "engine volume",
+      codex: s.codex ?? null, claudeConnected: connections?.claude ?? false,
+      codexConnected: connections?.codex ?? false, connectionsChecked: connections !== null,
       loginProblem: (() => { const p = loginProblem(); return p ? LOGIN_PROBLEM[p] : null; })(),
       keychain: keychainAvailable() };
   });

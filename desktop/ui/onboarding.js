@@ -174,7 +174,15 @@ async function startStep() {
     return;
   }
   const s = await D.settings();
-  if (r.login || !s.claudeConnected) return connectStep(r.login || "");
+  if (s.claudeConnected || s.codexConnected) return D.openCrewcut();
+  if (!s.connectionsChecked) {
+    show(slate("waiting"), h("h1", {}, "Your sign-ins could not be checked."),
+      h("p", {}, "Your saved sign-ins have not been removed. Try the check again or open your studio."),
+      h("button", { class: "primary", onclick: () => void startStep() }, "Check again"),
+      h("button", { class: "link", onclick: () => void D.openCrewcut() }, "Open studio"));
+    return;
+  }
+  if (!s.claudeConnected && !s.codexConnected) return connectStep(r.login || s.loginProblem || "");
   await D.openCrewcut();
 }
 
@@ -258,7 +266,7 @@ function connectStep(problem) {
   const codex = codexBlock(finish);
   show(
     slate("wave"),
-    h("h1", {}, "Connect Claude."),
+    h("h1", {}, "Connect Claude or Codex."),
     problem ? h("p", { class: "error", role: "alert" }, problem) : null,
     h("p", {}, "Crewcut runs on your own Claude plan. Claude's page opens in your browser; sign in and paste the code it shows. The login stays in your system's keychain."),
     claude.box,
@@ -301,8 +309,8 @@ async function settingsView(preview) {
   const codex = codexBlock(() => void settingsView(preview), "Connect Codex");
   const codexCard = h("section", { class: "card", "aria-label": "Codex" },
     h("h2", {}, "Codex (beta)"),
-    h("p", {}, s.codex ? "Connected with your ChatGPT plan. Say \"use Codex\" in the chat to work with it." : "Not connected."),
-    s.codex
+    h("p", {}, s.codexConnected ? "Connected with your ChatGPT plan. Open Crew to use Codex for new work." : "Not connected."),
+    s.codexConnected
       ? h("div", { class: "row" }, h("button", { class: "secondary", onclick: async () => {
         await D.disconnect("codex");
         void settingsView(preview);
@@ -336,10 +344,10 @@ async function settingsView(preview) {
   view.replaceChildren(...[
     h("h1", {}, "Settings"),
     claudeCard, codexCard, keepCard, studioCard, about,
-    preview ? null : h("div", { class: "row" }, h("button", { class: "primary", onclick: () => close(s.claudeConnected || Boolean(s.codex)) }, "Done")),
+    preview ? null : h("div", { class: "row" }, h("button", { class: "primary", onclick: () => close(s.claudeConnected || s.codexConnected) }, "Done")),
   ].filter(Boolean));
   if (HASH === "settings-claude" && !s.claudeConnected && !preview) void claude.start();
-  if (HASH === "settings-codex" && !s.codex && !preview) void codex.start();
+  if (HASH === "settings-codex" && !s.codexConnected && !preview) void codex.start();
   if (preview) {
     await shot("settings");
     await shot("end");

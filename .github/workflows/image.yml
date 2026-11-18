@@ -204,6 +204,7 @@ jobs:
           docker run -d --name eng -p 127.0.0.1:4754:4747 -e CREWCUT_INSTALL_SKILLS=0 -v "$PWD/s-connect:/studio" crewcut:ci
           for i in $(seq 1 150); do curl -fsS http://localhost:4754/api/health > /dev/null 2>&1 && break; sleep 4; done
           curl -fsS http://localhost:4754/api/health
+          for i in $(seq 1 150); do docker exec eng sh -c 'command -v claude' > /dev/null 2>&1 && break; sleep 4; done
           docker exec eng sh -c 'claude --version'
       - name: The sign-in link comes out, the CLI waits for the code, a wrong code plus Enter gets a clean refusal
         run: |

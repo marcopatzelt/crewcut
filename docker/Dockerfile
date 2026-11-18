@@ -93,6 +93,7 @@ COPY THIRD_PARTY_NOTICES.md ./
 COPY examples/ examples/
 COPY tests/ tests/
 COPY host/ host/
+COPY compose.development.yaml ./
 COPY docker/entrypoint.sh docker/entrypoint.sh
 COPY --from=web /web/dist web/dist
 

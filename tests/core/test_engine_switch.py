@@ -25,3 +25,16 @@ def test_switch_requires_login_and_keeps_other_connection(monkeypatch):
     assert client.post('/api/engine/unknown/use').status_code == 400
     with db.conn() as connection:
         assert connection.execute('SELECT count(*) FROM jobs').fetchone()[0] == 0
+
+
+def test_historical_probe_cannot_hide_a_missing_login(monkeypatch):
+    import json
+
+    from crewcut.server.app import _ENGINE_CACHE, _engine_ok
+
+    _ENGINE_CACHE.clear()
+    monkeypatch.setattr(type(engines.get('claude')), 'installed', lambda self: True)
+    monkeypatch.setattr(type(engines.get('claude')), 'login_status', lambda self: (False, 'not connected'))
+    db.kv_set('engine_probe', json.dumps({'engine': 'claude', 'ok': True}))
+    assert _engine_ok() is False
+    _ENGINE_CACHE.clear()
