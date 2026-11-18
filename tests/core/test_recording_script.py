@@ -3,6 +3,16 @@ import pytest
 from crewcut import db, episodes, paths, prompter
 
 
+def test_reading_line_and_mirror_persist_without_starting_playback(crew):
+    episode = episodes.create("Reading line")["id"]
+    prompter.set_control(episode, {"guide": 57, "mirror": True})
+    saved = prompter.control(episode)
+    assert saved["guide"] == 57 and saved["mirror"] is True and saved["playing"] is False
+    assert prompter.set_control(episode, {"guide": 200})["guide"] == 85
+    assert prompter.set_control(episode, {"guide": -20})["guide"] == 10
+    assert prompter.set_control(episode, {"guide": float("nan")})["guide"] == 10
+
+
 def test_qr_is_an_inline_svg_without_xml_declaration():
     from xml.etree import ElementTree
     svg = prompter.qr_svg("http://localhost:4748/p/synthetic")

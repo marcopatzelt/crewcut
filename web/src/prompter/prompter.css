@@ -117,12 +117,20 @@ svg {
   position: fixed;
   left: 0;
   right: 0;
-  top: 33vh;
-  height: 0;
-  border-top: 2px solid var(--prompter-line);
-  opacity: 0.5;
-  pointer-events: none;
+  height: 32px;
+  transform: translateY(-50%);
+  opacity: 0.65;
+  cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
+  color: var(--prompter-line);
 }
+.pr-line::before { content: ""; position: absolute; top: 50%; left: 0; right: 0; border-top: 2px solid var(--prompter-line); }
+.pr-line svg { position: absolute; left: 8px; top: 6px; }
+.pr-line:hover, .pr-line:focus-visible, .pr-line.dragging { opacity: 1; }
+.pr-guide-controls { margin-top: 24px; }
+.pr-guide-controls h2 { font-size: 20px; margin-bottom: 8px; }
+.pr-guide-controls > div { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
 
 .pr-panel {
   position: fixed;

@@ -27,6 +27,16 @@ function source(over: Partial<PrompterSource> = {}): PrompterSource {
 }
 
 describe("teleprompter", () => {
+  it("moves the reading line from the phone without starting playback", async () => {
+    const posted = vi.fn().mockResolvedValue(undefined);
+    render(<Prompter source={source({ shared: true, setControl: posted })} remote />);
+    fireEvent.click(await screen.findByRole("button", { name: "Move reading line down" }));
+    expect(posted).toHaveBeenLastCalledWith(expect.objectContaining({ guide: 35, playing: false }));
+    fireEvent.click(screen.getByRole("button", { name: "Move reading line up" }));
+    expect(posted).toHaveBeenLastCalledWith(expect.objectContaining({ guide: 33, playing: false }));
+    fireEvent.click(screen.getByRole("button", { name: "Reset line" }));
+    expect(screen.getByLabelText("Reading line percent").textContent).toBe("33 %");
+  });
   it.each([false, true])("shows partial-script warnings (remote=%s)", async (remote) => {
     const note = "Partial script. The remaining sections are not ready.";
     render(<Prompter source={source({ script: async () => ({ ...script, note }) })} remote={remote} />);

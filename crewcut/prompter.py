@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import io
 import json
+import math
 import os
 import re
 from pathlib import Path
 
 from . import config, db, episodes, paths
 
-DEFAULT_CONTROL = {"playing": False, "speed": 1.0, "position": 0.0, "mirror": False, "size": 1.0, "mode": "full"}
+DEFAULT_CONTROL = {"playing": False, "speed": 1.0, "position": 0.0, "mirror": False, "size": 1.0, "mode": "full", "guide": 33.0}
 
 
 def lan_host() -> str:
@@ -130,8 +131,10 @@ def set_control(episode: str, values: dict) -> dict:
         elif k == "mode":
             d[k] = "points" if v == "points" else "full"
         else:
-            lo, hi = {"speed": (0.2, 4.0), "position": (0.0, 1.0), "size": (0.5, 3.0)}[k]
-            d[k] = max(lo, min(hi, float(v)))
+            lo, hi = {"speed": (0.2, 4.0), "position": (0.0, 1.0), "size": (0.5, 3.0), "guide": (10.0, 85.0)}[k]
+            number = float(v)
+            if math.isfinite(number):
+                d[k] = max(lo, min(hi, number))
     db.kv_set(f"prompter:{episode}", json.dumps(d))
     return d
 

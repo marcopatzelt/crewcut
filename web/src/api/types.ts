@@ -417,6 +417,7 @@ export interface PrompterScript {
 }
 
 export interface PrompterControl {
+  guide?: number;
   playing: boolean;
   speed: number;
   position: number;

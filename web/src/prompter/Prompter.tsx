@@ -10,9 +10,12 @@ import {
   Plus,
   RotateCcw,
   AlignLeft,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PrompterControl, PrompterScript } from "../api/types";
+import { guidePercent, ReadingLine } from "./ReadingLine";
 
 export const DEFAULT_CONTROL: PrompterControl = { playing: false, speed: 1, position: 0, mirror: false, size: 1 };
 const POLL_MS = 500;
@@ -63,6 +66,7 @@ function differs(a: PrompterControl, b: PrompterControl): boolean {
     a.mirror !== b.mirror ||
     Math.abs(a.speed - b.speed) > 0.001 ||
     Math.abs(a.size - b.size) > 0.001 ||
+    (a.guide ?? 33) !== (b.guide ?? 33) ||
     Math.abs(a.position - b.position) > 0.005
   );
 }
@@ -357,6 +361,22 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
         {script.note ? <p className="pr-value" role="note">{script.note}</p> : null}
         <p className="pr-value">Remote. The screen with the text follows these buttons.</p>
         <Panel ctl={ctl} mode={mode} change={change} setMode={switchMode} dim={false} />
+        <section className="pr-guide-controls" aria-label="Reading line position">
+          <h2>Reading line</h2>
+          <p className="pr-value">Move the line on your teleprompter screen.</p>
+          <div>
+            <button type="button" className="pr-btn" aria-label="Move reading line up"
+              disabled={guidePercent(ctl.guide) <= 10} onClick={() => change({ guide: guidePercent(guidePercent(ctl.guide) - 2) })}>
+              <ArrowUp size={18} aria-hidden="true" />Higher
+            </button>
+            <span className="pr-value" aria-label="Reading line percent">{guidePercent(ctl.guide)} %</span>
+            <button type="button" className="pr-btn" aria-label="Move reading line down"
+              disabled={guidePercent(ctl.guide) >= 85} onClick={() => change({ guide: guidePercent(guidePercent(ctl.guide) + 2) })}>
+              <ArrowDown size={18} aria-hidden="true" />Lower
+            </button>
+            <button type="button" className="pr-btn" onClick={() => change({ guide: 33 })}>Reset line</button>
+          </div>
+        </section>
         {offline ? <p className="pr-value">Not in sync. Trying again.</p> : null}
       </div>
     );
@@ -384,7 +404,7 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
               ))}
         </div>
       </div>
-      <div className="pr-line" aria-hidden="true" />
+      <ReadingLine value={ctl.guide} onChange={guide => change({ guide })} />
       {offline ? <p className="pr-note">Not in sync with the remote. Trying again.</p> : null}
       <Panel ctl={ctl} mode={mode} change={change} setMode={switchMode} dim={ctl.playing} />
     </div>

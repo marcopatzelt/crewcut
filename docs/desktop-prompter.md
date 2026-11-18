@@ -4,6 +4,11 @@ In the desktop app, open Teleprompter, choose a screen once, then select **Open 
 The saved choice stays in desktop settings, not in the agent's studio. Escape closes the prompter window.
 If that screen is disconnected, Crewcut reports an error instead of using another screen.
 
+Drag the reading line up or down, with a mouse or touch. When it has keyboard focus, arrow keys move it by one percent.
+The position stays saved for the episode and follows the remote. Moving the line does not start playback.
+On the phone remote, use **Higher**, **Lower** or **Reset line** under **Reading line**.
+For mirror glass, turn on **Mirror** (or press M). This preference also stays saved for the episode.
+
 Agents may request this exact action with `crewcut prompter EPISODE --desktop`. The command returns a request ID,
 not a success claim. Read the result with `crewcut prompter EPISODE --desktop-status ID`.
 The desktop app must be running. Requests expire after two minutes and never start recording.
