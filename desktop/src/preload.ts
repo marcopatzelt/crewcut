@@ -10,6 +10,9 @@ const call = (channel: string, ...args: unknown[]) => ipcRenderer.invoke(channel
 
 const forPage = {
   platform: process.platform,
+  prompterDisplays: () => call("prompter:displays"),
+  prompterSelectDisplay: (id: number) => call("prompter:select", id),
+  prompterOpen: (episode: string) => call("prompter:open", episode),
   connect: (engine: "claude" | "codex") => call("page:connect", engine),
   openSettings: () => void call("page:settings"),
   setTheme: (theme: "light" | "dark") => void call("page:theme", theme),

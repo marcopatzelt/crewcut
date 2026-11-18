@@ -329,6 +329,14 @@ def create_app(start_worker: bool = True) -> FastAPI:
             raise HTTPException(404, "No such episode.") from None
         return {"url": url, "qr_svg": prompter.qr_svg(url)}
 
+    @app.get("/api/episodes/{eid}/desktop-prompter")
+    def desktop_prompter_info(eid: str):
+        from ..desktop_prompter import launch_info
+        try:
+            return launch_info(eid)
+        except (ValueError, FileNotFoundError) as error:
+            raise HTTPException(409, str(error)) from None
+
     @app.get("/api/files/{eid}/{rel:path}")
     def get_file(eid: str, rel: str, download: bool = False):
         try:

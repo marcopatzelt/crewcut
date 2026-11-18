@@ -15,6 +15,14 @@ import * as stack from "./stack";
 import { startUpdates } from "./updater";
 import { applyTheme, createMainWindow, createSettingsWindow, guard, isMac, localApp, ownPage, themeNow } from "./window";
 import type { ThemeName } from "./theme";
+import { DesktopPrompter } from "./prompter";
+
+if (process.platform === "linux" && process.env.WAYLAND_DISPLAY && process.env.DISPLAY &&
+    !app.commandLine.hasSwitch("ozone-platform")) {
+  app.relaunch({ args: [...process.argv.slice(1), "--ozone-platform=x11"] });
+  app.exit(0);
+}
+let desktopPrompter: DesktopPrompter;
 
 const PROFILE = profileConfig(process.env.CREWCUT_PROFILE, app.getPath("userData"), homedir(), app.isPackaged);
 if (PROFILE.development) {
@@ -470,6 +478,9 @@ function registerIpc(): void {
   page("codex:begin", () => codexBegin());
   page("codex:wait", () => codexWait());
   page("signin:cancel", () => stopSignIn());
+  page("prompter:displays", () => desktopPrompter.displays());
+  page("prompter:select", (_event, id: number) => desktopPrompter.select(id));
+  page("prompter:open", (_event, episode: string) => desktopPrompter.open(episode));
   own("engine:disconnect", (_e, engine: "claude" | "codex") => disconnect(engine === "codex" ? "codex" : "claude"));
   own("app:open", () => {
     void main?.loadURL(APP_URL);
@@ -525,6 +536,9 @@ app.on("window-all-closed", () => {
 if (firstInstance) void app.whenReady().then(async () => {
   await initializeSecrets();
   settings = new SettingsFile(join(app.getPath("userData"), "settings.json"), homedir(), PROFILE.studioDir);
+  desktopPrompter = new DesktopPrompter(settings, PORT, PROFILE.prompterPort);
+  const prompterPoll = setInterval(() => { void desktopPrompter.poll().catch(() => undefined); }, 1500);
+  prompterPoll.unref();
   if (SHOTS) settings.set({ onboarded: false });
   buildMenu();
   registerIpc();

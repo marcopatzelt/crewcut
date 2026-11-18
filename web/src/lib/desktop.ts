@@ -3,6 +3,9 @@
 import type { ClaudeAccount } from "../api/types";
 
 export interface DesktopBridge {
+  prompterDisplays?(): Promise<{ displays: Array<{ id: number; label: string; width: number; height: number }>; selected: number | null }>;
+  prompterSelectDisplay?(id: number): Promise<void>;
+  prompterOpen?(episode: string): Promise<{ ok: boolean; message: string }>;
   /** "darwin", "win32" or "linux". */
   platform: string;
   /** Older apps: the app's settings window signs in (the token goes to the system keychain). */

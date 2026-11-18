@@ -316,6 +316,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     pr = sub.add_parser("prompter", help="print the phone link and QR code of the teleprompter")
     pr.add_argument("episode")
+    pr.add_argument("--desktop", action="store_true", help="request the approved script on the desktop's chosen screen")
+    pr.add_argument("--desktop-status", metavar="ID", help="read the result of a desktop request")
 
     # handled by _delegate before parsing; listed here so `crewcut --help` shows it
     sub.add_parser("motion", add_help=False, help="motion graphics with EffectCraft (crewcut motion --help)")
@@ -756,6 +758,15 @@ def _run(a) -> int:
         print(plugin.build(Path(a.out) if a.out else None))
         return 0
     if a.cmd == "prompter":
+        if a.desktop or a.desktop_status:
+            from . import desktop_prompter
+            try:
+                result = desktop_prompter.status(a.desktop_status) if a.desktop_status else desktop_prompter.request_open(a.episode)
+                print(json.dumps(result))
+                return 0 if result.get("status") != "failed" else 1
+            except (ValueError, FileNotFoundError) as error:
+                print(str(error), file=sys.stderr)
+                return 1
         from . import prompter
         url = prompter.url_for(a.episode)
         print(url)

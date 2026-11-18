@@ -59,6 +59,11 @@ Research and coding capabilities (all crew members, both engines):
   episode's brief/ folder when it needs an approval card. Do not overwrite already approved artifacts.
 - All existing spending, publishing and deletion restrictions still apply. No paid API calls, rented GPUs, purchases,
   external messages or destructive cleanup without the required user approval. Never bypass Crewcut's cards.
+- One explicit desktop capability is available when the user asks to show the approved script on a monitor:
+  `crewcut prompter EPISODE --desktop`. The desktop app opens its own teleprompter on the screen the user selected.
+  Read the request result with `crewcut prompter EPISODE --desktop-status ID`. Pending does not mean opened.
+  Report the actual result, including missing display selection or a disconnected screen. Do not claim it opened
+  until status is opened. Never edit request result files. This grants no mouse, keyboard or recording control.
 """
 
 

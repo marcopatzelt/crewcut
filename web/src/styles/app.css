@@ -901,6 +901,9 @@ svg.lucide {
   color: var(--accent-ink);
 }
 
+.prompter-screens { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.prompter-screens .actions { flex-wrap: wrap; margin: 12px 0; }
+.prompter-screens [aria-pressed="true"] { outline: 2px solid var(--accent-ink); }
 .document-link {
   padding: 0;
   min-width: 0;
@@ -1196,6 +1199,8 @@ svg.lucide {
   z-index: 8;
   width: 320px;
   max-width: calc(100% - 20px);
+  max-height: calc(100dvh - 76px);
+  overflow-y: auto;
   padding: 16px;
   border-radius: var(--r-panel);
   background: var(--card);
