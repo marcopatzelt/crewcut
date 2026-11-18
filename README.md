@@ -171,6 +171,10 @@ The seven specialists work beneath this shared lead, each with its own role.
 An ordinary channel question does not start a new episode. Paid actions and publishing still require your approval.
 See the [channel workspace plan](docs/channel-workspace-plan.md) for the design and approval boundaries.
 
+The crew can also research sources, write code and run experiments in persistent projects under your studio's
+`workspaces/` folder. These projects stay separate from Crewcut's code. Both Claude Code and Codex use them.
+See [research and coding projects](docs/workspaces.md). Desktop control and paid services are not granted by this.
+
 #### Episode specialists
 
 <p align="center">

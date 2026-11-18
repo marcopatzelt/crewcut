@@ -147,6 +147,10 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
            "CREWCUT_EPISODE": j["episode"] or "", "CREWCUT_IDENTITY": j["identity"], "CREWCUT_JOB": str(j["id"]),
            **{str(k): str(v) for k, v in (ecfg.get("env") or {}).items()}}
     env["CREWCUT_CONVERSATION_SCOPE"] = "channel" if channel_job else "episode" if j["episode"] else "onboarding"
+    from .. import workspaces
+    workspace_root = workspaces.root()
+    workspace_root.mkdir(parents=True, exist_ok=True)
+    env["CREWCUT_WORKSPACES"] = str(workspace_root)
     extra = [str(x) for x in (ecfg.get("extra_args") or [])] + [str(x) for x in (ident.get("extra_args") or [])]
     opts: dict = {}
     prompt, agent, with_identity = j["task"], None, True
@@ -187,7 +191,7 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
         cwd=cwd, env=env, model=model or None, effort=ident.get("effort") or None, agent=agent, extra_args=extra,
         resume=resume.get("session") if resume.get("engine") == eng.name else None,
         timeout_s=int(cfg.get("agent_timeout_minutes", 60)) * 60, log_path=paths.logs_dir() / f"job-{j['id']}.log",
-        extra_dirs=[str(paths.app_root())], engine_options=opts,
+        extra_dirs=[str(paths.app_root()), str(workspace_root)], engine_options=opts,
         name=None)
     from .. import crewtalk
     task.name = crewtalk.session_name(j["identity"], j["episode"])

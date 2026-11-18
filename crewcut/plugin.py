@@ -26,6 +26,7 @@ def default_dir() -> Path:
 
 
 def agent_markdown(ident: dict, model: str | None = None) -> str:
+    from .conductor.prompts import WORKSPACE_RULES
     rights = []
     if ident.get("may_spend"):
         rights.append("you may spend money, always through a spend card")
@@ -41,7 +42,7 @@ def agent_markdown(ident: dict, model: str | None = None) -> str:
         front["effort"] = ident["effort"]
     body = (f"You are {ident.get('name')}, a member of the Crewcut crew.\n\n{ident.get('soul', '').strip()}\n\n"
             f"Your skills: {skills}. Read the skill of your step before you start.\n"
-            f"Your rights: {'; '.join(rights) if rights else 'no spending, no publishing'}.\n")
+            f"Your rights: {'; '.join(rights) if rights else 'no spending, no publishing'}.\n\n{WORKSPACE_RULES}")
     return "---\n" + yaml.safe_dump(front, sort_keys=False, allow_unicode=True) + "---\n\n" + body
 
 

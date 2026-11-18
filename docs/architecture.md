@@ -30,6 +30,13 @@ Two roots:
 
 ## Layers of knowledge
 
+### Research workspaces
+
+All crew members may use persistent `studio/workspaces/<name>/` projects for research, code and experiments.
+`crewcut workspace create|list|path` manages their locations without editing the app or mounting host folders.
+Both engines receive the capability instructions, and Claude's generated subagents receive them too.
+See [research and coding projects](workspaces.md) for permissions, evidence and safety boundaries.
+
 ### Channel coordination and imported history
 
 The Showrunner leads the Channel conversation. It reuses the existing engine and queue, not a second agent service.

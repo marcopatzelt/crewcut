@@ -13,6 +13,7 @@ import sys
 from . import __version__
 
 DELEGATED = {
+    "workspace": ("crewcut.workspaces", False),
     "compute": ("crewcut.compute.cli", False),
     "render": ("crewcut.render.cli", True),
     "ingest": ("crewcut.cut.cli", True),
@@ -318,6 +319,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # handled by _delegate before parsing; listed here so `crewcut --help` shows it
     sub.add_parser("motion", add_help=False, help="motion graphics with EffectCraft (crewcut motion --help)")
+    sub.add_parser("workspace", add_help=False, help="persistent research and coding projects")
     return p
 
 
