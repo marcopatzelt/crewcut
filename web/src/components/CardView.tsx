@@ -9,7 +9,7 @@ import { accept, decline, messageOf } from "../store/actions";
 import { ErrorLine, Facts, identityOf, Keys, Media } from "./bits";
 import { Avatar } from "../slate/Slate";
 import { Humanized } from "./Humanized";
-import { DocumentPreview } from "./DocumentPreview";
+import { DocumentLink, documentTarget } from "./DocumentLink";
 import { FormattedText } from "./FormattedText";
 import { baselineOf, styleFrameOf, templateOf } from "./Motion";
 import { BaselinePreview, MotionPlanPreview, StyleFramePreview, TemplatePreview } from "./MotionCards";
@@ -144,19 +144,17 @@ export function FoldedCard({ card, fresh }: { card: Card; fresh?: boolean }) {
 }
 
 function FileLine({ card }: { card: Card }) {
-  const [open, setOpen] = useState(false);
   if (!card.file || !card.episode) return null;
-  const readable = /\.(md|markdown|txt|json|csv|log|ya?ml|toml)$/i.test(card.file);
+  const target = documentTarget(card.file, card.episode);
   return (
     <div className="file-row">
       <FileText size={14} aria-hidden="true" />
-      {readable ? <a href={api.fileUrl(card.episode, card.file)} className="document-link one-line" onClick={(event) => { event.preventDefault(); setOpen(true); }} title={`Read ${card.file}`}>
+      {target ? <DocumentLink {...target} className="document-link one-line">
         {card.file}
-      </a> : <a className="one-line" href={api.fileUrl(card.episode, card.file)} target="_blank" rel="noreferrer">
+      </DocumentLink> : <a className="one-line" href={api.fileUrl(card.episode, card.file)} target="_blank" rel="noreferrer">
         {card.file}
       </a>}
       {card.sha256 ? <span className="meta" title={`sha256 ${card.sha256}`}>{`sha256 ${card.sha256.slice(0, 8)}`}</span> : null}
-      {open ? <DocumentPreview episode={card.episode} file={card.file} onClose={() => setOpen(false)} /> : null}
     </div>
   );
 }
@@ -401,7 +399,7 @@ export function OpenCard({
         <span className="card-ask">needs your yes</span>
       </div>
       <h2 className="card-title">{card.title}</h2>
-      {card.body && !BODY_IN_PREVIEW.has(card.kind) ? <div className="card-body"><FormattedText text={card.body} /></div> : null}
+      {card.body && !BODY_IN_PREVIEW.has(card.kind) ? <div className="card-body"><FormattedText text={card.body} episode={card.episode ?? undefined} /></div> : null}
       <CardPreview card={card} chosen={chosen} onChoose={setChosen} way={way} onWay={setWay} folding={Boolean(folding)} />
       <Humanized card={card} folding={Boolean(folding)} />
       <div className="card-actions">

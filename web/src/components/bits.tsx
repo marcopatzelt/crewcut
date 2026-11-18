@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import { ONBOARDING, type Fact, type Identity, type Step } from "../api/types";
 import { mediaKind } from "../lib/format";
 import { keyLabels } from "../lib/platform";
+import { FormattedText } from "./FormattedText";
 
 /**
  * A two-letter mark on a neutral plate, a rounded square like a small app icon (DESIGN.md rule 13).
@@ -61,13 +62,13 @@ export function Keys({ keys, className }: { keys: string[]; className?: string }
   );
 }
 
-export function Facts({ facts }: { facts: Fact[] }) {
+export function Facts({ facts, episode }: { facts: Fact[]; episode?: string }) {
   return (
     <dl className="facts">
       {facts.map((fact, index) => (
         <div key={`${fact.label}:${fact.value}:${index}`}>
           <dt>{fact.label}</dt>
-          <dd>{fact.value}</dd>
+          <dd>{episode && fact.label !== "episode" ? <FormattedText text={fact.value} episode={episode} /> : fact.value}</dd>
         </div>
       ))}
     </dl>

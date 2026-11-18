@@ -32,7 +32,7 @@ export function ExchangeLine({ m, exchange, team }: { m: Message; exchange: Exch
               <div className="exchange-who">
                 <b>{name(x.sender)}</b> to <b>{name(x.recipient)}</b> · <code>{x.about}</code>
               </div>
-              <FormattedText text={x.text} />
+              <FormattedText text={x.text} episode={m.episode ?? undefined} />
             </li>
           ))}
         </ol>

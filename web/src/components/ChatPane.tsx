@@ -59,16 +59,16 @@ function IdentityMessage({
           {[step?.label, ago(m.at)].filter(Boolean).join(" · ")}
         </div>
         <div className="txt">
-          <FormattedText text={m.text} />
+          <FormattedText text={m.text} episode={episode} />
         </div>
-        {m.cite ? <p className="cite">{m.cite}</p> : null}
+        {m.cite ? <div className="cite"><FormattedText text={m.cite} episode={episode} /></div> : null}
         {linked.length ? <nav className="channel-links" aria-label="Episodes in this reply">
           {linked.map((item) => <a key={item.id} href={viewToHash({ kind: "episode", id: item.id })}>{item.title}</a>)}
         </nav> : null}
         {m.preview || facts?.length ? (
           <div className={m.preview && facts?.length ? "preview" : "preview solo"}>
             {m.preview ? <Media episode={episode} path={m.preview} label={`Preview from ${who.name}`} /> : null}
-            {facts?.length ? <Facts facts={facts} /> : null}
+            {facts?.length ? <Facts facts={facts} episode={episode} /> : null}
           </div>
         ) : null}
       </div>
@@ -98,7 +98,7 @@ function MessageBlock({
       {onlyTitle ? null : m.exchange?.messages?.length ? (
         <ExchangeLine m={m} exchange={m.exchange} team={team} />
       ) : m.author === "user" ? (
-        <div className={fresh ? "user is-new" : "user"}><FormattedText text={m.text} /></div>
+        <div className={fresh ? "user is-new" : "user"}><FormattedText text={m.text} episode={episode} /></div>
       ) : (
         <IdentityMessage m={m} team={team} steps={steps} episode={episode} fresh={fresh} />
       )}

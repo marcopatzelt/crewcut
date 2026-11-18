@@ -109,7 +109,7 @@ describe("the episode's media", () => {
     openAt(ep.id);
     render(<App />);
     const script = await screen.findByRole("link", { name: "SCRIPT-v001.md" });
-    expect(script.getAttribute("href")).toContain("download=true");
+    expect(script.getAttribute("href")).toBe(`/api/files/${ep.id}/brief/SCRIPT-v001.md`);
     await userEvent.click(screen.getByRole("button", { name: "Browse imported files" }));
     await userEvent.click(await screen.findByRole("button", { name: "brief/" }));
     expect(await screen.findByRole("link", { name: "older.txt" })).toBeTruthy();

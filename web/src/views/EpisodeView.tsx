@@ -7,6 +7,7 @@ import { api } from "../api/client";
 import { ONBOARDING, type Card, type ImportedFiles, type Step } from "../api/types";
 import { ErrorLine, Loading } from "../components/bits";
 import { ChatPane, useFirstStart } from "../components/ChatPane";
+import { DocumentLink, documentTarget } from "../components/DocumentLink";
 import { Composer } from "../components/Composer";
 import { MoneyLine, WorkingHint, WorkingList } from "../components/Crew";
 import { ConnectEngine } from "../components/ConnectEngine";
@@ -229,7 +230,9 @@ function EpisodeMaterial({ id }: { id: string }) {
     <section className="section" aria-label="Scripts and reference files">
       <h2>Scripts and reference files</h2>
       <ul>
-        {documents.map((file) => <li key={file.path}><a href={`${api.fileUrl(id, file.path)}?download=true`} download>{file.path.slice(6)}</a></li>)}
+        {documents.map((file) => <li key={file.path}>{documentTarget(file.path, id)
+          ? <DocumentLink episode={id} file={file.path}>{file.path.slice(6)}</DocumentLink>
+          : <a href={`${api.fileUrl(id, file.path)}?download=true`} download>{file.path.slice(6)}</a>}</li>)}
       </ul>
       {detail?.project.legacy ? (
         <>
