@@ -2,13 +2,12 @@
 // DPAPI (Windows) or the desktop's secret service (GNOME Keyring, KWallet) holds. Without one of these the app does
 // not keep the token at all (Linux would only obfuscate it); the container's engine volume keeps it instead.
 import { app, safeStorage } from "electron";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { TOKEN_RE } from "./connect";
+import { TokenStore } from "./token-store";
 
-const file = () => join(app.getPath("userData"), "claude-token.bin");
+let store: TokenStore | undefined;
 
-export function keychainAvailable(): boolean {
+function secureBackend(): boolean {
   if (!safeStorage.isEncryptionAvailable()) return false;
   if (process.platform === "linux") {
     const backend = safeStorage.getSelectedStorageBackend();
@@ -17,30 +16,17 @@ export function keychainAvailable(): boolean {
   return true;
 }
 
-/** Why a stored login cannot be used: "no-keychain" (the app runs without the desktop's keychain, e.g. started from a
- *  terminal outside the desktop session) or "unreadable" (the keychain did not decrypt it). null: fine or none. */
-export function loginProblem(): "no-keychain" | "unreadable" | null {
-  if (!existsSync(file())) return null;
-  if (!keychainAvailable()) return "no-keychain";
-  return getToken() ? null : "unreadable";
+function tokenStore(): TokenStore {
+  return store ??= new TokenStore(join(app.getPath("userData"), "claude-token.bin"), {
+    available: async () => secureBackend() && await safeStorage.isAsyncEncryptionAvailable(),
+    encrypt: (token) => safeStorage.encryptStringAsync(token),
+    decrypt: async (bytes) => (await safeStorage.decryptStringAsync(bytes)).result,
+  });
 }
 
-export function getToken(): string | null {
-  try {
-    if (!existsSync(file()) || !keychainAvailable()) return null;
-    const token = safeStorage.decryptString(readFileSync(file()));
-    return TOKEN_RE.test(token) ? token : null;
-  } catch {
-    return null;
-  }
-}
-
-export function setToken(token: string): void {
-  if (!TOKEN_RE.test(token)) throw new Error("That is not a Claude Code token.");
-  if (!keychainAvailable()) throw new Error("No system keychain is available.");
-  writeFileSync(file(), safeStorage.encryptString(token), { mode: 0o600 });
-}
-
-export function deleteToken(): void {
-  rmSync(file(), { force: true });
-}
+export const initializeSecrets = (): Promise<void> => tokenStore().load();
+export const keychainAvailable = (): boolean => tokenStore().isAvailable();
+export const loginProblem = (): "no-keychain" | "unreadable" | null => tokenStore().loginProblem();
+export const getToken = (): string | null => tokenStore().get();
+export const setToken = (token: string): Promise<void> => tokenStore().set(token);
+export const deleteToken = (): void => tokenStore().delete();

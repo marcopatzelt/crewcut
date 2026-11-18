@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { CODE_RE, deviceAllowed, signInAllowed, Steps, type Step } from "./connect";
 import { bytesWords, checkDocker, docker, dockerEnv, dockerSocket, imageExists, pullImage } from "./docker";
 import { IMAGE, imageTag, RELEASES } from "./release";
-import { deleteToken, getToken, keychainAvailable, loginProblem, setToken } from "./secrets";
+import { deleteToken, getToken, initializeSecrets, keychainAvailable, loginProblem, setToken } from "./secrets";
 import { SettingsFile } from "./settings";
 import { profileConfig } from "./profile";
 import * as stack from "./stack";
@@ -219,6 +219,7 @@ const LOGIN_PROBLEM = {
 } as const;
 
 async function startStack(): Promise<{ ok: boolean; text?: string; login?: string }> {
+  await initializeSecrets();
   const problem = loginProblem();
   const login = problem ? LOGIN_PROBLEM[problem] : undefined;
   if (await stack.health(PORT)) { // Crewcut already runs: never pull or restart a healthy stack on start
@@ -358,7 +359,7 @@ async function claudeCode(code: string): Promise<{ connected: boolean; text?: st
   if (s.step !== "done") return { connected: false, text: s.text ?? "Claude did not accept the code. Start again." };
   const at = new Date().toISOString();
   if (s.token) {
-    setToken(s.token);
+    await setToken(s.token);
     settings.set({ claude: { email: s.account?.email, orgName: s.account?.orgName, at, where: "keychain" } });
     if (!(await restartWithToken())) return { connected: false, text: "Crewcut did not start again with the login." };
   } else {
@@ -521,7 +522,8 @@ app.on("window-all-closed", () => {
   if (!settings?.get().keepRunning) app.quit();
 });
 
-if (firstInstance) void app.whenReady().then(() => {
+if (firstInstance) void app.whenReady().then(async () => {
+  await initializeSecrets();
   settings = new SettingsFile(join(app.getPath("userData"), "settings.json"), homedir(), PROFILE.studioDir);
   if (SHOTS) settings.set({ onboarded: false });
   buildMenu();

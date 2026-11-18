@@ -18,6 +18,12 @@ connects Claude with one button and shows the studio in its own window. It is bu
 On later starts it checks Docker, starts the stack (pulling a new image once when the app's version changed) and
 opens Crewcut.
 
+The desktop waits for encrypted-login storage before it checks the connection. It uses Electron's asynchronous
+encryption and decryption methods, which also accept older encrypted logins. On Linux it still rejects the insecure
+`basic_text` storage backend. A new login must pass an encrypt/decrypt check before an atomic replacement saves it
+with owner-only permissions. A read failure never removes the previous login. Retrying stack startup also retries
+the keychain. The storage tests use synthetic logins; they do not prove recovery of a particular user's keychain.
+
 **Quit** stops the stack (`docker compose stop`). In the settings (Crewcut → Settings…, or Ctrl+, / Cmd+,) you can
 switch on **Keep the crew working in the background**: closing the window then leaves Crewcut in the menu bar (Mac) or
 the tray (Windows, Linux) and the crew keeps working; Quit from there stops it. Off by default. The settings also show
