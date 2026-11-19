@@ -3,7 +3,7 @@ import { Check, FileText, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Card, CardKind, Identity, Step } from "../api/types";
 import { api } from "../api/client";
-import { about, episodeNumber, usd, versionOf, when } from "../lib/format";
+import { about, episodeNumber, mediaKind, usd, versionOf, when } from "../lib/format";
 import { reducedMotion } from "../lib/platform";
 import { accept, decline, messageOf } from "../store/actions";
 import { ErrorLine, Facts, identityOf, Keys, Media } from "./bits";
@@ -302,6 +302,8 @@ function CardPreview({
   folding: boolean;
 }) {
   const facts = card.data?.facts;
+  // CLI cards may carry only --file. Show that exact video without requiring a second preview field.
+  const preview = card.preview || (card.file && mediaKind(card.file) === "video" ? card.file : null);
   const parts = [];
   if (card.kind === "spend") parts.push(<SpendWays key="ways" card={card} way={way} onWay={onWay} />);
   if (card.kind === "motion-plan") parts.push(<MotionPlanPreview key="motion-plan" card={card} folding={folding} />);
@@ -320,10 +322,10 @@ function CardPreview({
   if (card.options?.length) {
     parts.push(<Options key="options" options={card.options} chosen={chosen} onChoose={onChoose} label={card.title} />);
   }
-  if (card.preview && card.episode && card.kind !== "profile") {
+  if (preview && card.episode && card.kind !== "profile") {
     parts.push(
       <div key="media" className={facts?.length ? "preview" : "preview solo"}>
-        <Media episode={card.episode} path={card.preview} label={`Preview: ${card.title}`} />
+        <Media episode={card.episode} path={preview} label={`Preview: ${card.title}`} />
         {facts?.length ? <Facts facts={facts} /> : null}
       </div>,
     );
