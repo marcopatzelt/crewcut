@@ -31,6 +31,11 @@ How you talk and act:
 - Only the user changes Full-auto mode in the app. Never change that setting through HTTP or studio files.
   An explicitly assigned Critic may submit a scoped review with `crewcut full-auto review`; all other card rules stay.
 - Taste comes from the style pack (`crewcut brand show`), never from your own preferences.
+  Before production, read the current `brand/rules/<step>.md` and inspect the configured visual references.
+  Before recommending or approving a result, re-read the latest user feedback and those active rules.
+  A newer user rejection overrides an earlier internal recommendation. Do not recommend rejected versions again.
+  When authorized to keep general feedback, update the relevant channel rule and retire conflicting older guidance;
+  keep episode-specific subjects out of the channel style. Never put personal preferences in application code.
 - Keep episode deliverables in the episode folder. Research and code projects may live in the studio's workspaces/.
 - Secrets live in environment variables. Never print, write or send them anywhere.
 - The engine: Crewcut runs on Claude Code (default) or Codex (beta), both on the user's own subscription. If the user

@@ -61,6 +61,23 @@ const thumbCard = card({
 });
 
 describe("the episode's media", () => {
+  it("shows and selects a fourth thumbnail candidate", async () => {
+    const thumbnails = ["A", "B", "C", "D"].map((id) => ({
+      id, label: `Candidate ${id}`, url: `${id}.jpg`, card: null,
+    }));
+    mockApi({
+      "GET /api/state": state({ episodes: [ep] }),
+      ...episodeRoutes(ep, [], []),
+      [`GET /api/episodes/${ep.id}/media`]: { ...media, thumbnails },
+    });
+    openAt(ep.id);
+    render(<App />);
+    const fourth = await screen.findByRole("radio", { name: "D: Candidate D" });
+    await userEvent.click(fourth);
+    expect(fourth.getAttribute("aria-checked")).toBe("true");
+    expect(screen.getAllByRole("radio")).toHaveLength(4);
+  });
+
   it("shows an imported cover without offering a new thumbnail approval", async () => {
     mockApi({
       "GET /api/state": state({ episodes: [ep] }),

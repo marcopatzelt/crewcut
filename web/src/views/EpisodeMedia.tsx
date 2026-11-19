@@ -123,7 +123,7 @@ export function ThumbnailPanel({ episode, thumbs }: { episode: string; thumbs: M
   const [error, setError] = useState<string | null>(null);
   const picked = thumbs.find((t) => t.picked);
   const open = cardId !== null && (card ? card.status === "open" : true);
-  const shown = thumbs.slice(0, 3);
+  const shown = thumbs;
   const pick = shown.find((t) => t.id === selected) ?? shown[0];
   const designer = team?.find((t) => t.id === "designer") ?? { id: "designer" };
 
