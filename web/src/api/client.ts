@@ -125,6 +125,8 @@ export const api = {
   codexConnect: () => request<EngineLogin["codex"]>("POST", "/api/engine/codex/connect", {}),
   money: () => request<Money>("GET", "/api/money"),
   prompter: (id: string) => request<PrompterLink>("GET", `/api/episodes/${enc(id)}/prompter`),
+  fullAuto: (id: string) => request<{ mode: string; blocked?: string; complete?: boolean }>("GET", `/api/episodes/${enc(id)}/full-auto`),
+  setFullAuto: (id: string, mode: string) => request<{ mode: string; blocked?: string; complete?: boolean }>("POST", `/api/episodes/${enc(id)}/full-auto`, { mode }),
   /** What the episode view shows first: thumbnails, the cut, 3D scenes, the rented GPU. */
   media: (id: string) => request<EpisodeMedia>("GET", `/api/episodes/${enc(id)}/media`),
   /** The GPU card's Stop: deletes the machines of that render now; the frames that came home stay. */

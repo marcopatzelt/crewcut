@@ -5,6 +5,12 @@ description: "Makes the YouTube thumbnail of an episode and its A/B test variant
 
 # Thumbnail
 
+When Full auto is enabled for this episode, propose the usual thumbnail card with
+the best variant recommended. The assigned Critic selects it through the scoped
+Full-auto review command. Never accept your own card. Prepare up to three final
+variants for YouTube Studio, but do not claim a live A/B test has started. Private
+videos and Shorts cannot run YouTube's native A/B test. Spending rules still apply.
+
 The Designer makes the image. The title step delivers the title and the thumbnail text (`brief/TITLE-vNNN.md`); the
 upload step uploads. Layouts, colours, face rules, word limits and the reference photo come from the style pack
 (`thumbnail.json`, colours from `brand.json`). Taste lives in `brand/rules/thumbnail.md`.

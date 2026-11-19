@@ -11,6 +11,7 @@ import { DocumentLink, documentTarget } from "../components/DocumentLink";
 import { Composer } from "../components/Composer";
 import { MoneyLine, WorkingHint, WorkingList } from "../components/Crew";
 import { ConnectEngine } from "../components/ConnectEngine";
+import { FullAuto } from "../components/FullAuto";
 import { ago, clock, episodeNumber } from "../lib/format";
 import { jumpToStep, messageOf } from "../store/actions";
 import { EMPTY, useUi } from "../store/store";
@@ -116,6 +117,7 @@ function EpisodeHead({ id }: { id: string }) {
   ].filter((x): x is string => Boolean(x));
   const crew = [...new Set(activity.filter((a) => a.episode === id && a.status !== "done" && a.status !== "failed" && a.status !== "cancelled").map((a) => a.identity))];
   return (
+    <>
     <header className="ep-head">
       <div className="ep-title">
         <h1 className="one-line" title={title}>
@@ -155,6 +157,8 @@ function EpisodeHead({ id }: { id: string }) {
         </span>
       ) : null}
     </header>
+    <FullAuto episode={id} />
+    </>
   );
 }
 

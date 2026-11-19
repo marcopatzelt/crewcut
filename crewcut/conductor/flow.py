@@ -204,7 +204,10 @@ def on_card_decided(card: dict) -> None:
             episodes.write(episode, p)
         episodes.set_step(episode, step, "done")
         post(episode, f"{card['title']} · approved" + (f" · {picked}" if picked else ""), card=card["id"])
-        nxt = _first_open_step(episodes.read(episode))
+        from .. import full_auto
+        project = episodes.read(episode)
+        nxt = (_first_open_step(project) if not full_auto.active(episode) or step not in ("edit", "thumbnail")
+               else next((s for s in ("edit", "thumbnail", "upload") if project["steps"].get(s, {}).get("status") != "done"), None))
         if nxt:
             start_step(episode, nxt)
         else:
@@ -229,6 +232,9 @@ def on_card_decided(card: dict) -> None:
     elif kind == "rule":
         d = card.get("data") or {}
         post(episode, f"Rule added for {d.get('step')}: {d.get('rule')}", card=card["id"])
+    elif kind == "mix" and (card.get("data") or {}).get("auto_revision"):
+        queue.add(episode, card.get("identity") or "editor", "edit",
+                  "The Critic accepted the mix under Full auto. Continue through the preview and final production cards.")
 
 
 def _motion_card(episode: str, card: dict, accepted: bool) -> bool:
@@ -251,9 +257,8 @@ def _motion_card(episode: str, card: dict, accepted: bool) -> bool:
                   '"beat" and "column".', data=_resume_of(card))
         return True
     if kind == "style-frame" and accepted:
-        queue.add(episode, card.get("identity") or "editor", "edit",
-                  f"The user approved the style frame of {d.get('insert')} (card #{card['id']}). Build the animation "
-                  "now; the Critic reviews it before anyone sees it.", data=_resume_of(card))
+        from ..motion.dispatch import dispatch
+        dispatch(card)
         return True
     if kind == "template":
         t = d.get("template") or {}
@@ -270,6 +275,9 @@ def _motion_card(episode: str, card: dict, accepted: bool) -> bool:
 
 def after_job(job: dict, res) -> None:
     from .. import channel, engines
+    from ..motion import dispatch
+    if dispatch.after_job(job, res):
+        return
     if channel.is_channel(job):
         channel.after_job(job, res)
         return

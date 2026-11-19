@@ -6,6 +6,21 @@ from crewcut import episodes, paths
 from crewcut.thumbnail.make import reference_images
 
 
+def test_generated_codex_artifact_is_recovered_only_inside_image_folder(tmp_path, monkeypatch):
+    from PIL import Image
+
+    from crewcut.thumbnail.make import recover_codex_image
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex"))
+    image = tmp_path / "codex/generated_images/run/image.png"
+    image.parent.mkdir(parents=True)
+    Image.new("RGB", (16, 16), "blue").save(image)
+    out = tmp_path / "thumbnail.png"
+    assert recover_codex_image(f"[Generated PNG]({image})", out, 0)
+    assert Image.open(out).size == (16, 16)
+    assert not recover_codex_image(f"[Other file]({out})", tmp_path / "bad.png", 0)
+    assert not recover_codex_image(f"[Old image]({image})", tmp_path / "old.png", image.stat().st_mtime + 10)
+
+
 @pytest.fixture
 def reference_pack(crew):
     episode = episodes.create("Synthetic thumbnail")["id"]

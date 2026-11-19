@@ -33,6 +33,10 @@ class AcceptIn(BaseModel):
     choice: int | None = None
 
 
+class FullAutoIn(BaseModel):
+    mode: str
+
+
 class DeclineIn(BaseModel):
     reason: str | None = None
 
@@ -328,6 +332,20 @@ def create_app(start_worker: bool = True) -> FastAPI:
         except (FileNotFoundError, ValueError):
             raise HTTPException(404, "No such episode.") from None
         return {"url": url, "qr_svg": prompter.qr_svg(url)}
+
+    @app.get("/api/episodes/{eid}/full-auto")
+    def full_auto_status(eid: str):
+        from .. import full_auto
+        episodes.read(eid)
+        return full_auto.policy(eid)
+
+    @app.post("/api/episodes/{eid}/full-auto")
+    def full_auto_configure(eid: str, body: FullAutoIn):
+        from .. import full_auto
+        try:
+            return full_auto.configure(eid, body.mode)
+        except (ValueError, FileNotFoundError) as error:
+            raise HTTPException(400, str(error)) from error
 
     @app.get("/api/episodes/{eid}/desktop-prompter")
     def desktop_prompter_info(eid: str):

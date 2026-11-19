@@ -30,6 +30,15 @@ Two roots:
 
 ## Layers of knowledge
 
+### Production automation and parallel inserts
+
+`full_auto.py` stores an explicit per-episode mode and revision in the database. The existing worker assigns
+production cards to a Critic; only that assigned review may decide under the current revision. Turning the mode off
+revokes pending automatic upload permission. Existing card checks and spending boundaries remain.
+`motion/dispatch.py` gives each approved style frame a fresh designer session in its own insert folder, then a
+focused Critic review. The Editor owns the shared plan and assembly. Up to five agent jobs can run; jobs for the
+same insert stay serial and heavy rendering retains its separate limit. See [Full auto](full-auto.md).
+
 ### Computer media
 
 The native desktop media service discovers standard media folders and removable

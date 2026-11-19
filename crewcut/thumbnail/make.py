@@ -1,7 +1,7 @@
 """Make thumbnail images from one complete prompt and the reference images.
 
-Way A, Codex: runs the user's own Codex CLI (its image tool, on the user's ChatGPT plan). Untested inside the
-container; see the README roadmap.
+Way A, Codex: runs the user's own Codex CLI image tool. Generated artifacts are recovered
+from Codex's image folder when its workspace sandbox cannot copy them to the requested output.
 Way B, image API: the user's OpenAI key, paid per image, always behind a spend card.
 The method (layouts, one complete new prompt per image, never an edit, checks) lives in skills/thumbnail/.
 """
@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -59,12 +60,37 @@ def make_codex(prompt: str, refs: list[Path], out: Path) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
     timeout = int(config.get("thumbnail", "codex_timeout_minutes", 10)) * 60
     from ..engines.codex import Codex
+    started = time.time()
     r = subprocess.run(codex_command(prompt, refs, out), cwd=str(out.parent), capture_output=True, text=True,
                        timeout=timeout, stdin=subprocess.DEVNULL, env={**os.environ, **Codex().env()})
+    if not out.is_file():
+        recover_codex_image(r.stdout or "", out, started)
     if not out.is_file():
         last = (r.stdout or r.stderr).strip()[-300:]
         raise RuntimeError(f"Codex did not save an image (exit {r.returncode}). Its last words: {last}")
     return out
+
+
+def recover_codex_image(output: str, out: Path, started: float) -> bool:
+    """Retrieve only a new generated-image artifact referenced by this Codex run."""
+    from PIL import Image
+
+    from ..engines.codex import codex_home
+    root = (Path(codex_home()) / "generated_images").resolve()
+    for link in re.findall(r"\]\(([^)]+)\)", output):
+        candidate = Path(link.strip("<>"))
+        if not candidate.is_absolute():
+            continue
+        candidate = candidate.resolve()
+        if root not in candidate.parents or not candidate.is_file() or candidate.stat().st_mtime < started - 2:
+            continue
+        with Image.open(candidate) as image:
+            image.verify()
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with Image.open(candidate) as image:
+            image.save(out, format="PNG")
+        return True
+    return False
 
 
 def make_api(prompt: str, refs: list[Path], out: Path, client=None) -> Path:
@@ -72,7 +98,7 @@ def make_api(prompt: str, refs: list[Path], out: Path, client=None) -> Path:
     key = os.environ.get("OPENAI_API_KEY")
     if not key:
         raise NoWay("OPENAI_API_KEY is not set.")
-    model = config.get("thumbnail", "api_model", "gpt-image-1")
+    model = config.get("thumbnail", "api_model", "gpt-image-2")
     size = config.get("thumbnail", "size", "1536x1024")
     quality = config.get("thumbnail", "api_quality", "high")
     headers = {"Authorization": f"Bearer {key}"}

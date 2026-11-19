@@ -13,6 +13,7 @@ import sys
 from . import __version__
 
 DELEGATED = {
+    "full-auto": ("crewcut.full_auto", False),
     "media": ("crewcut.desktop_media", False),
     "workspace": ("crewcut.workspaces", False),
     "compute": ("crewcut.compute.cli", False),
@@ -324,6 +325,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("motion", add_help=False, help="motion graphics with EffectCraft (crewcut motion --help)")
     sub.add_parser("workspace", add_help=False, help="persistent research and coding projects")
     sub.add_parser("media", add_help=False, help="browse and import computer media through the desktop app")
+    sub.add_parser("full-auto", add_help=False, help="episode automation status and assigned Critic reviews")
     return p
 
 

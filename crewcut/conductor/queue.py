@@ -75,9 +75,12 @@ def job_view(j: dict) -> dict:
     secs = int((ended or time.time()) - started) if started else 0
     d = j.get("data") if isinstance(j.get("data"), dict) else {}
     info = d.get("engine_info") or {}
+    doing = j.get("doing") or ""
+    if d.get("motion_insert"):
+        doing = f"{d['motion_insert']} · {doing}"
     from .. import media  # the newest picture the job made, for "Working now" (cheap: cached by folder mtime)
     return {"job": j["id"], "episode": j["episode"], "identity": j["identity"], "step": j["step"],
-            "doing": j.get("doing") or "", "progress": j.get("progress"), "status": j["status"],
+            "doing": doing, "progress": j.get("progress"), "status": j["status"],
             "started": j.get("started"), "ended": j.get("ended"), "seconds": secs,
             "cost_usd": round(float(j.get("cost_usd") or 0), 4), "equiv_usd": round(float(j.get("equiv_usd") or 0), 4),
             "scope": d.get("conversation_scope", "episode" if j["episode"] else "onboarding"),
@@ -195,6 +198,16 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
         name=None)
     from .. import crewtalk
     task.name = crewtalk.session_name(j["identity"], j["episode"])
+    if data.get("motion_insert"):
+        from ..motion.custom import piece_dir
+        task.cwd = piece_dir(j["episode"], data["motion_insert"])
+        task.cwd.mkdir(parents=True, exist_ok=True)
+        task.resume = None
+        task.name = f"{j['identity']} · {data['motion_insert']}"
+        task.env["CREWCUT_EPISODE_DIR"] = str(paths.episode_dir(j["episode"]))
+        task.system += (f"\nYour assigned insert is {data['motion_insert']}. Write only this insert's files. "
+                        "The shared edit plan and final assembly belong to the lead Editor. "
+                        f"Episode root: {paths.episode_dir(j['episode'])}.")
     if channel_job:
         task.name = f"crewcut-channel-{j['identity']}"
     if eng.name == "claude" and j["episode"] and crewtalk.settings()["enabled"]:
@@ -336,11 +349,15 @@ class Worker:
 
     def tick(self) -> None:
         self.threads = {k: t for k, t in self.threads.items() if t.is_alive()}
+        from .. import full_auto
+        from ..motion import dispatch
+        dispatch.tick()
+        full_auto.tick()
         try:
             self.maybe_update_engine()
         except Exception:  # noqa: BLE001 - updates must never stop the queue
             traceback.print_exc()
-        limit = int(config.get("crewcut", "engine.max_parallel_agents", 3))
+        limit = int(config.get("crewcut", "engine.max_parallel_agents", 5))
         free = limit - len(self.threads)
         if free <= 0:
             return
@@ -349,8 +366,16 @@ class Worker:
             running = db.rows(c.execute("SELECT * FROM jobs WHERE status = 'running'"))
         from .. import channel
         channel_busy = any(channel.is_channel(job) for job in running)
+        inserts_busy = {(job["episode"], (job.get("data") or {}).get("motion_insert")) for job in running
+                        if (job.get("data") or {}).get("motion_insert")}
         queued = []
         for candidate in candidates:
+            insert = (candidate.get("data") or {}).get("motion_insert")
+            if insert:
+                key = (candidate["episode"], insert)
+                if key in inserts_busy:
+                    continue
+                inserts_busy.add(key)
             if channel.is_channel(candidate):
                 if channel_busy:
                     continue

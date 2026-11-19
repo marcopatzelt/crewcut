@@ -59,6 +59,11 @@ published, rented or paid for without your yes.
 
 ## Quick start
 
+After recording, an optional [Full-auto mode](docs/full-auto.md) carries the episode through editing,
+thumbnails and upload preparation. Choose whether it stops before upload, uploads privately, or publishes.
+Approved 2D and 3D style frames get separate designer sessions, with up to five agents working at once.
+Heavy renders stay limited; the Editor assembles the reviewed inserts.
+
 You need Docker and a Claude subscription (Pro, Max, Team or Enterprise).
 
 ```bash

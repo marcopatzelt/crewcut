@@ -43,3 +43,9 @@
     display: flex;
   }
 }
+/* Full-auto is an explicit choice per episode, next to its production steps. */
+.full-auto { margin: 12px 0; padding: 12px 16px; background: var(--tile); border-radius: var(--r-panel); }
+.full-auto summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.full-auto p { font-size: 13px; line-height: 1.5; color: var(--ink-2); max-width: 70ch; }
+.full-auto .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.full-auto [aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); }

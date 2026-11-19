@@ -44,6 +44,12 @@ them. The scan is bounded (300 folders, depth 4) and cached per folder until its
 
 ## Episodes
 
+`GET /api/episodes/{id}/full-auto` returns the episode's automation policy (default `{"mode":"off"}`).
+`POST` to the same path takes `{"mode":"off|ready|private|publish"}` and returns a new policy revision.
+Only the user's explicit UI choice changes it. `ready` stops before upload; `private` allows private uploads without
+scheduling; `publish` allows the reviewed publication package. Existing jobs are not cancelled.
+See [Full auto](full-auto.md) for review and stop conditions.
+
 | Method and path | Body | Answer |
 |---|---|---|
 | `GET /api/episodes/{id}` | | episode as in `state.episodes[]` plus `project` (the raw `project.json`) and `files` (list of `{path, size, kind}` under `export/`, `graphics/`, `brief/`) |

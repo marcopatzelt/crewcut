@@ -1,7 +1,7 @@
 # How thumbnails are made. The Designer picks the way itself; change it here only if you want to force one.
 way = "auto"                     # auto | codex | api
 size = "1536x1024"               # landscape; YouTube shows 16:9, the check crops and scales to 1280x720
-api_model = "gpt-image-1"        # OpenAI image model for way "api" (your key in OPENAI_API_KEY)
+api_model = "gpt-image-2"        # OpenAI image model for way "api" (your key in OPENAI_API_KEY)
 api_quality = "high"
 api_price_per_image_usd = 0.20   # an estimate for the spend card; check your provider's price page
 codex_timeout_minutes = 10

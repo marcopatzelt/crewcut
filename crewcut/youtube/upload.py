@@ -76,6 +76,12 @@ def approval(episode: str, package_path: Path, pkg: dict, rel: str) -> dict | No
     """The user's yes for this package: an accepted card, or (Shorts only) the standing approval, logged as a card."""
     card = approved_card(episode, package_path)
     if card is not None:
+        data = card.get("data") or {}
+        if data.get("auto_revision"):
+            from .. import full_auto
+            if not full_auto.active(episode) or full_auto.policy(episode).get("revision") != data["auto_revision"]:
+                return None
+            full_auto.publish_allowed(card)
         return card
     ok, _why = approvals.standing_covers(episode, pkg)
     return approvals.accept_under_standing(episode, rel) if ok else None
