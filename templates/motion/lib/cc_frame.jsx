@@ -393,6 +393,38 @@ var CC = (function () {
   // Full-frame ground: the pack's ground colour, lit at its edges by large soft pools of the palette colours (mixed
   // into the ground by `strength`), which drift slowly so a hold never stands still. The middle stays the clean
   // ground the type sits on. Nothing on an overlay. o: {strength 0..1 (default 0.42), name}
+  // Pack-owned layouts preserve recognizable silhouettes, depth and motion instead of substituting colour pools.
+  // x/y and velocity are frame fractions; size/thickness/blur are fractions of the shorter frame dimension.
+  C.backgroundShapes = function (c, layout) {
+    var F = C.frame(), u = Math.min(F.W, F.H), ids = [];
+    for (var i = 0; i < layout.length; i++) {
+      var s = layout[i], g = s.size * u, d = (s.thickness || s.size * 0.24) * u;
+      var color = s.color || C.color(s.palette || 0), parts = [], nm = "background " + i + " " + s.kind;
+      if (s.kind === "plus") {
+        parts.push(EC.shape(c, {kind: "rect", size: [g, d], fill: color, name: nm + " horizontal"}));
+        parts.push(EC.shape(c, {kind: "rect", size: [d, g], fill: color, name: nm + " vertical"}));
+      } else {
+        var spec = {kind: s.kind === "ring" || s.kind === "circle" ? "ellipse" : "rect",
+                    size: s.kind === "bar" ? [g, d] : [g, g], name: nm};
+        if (s.kind === "ring" || s.kind === "square") {
+          spec.size = [g - d, g - d]; spec.fillOpacity = 0; spec.stroke = color; spec.strokeWidth = d;
+        } else spec.fill = color;
+        parts.push(EC.shape(c, spec));
+      }
+      for (var j = 0; j < parts.length; j++) {
+        var id = parts[j];
+        EC.keys(c, id, "transform/position", [[0, [s.x * F.W, s.y * F.H]],
+          [F.duration, [(s.x + (s.vx || 0) * F.duration) * F.W, (s.y + (s.vy || 0) * F.duration) * F.H]]], "linear");
+        EC.keys(c, id, "transform/rotation", [[0, s.rotation || 0],
+          [F.duration, (s.rotation || 0) + (s.spin || 0) * F.duration]], "linear");
+        EC.set(c, id, "transform/opacity", s.opacity === undefined ? 100 : s.opacity * 100);
+        if (s.blur) EC.fx(c, id, "Gaussian Blur", {blurriness: s.blur * u});
+        EC.sw(c, id, "motionBlur", true);
+        ids.push(id);
+      }
+    }
+    return ids;
+  };
   C.groundLayer = function (c, o) {
     o = o || {};
     var F = C.frame();
@@ -401,6 +433,13 @@ var CC = (function () {
     var id = EC.solid(c, { name: o.name || "ground", color: g, w: Math.round(W * 1.3), h: Math.round(H * 1.3) });
     EC.set(c, id, "transform/position", [W / 2, H / 2]);
     var out = [id];
+    var bg = C.mg().background || {};
+    if (bg.mode === "plain") return out;
+    if (bg.mode === "shapes") {
+      var layouts = bg.layouts || {}, layout = layouts[F.format] || [];
+      if (!layout.length) throw new Error("The style pack needs a background layout for " + F.format);
+      return out.concat(C.backgroundShapes(c, layout));
+    }
     if (k > 0) {
       var d = 0.78 * Math.max(W, H), m = Math.min(W, H);
       // pools just outside the corners, drifting a little inward: colour index, start and end centre (frame fractions)

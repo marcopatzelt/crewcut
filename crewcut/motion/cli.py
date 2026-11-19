@@ -994,7 +994,8 @@ def render_video(app: App, out_path, start, end, fps, preset, chunk, jobs, crf, 
 def render_palette(ctx, image, limit):
     """Hue check: share of the dominant hue among coloured pixels (exit 3 above --limit, plain output)."""
     app: App = ctx.obj
-    r = pal.hue_report(image, limit)
+    from .. import brand
+    r = pal.hue_report(image, limit, accent_area_limit=brand.load().motion_graphics().get("accent_area_limit", 0.0))
     out(app, r, f"dominant hue {r['dominant_hue']}° holds {r['dominant_share']:.0%} of coloured pixels ({'ok' if r['ok'] else 'REWORK'})")
     if not r["ok"] and not app.json:
         ctx.exit(3)

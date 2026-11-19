@@ -17,7 +17,7 @@ or render check passes. Good geometry, materials, lighting and timing are distin
 requirements. The target is a named improvement while retaining benchmark strengths.
 
 When benchmarks exist, a new style-frame card needs an independent Critic report.
-The five craft criteria, visible improvement, exact frames, unchanged benchmark and
+The seven craft criteria, visible improvement, exact frames, unchanged benchmark and
 reviewer job are checked before proposal and again on acceptance. The card includes
 the benchmark image. `crewcut motion craft-compare` saves consecutive native frames
 from the rendered insert and selected benchmark clip, a comparison sheet and hashes.

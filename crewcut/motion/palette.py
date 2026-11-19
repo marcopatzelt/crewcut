@@ -6,7 +6,8 @@ from __future__ import annotations
 from typing import Any
 
 
-def hue_report(path: str, limit: float = 0.30, bins: int = 12, min_sat: float = 0.25, min_val: float = 0.15) -> dict[str, Any]:
+def hue_report(path: str, limit: float = 0.30, bins: int = 12, min_sat: float = 0.25, min_val: float = 0.15,
+               accent_area_limit: float = 0.0) -> dict[str, Any]:
     """Hue histogram of coloured pixels (saturation >= min_sat, value >= min_val) in ``bins`` sectors.
     Neighbouring sectors are not merged; the dominant sector's share is compared with ``limit``."""
     from PIL import Image
@@ -28,6 +29,8 @@ def hue_report(path: str, limit: float = 0.30, bins: int = 12, min_sat: float = 
                 "hues": [], "note": "no coloured pixels (neutral frame)"}
     i = max(range(bins), key=lambda k: counts[k])
     share = counts[i] / coloured
+    sparse_accent = coloured / total <= accent_area_limit
     return {"image": path, "coloured_share": round(coloured / total, 3), "dominant_hue": round((i + 0.5) * 360 / bins),
-            "dominant_share": round(share, 3), "ok": share <= limit,
+            "dominant_share": round(share, 3), "ok": share <= limit or sparse_accent,
+            "accent_area_limit": accent_area_limit, "sparse_accent": sparse_accent,
             "hues": [{"hue": round((k + 0.5) * 360 / bins), "share": round(c / coloured, 3)} for k, c in enumerate(counts) if c]}

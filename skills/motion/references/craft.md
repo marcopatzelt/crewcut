@@ -1,4 +1,13 @@
-# Compare craft, then improve it
+# Preserve the channel's style, then improve craft
+
+Reproduce the selected channel reference's visual grammar first. Keep its actual
+background objects, depth layers, typography (size, spacing, weight, shadows), camera
+and motion helpers. A gradient is not equivalent to visible background objects.
+Use the original source foundation when available. A product launch film can teach
+craft without replacing the channel's identity. Never mix these roles silently.
+If a numeric gate fails the approved reference itself, report the conflict before
+changing the visual design. The pack's sparse-accent allowance measures colour
+against the whole frame; do not add unrelated hues merely to satisfy a histogram.
 
 At the start of each motion job, the conductor supplies the user's selected benchmark
 frames, clips, source files and named strengths. Inspect those files. A path in a
@@ -31,7 +40,7 @@ samples or smaller pixels. It must already show the intended geometry and design
 Do not promise that a cloud GPU will invent missing model detail later.
 
 The Designer sends a separate Critic job the frame paths, source, beat plan and
-benchmark ID. The Critic opens both images, compares the source and records the five
+benchmark ID. The Critic opens both images, compares the source and records the seven
 criteria below. Each criterion needs an observation and a comparison with the selected
 benchmark. A failed criterion means repair. Do not propose a style-frame card yet.
 
@@ -49,7 +58,9 @@ Write `motion/INSERT/review/style-craft.json`:
     "materials": {"pass": true, "observation": "intentional surfaces and colours", "comparison": "what separates the surfaces as clearly as the benchmark"},
     "light_depth": {"pass": true, "observation": "contact, depth and controlled highlights", "comparison": "how the light matches the benchmark's craft"},
     "composition": {"pass": true, "observation": "legibility, hierarchy and object proportions", "comparison": "specific comparison at viewing size"},
-    "motion_intent": {"pass": true, "observation": "the beat plan's action, camera and spoken cue", "comparison": "the intended timing compared with the benchmark clip"}
+    "motion_intent": {"pass": true, "observation": "the beat plan's action, camera and spoken cue", "comparison": "the intended timing compared with the benchmark clip"},
+    "typography": {"pass": true, "observation": "actual font, weight, size, spacing and shadow", "comparison": "matches the channel reference, not just its font family"},
+    "background_layers": {"pass": true, "observation": "visible forms, depth, cropping and movement", "comparison": "preserves the reference's background construction, with no unrequested gradient substitution"}
   },
   "improvement": {"what": "one concrete improvement", "evidence": "where it is visible"},
   "unresolved": []

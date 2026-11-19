@@ -126,6 +126,7 @@ MOTION_GRAPHICS = {          # brand.json motion_graphics: the defaults (palette
     "enter_s": 0.4, "exit_s": 0.25, "ease": "expo", "drift_pct_per_s": 2.0,
     "blur": {"shutter": 180, "samples": 16},
     "plate3d": {"material": "glossy", "bevel": 0.05, "extrude": 0.2},
+    "background": {"mode": "pools"}, "accent_area_limit": 0.0,
 }
 MOTION_PAIRS = {"insert_s": "[3, 6]", "big_moments": "[3, 5]"}
 EASES = ("linear", "easy", "smooth", "strong", "out", "expo", "in", "expoIn", "soft", "snap")   # EC.EASES in ec_lib.jsx
@@ -343,6 +344,38 @@ def _check_motion_graphics(pack: Pack) -> list[str]:
                 out.append(f"{where}.blur.samples must be a whole number from 1 to 64")
     if mg.get("plate3d") is not None and not isinstance(mg["plate3d"], dict):
         out.append(f"{where}.plate3d must be an object")
+    if mg.get("accent_area_limit") is not None and not _num_in(mg["accent_area_limit"], 0, 0.3):
+        out.append(f"{where}.accent_area_limit must be between 0 and 0.3 of the entire frame")
+    bg = mg.get("background")
+    if bg is not None:
+        if not isinstance(bg, dict) or bg.get("mode") not in ("pools", "plain", "shapes"):
+            out.append(f"{where}.background needs mode pools, plain or shapes")
+        elif bg["mode"] == "shapes":
+            layouts = bg.get("layouts")
+            if not isinstance(layouts, dict) or not layouts:
+                out.append(f"{where}.background needs explicit layouts")
+            else:
+                for fmt, shapes in layouts.items():
+                    if fmt not in ("landscape", "portrait", "stage") or not isinstance(shapes, list) or not 1 <= len(shapes) <= 40:
+                        out.append(f"{where}.background invalid layout {fmt}")
+                        continue
+                    for s in shapes:
+                        if not isinstance(s, dict) or s.get("kind") not in ("ring", "square", "plus", "bar", "circle"):
+                            out.append(f"{where}.background invalid shape")
+                            continue
+                        for key, lo, hi in (("x", -1, 2), ("y", -1, 2), ("size", 0.001, 3)):
+                            if not _num_in(s.get(key), lo, hi):
+                                out.append(f"{where}.background invalid {key}")
+                        for key, lo, hi in (("thickness", 0.001, 3), ("blur", 0, 0.1), ("opacity", 0, 1),
+                                            ("rotation", -360, 360), ("spin", -90, 90), ("vx", -0.1, 0.1), ("vy", -0.1, 0.1)):
+                            if key in s and not _num_in(s[key], lo, hi):
+                                out.append(f"{where}.background invalid {key}")
+                        if "color" in s and not (isinstance(s["color"], str) and _HEX.match(s["color"])):
+                            out.append(f"{where}.background invalid color")
+                        if "palette" in s and (type(s["palette"]) is not int or not 0 <= s["palette"] <= 4):
+                            out.append(f"{where}.background invalid palette index")
+                        if all(isinstance(s.get(k), (int, float)) for k in ("thickness", "size")) and s["thickness"] >= s["size"]:
+                            out.append(f"{where}.background thickness must be smaller than size")
     return out
 
 

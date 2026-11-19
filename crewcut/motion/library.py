@@ -602,7 +602,7 @@ def import_source_kit(name: str, root: Path, files: list[str], entrypoints: list
     """Import explicitly selected reusable code, preserving paths; never execute it."""
     if not NAME.fullmatch(name) or not reason.strip() or not entrypoints or not set(entrypoints) <= set(files):
         raise LibraryError("Choose a kit name, explicit files, included entrypoints and the user's selection reason.")
-    allowed = {".py", ".js", ".jsx", ".sh", ".json", ".md", ".svg", ".png", ".jpg", ".otf", ".ttf", ".attribution"}
+    allowed = {".py", ".js", ".jsx", ".html", ".css", ".sh", ".json", ".md", ".svg", ".png", ".jpg", ".otf", ".ttf", ".attribution"}
     idx = read_index()
     if name in idx:
         raise LibraryError("Source kit already exists; use a new name to preserve the proven version.")

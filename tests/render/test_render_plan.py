@@ -217,3 +217,26 @@ def test_bad_json_and_missing_file(episode, tmp_path):
     bad.write_text("{nope")
     with pytest.raises(PlanError, match="not valid JSON"):
         Plan(bad)
+
+
+def test_imported_scene_dependencies_keep_paths_and_invalidate_cache(episode, tmp_path):
+    p = brand.load()
+    p.is_neutral = False
+    p.dir = tmp_path / 'pack'
+    folder = p.dir / 'templates/2d'
+    (folder / 'legacy').mkdir(parents=True)
+    (folder / 'counter.html').write_text('<script src="legacy/core.js"></script>')
+    helper = folder / 'legacy/core.js'
+    helper.write_text('window.setFrame = n => n;')
+    manifest = folder / 'counter.scene.json'
+    manifest.write_text(json.dumps({'contract': 'video-studio', 'files': ['legacy/core.js']}))
+    # Leave unrelated inserts on the native app templates.
+    plan = Plan(episode(basic_plan()), pack=p)
+    ins = plan.by_id('s1')
+    assert ins.data['scene_contract'] == 'video-studio' and helper in ins.shared
+    old_hash = ins.hash
+    helper.write_text('window.setFrame = n => n + 1;')
+    assert Plan(plan.path, pack=p).by_id('s1').hash != old_hash
+    manifest.write_text(json.dumps({'files': ['../../../../outside.js']}))
+    with pytest.raises(PlanError, match='escapes'):
+        Plan(plan.path, pack=p)

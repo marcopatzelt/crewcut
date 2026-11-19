@@ -244,3 +244,32 @@ examples/striq` on any check).
 then episode images from `--ref`. Duplicate paths are removed. A configured missing file or path outside its root
 stops generation before choosing a generator or requesting money. Personal photos belong only in the private pack.
 The pack's thumbnail rules can explicitly request reuse of the reference layout; otherwise it supplies style only.
+
+### Preserve background geometry
+
+`motion_graphics.background.mode` accepts `pools` (existing default), `plain` or `shapes`.
+`shapes` requires a nonempty `layouts` array for every used format (`landscape`, `portrait`, `stage`).
+Each item has `kind` (`ring`, `square`, `plus`, `bar`, `circle`), `x`, `y`, `size`,
+and optionally `thickness`, `blur`, `rotation`, `spin`, `vx`, `vy`, `opacity`, `color` or `palette`.
+Positions and velocity use frame fractions (per second for velocity); size, thickness
+and blur use the shorter frame dimension. Rotation and spin use degrees and degrees/second.
+Place large cropped foreground forms before smaller sharper distant ones as the reference requires.
+The layout belongs to the private style pack. No channel's design is a public default.
+Transparent overlays never receive a background. Missing shape layouts fail explicitly.
+
+`motion_graphics.accent_area_limit` defaults to `0`. A pack may set it up to `0.3`:
+when the entire coloured area occupies no more than this fraction of the whole frame,
+the palette check allows a single accent hue. Larger coloured areas retain the normal
+balance check. Reports retain both the whole-frame area and the coloured-pixel ratio.
+This preserves sparse brand accents on neutral imagery without bypassing craft review.
+
+### Original HTML scene bundles
+
+A private `brand/templates/2d/NAME.html` may have `NAME.scene.json` beside it:
+`{"contract":"video-studio","files":["legacy/core.js","legacy/style.css","legacy/fonts/display.otf"]}`.
+Declare every dependency, including the source HTML, images and fonts. Paths stay within
+this template folder. Their content and the manifest invalidate the render cache.
+The default contract is `native`. `video-studio` adapts DATA/frames/format to
+DATEN/bilder/quer/hoch and waits for SZENE_BEREIT. It preserves the original page's
+layout and animation code. Legacy scenes require 25 fps; unsupported frame rates fail.
+Original sources and personal branding stay private. Importing does not start production.

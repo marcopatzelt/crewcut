@@ -162,3 +162,23 @@ def test_plates_pass_through_and_plate_lookup():
     out = run({"plates": plates}, "[CC.plate('word'), CC.plate('late'), CC.plate('none'), CC.ctx().plates.word.frames]")
     assert out[0]["frames"] == 90 and out[1] is None and out[2] is None and out[3] == 90
     assert run(None, "CC.ctx().plates") == {}
+
+
+@needs_node
+def test_shape_background_preserves_silhouettes_and_skips_transparent_overlays():
+    ctx = {'brand': {'mg': {'background': {'mode': 'shapes', 'layouts': {'landscape': [
+        {'kind': 'ring', 'x': 0, 'y': 0.9, 'size': 0.5, 'thickness': 0.1, 'blur': 0.015, 'vx': 0.003},
+        {'kind': 'plus', 'x': 0.9, 'y': 0.1, 'size': 0.15, 'spin': 1.5}]}}}}}
+    expr = '''(function(){var shapes=[], keys=[], effects=[];
+    EC={solid:function(){return 'ground';},shape:function(c,s){shapes.push(s);return shapes.length;},
+        set:function(){},keys:function(c,id,p,k){keys.push([p,k]);},sw:function(){},fx:function(c,id,n,p){effects.push(p);}};
+    var ids=CC.groundLayer('test');return {ids:ids,shapes:shapes,keys:keys,effects:effects};})()'''
+    out = run(ctx, expr)
+    assert len(out['ids']) == 4
+    assert out['shapes'][0]['fillOpacity'] == 0 and out['shapes'][0]['strokeWidth'] == 108
+    assert out['shapes'][1]['size'] == pytest.approx([162, 38.88])
+    assert len(out['effects']) == 1
+    assert any(k[0] == 'transform/rotation' and k[1][1][1] == 6 for k in out['keys'])
+    ctx['transparent'] = True
+    assert run(ctx, expr)['ids'] is None
+    assert run(ctx, expr)['shapes'] == []

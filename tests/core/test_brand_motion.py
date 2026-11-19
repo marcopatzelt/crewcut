@@ -107,3 +107,25 @@ def test_edit_style_motion_block_and_mix():
     assert p.value("edit_style.motion.prefer") == "motion"
     mix = p.value("edit_style.graphics_mix")
     assert mix["motion"] == 0.4 and sum(mix.values()) == pytest.approx(1.0)
+
+
+def test_sparse_brand_accent_is_not_a_monochrome_scene(tmp_path):
+    image = Image.new('RGB', (100, 100), '#EEEEEE')
+    image.paste('#2320D6', (0, 0, 10, 100))
+    file = tmp_path / 'accent.png'
+    image.save(file)
+    assert not hue_report(str(file))['ok']
+    r = hue_report(str(file), accent_area_limit=0.2)
+    assert r['ok'] and r['sparse_accent'] and r['coloured_share'] == 0.1
+    image.paste('#2320D6', (0, 0, 60, 100))
+    image.save(file)
+    assert not hue_report(str(file), accent_area_limit=0.2)['ok']
+
+
+def test_background_layout_validation():
+    p = brand.load()
+    p.brand['motion_graphics'] = {'background': {'mode': 'shapes', 'layouts': {
+        'landscape': [{'kind': 'ring', 'x': 0.05, 'y': 0.95, 'size': 0.5, 'thickness': 0.1}]}}}
+    assert not brand._check_motion_graphics(p)
+    p.brand['motion_graphics']['background']['layouts']['landscape'][0]['size'] = -1
+    assert any('background invalid size' in e for e in brand._check_motion_graphics(p))

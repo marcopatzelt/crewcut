@@ -58,10 +58,15 @@ if(!fs.existsSync(scene))fail(2,'Scene not found: '+scene);
   page.on('pageerror',e=>errors.push('Page error: '+String(e)));
   page.on('console',m=>{if(m.type()==='error')errors.push('Console error: '+m.text());});
   page.on('requestfailed',r=>errors.push('Not loaded: '+r.url()));
-  await page.addInitScript(({d,b,t})=>{if(d)window.DATA=d;if(b)window.BRAND=b;if(t)window.TRANSPARENT=true;},{d:DATA,b:BRAND,t:!!opt.transparent});
+  const legacy=DATA&&DATA.scene_contract==='video-studio';
+  if(legacy&&DATA.fps!=null&&DATA.fps!==25)await close(2,'Video Studio scenes require 25 fps; adapt their timing before using another rate.');
+  await page.addInitScript(({d,b,t,legacy})=>{
+    if(d)window.DATA=d;if(b)window.BRAND=b;if(t)window.TRANSPARENT=true;
+    if(legacy)window.DATEN={...d,format:d.format==='portrait'?'hoch':'quer',bilder:d.frames};
+  },{d:DATA,b:BRAND,t:!!opt.transparent,legacy});
   await page.goto(url.pathToFileURL(scene).href,{waitUntil:'load'});
   await page.evaluate(()=>document.fonts.ready);
-  await page.evaluate(()=>window.SCENE_READY||null);          // scenes build after their fonts are loaded
+  await page.evaluate(legacy=>legacy?window.SZENE_BEREIT:window.SCENE_READY||null,legacy);
   // images the scene adds while it builds (cards, logo) must be decoded before the first frame
   const broken=await page.evaluate(async()=>{const bad=[];await Promise.all([...document.images].map(i=>i.decode().catch(()=>bad.push(i.src))));return bad;});
   if(broken.length)errors.push('Image not loaded: '+broken.join(', '));
@@ -80,7 +85,7 @@ if(!fs.existsSync(scene))fail(2,'Scene not found: '+scene);
     if(opt['allow-font-fallback'])console.error('Warning: '+msg);else errors.push(msg);}
   if(!(await page.evaluate(()=>typeof window.setFrame==='function')))errors.push('window.setFrame is missing');
   if(errors.length)await close(1,errors.join('\n'));
-  const pageFrames=await page.evaluate(()=>window.FRAMES||null);
+  const pageFrames=await page.evaluate(legacy=>(legacy?window.BILDER:window.FRAMES)||null,legacy);
   const N=opt.frames!=null?int(opt.frames,'frames'):(DATA&&DATA.frames!=null?int(DATA.frames,'frames'):pageFrames);
   // negative values count from the end: --from -1 --to -1 is the last frame
   const at=(v,d)=>{if(v==null)return d;const n=int(v,'from/to');return n<0?(N||0)+n:n;};
@@ -92,7 +97,7 @@ if(!fs.existsSync(scene))fail(2,'Scene not found: '+scene);
     if(errors.length)break;
   }
   if(errors.length)await close(1,errors.join('\n'));
-  const info=await page.evaluate(()=>window.SCENE_INFO||null);
+  const info=await page.evaluate(legacy=>(legacy?window.SZENE_INFO:window.SCENE_INFO)||null,legacy);
   await browser.close();
   console.log(JSON.stringify({scene:path.basename(scene),out,format,size:`${W}x${H}`,transparent:!!opt.transparent,from,to,frames:to-from+1,info}));
 })().catch(e=>{console.error(e&&e.stack||String(e));process.exit(1);});

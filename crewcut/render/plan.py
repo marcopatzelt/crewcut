@@ -317,6 +317,21 @@ class Plan:
         for d in dirs:
             p = d / f"{scene}{EXT[kind]}"
             if p.is_file():
+                manifest = p.with_suffix(".scene.json")
+                if kind == "2d" and manifest.is_file():
+                    spec = json.loads(manifest.read_text())
+                    deps = spec.get("files")
+                    if not isinstance(deps, list) or not deps or not all(isinstance(f, str) for f in deps):
+                        raise PlanError(f"{manifest} needs an explicit files list")
+                    try:
+                        shared = tuple(paths.inside(d, f) for f in deps)
+                    except ValueError as error:
+                        raise PlanError(str(error)) from error
+                    if any(not f.is_file() for f in shared):
+                        raise PlanError(f"{manifest}: a scene dependency is missing")
+                    if spec.get("contract", "native") not in ("native", "video-studio"):
+                        raise PlanError(f"{manifest}: unsupported scene contract")
+                    return p, (manifest, *shared)
                 shared = tuple(d / n for n in SHARED[kind])
                 missing = [s.name for s in shared if not s.is_file()]
                 if missing:
@@ -468,6 +483,9 @@ class Plan:
             self._keyword_defaults(data)
         stats = self._resolve_paths(data)
         template, shared = self.template_for(kind, scene)
+        manifest = template.with_suffix(".scene.json")
+        if kind == "2d" and manifest in shared:
+            data["scene_contract"] = json.loads(manifest.read_text()).get("contract", "native")
         h = insert_hash(data, [template, *shared], tokens_for_hash(self.tokens, kind), stats)
         out_dir = self.episode_dir / "render" / "inserts" / f"{iid}-{h}"
         clip = Path(str(out_dir) + (".mov" if transparent else ".mp4"))

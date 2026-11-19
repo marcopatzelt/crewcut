@@ -72,8 +72,10 @@ They cost a review round each in the launch film. They bind templates and custom
 3. **Real 3D where light matters.** Logos, heavy type, objects that turn: Blender. EffectCraft does 2D and 2.5D:
    layout, type, mattes, cameras over flat layers, timing.
 4. **Motion blur on what moves, never twice:** comp 180°, 16 samples; Blender plates bring their own blur.
-5. **Colour comes from the content; the brand is an accent.** No hue above 30 % of the coloured pixels
-   (`crewcut motion render palette`), natural content excepted.
+5. **Colour comes from the content; the channel style stays intact.** The palette check uses 30 % of coloured
+   pixels by default, with natural-content and end-lockup exceptions. A style pack may allow a small coloured
+   area against a neutral frame (`accent_area_limit`). Never recolour an approved channel reference merely
+   to satisfy the default ratio. Compare the actual image, typography and background geometry first.
 6. **Readable at a glance:** hero text 120 to 160 px, nothing below `min_text_px` (40 px) after every scale and push.
 7. **Authored paths, not physics,** for anything that must land on a frame.
 8. **Compare frame by frame** (60 fps strips, the reference or the baseline) before anyone else sees it.

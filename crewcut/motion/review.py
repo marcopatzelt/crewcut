@@ -965,8 +965,9 @@ class Review:
         elif m.scene == "end_lockup":
             exempt = "end lockup"
         rows = []
+        accent_area = self.ctx.pack.motion_graphics().get("accent_area_limit", 0.0)
         for t in self.hue_times():
-            r = palette.hue_report(str(self.image(self.idx(t), ANALYSIS_SIDE)), HUE_LIMIT)
+            r = palette.hue_report(str(self.image(self.idx(t), ANALYSIS_SIDE)), HUE_LIMIT, accent_area_limit=accent_area)
             r.pop("image", None)
             rows.append({"t": t, **r})
             if not r["ok"]:
@@ -979,8 +980,8 @@ class Review:
                              f"at {t:.2f} s (at most {HUE_LIMIT:.0%})", t,
                              fix="Colours from the palette in order; the accent only for the one thing that matters")
         if all(r["ok"] for r in rows):
-            self.add("Colour", "OK", f"hue:{m.id}", f"{m.id}: no hue above {HUE_LIMIT:.0%} at {len(rows)} times")
-        self.write_json("hue.json", {"limit": HUE_LIMIT, "exempt": exempt, "times": rows})
+            self.add("Colour", "OK", f"hue:{m.id}", f"{m.id}: palette balance or pack's sparse accent allowance passes at {len(rows)} times")
+        self.write_json("hue.json", {"limit": HUE_LIMIT, "accent_area_limit": accent_area, "exempt": exempt, "times": rows})
 
     def compare(self) -> None:
         if self.out is None:
