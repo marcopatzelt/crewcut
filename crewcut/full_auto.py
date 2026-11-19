@@ -9,7 +9,7 @@ import uuid
 from . import approvals, db, episodes, paths
 
 MODES = {"off", "ready", "private", "publish"}
-KINDS = {"mix", "motion-plan", "style-frame", "preview", "final", "thumbnail", "publish"}
+KINDS = {"title", "mix", "motion-plan", "style-frame", "preview", "final", "thumbnail", "publish"}
 
 
 def policy(episode: str) -> dict:
@@ -32,7 +32,7 @@ def configure(episode: str, mode: str) -> dict:
     p = {"mode": mode, "revision": uuid.uuid4().hex, "changed": db.now()}
     save(episode, p)
     if mode != "off":
-        for step in ("edit", "thumbnail", "upload"):
+        for step in ("edit", "title", "thumbnail", "upload"):
             if project["steps"].get(step, {}).get("status") == "skipped":
                 project["steps"][step]["status"] = "open"
         episodes.write(episode, project)
@@ -57,8 +57,11 @@ def instructions(episode: str) -> str:
             "Use the usual production cards; the Critic reviews them automatically. Do not ask the user to choose "
             "routine edit, graphics or thumbnail decisions. Recommend the strongest variant. After proposing a card, "
             "finish this job; the conductor continues the next job. Run quality checks, repair defects, and report "
-            "real missing recordings or authentication errors honestly. Use local rendering and the connected Codex "
-            "image tool; never silently switch to a paid API. Existing spending limits remain. Make three distinct "
+            "real missing recordings or authentication errors honestly. Use cheap local probes to judge the design. "
+            "Use rented compute for final quality and speed inside the approved budget, with no silent quality "
+            "downgrade when budget or compute is unavailable. Use the connected Codex image tool; never silently "
+            "switch to a paid API. Existing spending limits remain. Check the title against the finished video; "
+            "use a title card for a new title. Make three distinct "
             "thumbnail variants and choose the strongest; prepare their files for YouTube Studio A/B testing. "
             "Do not claim a live A/B test is running without confirmation from YouTube Studio. "
             + ("The upload package must be private and must have no publish_at. " if mode == "private" else "")
@@ -130,6 +133,12 @@ def review(card_id: int, report: str, choice: int | None = None) -> dict:
             "auto_report": report, "auto_report_sha256": approvals.sha256(evidence)}
     db.update("cards", card_id, data=data)
     if accepted and card["kind"] == "publish" and p["mode"] == "ready":
+        # This is preparation, not an automatic publish approval. A later user click
+        # must remain an ordinary manual decision, independent of this finished run.
+        data.pop("auto_revision", None)
+        data.pop("auto_mode", None)
+        data["prepared_revision"] = p["revision"]
+        db.update("cards", card_id, data=data)
         p["complete"] = True
         save(episode, p)
         from .conductor import flow
@@ -148,12 +157,13 @@ def tick() -> None:
         if not active(episode):
             continue
         p = policy(episode)
-        cards = approvals.list_cards(episode, "open")
+        cards = [c for c in approvals.list_cards(episode, "open")
+                 if c.get("step") in ("record", "edit", "title", "thumbnail", "upload") or c["kind"] == "spend"]
         for card in cards:
             if card["kind"] == "spend":
-                approvals.decide(card["id"], False, reason="Full auto uses the local path; no new paid work authorized.")
+                # A budget decision must stay visible, never become a silent low-quality local fallback.
                 continue
-            if card["kind"] not in KINDS or card.get("step") not in ("record", "edit", "thumbnail", "upload"):
+            if card["kind"] not in KINDS or card.get("step") not in ("record", "edit", "title", "thumbnail", "upload"):
                 continue
             key = f"auto_review:{p['revision']}:{card['id']}"
             previous = db.kv_get(key)
@@ -196,7 +206,7 @@ def tick() -> None:
         # Recording must already exist; enabling the mode never starts a recording.
         if not any((paths.episode_dir(episode) / "originals").glob("*")):
             continue
-        step = next((s for s in ("edit", "thumbnail", "upload") if project["steps"].get(s, {}).get("status") != "done"), None)
+        step = next((s for s in ("edit", "title", "thumbnail", "upload") if project["steps"].get(s, {}).get("status") != "done"), None)
         if step:
             n = int(p.get(f"starts_{step}", 0))
             if n >= 3:

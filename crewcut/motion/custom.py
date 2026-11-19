@@ -176,7 +176,7 @@ def _fallback_refs(ep_dir: Path, d: Path) -> list[tuple[Path, str]]:
 
 
 def style_frame(episode: str, insert_id: str, ours: list[str], refs: list[str] | None = None,
-                natural: bool = False, identity: str | None = None) -> dict:
+                natural: bool = False, identity: str | None = None, craft_review: str | None = None) -> dict:
     """Open the ``style-frame`` card: our frame of the strongest moment next to the reference (or the library
     sample, or the bar), per format. Our frames are kept as ``frame-v<N>-<format>.png`` in the piece's folder;
     references from outside the episode are copied into its ``refs/``. Refuses a frame that fails the hue check
@@ -189,6 +189,14 @@ def style_frame(episode: str, insert_id: str, ours: list[str], refs: list[str] |
         raise CustomError(f"no custom piece {insert_id}: run `crewcut motion new {episode} {insert_id} --from <brief>`")
     if not ours:
         raise CustomError("give our frame with --ours (one per format the piece needs)")
+    from . import quality
+    craft = None
+    if quality.required() or craft_review:
+        if not craft_review:
+            raise CustomError("Have a separate Critic compare the frame with the channel benchmarks; supply --craft-review.")
+        craft = quality.validate_report(episode, craft_review, [_find(src, ep_dir) for src in ours], submit=True)
+        benchmark = next(b for b in quality.catalog()["benchmarks"] if b["id"] == craft["benchmark"])
+        refs = [str(quality.asset(benchmark["frame"])), *(refs or [])]
     rnd = 1 + max([int(m.group(1)) for f in d.glob("frame-v*") if (m := re.match(r"frame-v(\d+)", f.name))], default=0)
     frames: dict[str, dict] = {}
     for src in ours:
@@ -238,7 +246,7 @@ def style_frame(episode: str, insert_id: str, ours: list[str], refs: list[str] |
         body=("Our frame of the strongest moment next to the reference" + (", per format" if len(order) > 1 else "")
               + ". Nothing animated is built before your yes; a note goes back to the Designer."),
         file=first["ours"], data={"insert": insert_id, "round": rnd, "frames": [frames[f] for f in order],
-                                  "images": images},
+                                  "images": images, **({"craft_review": craft} if craft else {})},
         identity=identity or "designer")
 
 

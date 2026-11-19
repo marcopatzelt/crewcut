@@ -193,6 +193,11 @@ def entries(include_episodes: bool = True) -> list[dict]:
     names = {r["name"] for r in pack}
     app = [dict(r, overridden=r["name"] in names) for r in _folder("app", tp.app_dir())]
     rows = pack + app
+    for name, entry in read_index().items():
+        if entry.get("type") == "source-kit":
+            rows.append({**entry, "name": name, "origin": "pack", "kind": "source-kit", "formats": [],
+                         "params": {}, "samples": {}, "needs_plates": True, "versions": [entry["version"]],
+                         "path": str(user_dir() / entry["bundle"])})
     if include_episodes:
         rows += episode_pieces()
     return rows
@@ -202,7 +207,7 @@ def shelf_names() -> dict[str, dict]:
     """Template name -> its shelf row (the one a plan's ``scene`` resolves to)."""
     out: dict[str, dict] = {}
     for r in entries(include_episodes=False):
-        if r["origin"] != "episode" and not r.get("overridden"):
+        if r["origin"] != "episode" and not r.get("overridden") and r.get("kind") != "source-kit":
             out.setdefault(r["name"], r)
     return out
 
@@ -466,6 +471,29 @@ def promote(episode: str, insert_id: str, name: str, render_sample: Callable[...
             (stage / "plates").mkdir(exist_ok=True)
             shutil.copy2(p, stage / "plates" / f"{name}_{p.name}")
         h2 = tp.parse_header(text)
+        bundle_rel = f"bundles/{name}/v{version}"
+        source_bundle = stage / bundle_rel
+        source_bundle.mkdir(parents=True)
+        reusable = [comp, *piece.glob("*.py")]
+        for sub in ("plates", "assets"):
+            reusable.extend(p for p in (piece / sub).rglob("*") if p.is_file())
+        manifest = {"schema": 1, "params": h2["defaults"], "files": {}, "plates": []}
+        for source in reusable:
+            if source.is_symlink() or piece.resolve() not in source.resolve().parents:
+                raise LibraryError("Reusable sources must stay inside the insert; symbolic links are not copied.")
+            rel = source.relative_to(piece).as_posix()
+            target = source_bundle / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+            manifest["files"][rel] = sha256(target)
+        for plan_file in sorted((ep_dir / "edit").glob("plan-v*.json"), reverse=True):
+            plan_data = json.loads(plan_file.read_text())
+            found = next((x for x in plan_data.get("inserts", []) if x.get("source") == f"motion/{insert_id}/comp.jsx"), None)
+            if found:
+                manifest["plates"] = found.get("plates") or []
+                manifest["source_insert"] = insert_id
+                break
+        (source_bundle / "bundle.json").write_text(json.dumps(manifest, indent=2) + "\n")
         samples: dict[str, str] = {}
         poster = None
         (stage / "samples").mkdir()
@@ -494,7 +522,7 @@ def promote(episode: str, insert_id: str, name: str, render_sample: Callable[...
     if cur.is_file():
         cur.replace(d / f"{name}.v{old_v}.jsx")
     (stage / f"{name}.jsx").replace(cur)
-    for sub in ("assets", "plates", "samples"):
+    for sub in ("assets", "plates", "samples", "bundles"):
         if (stage / sub).is_dir():
             for f in (stage / sub).rglob("*"):
                 if f.is_file():
@@ -508,7 +536,8 @@ def promote(episode: str, insert_id: str, name: str, render_sample: Callable[...
     if prev.get("version"):
         history.append({"version": prev["version"], "file": f"{name}.v{prev['version']}.jsx",
                         "sha256": prev.get("sha256"), "made_from": prev.get("made_from"),
-                        "approved": prev.get("approved"), "samples": prev.get("samples")})
+                        "approved": prev.get("approved"), "samples": prev.get("samples"),
+                        "bundle": prev.get("bundle"), "bundle_sha256": prev.get("bundle_sha256")})
     entry = {
         "name": name, "title": title or prev.get("title") or name.replace("_", " "), "description": h2["description"],
         "version": version, "kind": h2["kind"] or "full", "formats": h2["formats"], "params": h2["defaults"],
@@ -516,6 +545,7 @@ def promote(episode: str, insert_id: str, name: str, render_sample: Callable[...
         "review": {"bundle": str(bundle.parent.relative_to(ep_dir)), "errors": 0},
         "approved": None, "sample": poster, "samples": samples, "sha256": sha256(cur), "engine_pin": read_pin(),
         "promoted": today(), "history": history, "notes": list(prev.get("notes") or []),
+        "bundle": bundle_rel, "bundle_sha256": sha256(d / bundle_rel / "bundle.json"),
     }
     idx[name] = entry
     write_index(idx)
@@ -548,6 +578,96 @@ def check_card(card: dict) -> None:
     if not p.is_file() or sha256(p) != t.get("sha256"):
         raise ValueError("The template changed after this card was made. Approving it would approve something you "
                          "did not see; the Editor promotes it again and a new card opens.")
+    entry = read_index().get(t.get("name")) or {}
+    if entry.get("bundle"):
+        checked_bundle(entry)
+
+
+def checked_bundle(entry: dict) -> tuple[Path, dict]:
+    if not entry.get("bundle"):
+        raise LibraryError("This older template has no complete source bundle. Promote it again before copying it.")
+    folder = paths.inside(user_dir(), entry["bundle"])
+    manifest = folder / "bundle.json"
+    if sha256(manifest) != entry.get("bundle_sha256"):
+        raise LibraryError("The reusable source manifest changed after promotion.")
+    data = json.loads(manifest.read_text())
+    for rel, digest in data["files"].items():
+        source = paths.inside(folder, rel)
+        if source.is_symlink() or not source.is_file() or sha256(source) != digest:
+            raise LibraryError(f"Reusable source changed: {rel}")
+    return folder, data
+
+
+def import_source_kit(name: str, root: Path, files: list[str], entrypoints: list[str], reason: str) -> dict:
+    """Import explicitly selected reusable code, preserving paths; never execute it."""
+    if not NAME.fullmatch(name) or not reason.strip() or not entrypoints or not set(entrypoints) <= set(files):
+        raise LibraryError("Choose a kit name, explicit files, included entrypoints and the user's selection reason.")
+    allowed = {".py", ".js", ".jsx", ".sh", ".json", ".md", ".svg", ".png", ".jpg", ".otf", ".ttf", ".attribution"}
+    idx = read_index()
+    if name in idx:
+        raise LibraryError("Source kit already exists; use a new name to preserve the proven version.")
+    checked = []
+    for rel in files:
+        source = paths.inside(root.resolve(), rel)
+        if not source.is_file() or source.is_symlink() or source.suffix.lower() not in allowed:
+            raise LibraryError(f"Not a supported source file: {rel}")
+        checked.append((rel, source))
+    from .. import approvals
+    approvals.ensure_user_pack()
+    bundle_rel = f"bundles/{name}/v1"
+    dest = paths.inside(user_dir(), bundle_rel)
+    if dest.exists():
+        raise LibraryError("Source bundle exists; choose a new name.")
+    dest.mkdir(parents=True)
+    manifest = {"schema": 1, "type": "source-kit", "entrypoints": entrypoints, "params": {}, "files": {}}
+    for rel, source in checked:
+        target = paths.inside(dest, rel)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+        manifest["files"][rel] = sha256(target)
+    (dest / "bundle.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    entry = {"type": "source-kit", "version": 1, "title": name, "description": "Reusable source kit; adapt and review before production.",
+             "bundle": bundle_rel, "bundle_sha256": sha256(dest / "bundle.json"), "entrypoints": entrypoints,
+             "approved": {"by": "user", "selection": reason, "date": today()}, "notes": [], "history": []}
+    idx[name] = entry
+    write_index(idx)
+    return entry
+
+
+def reuse(name: str, episode: str, insert_id: str, version: int | None = None) -> dict:
+    """Copy an approved, complete version into a fresh insert; never run or change the original."""
+    from .. import episodes
+    from .custom import piece_dir
+    episodes.read(episode)
+    entry = read_index().get(name) or {}
+    if version and entry.get("version") != version:
+        entry = next((e for e in entry.get("history", []) if e.get("version") == version), {})
+    if not entry.get("approved"):
+        raise LibraryError("Choose an approved template version from the library.")
+    source, manifest = checked_bundle(entry)
+    target = paths.inside(paths.episode_dir(episode), f"motion/{piece_dir(episode, insert_id).name}")
+    if target.exists():
+        raise LibraryError("The target insert already exists; choose a new ID.")
+    target.mkdir(parents=True)
+    for rel in manifest["files"]:
+        dest = paths.inside(target, rel)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(paths.inside(source, rel), dest)
+    (target / "review").mkdir(exist_ok=True)
+    (target / "refs").mkdir(exist_ok=True)
+    main = (manifest.get("entrypoints") or ["comp.jsx"])[0]
+    recipe = {"source": f"motion/{insert_id}/{main}", "params": manifest["params"],
+              "template": name, "version": entry["version"], "plates": manifest.get("plates", []),
+              "note": "Adapt text, spoken cues, duration and plate frame ranges; run new style and motion reviews."}
+    if manifest.get("type") == "source-kit":
+        recipe.update(kind="source-kit", entrypoints=manifest["entrypoints"],
+                      note="Copied source kit, not a native scene yet. Adapt its inputs to this episode and render a checked probe before use.")
+    old = manifest.get("source_insert")
+    if old:
+        for plate in recipe["plates"]:
+            plate["script"] = plate["script"].replace(f"motion/{old}/", f"motion/{insert_id}/", 1)
+    (target / "REUSE.json").write_text(json.dumps(recipe, indent=2) + "\n")
+    return recipe
 
 
 def approve(card: dict) -> dict:

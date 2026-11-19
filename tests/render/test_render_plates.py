@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 from motion_helpers import FakeCompute, NeedsApproval, install
 from render_helpers import FakeRunner, basic_plan
@@ -53,8 +55,14 @@ def test_local_with_own_gpu(episode, studio, monkeypatch):
         def __call__(self, cmd, timeout=600, cwd=None):
             out = cmd[cmd.index("--out") + 1]
             from pathlib import Path
+
+            from PIL import Image
+            profile = plates.quality_profile(plan)
             for i in range(1, 5):
-                (Path(out) / f"{i:04d}.png").write_bytes(b"png")
+                Image.new("RGB", tuple(profile["size"]), "white").save(Path(out) / f"{i:04d}.png")
+            (Path(out) / "render-settings.json").write_text(json.dumps({"profile": profile, "probe": False,
+                "gpu": True, "engine": "CYCLES", "samples": profile["samples"], "scale": 100,
+                "size": profile["size"], "device": "GPU"}))
             return 0, ""
 
     r = plates.render_plates(plan, runner=Runner(), log=lambda s: None)

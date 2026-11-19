@@ -3,6 +3,8 @@
 Two looks. **The builder's own** (the Editor, after every stage, before handing over) and **the Critic's** (never the
 builder, after every round, with the review bundle). The user sees nothing that has not passed both.
 
+Read [craft.md](craft.md) first when the channel has selected benchmarks. Geometry, material and movement comparisons are required separately from technical checks.
+
 ## 1. The builder's own look
 
 1. **Reference first.** When the piece has a reference, take its frames at 60 fps around every transition and write

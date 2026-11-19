@@ -235,3 +235,45 @@ def test_a_first_promotion_declined_leaves_no_trace(studio, app_dir, tmp_path):
     pack = studio / "brand" / "templates" / "motion"
     assert not (pack / "gpu_handoff.jsx").exists() and "gpu_handoff" not in library.read_index()
     assert not (pack / "assets" / "gpu_handoff").exists() and not list((pack / "plates").glob("gpu_handoff_*"))
+
+
+def test_reuse_keeps_complete_helper_tree_and_rejects_changed_sources(studio, app_dir, tmp_path):
+    eid, _ = make_episode()
+    piece, ep = _piece(eid, tmp_path)
+    (piece / 'plates/helpers').mkdir()
+    (piece / 'plates/helpers/model.py').write_text('DETAILS = 46\n')
+    (piece / 'plates/gpu3d.py').write_text('from helpers.model import DETAILS\n')
+    bundle(ep, 'handoff', errors=0)
+    entry = library.promote(eid, 'handoff', 'reusable_object', FakeRenderer())
+    with pytest.raises(library.LibraryError, match='approved'):
+        library.reuse('reusable_object', eid, 'next')
+    approvals.decide(entry['card'], True)
+    recipe = library.reuse('reusable_object', eid, 'next')
+    dest = ep / 'motion/next'
+    assert recipe['version'] == 1
+    assert (dest / 'plates/helpers/model.py').read_text() == 'DETAILS = 46\n'
+    assert (dest / 'assets/chip.png').is_file()
+    (dest / 'plates/helpers/model.py').write_text('DETAILS = 60\n')
+    assert (piece / 'plates/helpers/model.py').read_text() == 'DETAILS = 46\n'
+    entry = library.read_index()['reusable_object']
+    stored = library.user_dir() / entry['bundle'] / 'plates/helpers/model.py'
+    stored.write_text('DETAILS = 1\n')
+    with pytest.raises(library.LibraryError, match='changed'):
+        library.reuse('reusable_object', eid, 'another')
+
+
+def test_imported_source_kit_preserves_imports_and_never_runs(studio, app_dir, tmp_path):
+    root = tmp_path / 'selected-code'
+    (root / 'helpers').mkdir(parents=True)
+    (root / 'scene.py').write_text('from helpers.model import DETAIL\nraise RuntimeError("must never execute during import")\n')
+    (root / 'helpers/model.py').write_text('DETAIL = 46\n')
+    library.import_source_kit('proven_model', root, ['scene.py', 'helpers/model.py'], ['scene.py'], 'Explicit user selection')
+    assert any(x['name'] == 'proven_model' and x['kind'] == 'source-kit' for x in library.entries(False))
+    assert 'proven_model' not in library.shelf_names(), 'a legacy kit is not a native scene'
+    eid, ep = make_episode()
+    result = library.reuse('proven_model', eid, 'model')
+    assert result['kind'] == 'source-kit'
+    assert (ep / 'motion/model/helpers/model.py').read_text() == 'DETAIL = 46\n'
+    assert not (ep / 'render/insert.mp4').exists()
+    with pytest.raises(library.LibraryError, match='already exists'):
+        library.import_source_kit('proven_model', root, ['scene.py'], ['scene.py'], 'Do not overwrite')

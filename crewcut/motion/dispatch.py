@@ -51,6 +51,9 @@ def after_job(job: dict, result) -> bool:
         queue.add(episode, "critic", "edit",
             f"Review only motion/{insert}/ against approved style-frame card #{card['id']}. "
             "Inspect the render, checks and source. Save findings in that insert's review/ folder. "
+            "If the style frame has a craft_review, follow skills/motion/references/craft.md: compare native frames "
+            "at entrance, main action and exit against the selected benchmark, and write animation-craft.json "
+            "with exact output hash, current style_frame_card and the three comparison manifests. "
             "If changes are needed, assign a focused repair to the designer with that insert ID. "
             "Do not change the shared edit plan or approve the whole video. Report exact reviewed output paths to the Editor.",
             data={"motion_insert": insert, "motion_card": card["id"], "motion_phase": "review"})

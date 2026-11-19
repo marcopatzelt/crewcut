@@ -28,6 +28,9 @@ def precheck(card: dict) -> None:
     elif kind == "baseline":
         from . import ratchet
         ratchet.check_baseline_card(card)
+    elif kind == "style-frame":
+        from . import quality
+        quality.check_card(card)
 
 
 def on_decided(card: dict) -> None:

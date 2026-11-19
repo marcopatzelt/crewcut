@@ -63,6 +63,8 @@ After recording, an optional [Full-auto mode](docs/full-auto.md) carries the epi
 thumbnails and upload preparation. Choose whether it stops before upload, uploads privately, or publishes.
 Approved 2D and 3D style frames get separate designer sessions, with up to five agents working at once.
 Heavy renders stay limited; the Editor assembles the reviewed inserts.
+[Craft benchmarks](docs/motion-craft.md) give every designer proven examples and require independent comparisons
+before approving new frames and finished animations.
 
 You need Docker and a Claude subscription (Pro, Max, Team or Enterprise).
 

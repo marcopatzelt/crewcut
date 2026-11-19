@@ -143,7 +143,9 @@ def system_prompt(identity: dict, episode: str | None, step: str | None, with_id
         ctx = "Compact channel index (lists are limited):\n" + json.dumps(channel.context(), ensure_ascii=False)
     from .. import full_auto
     auto = full_auto.instructions(episode) if episode and not episode.startswith("_") else ""
-    return "\n".join([ident, rights, skill_line, rules, WORKSPACE_RULES, pack_line, step_line, ctx, auto])
+    from ..motion import quality
+    craft = quality.context() if step == "edit" and identity.get("id") in ("designer", "editor", "critic", "showrunner") else ""
+    return "\n".join([ident, rights, skill_line, rules, WORKSPACE_RULES, pack_line, step_line, ctx, auto, craft])
 
 
 STEP_TASKS = {

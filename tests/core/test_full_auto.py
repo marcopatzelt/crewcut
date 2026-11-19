@@ -115,3 +115,31 @@ def test_private_scope_rejects_public_or_scheduled_package(episode):
     (root / "export/upload.json").write_text(json.dumps(pkg))
     with pytest.raises(ValueError, match="reviewed final"):
         full_auto.publish_allowed(c)
+
+
+def test_ready_completion_keeps_upload_manual(episode, monkeypatch):
+    full_auto.configure(episode, 'ready')
+    c = card(episode, kind='publish', step='upload')
+    assigned(monkeypatch, episode, c)
+    monkeypatch.setattr(full_auto, 'publish_allowed', lambda *a, **kw: None)
+    result = full_auto.review(c['id'], evidence(episode, c))
+    assert result['status'] == 'ready'
+    assert full_auto.policy(episode)['complete']
+    saved = approvals.get(c['id'])
+    assert saved['status'] == 'open'
+    assert 'auto_revision' not in saved['data']
+    with db.conn() as con:
+        assert con.execute("SELECT COUNT(*) FROM jobs WHERE identity='publisher'").fetchone()[0] == 0
+
+
+def test_unrelated_import_rule_does_not_block_edit_and_spend_is_not_declined(episode):
+    full_auto.configure(episode, 'ready')
+    paths.inside(paths.episode_dir(episode), 'originals/take.mp4').write_bytes(b'synthetic')
+    rule = approvals.propose(episode, 'script', 'rule', 'Old script rule')
+    full_auto.tick()
+    assert approvals.get(rule['id'])['status'] == 'open'
+    with db.conn() as con:
+        assert con.execute("SELECT COUNT(*) FROM jobs WHERE identity='editor'").fetchone()[0] == 1
+    spend = approvals.propose(episode, 'edit', 'spend', 'Quality budget', data={'budget_usd': 2})
+    full_auto.tick()
+    assert approvals.get(spend['id'])['status'] == 'open'

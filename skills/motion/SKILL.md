@@ -21,6 +21,7 @@ the time.
 | You want to | Read |
 |---|---|
 | plan the motion of a video: read order, per-beat questions, the three columns, a worked example | `references/director.md` |
+| compare object craft and native animation frames with user-selected benchmarks | `references/craft.md` |
 | know the bar, the report, the lessons and what the Critic sends back | `references/ratchet.md` |
 | place motion calmly: shelf, lengths, density, overlay, backdrop, safe areas | `references/calm-in-video.md` |
 | build an insert: beat sheet, plates, comp, render, time bases | `references/pipeline.md` |

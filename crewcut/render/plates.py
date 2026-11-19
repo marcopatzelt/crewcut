@@ -18,7 +18,7 @@ import hashlib
 import json
 import shlex
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import blender, media
@@ -36,6 +36,8 @@ class Plate:
     frames: int
     hash: str
     out_dir: Path
+    quality: dict = field(default_factory=dict)
+    source_root: Path | None = None
 
     def done(self) -> int:
         if not self.out_dir.is_dir():
@@ -44,7 +46,12 @@ class Plate:
 
     @property
     def complete(self) -> bool:
-        return self.done() >= self.frames
+        try:
+            receipt = json.loads((self.out_dir / "complete.json").read_text())
+            return (receipt.get("profile") == self.quality and receipt.get("frames") == self.frames
+                    and all((self.out_dir / f"{n:04d}.png").is_file() for n in range(1, self.frames + 1)))
+        except (OSError, ValueError):
+            return False
 
     @property
     def first(self) -> Path:
@@ -64,12 +71,31 @@ def _fonts(plan: Plan) -> list[Path]:
 def plate_hash(plan: Plan, script: Path, args: dict, frames: int) -> str:
     h = hashlib.sha1()
     h.update(script.read_bytes())
+    for source in sorted(code_root(plan, script).rglob("*.py")):
+        root = code_root(plan, script)
+        if source.is_symlink() or root.resolve() not in source.resolve().parents:
+            raise PlanError("Plate code dependencies must stay inside their source folder.")
+        h.update(source.relative_to(root).as_posix().encode() + source.read_bytes())
     h.update(json.dumps({"args": args, "frames": frames, "fps": plan.fps}, sort_keys=True).encode())
+    h.update(json.dumps(quality_profile(plan), sort_keys=True).encode())
     h.update(json.dumps({k: plan.tokens.get(k) for k in ("colors", "motion_graphics")}, sort_keys=True,
                         default=str).encode())
     for f in _fonts(plan):
         h.update(f.name.encode() + str(f.stat().st_size).encode())
     return h.hexdigest()[:10]
+
+
+def code_root(plan: Plan, script: Path) -> Path:
+    motion = plan.episode_dir / "motion"
+    if script.is_relative_to(motion) and len(script.relative_to(motion).parts) > 1:
+        return motion / script.relative_to(motion).parts[0]
+    return script.parent
+
+
+def quality_profile(plan: Plan) -> dict:
+    from ..compute import settings
+    return {"version": 1, "size": list(plan.size),
+            "samples": int(plan.tokens.get("stage3d", {}).get("samples") or settings.get("render3d.samples") or 128)}
 
 
 def plates_of(plan: Plan, ins: Insert) -> list[Plate]:
@@ -84,8 +110,9 @@ def plates_of(plan: Plan, ins: Insert) -> list[Plate]:
         if frames < 1:
             raise PlanError(f"insert {ins.id}: plate {p['id']}: frames must be 1 or more")
         h = plate_hash(plan, script, args, frames)
+        source_root = code_root(plan, script)
         out.append(Plate(ins.id, str(p["id"]), script, args, frames, h,
-                         plan.episode_dir / "render" / "plates" / f"{ins.id}-{p['id']}-{h}"))
+                         plan.episode_dir / "render" / "plates" / f"{ins.id}-{p['id']}-{h}", quality_profile(plan), source_root))
     return out
 
 
@@ -118,29 +145,37 @@ def arg_list(args: dict) -> list[str]:
     return out
 
 
-def blender_cmd(binary: str, script: str, out: str, frames: str, args: dict, half: bool = False) -> list[str]:
-    return [binary, "-b", "--factory-startup", "--python", script, "--", "--out", out, "--frames", frames,
+def blender_cmd(binary: str, script: str, out: str, frames: str, args: dict, half: bool = False,
+                quality: dict | None = None, gpu: bool = False) -> list[str]:
+    from . import plate_quality
+    setup = ["--python-exit-code", "23", "--python-expr", plate_quality.bootstrap(quality, out, half, gpu)] if quality else []
+    return [binary, "-b", "--factory-startup", *setup, "--python", script, "--", "--out", out, "--frames", frames,
             *arg_list(args), *(["--half"] if half else [])]
 
 
 def render_local(plan: Plan, plates: list[Plate], probe: bool = False, runner: media.Runner = media.run,
                  log: Callable = print) -> list[dict]:
     rows = []
+    from . import plate_quality
+    gpu = blender.local_gpu(runner)
     for pl in plates:
-        pl.out_dir.mkdir(parents=True, exist_ok=True)
+        target = pl.out_dir / "probe" if probe else pl.out_dir
+        target.mkdir(parents=True, exist_ok=True)
         frames = f"{max(1, pl.frames // 2)}-{max(1, pl.frames // 2)}" if probe else f"1-{pl.frames}"
-        rc, out = runner(blender_cmd(blender.blender_bin(), str(pl.script), str(pl.out_dir), frames, pl.args,
-                                     half=probe), timeout=24 * 3600)
-        ok = rc == 0 and (probe or pl.complete)
+        rc, out = runner(blender_cmd(blender.blender_bin(), str(pl.script), str(target), frames, pl.args,
+                                     half=probe, quality=pl.quality, gpu=gpu), timeout=24 * 3600)
+        ok, reason = plate_quality.verify(target, pl.frames, pl.quality, probe=probe, gpu=gpu) if rc == 0 else (False, out)
         log(f"plate {pl.insert_id}/{pl.id}: {'ok' if ok else 'failed: ' + media.tail(out, 300)}")
-        rows.append({"insert": pl.insert_id, "plate": pl.id, "ok": ok, "dir": str(pl.out_dir), "where": "local"})
+        rows.append({"insert": pl.insert_id, "plate": pl.id, "ok": ok, "dir": str(target), "where": "local", "quality": reason})
     return rows
 
 
 def remote_script(pl: Plate, probe: bool) -> str:
     frames = f"{max(1, pl.frames // 2)}-{max(1, pl.frames // 2)}" if probe else f"1-{pl.frames}"
     d = f"{REMOTE}/{pl.insert_id}-{pl.id}"
-    cmd = blender_cmd(blender.REMOTE_BLENDER, f"{d}/{pl.script.name}", f"{d}/out", frames, pl.args, half=probe)
+    script = pl.script.relative_to(pl.source_root or pl.script.parent).as_posix()
+    cmd = blender_cmd(blender.REMOTE_BLENDER, f"{d}/{script}", f"{d}/out", frames, pl.args, half=probe,
+                      quality=pl.quality, gpu=True)
     return f"mkdir -p {d}/out && cd {d} && " + " ".join(shlex.quote(c) for c in cmd)
 
 
@@ -155,10 +190,17 @@ def render_rented(plan: Plan, plates: list[Plate], compute, cap_usd: float, prob
     for pl in plates:
         d = stage / f"{pl.insert_id}-{pl.id}"
         d.mkdir(parents=True)
-        (d / pl.script.name).write_bytes(pl.script.read_bytes())
+        root = pl.source_root or pl.script.parent
+        for source in root.rglob("*.py"):
+            if source.is_symlink() or root.resolve() not in source.resolve().parents:
+                raise PlanError("Plate code dependencies must stay inside their source folder.")
+            target = d / source.relative_to(root)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(source.read_bytes())
         uploads.append(d)
     fonts = _fonts(plan)
     rows = []
+    from . import plate_quality
     with compute.session(episode=plan.episode, step="edit", purpose="motion plates", cap_usd=cap_usd) as s:
         m = s.rent(gpus=1, max_minutes=180)[0]
         m.put([*uploads, *fonts], f"{REMOTE}/")
@@ -168,11 +210,14 @@ def render_rented(plan: Plan, plates: list[Plate], compute, cap_usd: float, prob
         for pl in plates:
             rc, out = m.run(remote_script(pl, probe), timeout=6 * 3600, doing=f"Blender plate {pl.insert_id}/{pl.id}")
             if rc == 0:
-                pl.out_dir.mkdir(parents=True, exist_ok=True)
-                m.get(f"{REMOTE}/{pl.insert_id}-{pl.id}/out/", pl.out_dir)
-            ok = rc == 0 and (probe or pl.complete)
+                target = pl.out_dir / "probe" if probe else pl.out_dir
+                target.mkdir(parents=True, exist_ok=True)
+                m.get(f"{REMOTE}/{pl.insert_id}-{pl.id}/out/", target)
+            else:
+                target = pl.out_dir
+            ok, reason = plate_quality.verify(target, pl.frames, pl.quality, probe=probe, gpu=True) if rc == 0 else (False, out)
             log(f"plate {pl.insert_id}/{pl.id} (rented): {'ok' if ok else 'failed: ' + media.tail(out, 300)}")
-            rows.append({"insert": pl.insert_id, "plate": pl.id, "ok": ok, "dir": str(pl.out_dir), "where": "rented"})
+            rows.append({"insert": pl.insert_id, "plate": pl.id, "ok": ok, "dir": str(target), "where": "rented", "quality": reason})
     return rows
 
 

@@ -49,6 +49,9 @@ def propose(episode: str | None, step: str | None, kind: str, title: str, body: 
     identity = identity or os.environ.get("CREWCUT_IDENTITY")
     job = job or (int(os.environ["CREWCUT_JOB"]) if os.environ.get("CREWCUT_JOB", "").isdigit() else None)
     digest = None
+    if kind == "style-frame":
+        from .motion import quality
+        quality.check_card({"episode": episode, "data": data or {}, "file": file}, submit=True)
     p = _resolve_file(episode, file)
     if p is not None:
         if not p.is_file():
@@ -123,6 +126,9 @@ def decide(card_id: int, accepted: bool, choice: int | None = None, reason: str 
     if accepted and card["kind"] in MOTION_KINDS:
         from .motion import cards as motion_cards
         motion_cards.precheck(card)
+    if accepted and card["kind"] in ("preview", "final"):
+        from .motion import quality
+        quality.check_animations(card["episode"])
     db.update("cards", card_id, status="accepted" if accepted else "declined", choice=choice, reason=reason,
               decided_at=db.now())
     card = get(card_id)

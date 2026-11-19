@@ -30,6 +30,10 @@ Two roots:
 
 ## Layers of knowledge
 
+`motion/quality.py` supplies private craft benchmarks to every edit job and binds independent
+style-frame and animation reviews to exact media. `render/plate_quality.py` keeps probe and
+final quality separate and validates returned custom Blender plates. See [motion craft](motion-craft.md).
+
 ### Production automation and parallel inserts
 
 `full_auto.py` stores an explicit per-episode mode and revision in the database. The existing worker assigns

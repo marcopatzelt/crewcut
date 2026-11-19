@@ -1128,14 +1128,93 @@ def new_cmd(app: App, episode, insert_id, brief):
 @click.option("--ours", multiple=True, required=True, help="Our frame (one per format; repeat for both).")
 @click.option("--ref", multiple=True, help="The reference frame (else refs/, else the bar's frames).")
 @click.option("--natural", is_flag=True, help="Grass, sky or footage: the one-hue limit does not apply.")
+@click.option("--craft-review", help="The independent Critic's JSON report against a channel benchmark.")
 @click.pass_obj
 @handle_error
-def style_frame_cmd(app: App, episode, insert_id, ours, ref, natural):
+def style_frame_cmd(app: App, episode, insert_id, ours, ref, natural, craft_review):
     """Open the style-frame card: our frame next to the reference. Nothing animated is built before its yes."""
     from .. import approvals
     from . import custom
-    c = custom.style_frame(episode, insert_id, list(ours), list(ref), natural=natural)
+    c = custom.style_frame(episode, insert_id, list(ours), list(ref), natural=natural, craft_review=craft_review)
     out(app, approvals.view(c), f"card #{c['id']} is open: {c['title']}")
+
+
+@cli.command("craft-compare")
+@click.argument("episode")
+@click.argument("insert_id")
+@click.option("--ours", required=True, help="Rendered insert clip, relative to the episode.")
+@click.option("--benchmark", required=True)
+@click.option("--start", type=float, default=0.0)
+@click.option("--reference-start", type=float, default=0.0)
+@click.option("--frames", type=int, default=24)
+@click.pass_obj
+@handle_error
+def craft_compare_cmd(app: App, episode, insert_id, ours, benchmark, start, reference_start, frames):
+    """Compare consecutive native frames with a user-selected motion benchmark."""
+    from . import quality
+    result = quality.compare(episode, insert_id, ours, benchmark, start, reference_start, frames)
+    out(app, result, result["sheet"])
+
+
+@cli.group("benchmark")
+def benchmark_group():
+    """The user's selected craft benchmarks, kept in the private studio."""
+
+
+@cli.command("reuse")
+@click.argument("name")
+@click.argument("episode")
+@click.argument("insert_id")
+@click.option("--version", type=int)
+@click.pass_obj
+@handle_error
+def reuse_cmd(app: App, name, episode, insert_id, version):
+    """Copy an approved source bundle to a new insert, preserving helper paths."""
+    from . import library
+    data = library.reuse(name, episode, insert_id, version)
+    out(app, data, f"Copied {name} to {data['source']}. {data['note']}")
+
+
+@cli.command("import-source-kit")
+@click.argument("name")
+@click.option("--root", required=True, type=click.Path(exists=True, file_okay=False))
+@click.option("--file", "files", multiple=True, required=True)
+@click.option("--entrypoint", multiple=True, required=True)
+@click.option("--reason", required=True)
+@click.pass_obj
+@handle_error
+def import_source_kit_cmd(app: App, name, root, files, entrypoint, reason):
+    """Copy explicitly selected proven code into a private, immutable source kit."""
+    from pathlib import Path
+
+    from . import library
+    data = library.import_source_kit(name, Path(root), list(files), list(entrypoint), reason)
+    out(app, data, f"Source kit {name} is available with `crewcut motion reuse`.")
+
+
+@benchmark_group.command("list")
+@click.pass_obj
+@handle_error
+def benchmark_list(app: App):
+    from . import quality
+    data = quality.catalog()
+    out(app, data, quality.context())
+
+
+@benchmark_group.command("add")
+@click.argument("name")
+@click.option("--frame", required=True, type=click.Path(exists=True))
+@click.option("--clip", type=click.Path(exists=True))
+@click.option("--source", multiple=True, type=click.Path(exists=True))
+@click.option("--strength", multiple=True, required=True)
+@click.option("--reason", required=True)
+@click.pass_obj
+@handle_error
+def benchmark_add(app: App, name, frame, clip, source, strength, reason):
+    """Import evidence the user selects; never promote a rejected draft as the bar."""
+    from . import quality
+    data = quality.add(name, frame, list(strength), reason, clip, list(source))
+    out(app, data, f"Benchmark {name} is available to every new motion job.")
 
 
 def _sample_renderer():

@@ -27,7 +27,7 @@ COMMANDS = {
 }
 # the motion workflow (motion plan 3.1, 3.3, 3.6, 3.8): no engine needed
 WORKFLOW = {"plan", "library", "new", "style-frame", "promote", "report", "lessons", "reference add",
-            "reference from-chat", "reference list"}
+            "reference from-chat", "reference list", "benchmark add", "benchmark list", "craft-compare", "reuse", "import-source-kit"}
 
 
 def _leaves(group: click.Group, prefix: str = "") -> set[str]:

@@ -7,9 +7,9 @@ Each episode has an explicit **Full auto** choice above its production steps:
 - Finish and publish publicly or at the date in the reviewed upload package.
 
 The default is off. Turning it on does not cancel or replace an existing job.
-The worker waits for recordings, then handles edit, thumbnail and upload steps.
+The worker waits for recordings, then handles edit, title, thumbnail and upload steps.
 Disabled production steps are enabled for this run. Earlier research and script
-decisions stay outside this mode. Turning it off revokes pending automatic
+decisions stay outside this mode. Unrelated old script-rule cards do not block production. Turning it off revokes pending automatic
 reviews and upload authority; running production work is not killed.
 
 The Critic reviews the usual motion plans, style frames, mixes, previews, final
@@ -19,8 +19,8 @@ next-step transitions still run. A publish review additionally requires a valid
 package and a video matching an accepted final cut. Private mode rejects public
 visibility and publication dates. Upload checks the current delegation again.
 
-New paid work is not silently approved. A spend request selects the local path;
-previously approved budgets retain their usual checks. Authentication failures,
+New paid work is not silently approved. A spend request stays visible; Full auto never
+declines it automatically or silently lowers render quality. Previously approved budgets retain their usual checks. Authentication failures,
 missing source material and repeated quality failures may still need attention.
 Three failed reviews or repeated incomplete jobs stop the loop with a visible
 reason. This is delegation to a reviewing agent, not proof that every creative
