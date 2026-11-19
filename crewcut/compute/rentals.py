@@ -85,9 +85,11 @@ def worst_remaining(row: dict) -> float:
     return max(0.0, deadline_ts(row) + grace_s() - state.now()) / 3600 * float(row.get("price_per_hour") or 0)
 
 
-def reserved(episode: str | None = None, *, remaining: bool = False) -> float:
+def reserved(episode: str | None = None, *, remaining: bool = False, purpose: str | None = None) -> float:
     """Worst case of the machines still running (not yet in the cost book). For one episode, or for all."""
     rows = [r for r in live() if episode is None or r.get("episode") == episode]
+    if purpose:
+        rows = [r for r in rows if not detail(r).get("purpose") or detail(r)["purpose"] == purpose]
     return round(sum(worst_remaining(r) if remaining else worst_total(r) for r in rows), 4)
 
 

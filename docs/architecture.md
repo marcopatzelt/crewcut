@@ -34,6 +34,13 @@ Two roots:
 style-frame and animation reviews to exact media. `render/plate_quality.py` keeps probe and
 final quality separate and validates returned custom Blender plates. See [motion craft](motion-craft.md).
 
+Preview/final cards may bind `data.production_review` to an independent Critic's
+checksum-bound manifest of the assembly plan, card video and every mounted clip's
+style and animation evidence. This checks actual revisions without revoking unused
+historical cards. See `skills/motion/references/craft.md` for the manifest format.
+Compute budgets with a named purpose apply to that purpose; a motion rental does
+not authorize music generation. Unscoped budgets retain their episode-wide meaning.
+
 ### Production automation and parallel inserts
 
 `full_auto.py` stores an explicit per-episode mode and revision in the database. The existing worker assigns

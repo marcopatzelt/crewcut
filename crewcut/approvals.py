@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shutil
 from datetime import UTC, datetime
@@ -128,7 +129,7 @@ def decide(card_id: int, accepted: bool, choice: int | None = None, reason: str 
         motion_cards.precheck(card)
     if accepted and card["kind"] in ("preview", "final"):
         from .motion import quality
-        quality.check_animations(card["episode"])
+        quality.check_animations(card["episode"], card)
     db.update("cards", card_id, status="accepted" if accepted else "declined", choice=choice, reason=reason,
               decided_at=db.now())
     card = get(card_id)
@@ -301,17 +302,37 @@ def require_right(right: str, identity: str | None = None) -> None:
         raise RightsError(f"{identity} may not {right}. Ask the crew member who may (see team/README.md).")
 
 
-def budget_for(episode: str | None) -> float:
+def budget_for(episode: str | None, purpose: str | None = None) -> float:
     """Sum of accepted spend budgets for this episode (or for no episode)."""
     total = 0.0
     for c in list_cards(episode=episode, status="accepted"):
-        if c["kind"] == "spend":
+        if c["kind"] == "spend" and (not purpose or not (c.get("data") or {}).get("purpose")
+                                      or c["data"]["purpose"] == purpose):
             total += float((c.get("data") or {}).get("budget_usd", 0) or 0)
     return round(total, 4)
 
 
+def spent_for(episode: str | None, purpose: str | None = None) -> float:
+    """Costs belonging to this purpose; unclassified costs remain conservatively charged."""
+    if not episode:
+        return 0.0
+    if not purpose:
+        return ledger.totals(episode).get("episode_usd", 0.0)
+    with db.conn() as c:
+        rows = c.execute("SELECT c.amount_usd, r.detail FROM costs c LEFT JOIN rentals r "
+                         "ON c.ref = 'vast:' || r.instance AND c.episode = r.episode "
+                         "WHERE c.episode = ?", (episode,)).fetchall()
+    total = 0.0
+    for row in rows:
+        detail = json.loads(row["detail"] or "{}")
+        if not detail.get("purpose") or detail["purpose"] == purpose:
+            total += float(row["amount_usd"])
+    return round(total, 4)
+
+
 def require_spend(episode: str | None, amount_usd: float, title: str, body: str = "", data: dict | None = None,
-                  identity: str | None = None, reserved_usd: float = 0.0) -> tuple[bool, int | None, str]:
+                  identity: str | None = None, reserved_usd: float = 0.0,
+                  total_reserved_usd: float | None = None) -> tuple[bool, int | None, str]:
     """Is this spend covered? Returns (ok, card_id, reason).
 
     ok when the month cap has room and the episode's accepted budget covers what was spent, what is reserved by
@@ -319,11 +340,14 @@ def require_spend(episode: str | None, amount_usd: float, title: str, body: str 
     """
     require_right("spend", identity)
     amount_usd = float(amount_usd)
-    if ledger.month_left() - reserved_usd < amount_usd:
+    total_reserved = reserved_usd if total_reserved_usd is None else total_reserved_usd
+    if ledger.month_left() - total_reserved < amount_usd:
         return False, None, (f"The month cap of ${ledger.month_cap():.2f} is reached or too close. Renting stops. "
                              "Raise money.cap_month_usd in studio/config/crewcut.toml to continue.")
-    spent = ledger.totals(episode).get("episode_usd", 0.0) if episode else 0.0
-    if spent + reserved_usd + amount_usd <= budget_for(episode) + 1e-9:
+    purpose = (data or {}).get("purpose")
+    spent = spent_for(episode, purpose)
+    total_fits = spent_for(episode) + total_reserved + amount_usd <= budget_for(episode) + 1e-9
+    if total_fits and spent + reserved_usd + amount_usd <= budget_for(episode, purpose) + 1e-9:
         return True, None, "inside the approved budget"
     default_budget = float(config.get("crewcut", "money.default_episode_budget_usd", 5.0))
     cap = (data or {}).get("cap_usd")

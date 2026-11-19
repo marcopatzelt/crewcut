@@ -125,3 +125,34 @@ remain history; do not silently reinterpret them as a new visual approval.
 
 This enforces evidence and independent review. It does not mathematically prove
 beauty, and the user may still reject an internally passing result.
+
+## Bind a finished assembly to its actual revisions
+
+Historical style cards are not a list of clips still mounted in the film. For a
+resolved assembly plan whose inserts are `kind: clip`, the independent Critic can
+write a production review. Attach its path and SHA-256 in the preview/final card's
+`data.production_review` (CLI `--data`). Each file object has `file` and `sha256`:
+
+```json
+{
+  "reviewer_job": 42,
+  "verdict": "pass",
+  "unresolved": [],
+  "plan": {"file": "edit/plan-v002.json", "sha256": "HASH"},
+  "video": {"file": "export/preview-v002.mp4", "sha256": "HASH"},
+  "inserts": [{
+    "id": "example",
+    "clip": {"file": "motion/example/revision-2.mp4", "sha256": "HASH"},
+    "style_frame_card": 17,
+    "animation_review": {"file": "motion/example/review/revision-2.json", "sha256": "HASH"}
+  }]
+}
+```
+
+The list must cover every plan insert exactly once. The mounted clip must match
+the animation report's output hash. A modified copy, including a new logo overlay,
+needs a review of that actual copy. Existing comparison, benchmark and independent
+review requirements remain. Do not copy a passing verdict to a different clip.
+The Critic verifies the finished film against the plan before signing the manifest.
+Pass the candidate card to `quality.check_animations(episode, card)` to check this
+mapping. Without a production review, the legacy history-based check remains.

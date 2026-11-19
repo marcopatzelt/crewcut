@@ -398,8 +398,8 @@ class Session:
         of asking again (when at least MIN_USEFUL_MINUTES of the planned machines fit)."""
         if self.rental_rows():
             return amount
-        left = (approvals.budget_for(self.episode) - (ledger.totals(self.episode).get("episode_usd", 0.0)
-                                                       if self.episode else 0.0) - rentals.reserved(self.episode))
+        left = (approvals.budget_for(self.episode, self.purpose) - approvals.spent_for(self.episode, self.purpose)
+                - rentals.reserved(self.episode, purpose=self.purpose))
         if amount <= left + 1e-9 or left < sum(prices) * MIN_USEFUL_MINUTES / 60:
             return amount
         self.cap_usd = round(left, 4)
@@ -491,7 +491,8 @@ class Session:
                                "sentence": picture_sentence(self.picture)}
         try:
             ok, card_id, reason = approvals.require_spend(self.episode, amount, title, body, data, self.identity,
-                                                          reserved_usd=rentals.reserved(self.episode))
+                                                          reserved_usd=rentals.reserved(self.episode, purpose=self.purpose),
+                                                          total_reserved_usd=rentals.reserved(self.episode))
         except approvals.RightsError as e:
             raise Refused(str(e)) from e
         if not ok:

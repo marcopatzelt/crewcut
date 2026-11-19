@@ -33,6 +33,24 @@ def messages(episode=EP) -> list[str]:
         return [r["text"] for r in c.execute("SELECT text FROM messages WHERE episode = ? ORDER BY id", (episode,))]
 
 
+def test_new_purpose_needs_its_own_budget(fake, fssh):
+    old = approved_session(fake, cap_usd=1.05)
+    old.rent(gpus=1, max_minutes=2)
+    old.close()
+    music = session_fn(episode=EP, step="edit", purpose="ACE-Step music", cap_usd=0.6, monitor=False).open()
+    with pytest.raises(NeedsApproval) as waiting:
+        music.rent(gpus=1, max_minutes=30)
+    card = approvals.get(waiting.value.card_id)
+    assert card["data"]["purpose"] == "ACE-Step music"
+    assert card["data"]["budget_usd"] == 0.6
+    assert not fake.by_label(state.label())
+    accept(card["id"])
+    try:
+        assert music.rent(gpus=1, max_minutes=30)
+    finally:
+        music.close()
+
+
 def test_approval_flow_then_rent_and_leave(fake, fssh):
     with session_fn(episode=EP, step="edit", purpose="3D scenes", cap_usd=1.5, monitor=False) as s:
         with pytest.raises(NeedsApproval) as e:

@@ -154,25 +154,76 @@ def check_card(card: dict, *, submit: bool = False) -> None:
     validate_report(card["episode"], record["report"], frames, submit=submit)
 
 
-def check_animations(episode: str) -> None:
+def _production_entries(episode: str, card: dict) -> list[tuple[str, dict, str, Path]]:
+    """An independent, checksum-bound manifest maps every mounted clip to its reviewed revision."""
+    ep = paths.episode_dir(episode)
+    pointer = (card.get("data") or {}).get("production_review") or {}
+    manifest = paths.inside(ep, pointer["file"])
+    if approvals.sha256(manifest) != pointer.get("sha256"):
+        raise ValueError("Production review changed after the card was made.")
+    review = json.loads(manifest.read_text())
+    reviewer = db.get("jobs", review.get("reviewer_job", 0)) or {}
+    if reviewer.get("identity") != "critic" or reviewer.get("episode") != episode:
+        raise ValueError("Production review needs an independent Critic in this episode.")
+    if review.get("verdict") != "pass" or review.get("unresolved") != []:
+        raise ValueError("Resolve the production review before approving the video.")
+    def bound(item: dict) -> Path:
+        p = paths.inside(ep, item["file"])
+        if not p.is_file() or approvals.sha256(p) != item.get("sha256"):
+            raise ValueError(f"Production evidence is missing or changed: {item['file']}")
+        return p
+    output = bound(review["video"])
+    if output != paths.inside(ep, card["file"]) or review["video"]["sha256"] != card.get("sha256"):
+        raise ValueError("Production review must name this exact card video.")
+    plan = json.loads(bound(review["plan"]).read_text())
+    inserts = plan.get("inserts", [])
+    entries = review.get("inserts", [])
+    ids = [i["id"] for i in inserts]
+    if len(set(ids)) != len(ids) or sorted(e["id"] for e in entries) != sorted(ids):
+        raise ValueError("Production review must cover every plan insert exactly once.")
+    by_id = {i["id"]: i for i in inserts}
+    result = []
+    for entry in entries:
+        ins = by_id[entry["id"]]
+        if ins.get("kind") != "clip":
+            raise ValueError("Production review currently requires resolved clip inserts in the assembly plan.")
+        clip = bound(entry["clip"])
+        if clip != paths.inside(ep, ins["file"]):
+            raise ValueError(f"{entry['id']}: review the clip used by the plan.")
+        style = approvals.get(entry["style_frame_card"]) or {}
+        if style.get("episode") != episode or style.get("kind") != "style-frame" or style.get("status") != "accepted":
+            raise ValueError("Production review needs an accepted style frame from this episode.")
+        check_card(style)
+        report = bound(entry["animation_review"])
+        result.append((entry["id"], style, report.relative_to(ep).as_posix(), clip))
+    return result
+
+
+def check_animations(episode: str, card: dict | None = None) -> None:
     """Final assembly needs current frame-by-frame evidence for newly reviewed inserts."""
     if not required():
         return
     latest = {}
-    for card in sorted(approvals.list_cards(episode, "accepted"), key=lambda c: c["id"]):
-        data = card.get("data") or {}
-        if card["kind"] == "style-frame" and data.get("craft_review"):
-            latest[data["insert"]] = card
+    for historical in sorted(approvals.list_cards(episode, "accepted"), key=lambda c: c["id"]):
+        data = historical.get("data") or {}
+        if historical["kind"] == "style-frame" and data.get("craft_review"):
+            latest[data["insert"]] = historical
     ep = paths.episode_dir(episode)
-    for insert, card in latest.items():
-        report = f"motion/{insert}/review/animation-craft.json"
+    if card and (card.get("data") or {}).get("production_review"):
+        entries = _production_entries(episode, card)
+    else:
+        entries = [(insert, style, f"motion/{insert}/review/animation-craft.json", None)
+                   for insert, style in latest.items()]
+    for insert, style, report, mounted in entries:
         rp = paths.inside(ep, report)
         if not rp.is_file():
             raise ValueError(f"{insert} needs a frame-by-frame Critic review before preview/final approval.")
         data = json.loads(rp.read_text())
-        if data.get("style_frame_card") != card["id"]:
+        if data.get("style_frame_card") != style["id"]:
             raise ValueError(f"{insert}: review the animation of the current style frame.")
         output = paths.inside(ep, data["output"])
+        if mounted is not None and approvals.sha256(output) != approvals.sha256(mounted):
+            raise ValueError(f"{insert}: the mounted clip needs its own animation review.")
         validate_report(episode, report, [output])
         comparisons = data.get("comparisons") or []
         if {c.get("moment") for c in comparisons} != {"entrance", "main_action", "exit"}:

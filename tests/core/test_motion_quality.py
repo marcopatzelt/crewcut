@@ -111,6 +111,33 @@ def test_native_frame_comparison_and_changed_output_rejection(craft, tmp_path):
     animation = rp.with_name('animation-craft.json')
     animation.write_text(json.dumps(report))
     quality.check_animations(eid)
+    # An unused historical draft must not block a separately reviewed, exact production manifest.
+    unused = approvals.propose(eid, 'edit', 'other', 'Retired draft')
+    db.update('cards', unused['id'], kind='style-frame', status='accepted',
+              data={'insert': 'retired', 'craft_review': card['data']['craft_review']})
+    with pytest.raises(ValueError, match='retired'):
+        quality.check_animations(eid)
+    plan = ep / 'edit/production.json'
+    plan.write_text(json.dumps({'inserts': [{'id': 'mounted', 'kind': 'clip', 'file': 'sample.mp4'}]}))
+    revision = animation.with_name('animation-revision.json')
+    revision.write_text(animation.read_text())
+    def bound(p):
+        return {'file': p.relative_to(ep).as_posix(), 'sha256': approvals.sha256(p)}
+    production = ep / 'review/production.json'
+    data = {'reviewer_job': report['reviewer_job'], 'verdict': 'pass', 'unresolved': [],
+            'plan': bound(plan), 'video': bound(clip), 'inserts': [
+                {'id': 'mounted', 'clip': bound(clip), 'style_frame_card': card['id'],
+                 'animation_review': bound(revision)}]}
+    production.write_text(json.dumps(data))
+    candidate = {'file': 'sample.mp4', 'sha256': approvals.sha256(clip),
+                 'data': {'production_review': bound(production)}}
+    quality.check_animations(eid, candidate)
+    data['inserts'] = []
+    production.write_text(json.dumps(data))
+    candidate['data']['production_review'] = bound(production)
+    with pytest.raises(ValueError, match='every plan insert'):
+        quality.check_animations(eid, candidate)
+    db.update('cards', unused['id'], status='declined')
     clip.write_bytes(clip.read_bytes() + b'changed')
     with pytest.raises(ValueError, match='exact frames'):
         quality.check_animations(eid)
