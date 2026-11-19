@@ -79,6 +79,8 @@ def context() -> str:
               "Adapt its parameters and cues in the new episode; never overwrite the proven source. "
               "After a successful new insert, propose reusable code with `crewcut motion promote` for the library."]
     lines += ["STYLE PARITY FIRST: reproduce the selected channel reference's visual grammar before inventing improvements. "
+              "Transfer style, not the reference subject: every depicted object and action must explain the current spoken claim. "
+              "A hardware reference does not make hardware the subject of unrelated privacy or workflow scenes. "
               "Preserve its actual reusable background geometry, depth layers, typography (size, weight, spacing, shadows), "
               "camera and motion helpers. A font family name alone is not typography parity. A gradient is not a substitute "
               "for the reference's objects. Inspect the source and import the working foundation. Distinguish a product "

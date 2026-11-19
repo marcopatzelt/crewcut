@@ -51,7 +51,7 @@ END_FACE_S = 2.0                                    # proof-top: seconds at the 
 RIGHT_FREE_FRAC = 0.18                              # portrait: right share kept free of text (platform buttons)
 KEYWORD_MARGIN = 0.04                               # keyword chips keep this share of the width to the left edge
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,40}$")
-_SCENE = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
+_SCENE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 _MOTION_SCENE = re.compile(r"^(?P<name>[A-Za-z0-9_]{1,60})(?:@(?P<version>[1-9][0-9]{0,3}))?$")
 _COLORS = re.compile(r"^#?[0-9A-Fa-f]{6}$")
 
@@ -470,7 +470,7 @@ class Plan:
             return self._placed(Insert(iid, kind, None, start_s, end_s, start, end, transparent, {}, {}, e, clip=f,
                                        at=float(e.get("at") or 0.0), speed=speed))
         scene = str(e.get("scene") or "")
-        if not _SCENE.match(scene):
+        if not _SCENE.fullmatch(scene):
             raise PlanError(f"insert {iid}: scene name {scene!r} is not valid")
         if kind == "3d" and transparent:
             raise PlanError(f"insert {iid}: 3D inserts are full frame; transparent is for 2D overlays")

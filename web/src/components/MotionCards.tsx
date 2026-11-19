@@ -81,10 +81,13 @@ function refWord(label: string): string {
   return "No reference";
 }
 
-function hueWords(hue: { dominant_share: number; ok: boolean } | null | undefined): string | null {
+function hueWords(hue: { dominant_share: number; ok: boolean; coloured_share?: number; accent_area_limit?: number; sparse_accent?: boolean } | null | undefined): string | null {
   if (!hue || typeof hue.dominant_share !== "number") return null;
   const pct = `${Math.round(hue.dominant_share * 100)} %`;
-  return hue.ok ? `Hue check passed: the strongest hue holds ${pct}` : `One hue holds ${pct} (allowed for grass, sky or footage)`;
+  if (hue.ok && hue.sparse_accent && typeof hue.coloured_share === "number") {
+    return `Colour check passed: coloured area ${Math.round(hue.coloured_share * 100)} % of the image (channel limit ${Math.round((hue.accent_area_limit ?? 0) * 100)} %)`;
+  }
+  return hue.ok ? `Hue check passed: the strongest hue holds ${pct} of coloured pixels` : `One hue holds ${pct} of coloured pixels (allowed for grass, sky or footage)`;
 }
 
 export function StyleFramePreview({ card }: { card: Card }) {

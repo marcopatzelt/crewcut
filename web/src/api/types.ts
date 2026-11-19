@@ -518,7 +518,7 @@ export interface StyleFrame {
   ref_url: string | null;
   /** "reference", "the bar", or the sentence for no reference */
   ref_label: string;
-  hue?: { dominant_share: number; ok: boolean } | null;
+  hue?: { dominant_share: number; ok: boolean; coloured_share?: number; accent_area_limit?: number; sparse_accent?: boolean } | null;
 }
 
 export interface StyleFrameData {

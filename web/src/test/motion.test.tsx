@@ -262,6 +262,14 @@ const frameCard = card({
 });
 
 describe("the style-frame card", () => {
+  it("explains the channel allowance instead of calling a dominant hue balanced", async () => {
+    const revised = structuredClone(frameCard);
+    const data = revised.data as { frames: Array<{ hue: object }> };
+    data.frames[0].hue = { dominant_share: 0.98, ok: true, coloured_share: 0.08, accent_area_limit: 0.3, sparse_accent: true };
+    openCardIn(revised);
+    expect(await screen.findByText("Landscape 16:9 · Colour check passed: coloured area 8 % of the image (channel limit 30 %)")).toBeTruthy();
+  });
+
   it("puts our frame next to the reference per format, and the yes builds from it", async () => {
     const calls = openCardIn(frameCard, { "POST /api/cards/20/accept": { ...frameCard, status: "accepted" } });
     const group = await screen.findByRole("group", { name: "Style frame of m3, round 1" });
@@ -271,7 +279,7 @@ describe("the style-frame card", () => {
     expect(within(group).getByRole("img", { name: "Reference, Landscape 16:9" })).toBeTruthy();
     expect(within(group).getByRole("img", { name: "Our frame, Portrait 9:16" })).toBeTruthy();
     expect(within(group).getByText("No reference: say what it should beat.")).toBeTruthy();
-    expect(within(group).getByText("Landscape 16:9 · Hue check passed: the strongest hue holds 24 %")).toBeTruthy();
+    expect(within(group).getByText("Landscape 16:9 · Hue check passed: the strongest hue holds 24 % of coloured pixels")).toBeTruthy();
     expect(within(group).getByText("Or say what to change.")).toBeTruthy();
     await userEvent.click(within(group).getByRole("button", { name: "Build from this frame" }));
     await waitFor(() => expect(calls.some((c) => c.path === "/api/cards/20/accept")).toBe(true));

@@ -147,3 +147,30 @@ def test_style_frame_needs_the_piece(tmp_path):
     eid, _ep = make_episode()
     with pytest.raises(custom.CustomError, match="motion new"):
         custom.style_frame(eid, "nothing", [str(image(tmp_path / "o.png"))])
+
+
+def test_style_frame_uses_channel_accent_allowance(piece, tmp_path, monkeypatch):
+    from PIL import Image, ImageDraw
+
+    from crewcut import brand
+    eid, _ep, _d = piece
+    picture = tmp_path / "accent.png"
+    im = Image.new("RGB", (320, 180), "white")
+    ImageDraw.Draw(im).rectangle((0, 0, 31, 179), fill="blue")
+    im.save(picture)
+    class Pack:
+        def value(self, _key, default=None):
+            return default
+
+        def motion_graphics(self):
+            return {"accent_area_limit": 0.2}
+    monkeypatch.setattr(brand, "load", lambda: Pack())
+    card = custom.style_frame(eid, "handoff", [str(picture)])
+    hue = card["data"]["frames"][0]["hue"]
+    assert hue["ok"] and hue["sparse_accent"]
+    assert hue["coloured_share"] == pytest.approx(0.1)
+    assert hue["accent_area_limit"] == 0.2
+    im.paste("blue", (0, 0, 320, 180))
+    im.save(picture)
+    with pytest.raises(custom.CustomError, match="one hue holds"):
+        custom.style_frame(eid, "handoff", [str(picture)])

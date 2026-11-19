@@ -21,7 +21,7 @@ import re
 import shutil
 from pathlib import Path
 
-from .. import paths
+from .. import brand, paths
 from . import library
 
 ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
@@ -204,7 +204,7 @@ def style_frame(episode: str, insert_id: str, ours: list[str], refs: list[str] |
         fmt = image_format(p)
         if fmt in frames:
             raise CustomError(f"two of our frames are {fmt}; give one per format")
-        hue = palette.hue_report(str(p))
+        hue = palette.hue_report(str(p), accent_area_limit=brand.load().motion_graphics().get("accent_area_limit", 0.0))
         if not hue["ok"] and not natural:
             raise CustomError(f"{p.name}: one hue holds {hue['dominant_share']:.0%} of the coloured pixels (at most "
                               "30 %); rework the colours, or pass --natural for grass, sky or footage")
@@ -212,7 +212,7 @@ def style_frame(episode: str, insert_id: str, ours: list[str], refs: list[str] |
         if p != target.resolve():
             shutil.copy2(p, target)
         frames[fmt] = {"format": fmt, "ours": target.relative_to(ep_dir).as_posix(),
-                       "hue": {"dominant_share": hue["dominant_share"], "ok": hue["ok"]}}
+                       "hue": {k: hue[k] for k in ("dominant_share", "ok", "coloured_share", "accent_area_limit", "sparse_accent") if k in hue}}
     ref_list: list[tuple[Path, str]] = []
     for src in refs or []:
         p = _find(src, ep_dir)

@@ -240,3 +240,19 @@ def test_imported_scene_dependencies_keep_paths_and_invalidate_cache(episode, tm
     manifest.write_text(json.dumps({'files': ['../../../../outside.js']}))
     with pytest.raises(PlanError, match='escapes'):
         Plan(plan.path, pack=p)
+
+
+def test_original_scene_names_allow_underscores(episode, studio):
+    folder = studio / "brand" / "templates" / "2d"
+    shutil.copytree(paths.neutral_pack_dir(), studio / "brand")
+    folder.mkdir(parents=True, exist_ok=True)
+    for name in ("base.css", "motion.js", "scene.js"):
+        (folder / name).write_text("")
+    (folder / "studio_counter.html").write_text("<html></html>")
+    data = basic_plan()
+    data["inserts"][0]["scene"] = "studio_counter"
+    assert Plan(episode(data)).by_id("s1").template.name == "studio_counter.html"
+    for invalid in ("../studio_counter", "a/b", "studio_counter\n"):
+        data["inserts"][0]["scene"] = invalid
+        with pytest.raises(PlanError):
+            Plan(episode(data))

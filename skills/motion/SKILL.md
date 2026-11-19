@@ -80,6 +80,14 @@ They cost a review round each in the launch film. They bind templates and custom
 7. **Authored paths, not physics,** for anything that must land on a frame.
 8. **Compare frame by frame** (60 fps strips, the reference or the baseline) before anyone else sees it.
 
+## Meaning before reference objects
+
+References set craft and visual style, not the subject. Choose objects and actions from the spoken claim.
+Reuse lighting, typography, background helpers and materials; replace unrelated reference objects.
+A graphics-card benchmark does not justify hardware in a privacy or search scene.
+The Designer chooses a clear, creative visual metaphor; the Critic checks that it explains the current sentence.
+Do not lock onto a barrier or any other literal prop just because an earlier draft used it.
+
 ## Shelf or custom
 
 - **The shelf** (`crewcut motion library`): the app's templates (`templates/motion/`), the pack's own
