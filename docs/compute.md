@@ -161,6 +161,8 @@ made once per studio. Nothing ever touches a machine without exactly this label:
   If it cannot be pulled, the machine is destroyed (the host is not blocked), and renting falls back to
   `vast.fallback_image` for 24 hours. On the fallback image, `setup.sh` installs Blender `vast.blender_version` to
   `/opt/blender/` (checksum checked when the mirror has one) and Crewcut uploads `templates/3d/` to `/app/templates/`.
+  Two SSH startup failures also switch to the fallback image, within the same approved budget and retry limit.
+  Rental details retain the last scrubbed SSH error; the final error includes the failed connection's diagnostic.
   A session opened with `blender=False` (the matting job) runs `setup.sh --blender none` and skips both.
 
 ## Privacy
@@ -235,16 +237,18 @@ deadline or the session cap; every later command and the guard enforce both. Exi
 | database `kv`, `compute.session.<id>` | open and recent sessions (closed ones are forgotten after 30 days) |
 | `studio/.crewcut/compute/` | `studio-id`, `blocked.json`, `local.json` (probe timings), `choices.json` (local is fine, suggested jobs, image fallback), `offers.json` (price cache), `ssh/` |
 
-## Untested
+## Live validation and remaining checks
 
-Everything below needs a real rental, and none has been done with this module yet. The tests run against a fake Vast
-API and a fake SSH runner.
+A live run on 19 Nov 2026 exercised offer search, account authentication, key registration, machine creation,
+SSH commands, the upload probe and fallback setup. The CUDA fallback ran Blender 5.0.1 on an RTX 4090 and produced
+frames. Several starts using the Crewcut GPU image did not reach usable SSH; the underlying image-startup cause
+remains unresolved. The fallback is a recovery path, not evidence that the primary image works.
 
-- The real Vast API answers: offer search filters, the shape of `/api/v1/instances/` paging, the `ssh` key list, the
-  `credit` field, the error codes. The endpoints follow the official `vast-cli` source as of 16 Nov 2026.
-- The `onstart` hook starting the watchdog, and the self-delete with `CONTAINER_API_KEY`.
+Automated tests still use a fake Vast API and SSH runner. Remaining real-world checks include:
+
+- Multi-page instance lists and the full range of provider error responses.
+- The watchdog's self-delete at the deadline with `CONTAINER_API_KEY` (setup reported it running).
 - How long Vast needs to pull the Crewcut GPU image (several gigabytes); `limits.image_wait_minutes` is a guess.
-- `setup.sh` on the fallback image, including the Blender download and checksum.
-- SSH and rsync against real hosts, the 5 MB probe on slow hosts.
+- SSH and rsync recovery on slow or interrupted hosts.
 - The speed numbers: they come from the studio Crewcut grew out of, not from Crewcut's own templates.
 - RunPod and Modal as providers (planned).
