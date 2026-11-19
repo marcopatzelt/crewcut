@@ -458,6 +458,10 @@
   padding-bottom: 104px;
 }
 
+/* Read-only pages reserve space for the chat instead of covering the last card. */
+.page-main > .dock { position: static; flex-shrink: 0; padding-top: 12px; }
+.page-main > .page-scroll { padding-bottom: 24px; }
+
 .chat-main .chat-scroll {
   flex: 1;
   min-height: 0;

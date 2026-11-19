@@ -232,7 +232,6 @@ function Person({ p }: { p: Identity }) {
         <summary aria-label={`About ${p.name}`}>Role, skills and sources</summary>
         <div className="crew-detail-body">
           <p>{p.role}</p>
-          {p.soul ? <p className="crew-soul">{p.soul}</p> : null}
           <dl>
             <dt>Skills</dt>
             <dd>{p.skills.length ? p.skills.join(", ") : "None"}</dd>
@@ -253,6 +252,13 @@ function Person({ p }: { p: Identity }) {
               </>
             ) : null}
           </dl>
+          {p.soul ? <details className="crew-instructions">
+            <summary>Full working instructions</summary>
+            <div className="crew-soul">
+              {p.soul.split(/\n\s*\n/).filter(Boolean).map((paragraph, index) =>
+                <p key={index}>{paragraph.replace(/\s+/g, " ").trim()}</p>)}
+            </div>
+          </details> : null}
         </div>
       </details>
     </article>

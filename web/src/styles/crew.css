@@ -10,6 +10,8 @@
   border-radius: var(--r-panel);
   background: var(--tile);
 }
+.crew-person:has(> .crew-details[open]) { grid-column: 1 / -1; }
+.crew-details[open] > summary { border-bottom: 1px solid var(--line); margin-bottom: 16px; }
 .crew-leader {
   grid-column: 1 / -1;
   background: var(--card);
@@ -69,8 +71,15 @@
   margin: 0 0 12px;
 }
 .crew-detail-body .crew-soul {
-  white-space: pre-line;
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 16px;
+  line-height: 1.65;
+  max-width: 70ch;
 }
+.crew-instructions { margin-top: 20px; }
+.crew-instructions > summary { margin-top: 0; }
 .crew-detail-body dl {
   margin: 0;
 }

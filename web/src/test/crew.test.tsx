@@ -39,6 +39,10 @@ describe("compact crew", () => {
     const detail = scout.querySelector("details")!;
     expect(detail.open).toBe(true);
     expect(within(detail).getByText("research, proof")).toBeTruthy();
+    const instructions = scout.querySelector(".crew-instructions") as HTMLDetailsElement;
+    expect(instructions.open).toBe(false);
+    fireEvent.click(within(instructions).getByText("Full working instructions"));
+    expect(instructions.open).toBe(true);
     expect(within(detail).getByText(/I find the evidence/)).toBeTruthy();
     expect(within(detail).getByRole("link", { name: "Example handbook" }).getAttribute("href")).toBe("https://example.org/handbook");
     expect(within(detail).getByText(/Clear titles and strong evidence/)).toBeTruthy();
