@@ -110,6 +110,9 @@ def done_today(limit: int = 12) -> list[dict]:
 def cancel(jid: int) -> None:
     db.update("jobs", jid, status="cancelled", ended=db.now(), doing="Cancelled")
     _stops.setdefault(jid, threading.Event()).set()
+    job = get(jid)
+    if job:
+        events.emit("activity", episode=job["episode"], identity=job["identity"], data=job_view(job))
 
 
 _stops: dict[int, threading.Event] = {}
