@@ -265,7 +265,7 @@ describe("the style-frame card", () => {
   it("explains the channel allowance instead of calling a dominant hue balanced", async () => {
     const revised = structuredClone(frameCard);
     const data = revised.data as { frames: Array<{ hue: object }> };
-    data.frames[0].hue = { dominant_share: 0.98, ok: true, coloured_share: 0.08, accent_area_limit: 0.3, sparse_accent: true };
+    data.frames[0]!.hue = { dominant_share: 0.98, ok: true, coloured_share: 0.08, accent_area_limit: 0.3, sparse_accent: true };
     openCardIn(revised);
     expect(await screen.findByText("Landscape 16:9 · Colour check passed: coloured area 8 % of the image (channel limit 30 %)")).toBeTruthy();
   });

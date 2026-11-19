@@ -23,6 +23,7 @@ from typing import Any
 
 import httpx
 
+from .. import paths
 from . import settings, state
 from .errors import ComputeError, MissingKey
 
@@ -46,8 +47,19 @@ def use_transport(transport: httpx.BaseTransport | None) -> None:
     _transport = transport
 
 
+def credential() -> str:
+    """Environment override or the explicitly installed, studio-private key. Never log the value."""
+    key = os.environ.get(KEY_ENV, "").strip()
+    if key:
+        return key
+    try:
+        return (paths.state_dir() / "compute" / "vast-api-key").read_text(encoding="utf-8").strip()
+    except (FileNotFoundError, PermissionError):
+        return ""
+
+
 def has_key() -> bool:
-    return bool(os.environ.get(KEY_ENV, "").strip())
+    return bool(credential())
 
 
 def referral_url() -> str:
@@ -58,7 +70,8 @@ def missing_key_text() -> str:
     """One plain sentence (plus the disclosure when a referral link is configured)."""
     ref = referral_url()
     text = (f"No Vast key: create one at {KEYS_PAGE} (new to Vast? sign up first at {ref or SIGNUP_PAGE}) "
-            f"and add the line {KEY_ENV}=<your key> to the .env file of your Crewcut folder.")
+            f"and configure {KEY_ENV}, or install the key in your private studio at .crewcut/compute/vast-api-key "
+            "with owner-only permissions. Desktop studios keep this file across restarts.")
     if ref:
         text += " " + REFERRAL_NOTE
     return text
@@ -69,7 +82,7 @@ class Vast:
 
     def __init__(self, api_key: str | None = None, transport: httpx.BaseTransport | None = None, base: str = API,
                  timeout: float = 40.0, retries: int = 2):
-        key = (api_key or os.environ.get(KEY_ENV, "")).strip()
+        key = (api_key or credential()).strip()
         if not key:
             raise MissingKey(missing_key_text())
         self._retries = retries

@@ -35,6 +35,10 @@ _PATTERNS = [
 
 def scrub(text: str) -> str:
     """Remove secrets from a text before it is logged or shown."""
+    from ..compute.vast import credential
+    key = credential()
+    if len(key) >= 8:
+        text = text.replace(key, "[removed]")
     for name in SECRET_ENV:
         v = os.environ.get(name)
         if v and len(v) >= 8:

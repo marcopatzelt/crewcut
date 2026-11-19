@@ -40,6 +40,10 @@ def known_secrets() -> list[bytes]:
         v = os.environ.get(name, "").strip()
         if len(v) >= 12:
             out.append(v.encode())
+    from .vast import credential
+    key = credential()
+    if len(key) >= 12 and key.encode() not in out:
+        out.append(key.encode())
     return out
 
 

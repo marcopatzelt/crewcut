@@ -6,6 +6,15 @@ machines, which money rules hold, and what is still untested.
 
 Provider: [Vast.ai](https://vast.ai), a marketplace of GPU machines, through its REST API. RunPod and Modal are planned.
 
+## Private desktop credentials
+
+Crewcut reads `VAST_API_KEY` first. If it is absent, it reads the explicitly installed key at
+`<studio>/.crewcut/compute/vast-api-key`. Store only the key, with owner-only permissions (`0600`).
+The file belongs to the private studio and survives app updates and restarts. Never put it in the public
+repository or a container image. Development studios do not discover another studio's or the host CLI's keys.
+The doctor and compute commands use the same lookup. Logs and fetched files redact this key too.
+A connected account does not grant a spending budget; rental approvals still apply.
+
 ## The short version
 
 **Build cheap, render expensive.** One real night: ten 3D runs on four RTX 5090 each cost $89, because the cards

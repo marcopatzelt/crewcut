@@ -190,8 +190,9 @@ def checks(ci: bool = False, probe: bool = False) -> list[dict]:
     smi = _first_line(_run(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"])) \
         if shutil.which("nvidia-smi") else ""
     add(OK if smi else NOTE, "local GPU", smi or "none: heavy work runs on the CPU here, or on a rented GPU")
-    add(OK if os.environ.get("VAST_API_KEY") else NOTE, "rented GPUs",
-        "Vast.ai key present" if os.environ.get("VAST_API_KEY") else "no Vast.ai key: everything runs locally")
+    from .compute.vast import has_key
+    add(OK if has_key() else NOTE, "rented GPUs",
+        "Vast.ai key present" if has_key() else "no Vast.ai key: everything runs locally")
     yt = paths.studio_root() / "config" / "youtube-client.json"
     add(OK if yt.is_file() else NOTE, "YouTube", "client file present" if yt.is_file() else
         "not connected yet; say \"connect YouTube\" (Claude in Chrome sets it up) or follow docs/youtube.md")
