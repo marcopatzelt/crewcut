@@ -545,6 +545,8 @@ class Session:
         tries, max_tries = 0, gpus + 4
         image = self._image()
         systematic = ""
+        ssh_failures = 0
+        last_failure = ""
         while len(machines) < gpus and queue and tries < max_tries and not self.stopped:
             need = gpus - len(machines)
             batch = [queue.pop(0) for _ in range(min(need, len(queue)))]
@@ -560,8 +562,17 @@ class Session:
             with ThreadPoolExecutor(max_workers=len(created)) as ex:
                 results = list(ex.map(lambda x, img=image: self._bring_up(prov, x[0], x[1], img), created))
             for (rid, _), (res, info) in zip(created, results, strict=True):
+                if res != "ok":
+                    last_failure = info
                 if res == "ok":
                     machines.append(Machine(rid, self))
+                elif res == "ssh":
+                    ssh_failures += 1
+                    if ssh_failures >= 2 and image != self._fallback():
+                        self.doing("Two machines failed SSH startup; trying the fallback image inside the same budget")
+                        state.mark_image_failed()
+                        image = self._fallback()
+                        ssh_failures = 0
                 elif res == "image" and image != self._fallback():
                     state.mark_image_failed()
                     image = self._fallback()
@@ -573,7 +584,7 @@ class Session:
         if not machines:
             if systematic:
                 raise ComputeError(f"setup failed in a way that a new machine will not fix: {systematic}")
-            raise NoMachine(f"no usable machine after {_plural(tries, 'try')}")
+            raise NoMachine(f"no usable machine after {tries} attempts; last failure: {last_failure or 'rent call failed'}")
         return machines
 
     def _fallback(self) -> str:
@@ -622,7 +633,7 @@ class Session:
         return rc, scrub.scrub_text(out + err)
 
     def _bring_up(self, prov, rid: int, o: dict, image: str) -> tuple[str, str]:
-        """SSH within the time limit, upload probe, setup. Returns (ok | fail | image | systematic, info)."""
+        """SSH within the time limit, upload probe, setup. Returns (ok | fail | ssh | image | systematic, info)."""
         row = rentals.get(rid)
         iid = int(row["instance"])
         name = rentals.detail(row).get("name", "Rented GPU")
@@ -631,6 +642,7 @@ class Session:
         image_limit = settings.num("limits.image_wait_minutes") * 60 if main_image else ssh_limit
         t0 = state.now()
         addr = None
+        last_ssh = "SSH endpoint not available"
         while True:
             if self.stopped:
                 self._fail(prov, rid, o, "session stopped", block=False)
@@ -650,14 +662,17 @@ class Session:
             a = vast.address(inst) if inst else None
             if status == "running" and a:
                 rc, out = self._ssh(rid, a[0], a[1], "echo ok", 25)
+                last_ssh = f"exit {rc}: {scrub.scrub_text(out.strip())[-600:]}"
                 if rc == 0 and "ok" in out:
                     addr = a
                     break
             limit = image_limit if status in ("", "loading", "created", "scheduling") else ssh_limit
             if state.now() - t0 > limit:
                 reason = f"not reachable by SSH after {limit / 60:.0f} min (status {status or 'unknown'})"
+                rentals.set_detail(rid, ssh_failure=last_ssh)
+                reason += f"; {last_ssh}"
                 self._fail(prov, rid, o, reason, block=status == "running")
-                return "fail", reason
+                return "ssh", reason
             state.sleep(8)
         rentals.set_detail(rid, host=addr[0], port=addr[1])
         self.doing(f"{name}: reachable after {state.now() - t0:.0f} s, upload check", rental=rid)

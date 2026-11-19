@@ -180,6 +180,23 @@ def test_never_on_a_host_ip_with_a_machine_of_this_account(fake, fssh):
     assert len(fake.instances) == 1, "the foreign machine is untouched"
 
 
+def test_repeated_ssh_failure_tries_fallback_and_keeps_diagnostic(fake, fssh):
+    from crewcut.compute import settings
+    fssh.unreachable.update({"host-1.test", "host-2.test"})
+    s = approved_session(fake)
+    try:
+        (m,) = s.rent(gpus=1)
+        assert len(fake.created) == 3
+        assert fake.created[0]["image"] == fake.created[1]["image"] == settings.get("vast.image")
+        assert fake.created[2]["image"] == settings.get("vast.fallback_image")
+        failed = [r for r in s.rental_rows() if r["id"] != m.rental]
+        assert all(r["status"] == "destroyed" for r in failed)
+        assert all("Connection refused" in rentals.detail(r)["ssh_failure"] for r in failed)
+    finally:
+        s.close()
+    assert not fake.by_label(state.label())
+
+
 def test_image_pull_failure_falls_back_without_blocking(fake, fssh, studio):
     from crewcut.compute import settings
     fake.pull_fails_for.add(settings.get("vast.image"))
