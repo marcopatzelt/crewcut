@@ -51,6 +51,32 @@ def test_new_purpose_needs_its_own_budget(fake, fssh):
         music.close()
 
 
+def test_music_cli_skips_blender_setup(fake, fssh, capsys):
+    args = ["rent", "--episode", EP, "--purpose", "music", "--no-blender", "--json"]
+    assert cli.main(args) == 3
+    card = json.loads(capsys.readouterr().out)["card"]
+    accept(card)
+    assert cli.main(args) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert any("--blender none" in arg for call in fssh.calls for arg in call)
+    assert not any("--blender 5." in arg for call in fssh.calls for arg in call)
+    assert cli.main(["destroy", str(result["machines"][0]["machine"])]) == 0
+
+
+def test_external_stop_prevents_replacement_rental(fake, fssh, monkeypatch):
+    s = approved_session(fake)
+    def stopped_during_setup(prov, rid, offer, image):
+        state.update_session(s.id, stopped="Stopped from another process")
+        rentals.destroy(rid, "Stopped from another process", prov)
+        return "fail", "Stopped"
+    monkeypatch.setattr(s, "_bring_up", stopped_during_setup)
+    with pytest.raises(ComputeError):
+        s.rent()
+    assert len(fake.created) == 1
+    assert not fake.by_label(state.label())
+    s.close()
+
+
 def test_approval_flow_then_rent_and_leave(fake, fssh):
     with session_fn(episode=EP, step="edit", purpose="3D scenes", cap_usd=1.5, monitor=False) as s:
         with pytest.raises(NeedsApproval) as e:
@@ -319,3 +345,22 @@ def test_a_tiny_budget_left_asks_again(fake, fssh):
         s.rent(gpus=1, max_minutes=60)
     assert e.value.card_id != small["id"]
     assert s.cap_usd == 2.0
+
+
+def test_fetch_keeps_rental_busy_and_releases_on_failure(fake, fssh, tmp_path, monkeypatch):
+    from crewcut.compute import ssh
+    s = approved_session(fake)
+    (m,) = s.rent(gpus=1, max_minutes=30)
+    state.touch(m.rental, busy=True)  # concurrent generation
+
+    def interrupted(*args, **kwargs):
+        assert state.activity(m.rental)["active"] == 2
+        raise ComputeError("download interrupted")
+
+    monkeypatch.setattr(ssh, "run", interrupted)
+    with pytest.raises(ComputeError, match="download interrupted"):
+        m.get("/work/out/", tmp_path / "returned")
+    assert state.activity(m.rental)["active"] == 1
+    assert state.activity(m.rental)["busy"]
+    state.touch(m.rental, busy=False)
+    s.close()

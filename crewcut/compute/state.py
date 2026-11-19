@@ -264,9 +264,13 @@ def session_live(sid: str | None) -> bool:
 
 # ---- machine activity (the idle rule) ------------------------------------------------------------------------------
 def touch(rental_id: int, busy: bool) -> None:
-    """A rented machine starts (busy) or ends (idle since now) a command, upload or download."""
+    """Count overlapping commands and transfers atomically; only the last completion is idle."""
     def fn(d: dict) -> dict:
-        d[str(int(rental_id))] = {"busy": bool(busy), "at": now()}
+        key = str(int(rental_id))
+        previous = d.get(key) or {}
+        active = int(previous.get("active", int(bool(previous.get("busy")))))
+        active = max(0, active + (1 if busy else -1))
+        d[key] = {"busy": active > 0, "active": active, "at": now()}
         return d
     update_json("activity.json", {}, fn)
 

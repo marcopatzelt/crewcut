@@ -146,7 +146,8 @@ made once per studio. Nothing ever touches a machine without exactly this label:
 - **Several GPUs only for the final render** (`limits.build_max_gpus = 1`): more than one GPU needs `--final` (the
   render workbench sets it for the render itself), and those machines are deleted after `limits.idle_minutes_final`
   (2) minutes without work. Any rented machine that runs no command, upload or download for `limits.idle_minutes` (5)
-  is deleted, by the session and by the background guard.
+  is deleted, by the session and by the background guard. Overlapping commands and transfers are counted;
+  finishing a status query cannot mark an active render idle. Downloads stay busy through copying and cleanup.
 - **Render defaults** (`[render3d]`): Cycles at about 128 samples with the OptiX denoiser on NVIDIA (Open Image Denoise
   on the CPU); the graphics templates (counters, stacks, scales, boxes) render with Eevee on a GPU and fall back to
   Cycles on the CPU.
@@ -163,7 +164,7 @@ made once per studio. Nothing ever touches a machine without exactly this label:
   `/opt/blender/` (checksum checked when the mirror has one) and Crewcut uploads `templates/3d/` to `/app/templates/`.
   Two SSH startup failures also switch to the fallback image, within the same approved budget and retry limit.
   Rental details retain the last scrubbed SSH error; the final error includes the failed connection's diagnostic.
-  A session opened with `blender=False` (the matting job) runs `setup.sh --blender none` and skips both.
+  A session opened with `blender=False` (or CLI `--no-blender`, for music and matting) runs `setup.sh --blender none` and skips both.
 
 ## Privacy
 
@@ -215,7 +216,7 @@ compute.guard.sweep()
 ```
 crewcut compute estimate --kind blender --frames N [--local-sec-per-frame S] [--gpu-sec-per-frame S] [--gpus N]
                          [--scene NAME] [--episode ID] [--job ID] [--local-fine] [--json]
-crewcut compute rent --episode ID [--gpus 1] [--minutes 60] [--max-usd X] [--step edit] [--purpose "…"] [--json]
+crewcut compute rent --episode ID [--gpus 1] [--minutes 60] [--max-usd X] [--step edit] [--purpose "…"] [--no-blender] [--json]
 crewcut compute put <machine> <local path> [<local path> …] <remote dir>
 crewcut compute run <machine> [--timeout S] [--doing "rendering"] -- <command>
 crewcut compute fetch <machine> <remote dir> <local dir>

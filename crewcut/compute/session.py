@@ -155,6 +155,7 @@ class Machine:
         self._doing("fetching results")
         local = Path(local)
         tmp = Path(tempfile.mkdtemp(prefix="crewcut-fetch-"))
+        state.touch(self.rental, busy=True)
         try:
             rc, _, err = ssh.run(ssh.rsync_down_argv(self.host, self.port, self.instance, remote_path, tmp), timeout)
             self._after()
@@ -167,6 +168,7 @@ class Machine:
             local.mkdir(parents=True, exist_ok=True)
             shutil.copytree(tmp, local, dirs_exist_ok=True)
         finally:
+            state.touch(self.rental, busy=False)
             shutil.rmtree(tmp, ignore_errors=True)
         if changed:
             text = (f"Removed secrets from {_plural(len(changed), 'fetched file')} before they reached the studio: "
@@ -548,7 +550,7 @@ class Session:
         systematic = ""
         ssh_failures = 0
         last_failure = ""
-        while len(machines) < gpus and queue and tries < max_tries and not self.stopped:
+        while len(machines) < gpus and queue and tries < max_tries and not self.check():
             need = gpus - len(machines)
             batch = [queue.pop(0) for _ in range(min(need, len(queue)))]
             tries += len(batch)
@@ -593,6 +595,8 @@ class Session:
         return str(v.get("fallback_image") or settings.DEFAULTS["vast"]["fallback_image"])
 
     def _create(self, prov, o: dict, max_minutes: float, image: str, slot: int, of: int) -> int | None:
+        if self.check():
+            return None
         t = state.now()
         deadline = t + max_minutes * 60
         name = f"Renting GPU {slot} of {of}"
@@ -645,7 +649,7 @@ class Session:
         addr = None
         last_ssh = "SSH endpoint not available"
         while True:
-            if self.stopped:
+            if self.check():
                 self._fail(prov, rid, o, "session stopped", block=False)
                 return "fail", "session stopped"
             try:

@@ -54,6 +54,7 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--max-usd", type=float, help="cap of this session (default limits.session_cap_usd)")
     p.add_argument("--step", default="edit")
     p.add_argument("--purpose", default="")
+    p.add_argument("--no-blender", action="store_true", help="skip Blender setup for music or other non-3D jobs")
     p.add_argument("--json", action="store_true")
 
     p = sub.add_parser("put", help="upload code, fonts and scene files to a machine")
@@ -157,7 +158,8 @@ def _dispatch(args, command: list[str]) -> int:
         return 0
 
     if c == "rent":
-        s = Session(args.episode, args.step, args.purpose, args.max_usd, detached=True, monitor=False).open()
+        s = Session(args.episode, args.step, args.purpose, args.max_usd, detached=True, monitor=False,
+                    blender=not args.no_blender).open()
         try:
             machines = s.rent(gpus=args.gpus, max_minutes=args.minutes, final=args.final, gpu=args.gpu)
         except BaseException:

@@ -152,3 +152,16 @@ def test_several_gpus_only_for_the_final_render(fake, fssh, clock):
     s = session_fn(episode=EP, step="edit", purpose="test", cap_usd=3.0, monitor=False).open()
     with pytest.raises(Refused, match="final render"):
         s.rent(gpus=4, max_minutes=30)
+
+
+def test_status_completion_does_not_end_overlapping_music(fake, fssh, clock):
+    s, (m,) = rented(fake, minutes=120, detached=True)
+    state.touch(m.rental, busy=True)  # music generation
+    state.touch(m.rental, busy=True)  # overlapping status command
+    state.touch(m.rental, busy=False)  # status command finished
+    clock.advance(minutes=6)
+    assert m.instance in guard.sweep()["kept"]
+    assert state.activity(m.rental)["active"] == 1
+    state.touch(m.rental, busy=False)
+    clock.advance(minutes=6)
+    assert m.instance in guard.sweep()["destroyed"]
