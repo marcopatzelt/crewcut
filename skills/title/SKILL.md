@@ -10,6 +10,15 @@ that. The Scout writes the title after the idea step and before the proof and th
 
 Not here: the thumbnail image (`skills/thumbnail/`), the first sentence of the video (`skills/script/`).
 
+## Title and thumbnail first
+
+Before the script or recording, develop the title and a concrete thumbnail draft together with the Designer.
+Read the thumbnail skill. Save brief/PACKAGING-vNNN.md: title promise, exact image text, visual idea, draft path,
+audience, evidence plan and the independent Critic review at 160 px. A title keyword plus a verdict can appear
+in the image; the image must add a different statement, not repeat the title. Numbers are optional.
+Before measurements, label outcomes provisional and never fabricate proof. Recheck the package after the test.
+Do not defer the first visual concept until the edit is done. The later thumbnail step finalizes real evidence.
+
 ## Method
 
 1. **Read the input.** From the idea step: topic, tool, planned test, the numbers it will measure, proof videos. Read

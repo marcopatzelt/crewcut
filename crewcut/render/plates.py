@@ -202,7 +202,10 @@ def render_rented(plan: Plan, plates: list[Plate], compute, cap_usd: float, prob
     rows = []
     from . import plate_quality
     with compute.session(episode=plan.episode, step="edit", purpose="motion plates", cap_usd=cap_usd) as s:
-        m = s.rent(gpus=1, max_minutes=180)[0]
+        from ..compute.estimate import estimate
+        est = estimate("blender", frames=len(plates) if probe else sum(pl.frames for pl in plates),
+                       gpus=1, episode=plan.episode, remember=False)
+        m = s.rent(gpus=1, max_minutes=180, estimate=est)[0]
         m.put([*uploads, *fonts], f"{REMOTE}/")
         if fonts:
             m.run(f"mkdir -p /usr/share/fonts/truetype/crewcut && cp {REMOTE}/*.[ot]tf /usr/share/fonts/truetype/crewcut/"

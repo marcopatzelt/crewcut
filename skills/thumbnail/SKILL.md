@@ -98,6 +98,15 @@ variants. Prompt blocks for each: `references/prompt-blocks.md`.
 | `before-after` | the state before and after, side by side, the after larger | the video changes one thing |
 | `progress` | 3 or 4 real stages from left to right, each a bit larger, short labels, the last in the accent box | the video shows rounds or steps; a test variant only |
 
+## Start with the title, before the script
+
+Build the first concrete concept and draft during the title step, with the Scout and Designer.
+For each candidate write the title, exact image text, visual idea, audience question and evidence plan in
+brief/PACKAGING-vNNN.md. Have the Critic judge the pair at 160 px before the Writer starts.
+A title keyword may recur with a verdict; the image adds meaning instead of repeating the title.
+Numbers are optional: never force a measurement into every layout. Before the test, use provisional concepts,
+not invented results. After the test insert real evidence and check again. The late thumbnail step is finalization.
+
 ## Steps
 
 1. **Read the input:** `brief/TITLE-vNNN.md` (title, promise, thumbnail text), the results of the episode

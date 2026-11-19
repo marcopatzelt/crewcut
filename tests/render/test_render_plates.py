@@ -92,3 +92,16 @@ def test_cap_defaults_per_format_and_only_goes_down(episode, studio):
     plan, _ = make(episode, studio)
     assert behind.cap_usd(plan) == 2.0 and behind.cap_usd(plan, max_usd=0.8) == 0.8
     assert behind.cap_usd(plan, max_usd=9.0) == 2.0
+
+
+@pytest.mark.parametrize("probe, expected_frames", [(False, 4), (True, 1)])
+def test_rented_plates_attach_time_estimate(episode, studio, tmp_path, probe, expected_frames):
+    plan, _ = make(episode, studio)
+    selected = plates.plates_of(plan, plan.by_id("m3"))
+    fake = FakeCompute(tmp_path)
+    plates.render_rented(plan, selected, fake, cap_usd=1.05, probe=probe, log=lambda _: None)
+    estimate = fake.sessions[0][1].rented[2]["estimate"]
+    assert estimate["frames"] == expected_frames
+    assert estimate["local_seconds"] > 0 and estimate["rented_seconds"] > 0
+    assert estimate["local_measured"] is False
+    assert estimate["local_source"]

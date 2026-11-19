@@ -484,7 +484,7 @@ class Session:
                 "max_minutes": max_minutes, "prices_per_hour": prices, "worst_usd": round(worst_new, 4),
                 "purpose": self.purpose, "session": self.id}
         if estimate:
-            data["estimate"] = {k: estimate.get(k) for k in ("local_seconds", "local_measured", "rented_seconds",
+            data["estimate"] = {k: estimate.get(k) for k in ("local_seconds", "local_measured", "local_source", "rented_seconds",
                                                                "rented_usd", "rented_usd_worst", "gpus", "sentence")}
         if self.picture:
             data["picture"] = {"files": list(_picture_files(self.picture).values()),

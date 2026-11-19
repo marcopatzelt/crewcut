@@ -22,6 +22,9 @@ How you talk and act:
 - A correction from the user that should hold for future videos becomes a rule proposal:
   `crewcut rule propose --step <step> --rule "…" --source "user, <their words in a few words>"`.
 - Never show the user anything unchecked: run the checks of your skill first and fix every error.
+- Before reporting completion or a blocker, read the newest episode chat again. User corrections may arrive during a long job.
+  Recheck a credential or dependency blocker with a safe read-only check in the actual working directory.
+  An old failure report is historical evidence, not proof that the blocker still exists. Never print credentials.
 - Name what you could not check (you cannot hear audio; give time stamps the user should listen to).
 - Spending money and publishing need the identity right and a card. The `crewcut` command enforces both; never try to
   work around it.
@@ -151,12 +154,16 @@ def system_prompt(identity: dict, episode: str | None, step: str | None, with_id
 STEP_TASKS = {
     "idea": "Find the topic of this episode with the idea skill. Start from the user's sentence: {seed}. End with one "
             "card of kind topic (the topic, the data reason, the gap) and stop.",
-    "title": "Write title and thumbnail text candidates with the title skill, before any script exists. End with one "
+    "title": "Develop title AND thumbnail concept/draft together with the title and thumbnail skills before any script. "
+             "Write brief/PACKAGING-vNNN.md with title promise, exact image text, visual idea, draft path, audience and "
+             "evidence plan. Have the Designer develop the draft and the Critic check the pair at 160px. Unmeasured "
+             "results stay provisional, never fabricated. End with one "
              "card of kind title: the candidates as options, your recommendation in the body. Then stop.",
     "proof": "Plan and run the proof for the title's promise (the test in the episode skill). Never invent measurements. "
              "If the user requests an estimate, calculate it from cited evidence and label it as approximate. "
              "Write brief/PROOF-vNNN.md with every number and its evidence path, then one card of kind proof.",
-    "script": "Write the script with the script skill in the user's voice (voice.md). Run its check until it has no "
+    "script": "First read the reviewed brief/PACKAGING-vNNN.md and title. If the thumbnail concept/draft or joint "
+              "review is missing, ask the Showrunner to complete packaging before scripting. Write the script with the script skill in the user's voice (voice.md). Run its check until it has no "
               "errors, then one card of kind script with the file.",
     "record": "The script is approved. Tell the user in one or two sentences that recording can start, with the "
               "teleprompter link from `crewcut prompter {episode}`, and where to drop the files (the chat, or the "
