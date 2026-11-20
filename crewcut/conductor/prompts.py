@@ -186,7 +186,17 @@ STEP_TASKS = {
 
 
 def step_task(step: str, episode: str, seed: str = "") -> str:
+    short_tasks = {
+        "title": "Develop a title and opening hook from the accepted Short topic. Offer a title card and stop. "
+                 "No thumbnail, packaging mockup, or Designer job at this step.",
+        "script": "Write the spoken Short from the approved title and checked evidence. Use the requested CTA. "
+                  "No thumbnail or packaging review is required. Offer the script card.",
+        "thumbnail": "Choose or create a vertical 9:16 cover frame, 1080x1920. Check its actual dimensions. "
+                     "Do not use the landscape thumbnail template or its 1280x720 conversion.",
+    }
     t = STEP_TASKS.get(step)
+    if step in short_tasks and episodes.read(episode).get("kind") == "short":
+        t = short_tasks[step]
     if not t:
         return f"Work on step {step} of episode {episode}."
     from .. import full_auto
