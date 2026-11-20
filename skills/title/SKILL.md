@@ -12,7 +12,9 @@ Not here: the thumbnail image (`skills/thumbnail/`), the first sentence of the v
 
 ## Title and thumbnail first
 
-Before the script or recording, develop the title and a concrete thumbnail draft together with the Designer.
+For Shorts, use the title method and checker below. Show all five scores on the card. Skip thumbnail tasks and Designer handoffs during title selection. Any later Short cover is vertical (9:16).
+
+For long videos, before the script or recording, develop the title and a concrete thumbnail draft together with the Designer.
 Read the thumbnail skill. Save brief/PACKAGING-vNNN.md: title promise, exact image text, visual idea, draft path,
 audience, evidence plan and the independent Critic review at 160 px. A title keyword plus a verdict can appear
 in the image; the image must add a different statement, not repeat the title. Numbers are optional.

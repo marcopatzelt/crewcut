@@ -187,7 +187,7 @@ STEP_TASKS = {
 
 def step_task(step: str, episode: str, seed: str = "") -> str:
     short_tasks = {
-        "title": "Develop a title and opening hook from the accepted Short topic. Offer a title card and stop. "
+        "title": "Use skills/title/SKILL.md and the channel title rules for this Short. Run title_check.py on five distinct titles. Show all five in ranked order with their actual points and a reason for the recommendation on the card. Use the best-known relevant name early; name Claude if the demonstration actually uses Claude. Include the opening hook. "
                  "No thumbnail, packaging mockup, or Designer job at this step.",
         "script": "Write the spoken Short from the approved title and checked evidence. Use the requested CTA. "
                   "No thumbnail or packaging review is required. Offer the script card.",
