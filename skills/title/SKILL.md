@@ -40,6 +40,12 @@ Do not defer the first visual concept until the edit is done. The later thumbnai
 3. **Check.** `python3 skills/title/scripts/title_check.py "Title 1" … "Title 5" --name "<tool>"`. A candidate with an
    error does not go to the user; rewrite until all five pass. A hint "No hook" means: sharpen the reason to click.
    The script ranks with points; the points are a ranking aid, not a forecast.
+   **Optimize before ranking.** Score the first five as a baseline. Read the findings, revise weak titles and run the
+   same checker again with the same brand pack and name. Keep the best truthful version of each distinct hook.
+   Repeat while scores improve. Stop at the applicable ceiling or after two different revision rounds yield no
+   improvement. Record the baseline, final scores, best rewritten example and the specific remaining constraint.
+   Never change scoring inputs, invent evidence or stack unrelated hook words to raise the score. Prefer the clearest
+   specific promise when scores tie. The checker starts at 50 and caps total bonuses at 30: 80 is its absolute ceiling.
 4. **Thumbnail text.** At most `thumbnail.max_words` words: one key word of the title and the verdict. Never the whole
    title. Check it with `--thumbnail "<text>"`.
 5. **Three variants for the A/B test** (`channel.json` `title.variants`): place 1 the recommended title; place 2 the
