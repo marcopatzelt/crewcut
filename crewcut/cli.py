@@ -610,10 +610,11 @@ def _run(a) -> int:
                       file=sys.stderr)
                 return 2
             from . import humanize, spoken
+            from .cut import tilt
             try:
                 card = approvals.propose(_env_episode(a), a.step, a.kind, a.title, body=a.body, file=a.file,
                                          options=a.option or None, data=data, identity=_identity(), preview=a.preview)
-            except (humanize.Missing, spoken.Unspeakable) as e:
+            except (humanize.Missing, spoken.Unspeakable, tilt.Tilted) as e:
                 print(str(e), file=sys.stderr)
                 return 4
             _print(card if a.json else f"card #{card['id']} is open: {card['title']}", a.json)

@@ -65,6 +65,9 @@ def propose(episode: str | None, step: str | None, kind: str, title: str, body: 
                 data = {**(data or {}), "standing_offer": True}  # the quiet second button on a Short's card
         except FileNotFoundError:
             pass
+    if kind in ("preview", "final") and p is not None and episode and episode != "_onboarding":
+        from .cut import tilt
+        tilt.gate(paths.episode_dir(episode), p)   # raises tilt.Tilted: the declared roll correction is not in it
     if kind == "script" and p is not None and p.suffix.lower() in (".md", ".txt"):
         _require_story(episode, p)  # raises spoken.Unspeakable: marks that do not read aloud, no story plan, a list
     if episode and episode != "_onboarding":

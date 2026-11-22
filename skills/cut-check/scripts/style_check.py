@@ -729,6 +729,19 @@ def check(plan_path: Path, video: Path | None, pack, rep: cl.Report, media: bool
                 f"Sound left {lv[0]} dB, right {lv[1]} dB",
             )
         rep.add(OUT, "NOTE", "length", f"{total_f} frames, {cl.tc(total_s)}")
+        # camera roll on frames with only the speaker on screen (no insert, no overlay): the card gate reads the result
+        tilt = cl.app_module("crewcut.cut.tilt")
+        clean = speaker_runs([{**i, "full": True} for i in ins], total_f, base_until)
+        roll = tilt.measure(video, ep, tilt.speaker_times(clean, fps), tilt.declared(tilt.read(tilt.cut_plan_for(ep, plan))))
+        rep.add(
+            A,
+            roll["level"],
+            "roll",
+            roll["text"],
+            fix="Rotate the speaker frames by the cut plan's camera_roll_correction and render again"
+            if roll["level"] == "ERROR"
+            else None,
+        )
 
 
 def motion_density(plan: dict, ep: Path, pack, rep: cl.Report, area: str, total_s: float) -> None:

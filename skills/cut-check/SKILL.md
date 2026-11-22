@@ -14,6 +14,7 @@ version. Aim: the user never has to report the same fault twice. Be harsh: compa
 - A speaker cut, before anything is built on it: `cut_check.py`.
 - Every edit plan version and its video, also after small corrections: `style_check.py`.
 - The final, before the upload: `style_check.py <plan> --video export/<id>-vNNN-final.mp4`.
+- Camera roll: when the cut plan declares `camera_roll_correction`, `style_check.py` measures the roll on speaker frames of the video (review/roll-<video>.json). More than 0.3° left over is an ERROR, and the preview or final card is refused until a new render measures level. Without a declared correction a tilt above 0.5° is a CHECK.
 - Every plan with motion inserts (`"kind": "motion"`), after they are rendered: the review bundle and `motion_check.py`
   (section "Motion review").
 
