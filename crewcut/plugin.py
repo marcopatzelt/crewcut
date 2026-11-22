@@ -40,8 +40,15 @@ def agent_markdown(ident: dict, model: str | None = None) -> str:
         front["model"] = model
     if ident.get("effort"):
         front["effort"] = ident["effort"]
+    from . import ownskills
+    own = ownskills.for_identity(ident)
+    own_line = ""
+    if own:
+        own_line = ("Your studio's own skills (the user's; on content, voice and style they win over Crewcut's): "
+                    + ", ".join(f"`{ownskills.PLUGIN}:{s['name']}` ({', '.join(s['steps'])})" for s in own)
+                    + ". Load the one for your step first, with its adapter note CREWCUT.md when it has one.\n")
     body = (f"You are {ident.get('name')}, a member of the Crewcut crew.\n\n{ident.get('soul', '').strip()}\n\n"
-            f"Your skills: {skills}. Read the skill of your step before you start.\n"
+            f"Your skills: {skills}. Read the skill of your step before you start.\n{own_line}"
             f"Your rights: {'; '.join(rights) if rights else 'no spending, no publishing'}.\n\n{WORKSPACE_RULES}")
     return "---\n" + yaml.safe_dump(front, sort_keys=False, allow_unicode=True) + "---\n\n" + body
 

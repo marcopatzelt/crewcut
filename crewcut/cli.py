@@ -238,10 +238,13 @@ def build_parser() -> argparse.ArgumentParser:
     shr.add_argument("--episode")
     shsub.add_parser("table", help="all rows of studio/shorts.tsv")
 
-    sk = sub.add_parser("skills", help="skills from other projects (Humanizer), always the newest version")
+    sk = sub.add_parser("skills", help="skills from other projects (Humanizer, always the newest version) and your own "
+                        "skills from the studio folder")
     sksub = sk.add_subparsers(dest="skcmd", required=True)
     sks = sksub.add_parser("status")
     sks.add_argument("--json", action="store_true")
+    sko = sksub.add_parser("own", help="your own skills (<studio>/skills, [[skills.own]] in config/crewcut.toml)")
+    sko.add_argument("--json", action="store_true")
     sku = sksub.add_parser("update")
     sku.add_argument("name", nargs="?")
 
@@ -645,6 +648,22 @@ def _run(a) -> int:
         return 0
     if a.cmd == "skills":
         from . import extskills
+        if a.skcmd == "own":
+            from . import ownskills
+            own = [{k: s[k] for k in ("name", "steps", "roles", "replaces", "folder", "adapter", "ok", "problem")}
+                   for s in ownskills.configured()]
+            if a.json:
+                _print(own, True)
+            else:
+                for r in own:
+                    print(f"{r['name']:<20} {'ok' if r['ok'] else 'NOT USABLE: ' + str(r['problem'])}  steps "
+                          f"{','.join(r['steps']) or '-'}  roles {','.join(r['roles']) or 'all'}"
+                          + (f"  over {','.join(r['replaces'])}" if r["replaces"] else "")
+                          + ("  +adapter" if r["adapter"] else ""))
+                if not own:
+                    print("No own skills. Put them in <studio>/skills/<name>/SKILL.md and name them under "
+                          "[[skills.own]] in config/crewcut.toml (docs/own-skills.md).")
+            return 0
         if a.skcmd == "update":
             for r in extskills.update(a.name):
                 print(f"{r['name']}: {r['current'] or 'not installed'}" + (" (new)" if r["changed"] else "")

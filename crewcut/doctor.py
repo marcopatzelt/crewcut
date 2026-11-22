@@ -135,6 +135,12 @@ def checks(ci: bool = False, probe: bool = False) -> list[dict]:
             f"{cur['version']} from github.com/{s['repo']} ({s.get('license')})" if cur else
             f"not installed yet (github.com/{s['repo']}); the container fetches the newest version at start",
             "" if cur else "Run `crewcut skills update` when the machine is online.")
+    from . import ownskills
+    for s in ownskills.configured():
+        add(OK if s["ok"] else WARN, f"own skill {s['name']}",
+            f"steps {', '.join(s['steps']) or 'none'}" + (" (with adapter note)" if s["adapter"] else "")
+            if s["ok"] else f"not usable: {s['problem']}",
+            "" if s["ok"] else "Fix the folder or the [[skills.own]] entry in config/crewcut.toml.")
     if extskills.humanizer_enabled():
         n = len(voice.samples())
         add(OK if n else NOTE, "voice sample", f"{n} of your own videos in brand/voice/" if n else

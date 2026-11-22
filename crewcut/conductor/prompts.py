@@ -104,9 +104,10 @@ def channel_task(text: str) -> str:
 
 
 def system_prompt(identity: dict, episode: str | None, step: str | None, with_identity: bool = True,
-                  conversation_scope: str | None = None) -> str:
+                  conversation_scope: str | None = None, worker: str | None = None) -> str:
     """The job context. With a real engine agent (`--agent crewcut:<id>`) the identity's soul already is the agent's
-    system prompt, so it is left out here (with_identity=False) and only what changes per job is appended."""
+    system prompt, so it is left out here (with_identity=False) and only what changes per job is appended.
+    `worker` is the crew member who does the work when it differs from `identity` (the Showrunner hands it over)."""
     ident = (f"You are {identity.get('name')}, {identity.get('role')}\n\n"
              f"How you work:\n{identity.get('soul', '').strip()}\n") if with_identity else ""
     rights = (f"Your rights: may spend money: {'yes' if identity.get('may_spend') else 'no'}; "
@@ -116,6 +117,8 @@ def system_prompt(identity: dict, episode: str | None, step: str | None, with_id
     if skills:
         skill_paths = ", ".join(f"{paths.skills_dir() / s / 'SKILL.md'}" for s in skills)
         skill_line = f"Your skills (read the one for your step before you start): {skill_paths}\n"
+    from .. import briefing, ownskills
+    own_line = ownskills.prompt_block(ownskills.for_job(worker or identity.get("id"), step))
     ctx = ""
     if episode:
         try:
@@ -153,7 +156,8 @@ def system_prompt(identity: dict, episode: str | None, step: str | None, with_id
     auto = full_auto.instructions(episode) if episode and not episode.startswith("_") else ""
     from ..motion import quality
     craft = quality.context() if step == "edit" and identity.get("id") in ("designer", "editor", "critic", "showrunner") else ""
-    return "\n".join([ident, rights, skill_line, rules, WORKSPACE_RULES, pack_line, step_line, ctx, auto, craft])
+    return "\n".join([ident, rights, skill_line, own_line, rules, WORKSPACE_RULES, pack_line, briefing.text(), step_line,
+                      ctx, auto, craft])
 
 
 STEP_TASKS = {

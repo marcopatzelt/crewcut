@@ -185,6 +185,7 @@ crewcut youtube results <episode> --start YYYY-MM-DD --end YYYY-MM-DD [--video I
 crewcut humanize record --draft FILE --final FILE [--why "…"]       the Humanizer pass of a script, for its card
 crewcut brand voice add <video link | recording> | list          the user's own spoken words (brand/voice/)
 crewcut skills status | update [<name>]                           skills from other projects (Humanizer), newest
+crewcut skills own [--json]                                      your own skills from <studio>/skills and where they apply
 crewcut prompter <episode>                               prints the phone URL and a QR code
 ```
 

@@ -189,6 +189,11 @@ The crew can also research sources, write code and run experiments in persistent
 `workspaces/` folder. These projects stay separate from Crewcut's code. Both Claude Code and Codex use them.
 See [research and coding projects](docs/workspaces.md). Desktop control and paid services are not granted by this.
 
+Bring your own skills: put your own `SKILL.md` folders (with their scripts and references) into your studio's
+`skills/` folder and name the steps and crew members they belong to. They win over Crewcut's generic skills on
+content, voice and style; Crewcut keeps its tools, cards and safety rules. A short `brand/brief.md` gives every job
+the channel brief. See [your own skills](docs/own-skills.md).
+
 #### Episode specialists
 
 <p align="center">

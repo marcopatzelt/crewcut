@@ -167,6 +167,14 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
         from .. import extskills
         # skills from other projects (Humanizer) load the Claude Code way: as plugins, newest version
         opts["plugin_dirs"] = extskills.plugin_dirs()
+        # the user's own skills from the studio folder: a second plugin, skills `studio:<name>`
+        from .. import ownskills
+        try:
+            own = ownskills.build_plugin()
+        except OSError:
+            own = None
+        if own:
+            opts["plugin_dirs"].append(str(own))
         if pdir:
             opts["plugin_dirs"].insert(0, pdir)
             with_identity = False
@@ -191,9 +199,13 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
             if text:
                 prompt += (f"\n\n---\nSkill `{s['name']}` {s['version']} (github.com/{s['repo']}, {s.get('license')}), "
                            f"use it where your step says so:\n\n{text}")
+        # the user's own skills of this step and crew member, as text (they win on content, voice and style)
+        from .. import ownskills
+        prompt += ownskills.skill_texts(ownskills.for_job(j["identity"], j["step"]))
     task = engines.Task(
         prompt=prompt, system=prompts.system_prompt(ident_for_prompt, j["episode"], j["step"], with_identity,
-                                                  conversation_scope=env["CREWCUT_CONVERSATION_SCOPE"]),
+                                                  conversation_scope=env["CREWCUT_CONVERSATION_SCOPE"],
+                                                  worker=j["identity"]),
         cwd=cwd, env=env, model=model or None, effort=ident.get("effort") or None, agent=agent, extra_args=extra,
         resume=resume.get("session") if resume.get("engine") == eng.name else None,
         timeout_s=int(cfg.get("agent_timeout_minutes", 60)) * 60, log_path=paths.logs_dir() / f"job-{j['id']}.log",
