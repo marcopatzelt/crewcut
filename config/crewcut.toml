@@ -4,7 +4,9 @@
 [engine]
 name = "claude"            # claude (Claude Code, default) or codex (beta); the user can also just say "use Codex"
 max_parallel_agents = 5    # independent agent runs; heavy renders still use their separate single-job lane
+max_parallel_replies = 2   # the Showrunner's answers to chat messages run beside them, one per episode at a time
 agent_timeout_minutes = 60
+reply_timeout_minutes = 10 # a chat answer is short; the real work goes to the crew as its own job
 update_every_hours = 24    # look for a newer engine version this often, only while no job runs
 
 [engine.claude]

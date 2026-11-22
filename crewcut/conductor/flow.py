@@ -119,7 +119,7 @@ def user_message(episode: str, text: str) -> dict:
             "that should hold for future videos, propose a rule. If it asks for work, assign it with `crewcut job "
             "add`; the conductor already starts the owner of the next step after every yes, so never add a job for a "
             "step that is working or waiting. Read the recent chat with `crewcut chat --episode " + episode + " --last 12` if you need context.")
-    queue.add(episode, "showrunner", None, task)
+    queue.add(episode, "showrunner", None, task, data={"reply_to": mid})   # the reply lane: no wait behind crew work
     return message(mid)
 
 

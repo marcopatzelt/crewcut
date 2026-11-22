@@ -81,7 +81,12 @@ def propose(episode: str | None, step: str | None, kind: str, title: str, body: 
     card = get(cid)
     events.emit("card", episode=episode, identity=identity, text=title, data=view(card))
     if job:
-        db.update("jobs", job, status="waiting", doing=f"Waiting for your yes: {title}")
+        j = db.get("jobs", job) or {}
+        if j.get("status") == "running":
+            # the run goes on (checks, its last words): it stays visible as running and ends as waiting (queue.py)
+            db.update("jobs", job, doing=f"Asked you: {title}"[:200])
+        else:
+            db.update("jobs", job, status="waiting", doing=f"Waiting for your yes: {title}")
         from .conductor import queue
         j = queue.get(job)
         if j:

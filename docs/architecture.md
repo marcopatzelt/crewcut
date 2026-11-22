@@ -104,7 +104,7 @@ A skill never hard-codes a colour, font, logo, loudness or mix limit. It reads t
 | `ledger.py` | cost book: add, totals for today / episode / month, cap | core |
 | `episodes.py` | create and read episodes, `project.json`, the ten steps | core |
 | `studio_import.py` | offline legacy studio copy, manifests and visible references; no jobs or publication | core |
-| `conductor/` | steps, job queue (one heavy job at a time), engine runner | core |
+| `conductor/` | steps, job queue (one heavy job at a time; chat answers in their own reply lane, one per episode), engine runner | core |
 | `engines/` | one interface (`base.py`: Task, Event, RunResult; start, stream, stop, resume), two engines on the user's own subscription (`claude_code.py` default, `codex.py` beta) and the version manager (`versions.py`: newest version, smoke test, way back); see [engine.md](engine.md) | core |
 | `plugin.py` | builds Crewcut as a Claude Code plugin (skills, crew agents, guard hook) | core |
 | `server/` | FastAPI app, API under `/api`, SSE at `/api/events`, teleprompter, serves `web/dist` | core |
@@ -350,7 +350,7 @@ shows it next to the value.
 
 | Table | Columns (main) |
 |---|---|
-| `jobs` | id, episode, step, identity, kind (`agent` or `tool`), task, heavy, status (`queued`, `running`, `waiting`, `done`, `failed`, `cancelled`), doing, progress, created, started, ended, cost_usd, equiv_usd, log_path |
+| `jobs` | id, episode, step, identity, kind (`agent` or `tool`), task, heavy, status (`queued`, `running` while the process runs, also after it proposed a card; `waiting` once it ended with an open card; `done`, `failed`, `cancelled`), doing, progress, created, started, ended, cost_usd, equiv_usd, log_path |
 | `cards` | id, episode, step, kind, title, body, file, sha256, options (JSON), status (`open`, `accepted`, `declined`, `expired`), decided_by, decided_at, choice, created |
 | `costs` | id, at, episode, step, kind (`gpu`, `api`, `other`), amount_usd, detail, ref |
 | `rentals` | id, provider, instance, label, episode, job, price_per_hour, started, deadline, ended, status, detail |

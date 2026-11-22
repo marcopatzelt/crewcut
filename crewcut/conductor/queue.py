@@ -1,7 +1,9 @@
 """The job queue. Jobs live in SQLite; a worker thread in the server starts them.
 
 Agent jobs run a crew member through the engine. At most `engine.max_parallel_agents` agents run at once. Heavy tools
-take the heavy lane themselves (lanes.py), so a render never competes with another render.
+take the heavy lane themselves (lanes.py), so a render never competes with another render. The Showrunner's answer to a
+chat message has its own reply lane (`engine.max_parallel_replies`), so the user gets an answer while long crew work is
+busy. A job stays `running` while its process runs, also after it proposed a card.
 """
 
 from __future__ import annotations
@@ -59,6 +61,20 @@ def add(episode: str | None, identity: str, step: str | None, task: str, kind: s
 
 def get(jid: int) -> dict | None:
     return db.get("jobs", jid)
+
+
+def is_reply(job: dict) -> bool:
+    """The Showrunner's answer to a user's chat message (flow.user_message). It is short and runs in the reply lane."""
+    return (job.get("kind") == "agent" and job.get("identity") == "showrunner" and bool(job.get("episode"))
+            and bool((job.get("data") or {}).get("reply_to")))
+
+
+def open_card(jid: int) -> dict | None:
+    """The newest open card this job proposed, if any."""
+    with db.conn() as c:
+        r = c.execute("SELECT id, title FROM cards WHERE job = ? AND status = 'open' ORDER BY id DESC LIMIT 1",
+                      (jid,)).fetchone()
+    return dict(r) if r else None
 
 
 def set_doing(jid: int, doing: str, progress: float | None = None) -> None:
@@ -208,7 +224,8 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
                                                   worker=j["identity"]),
         cwd=cwd, env=env, model=model or None, effort=ident.get("effort") or None, agent=agent, extra_args=extra,
         resume=resume.get("session") if resume.get("engine") == eng.name else None,
-        timeout_s=int(cfg.get("agent_timeout_minutes", 60)) * 60, log_path=paths.logs_dir() / f"job-{j['id']}.log",
+        timeout_s=int(cfg.get("reply_timeout_minutes", 10) if is_reply(j) else
+                      cfg.get("agent_timeout_minutes", 60)) * 60, log_path=paths.logs_dir() / f"job-{j['id']}.log",
         extra_dirs=[str(paths.app_root()), str(workspace_root)], engine_options=opts,
         name=None)
     from .. import crewtalk
@@ -268,7 +285,7 @@ def _run_agent(j: dict) -> None:
     if cur and cur["status"] == "cancelled":
         return
     status = "done" if res.ok else "failed"
-    if cur and cur["status"] == "waiting" and res.ok:
+    if res.ok and (open_card(j["id"]) or (cur and cur["status"] == "waiting")):
         status = "waiting"  # it proposed a card and stopped; the conductor wakes the owner on the answer
     data.update(engine=eng.name, session=res.session or data.get("session"), usage=res.usage or data.get("usage"),
                 agent=task.agent, effort=task.effort)
@@ -323,6 +340,7 @@ class Worker:
     def __init__(self) -> None:
         self.stop = threading.Event()
         self.threads: dict[int, threading.Thread] = {}
+        self.replies: set[int] = set()   # jobs started in the reply lane
 
     def recover(self) -> None:
         """After a restart, jobs that were running are interrupted; say so instead of pretending."""
@@ -330,6 +348,10 @@ class Worker:
             interrupted = db.rows(c.execute("SELECT * FROM jobs WHERE status = 'running'"))
             c.execute("UPDATE jobs SET status = 'failed', ended = ?, doing = 'Interrupted by a restart' "
                       "WHERE status = 'running'", (db.now(),))
+        for job in interrupted:   # it had asked the user already: the card is still open and its answer wakes the owner
+            card = open_card(job["id"])
+            if card:
+                db.update("jobs", job["id"], status="waiting", doing=f"Waiting for your yes: {card['title']}"[:200])
         from .. import channel
         from . import flow
         for job in interrupted:
@@ -364,6 +386,7 @@ class Worker:
 
     def tick(self) -> None:
         self.threads = {k: t for k, t in self.threads.items() if t.is_alive()}
+        self.replies &= set(self.threads)
         from .. import full_auto
         from ..motion import dispatch
         dispatch.tick()
@@ -373,8 +396,10 @@ class Worker:
         except Exception:  # noqa: BLE001 - updates must never stop the queue
             traceback.print_exc()
         limit = int(config.get("crewcut", "engine.max_parallel_agents", 5))
-        free = limit - len(self.threads)
-        if free <= 0:
+        free = limit - (len(self.threads) - len(self.replies))
+        # chat answers never wait behind long crew work; one answer per episode at a time, in order
+        reply_free = int(config.get("crewcut", "engine.max_parallel_replies", 2)) - len(self.replies)
+        if free <= 0 and reply_free <= 0:
             return
         with db.conn() as c:
             candidates = db.rows(c.execute("SELECT * FROM jobs WHERE status = 'queued' ORDER BY id"))
@@ -383,8 +408,22 @@ class Worker:
         channel_busy = any(channel.is_channel(job) for job in running)
         inserts_busy = {(job["episode"], (job.get("data") or {}).get("motion_insert")) for job in running
                         if (job.get("data") or {}).get("motion_insert")}
-        queued = []
+        replying = {job["episode"] for job in running if is_reply(job)}
+        queued: list[tuple[dict, bool]] = []
         for candidate in candidates:
+            if free <= 0 and reply_free <= 0:
+                break
+            reply = is_reply(candidate)
+            if reply:
+                if candidate["episode"] in replying:
+                    continue
+                if reply_free > 0:
+                    replying.add(candidate["episode"])
+                    reply_free -= 1
+                    queued.append((candidate, True))
+                    continue
+            if free <= 0:
+                continue
             insert = (candidate.get("data") or {}).get("motion_insert")
             if insert:
                 key = (candidate["episode"], insert)
@@ -395,13 +434,16 @@ class Worker:
                 if channel_busy:
                     continue
                 channel_busy = True
-            queued.append(candidate)
-            if len(queued) >= free:
-                break
-        for j in queued:
+            if reply:
+                replying.add(candidate["episode"])
+            free -= 1
+            queued.append((candidate, False))
+        for j, in_reply_lane in queued:
             db.update("jobs", j["id"], status="running", started=db.now(), doing="Starting")
             t = threading.Thread(target=_start, args=(get(j["id"]),), daemon=True, name=f"job-{j['id']}")
             self.threads[j["id"]] = t
+            if in_reply_lane:
+                self.replies.add(j["id"])
             t.start()
 
     def run_forever(self, every: float = 1.0) -> None:
