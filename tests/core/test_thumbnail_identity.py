@@ -6,10 +6,10 @@ import types
 import numpy as np
 import pytest
 from PIL import Image
+from test_thumbnail_variety import LIB, _round, plan
 
 from crewcut import approvals, episodes, paths
 from crewcut.thumbnail import identity, make, variety
-from tests.core.test_thumbnail_variety import LIB, _round, plan
 
 
 def fake_embed(table):
