@@ -9,6 +9,7 @@ edit-style.json "length_minutes", and voice.md ("## Words to avoid", "## Words t
 
   python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --title "The title" --name ToolName
   python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --facts work/material-v001.md --json
+  python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --interview brief/INTERVIEW-v001.md
   python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --text-only     (the spoken part only)
   python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --short [--language de] [--facts F]
 
@@ -20,6 +21,11 @@ visible proof, a time anchor or a number in a series, and the phrase list of the
 Motion marks: below the "---" line the Writer may mark up to five beats for motion graphics, as wishes for the
 Editor's motion pass: [[motion: number | "30 cents per million tokens"]] (the kind of picture | the spoken words it
 belongs to). Both modes count them (stats "motion_marks"); a mark above the line or a sixth mark is an error.
+
+Interview marks: when the creator answered the interview (brief/INTERVIEW-vNNN.md), the Writer marks below the "---"
+line which spoken lines come from it: [[interview: 3 | "the spoken words"]] (the question number | the words as they
+stand in the script). With --interview FILE the check wants at least one mark, each mark's words in the spoken text,
+and reports how many spoken sentences share a run of five words with the answers.
 
 Levels: error (must go before the user sees the script), warn and hint (read and decide; a hint you keep gets one
 sentence of reason below the "---" line).
@@ -45,6 +51,7 @@ FLAG = re.compile(r"(?<![\w-])--[a-z][\w-]*")
 CAMEL = re.compile(r"\b[a-z]+[A-Z][A-Za-z]+\b")
 MOTION_MARK = re.compile(r"\[\[\s*motion\s*:(?P<body>[^\]]*)\]\]", re.I)
 MOTION_MARKS_MAX = 5
+INTERVIEW_MARK = re.compile(r"\[\[\s*interview\s*:(?P<body>[^\]]*)\]\]", re.I)
 
 
 def _brand():
@@ -179,6 +186,39 @@ def level(pack, key: str, default: str = "off") -> str:
     return v if v in LEVELS else "off"
 
 
+def _plain(text: str) -> list[str]:
+    return re.findall(r"[^\W_]+", text.lower())
+
+
+def check_interview(text: str, spoken: str, interview: str, add, passed: list[str], stats: dict) -> None:
+    """The creator's interview answers carry the script: marks below ---, their words spoken, sentences traced."""
+    answers = interview.split("## Answers", 1)[-1].split("## Do not mention", 1)[0]
+    parts = re.split(r"(?m)^---[ \t]*$", text, maxsplit=1)
+    below = parts[1] if len(parts) > 1 else ""
+    marks = [m.group("body").partition("|")[2].strip().strip('"“”„\'').strip() for m in INTERVIEW_MARK.finditer(below)]
+    if INTERVIEW_MARK.search(spoken):
+        add("error", "interview", "interview mark above the --- line: marks are notes, put them below ---.")
+    said = " ".join(_plain(spoken))
+    loose = [w for w in marks if w and " ".join(_plain(w)) not in said]
+    a = _plain(answers)
+    grams = {tuple(a[i:i + 5]) for i in range(len(a) - 4)}
+    sents = [_plain(x) for x in sentences(spoken) if len(_plain(x)) >= 5]
+    traced = sum(1 for w in sents if any(tuple(w[i:i + 5]) in grams for i in range(len(w) - 4)))
+    stats["interview_marks"], stats["interview_sentences"] = len(marks), traced
+    if not marks:
+        add("error", "interview", 'no interview mark below the --- line. Mark the lines that come from the answers: '
+            '[[interview: 3 | "the spoken words"]].')
+    elif loose:
+        add("warn", "interview", f"{len(loose)} interview mark(s) with words that are not spoken, e.g. \"{loose[0][:50]}\".")
+    else:
+        passed.append(f"interview: {len(marks)} marked lines")
+    if sents and traced == 0:
+        add("warn", "interview", "no spoken sentence shares five words in a row with the answers. Use the creator's "
+            "own sentences.")
+    elif sents:
+        passed.append(f"interview: {traced} of {len(sents)} sentences use the creator's own words")
+
+
 # ---------- the check ----------
 def form_check(raw: str, dash_lv: str, add, passed: list[str]) -> list[str]:
     """Teleprompter form, line by line, collected per kind. Returns the lines without stage notes (headings empty)."""
@@ -223,7 +263,7 @@ def form_check(raw: str, dash_lv: str, add, passed: list[str]) -> list[str]:
 
 
 def check_script(text: str, pack, title: str | None = None, names: list[str] | tuple = (),
-                 proof: str | None = None) -> dict:
+                 proof: str | None = None, interview: str | None = None) -> dict:
     raw = spoken_part(text)
     found: list[dict] = []
     passed: list[str] = []
@@ -377,6 +417,10 @@ def check_script(text: str, pack, title: str | None = None, names: list[str] | t
                 "source.")
         else:
             passed.append(f"proof: all {len(script_nums)} numbers appear in the facts file")
+
+    # 12. The creator's interview: their sentences carry the script, marked below the --- line.
+    if interview is not None:
+        check_interview(text, raw, interview, add, passed, stats)
 
     order = {"error": 0, "warn": 1, "hint": 2}
     found.sort(key=lambda f: order[f["level"]])
@@ -594,6 +638,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--facts", "--proof", dest="proof", metavar="FILE",
                     help="the gathered facts (work/material-vNNN.md, or brief/PROOF-vNNN.md when the proof step is on); "
                          "every number in the script must be in it")
+    ap.add_argument("--interview", metavar="FILE", help="the creator's answers (brief/INTERVIEW-vNNN.md): the script "
+                    "marks the lines that come from them")
     ap.add_argument("--pack", help="style pack folder (default: the active pack)")
     ap.add_argument("--text-only", action="store_true", help="print only the spoken part")
     ap.add_argument("--short", action="store_true", help="a Short's script: the reel rules instead of the long rules")
@@ -612,7 +658,9 @@ def main(argv: list[str] | None = None) -> int:
     pack = load_pack(a.pack)
     proof = Path(a.proof).read_text(encoding="utf-8") if a.proof else None
     try:
-        r = check_short(text, pack, a.language, proof) if a.short else check_script(text, pack, a.title, a.name, proof)
+        interview = Path(a.interview).read_text(encoding="utf-8") if a.interview else None
+        r = (check_short(text, pack, a.language, proof) if a.short else
+             check_script(text, pack, a.title, a.name, proof, interview))
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2

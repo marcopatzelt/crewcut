@@ -71,6 +71,9 @@ def start_step(episode: str, step: str, seed: str = "") -> int | None:
     if owner is None:
         episodes.set_step(episode, step, "skipped")
         return None
+    from .. import interview
+    if step == "script" and interview.needed(episode):   # the creator's own story first (crewcut/interview.py)
+        return interview.start(episode)
     return queue.add(episode, owner["id"], step, prompts.step_task(step, episode, seed))
 
 
@@ -101,6 +104,9 @@ def user_message(episode: str, text: str) -> dict:
     mid = post(episode, text, author="user")
     if episode == ONBOARDING:
         start_onboarding(text)
+        return message(mid)
+    from .. import interview
+    if interview.on_message(episode, text, mid):   # while it waits, every message is an interview answer
         return message(mid)
     open_cards = [c for c in _cards(episode) if c["status"] == "open"]
     cards_txt = "; ".join(f"#{c['id']} {c['kind']} '{c['title']}' by {c['identity']}" for c in open_cards) or "none"
@@ -294,6 +300,9 @@ def after_job(job: dict, res) -> None:
     with db.conn() as c:
         said = c.execute("SELECT COUNT(*) AS n FROM messages WHERE job = ? AND episode = ?",
                          (job["id"], target)).fetchone()["n"]
+    if (job.get("data") or {}).get("interview") == "ask":
+        from .. import interview
+        interview.after_ask_job(job, res.ok)
     if not res.ok:
         from .. import team
         name = (team.get(job["identity"]) or {}).get("name", job["identity"])
@@ -304,6 +313,9 @@ def after_job(job: dict, res) -> None:
 
 
 def on_upload(episode: str, files: list[str]) -> int:
+    from .. import interview
+    if interview.waiting(episode) and interview.is_voice(files):   # a spoken answer, not a recording
+        return interview.voice_files(episode, files)
     names = ", ".join(files[:6]) + (" …" if len(files) > 6 else "")
     post(episode, f"Got {len(files)} file(s): {names}. The Editor checks them now.")
     return queue.add(episode, "editor", "record",

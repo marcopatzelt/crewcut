@@ -27,14 +27,17 @@ crewcut chat --episode <id> --last 12                  # what the user said late
 
 A step starts when the step before it is done. The blog (8) is planned; it may later run next to 6 and 7. Proof (3) is
 optional and off by default (`[steps] proof` in `config/crewcut.toml`); a step that is off shows "switched off" and
-the episode goes from title straight to script.
+the episode goes from title straight to script. The script step of a long video opens with the interview (`[steps]
+interview`, on by default): the Writer asks the user 5 to 8 open questions, the episode waits for the answers
+("Interview: waiting for your answers"), and the answers in `brief/INTERVIEW-vNNN.md` carry the script. While it
+waits, the user's chat messages are answers, not tasks for you; never answer, end or skip it for the user.
 
 | # | Step | Who | Skill | Result in `episodes/<id>/` | Done when | Card |
 |---|---|---|---|---|---|---|
 | 1 | `idea` | Scout | `skills/idea/` | `brief/BRIEF.md` (topic, source, data) | the user said yes to the topic | `topic` |
 | 2 | `title` | Scout | `skills/title/` | `brief/TITLE-vNNN.md` | the user chose a title and the thumbnail text | `title` |
 | 3 | `proof` (optional, off by default) | Scout | this skill, section 3 | `brief/PROOF-vNNN.md`, raw data in `review/` | every factual claim and number for title and script has evidence | `proof` |
-| 4 | `script` | Writer | `skills/script/` | `brief/SCRIPT-vNNN.md` | script check 0 errors, the user approved it | `script` |
+| 4 | `script` | Writer (first the interview) | `skills/script/` | `brief/INTERVIEW-vNNN.md`, `brief/SCRIPT-vNNN.md` | script check 0 errors, the user approved it | `script` |
 | 5 | `record` | the user; Editor ingests | `skills/edit/` | `originals/`, `brief/ingest-*.json` | every take is saved and its sound checked to the end | none |
 | 6 | `edit` | Editor, then Critic | `skills/edit/` | `edit/plan-vNNN.json`, `export/<id>-vNNN-preview.mp4`, `review/cut-check-vNNN.json` | 0 errors in the cut check, the user approved the preview, the final is built | `preview`, then `final` |
 | 7 | `thumbnail` | Designer | `skills/thumbnail/` | `graphics/thumbnail/` | the user chose the image | `thumbnail` |

@@ -70,6 +70,17 @@ export interface Episode {
   needs?: { card: number; kind: string; title: string; images: string[] } | null;
   /** length of the newest cut or final, in seconds */
   seconds?: number | null;
+  /** the interview before the first script draft; "waiting" means the episode needs the creator's answers */
+  interview?: EpisodeInterview | null;
+}
+
+export interface EpisodeInterview {
+  status: "asking" | "waiting" | "done" | "skipped";
+  /** "Interview: waiting for your answers" */
+  label: string;
+  answers: number;
+  questions: number;
+  file?: string | null;
 }
 
 /** GET /api/episodes/{id}/media: what the episode view shows first (thumbnails, the cut, 3D scenes, the GPU). */

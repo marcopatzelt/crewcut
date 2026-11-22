@@ -1,7 +1,7 @@
 """The Humanizer pass: every script draft goes through Humanizer (blader/humanizer) before the user sees it.
 
 The Writer writes the draft, runs the Humanizer skill in its "Embedded" mode with the user's own spoken words as the
-voice sample (`brand/voice/`), writes the result as the script version, and records the pass:
+voice sample (`brand/voice/`, with the interview answers in `brand/voice/interviews/`), writes the result as the script version, and records the pass:
 
     crewcut humanize record --draft work/script-draft-v003.md --final brief/SCRIPT-v003.md --why "§1, §6"
 
@@ -53,8 +53,10 @@ def changes(draft: str, final: str) -> list[dict]:
 
 
 def voice_samples() -> list[str]:
-    d = paths.user_brand_dir() / "voice"
-    return sorted(str(p.relative_to(paths.studio_root())) for p in d.glob("*.md")) if d.is_dir() else []
+    """The user's own spoken words: video samples and interview answers (`brand/voice/`, `brand/voice/interviews/`)."""
+    from . import voice
+    root = paths.studio_root()
+    return [str(p.relative_to(root)) if p.is_relative_to(root) else str(p) for p in voice.samples()]
 
 
 def record_path(final: Path) -> Path:

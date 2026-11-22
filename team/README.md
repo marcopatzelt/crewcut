@@ -8,7 +8,7 @@ the skills it loads (`skills/<name>/SKILL.md`).
 |---|---|---|---|---|---|---|
 | SR | Showrunner | Runs the episode through the ten steps and gives each step to the right crew member. | episode | all | no | no |
 | SC | Scout | Finds the next idea in data, writes the title and thumbnail text, and runs the tests a video needs. | idea, title | idea, title, proof (optional) | no | no |
-| WR | Writer | Writes the script in the user's own voice, from the approved title and the facts it gathers. | script | script | no | no |
+| WR | Writer | Interviews the user before the first draft, then writes the script in their own words, from the approved title and the facts it gathers. | script | script | no | no |
 | ED | Editor | Ingests the recording and builds the video: speaker cut, 2D and 3D inserts, motion graphics, sound and assembly. | edit, 3d-scene, motion | record, edit | yes: rented GPUs | no |
 | CR | Critic | Checks every version before the user sees it, and is never the one who built it. | cut-check, motion | script (quiet claim check), edit, thumbnail | no | no |
 | DE | Designer | Makes the thumbnail and its test variants, and the look of new motion graphics. | thumbnail, motion | thumbnail | yes: the paid image API | no |

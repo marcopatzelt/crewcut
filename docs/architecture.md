@@ -199,13 +199,38 @@ Environment set by the conductor for every agent run: `CREWCUT_STUDIO`, `CREWCUT
 | 1 | `idea` | Scout | `brief/BRIEF.md` | topic |
 | 2 | `title` | Scout | `brief/TITLE-vNNN.md` | title and thumbnail text |
 | 3 | `proof` (optional, off by default: `[steps] proof` in `config/crewcut.toml`) | Scout | `brief/PROOF-vNNN.md`, raw data in `review/`; off: the Writer keeps its facts in `work/material-vNNN.md` | the facts (only when on) |
-| 4 | `script` | Writer | `brief/SCRIPT-vNNN.md` | script |
+| 4 | `script` | Writer; first the interview (on by default: `[steps] interview`) | `brief/INTERVIEW-vNNN.md` (the user's answers), `brief/SCRIPT-vNNN.md` | script |
 | 5 | `record` | the user; Editor ingests | `originals/`, `brief/ingest-<time>.json` | none (the user records) |
 | 6 | `edit` | Editor, then Critic | `work/words-*.json`, `edit/selects-vNNN.json`, `edit/cut-plan-vNNN.json`, `work/speaker-vNNN.mov`, `audio/voice-vNNN.wav`, `work/edit-decisions-vNNN.json`, `work/cut-verification-vNNN.json`, `review/takes-vNNN.json`, `edit/plan-vNNN.json`, `export/<id>-vNNN-preview.mp4`, `review/cut-check-vNNN.json` | mix, preview, then final |
 | 7 | `thumbnail` | Designer | `graphics/thumbnail/` | thumbnail |
 | 8 | `blog` | (planned) | | |
 | 9 | `upload` | Publisher | `export/upload.json` | publish (every time) |
 | 10 | `results` | Publisher (planned) | `review/results-48h.json` | |
+
+### The interview
+
+The script step of a long video starts with an interview (`[steps] interview` in `config/crewcut.toml`, default
+`true`; code in `crewcut/interview.py`). After the title is approved and before the first draft, the Writer reads the
+brief, the packaging and the research and asks the user 5 to 8 short, numbered, open questions in one chat message
+(`crewcut interview ask <id> --file work/interview-questions.md`; the command checks the count and length, adds how to
+answer, and sets the step to waiting). The questions target what no file knows: the personal start, doubts, the real
+turning point, setbacks with concrete details, how the user works, what it changes for them.
+
+The episode then waits: "Interview: waiting for your answers" on its card and in the episode view. Every chat
+message is an answer, typed or dictated with the composer's microphone; an audio file dropped into the chat is
+transcribed on this machine (`crewcut interview answer`, a tool job in the heavy lane). One message counts as complete;
+a message that says more is coming ("more coming", "mehr kommt", "Teil 1") keeps it open until the user says "done"
+("fertig") or presses "Done answering". "Skip interview" (the words or the button) skips it for this episode.
+
+The conductor writes the answers verbatim, with light cleanup (filler sounds and spaces only), to
+`brief/INTERVIEW-vNNN.md` with the questions and a "Do not mention (hard rules)" list taken from the user's own words,
+copies the answers into `brand/voice/interviews/<episode>.md` (the newest three; the Humanizer's voice sample), and
+starts the Writer on the script in the session that asked. The Writer uses the user's sentences as much as possible,
+keeps every leave-out wish as a hard rule, and marks the lines from the interview below `---` as
+`[[interview: 3 | "the spoken words"]]`; `script_check.py --interview` checks the marks. Only the user answers, ends
+or skips: crew members cannot do it for them (`crewcut interview skip|done` refuse inside an agent job). An episode
+that already has a script draft, or recorded an interview by hand (`project.json` `interview.status`), is not asked
+again; Shorts have no interview.
 
 Episode folder: `brief/`, `originals/`, `work/`, `audio/`, `broll/`, `graphics/`, `edit/`, `render/`, `review/`,
 `export/`, plus `project.json`:

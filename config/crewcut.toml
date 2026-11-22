@@ -38,6 +38,11 @@ max_per_episode = 20       # crew messages per episode
 # its own card. Off: the Writer gathers the facts, numbers, clips and scenes that serve the story while preparing the
 # script, with no card and no report, and the Critic quietly checks the finished script for false or misleading claims.
 proof = false
+# The interview opens the script step of a long video: after the title is approved and before the first draft, the
+# Writer asks you 5 to 8 open questions in the episode chat (your start, doubts, the real turning point, setbacks, how
+# you work). Your answers, typed or spoken, go into brief/INTERVIEW-vNNN.md and the script uses your own sentences.
+# Off: the Writer drafts from the brief and the research alone. "Skip interview" skips it for one episode.
+interview = true
 
 [queue]
 heavy_parallel = 1        # heavy jobs (render, transcription, assembly) at the same time

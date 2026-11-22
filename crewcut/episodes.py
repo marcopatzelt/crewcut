@@ -25,8 +25,9 @@ STEPS = [
 STEP_IDS = [s["id"] for s in STEPS]
 # Steps a studio can switch on or off in config/crewcut.toml [steps], with their default. Proof (a separate fact check
 # with its own card) is off by default: the Writer gathers the facts, numbers, clips and scenes that serve the story
-# while preparing the script, without a card or a report.
-OPTIONAL_STEPS = {"proof": False}
+# while preparing the script, without a card or a report. The interview (on by default) is not a step of its own: it
+# opens the script step (crewcut/interview.py), the Writer asks the user 5 to 8 questions before the first draft.
+OPTIONAL_STEPS = {"proof": False, "interview": True}
 SWITCHED_OFF = "switched off in this studio"
 # A Short is its own small episode with fewer steps (docs/shorts.md): a clip comes from a finished episode, an original
 # is recorded for itself. Steps that a mode does not have are not shown.
@@ -200,6 +201,9 @@ def summary(episode: str, project: dict | None = None) -> dict:
         "history_conflicts": p.get("history_conflicts", []), "production": p.get("production", {}),
         "open_cards": int(open_cards), "next_action": p.get("next_action"),
     }
+    from . import interview
+    if (iv := interview.summary(p)) is not None:
+        out["interview"] = iv          # "Interview: waiting for your answers" on the card and in the episode view
     stage = p.get("legacy", {}).get("stage")
     history = p.get("history") or {}
     if history.get("distribution") in ("published", "scheduled", "uploaded"):

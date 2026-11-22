@@ -19,9 +19,20 @@ or proves the promise of title and thumbnail.
    (`brief/PROOF-vNNN.md`, only when the studio switched step 3 on) is an internal fact check, not script content; what
    the user said in the chat about the content wins. Never invent a number, an experience or a quote. If something is
    missing, ask through the chat (`crewcut say`) before writing; the script has no gaps or placeholders.
-3. Read `voice.md` (how the user speaks, words to use and to avoid), `brand/rules/script.md`, and the length in
+3. **The interview** (`[steps] interview`, on by default, long videos only). Before the first draft the conductor wakes
+   you to ask the user 5 to 8 open questions: what the files cannot know. How it started for them personally, their
+   doubts or skepticism, the real turning point, setbacks with concrete details (when, what broke, what it cost), how
+   they work now, what it changes for them, their opinion. One short sentence each, easy to answer by voice, in the
+   channel's language, never yes/no, never one the brief answers. Write them to `work/interview-questions.md`, post
+   them with `crewcut interview ask <id> --file work/interview-questions.md` and stop. The answers come back as
+   `brief/INTERVIEW-vNNN.md` (verbatim). Then they carry the script: the user's own sentences, almost word for word,
+   smoothed only where a sentence cannot be spoken; nothing they did not say. Every wish to leave something out (the
+   file's "Do not mention" list, and any such wish in the answers) is a hard rule, also when paraphrased. Below `---`
+   mark each spoken line that comes from the interview: `[[interview: 3 | "the spoken words"]]`, and run the check
+   with `--interview brief/INTERVIEW-vNNN.md`. Never answer or skip the interview for the user.
+4. Read `voice.md` (how the user speaks, words to use and to avoid), `brand/rules/script.md`, and the length in
    `edit-style.json` (`length_minutes`) with the speaking rate in `channel.json` (`script.words_per_minute`).
-4. Read the endings of the last three scripts, so this verdict takes a new form.
+5. Read the endings of the last three scripts, so this verdict takes a new form.
 
 ## Structure
 
@@ -105,10 +116,11 @@ the skill `humanizer:humanizer` (run it like any skill), with Codex its text is 
 shows the version.
 
 - **Mode "Embedded", with the user's voice.** Read every file in `brand/voice/` first: the user's own spoken words from
-  their videos. Give them to Humanizer as the voice sample. No samples: plain mode; the card says so.
+  their videos, and in `brand/voice/interviews/` their interview answers (this episode's too). Give them to Humanizer
+  as the voice sample. No samples: plain mode; the card says so.
 - **What to look for most:** "not X but Y" contrasts; closing lines that add nothing new; sayings that sound deep; a
   staged run-up before the point ("here's the thing"); lists of three; inflated meaning and advertising language.
-- **What stays:** the user's own words and turns of phrase (those in `brand/voice/` and `voice.md`) even when Humanizer
+- **What stays:** the user's own words and turns of phrase (those in `brand/voice/`, the interview and `voice.md`) even when Humanizer
   would smooth them; every number, name, claim and the promise of the title. The pass changes how it sounds, never
   what it says.
 - **What is out of scope:** making text pass AI detectors. Humanizer edits for people, and so do we.

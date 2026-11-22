@@ -12,6 +12,7 @@ import { Composer } from "../components/Composer";
 import { MoneyLine, WorkingHint, WorkingList } from "../components/Crew";
 import { ConnectEngine } from "../components/ConnectEngine";
 import { FullAuto } from "../components/FullAuto";
+import { InterviewBar } from "../components/InterviewBar";
 import { ago, clock, episodeNumber } from "../lib/format";
 import { jumpToStep, messageOf } from "../store/actions";
 import { EMPTY, useUi } from "../store/store";
@@ -157,6 +158,7 @@ function EpisodeHead({ id }: { id: string }) {
         </span>
       ) : null}
     </header>
+    <InterviewBar episode={id} interview={episode?.interview ?? detail?.interview} />
     <FullAuto episode={id} />
     </>
   );

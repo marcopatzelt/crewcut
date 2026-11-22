@@ -143,3 +143,29 @@ def test_short_counts_motion_marks_too(neutral):
     r = sc.check_short(text, neutral)
     assert r["stats"]["motion_marks"] == 6
     assert any(f["area"] == "motion" and f["level"] == "error" for f in r["findings"])
+
+
+INTERVIEW = """# Interview: Example
+
+## Answers
+
+### Answer 1 (message 12, 2026-11-22)
+
+I measured all five on the same task and one laptop was enough.
+
+## Do not mention (hard rules)
+
+- none
+"""
+
+
+def test_interview_lines_are_marked_and_traced(neutral):
+    r = sc.check_script(GOOD, neutral, interview=INTERVIEW)
+    assert "interview" in kinds(r, "error")                     # no mark below the line
+    marked = GOOD + '[[interview: 1 | "I measured all five on the same task"]]\n'
+    r = sc.check_script(marked, neutral, interview=INTERVIEW)
+    assert "interview" not in kinds(r), r["findings"]
+    assert r["stats"]["interview_marks"] == 1 and r["stats"]["interview_sentences"] == 1
+    loose = GOOD + '[[interview: 1 | "words nobody says"]]\n'
+    assert "interview" in kinds(sc.check_script(loose, neutral, interview=INTERVIEW), "warn")
+    assert "interview_marks" not in sc.check_script(GOOD, neutral)["stats"]   # only with --interview

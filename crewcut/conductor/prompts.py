@@ -187,7 +187,9 @@ STEP_TASKS = {
               "that serves the story, for yourself only (no card, no report, no chat summary): facts, numbers, clips "
               "and scenes from the episode folder, the user's earlier episodes and the chat, in "
               "work/material-vNNN.md, each fact and number with its source. A proof file of the episode is an internal "
-              "fact check, not script content; what the user said in the chat about the content wins. Write the script "
+              "fact check, not script content; what the user said in the chat about the content wins. The newest "
+              "brief/INTERVIEW-vNNN.md, when there is one, holds the user's own answers: their sentences carry the "
+              "script and every wish to leave something out is a hard rule. Write the script "
               "with the script skill in the user's voice (voice.md). Run its check until it has no errors. Have the "
               "Critic check the finished script quietly: it marks only claims that are false or would mislead; fix "
               "those in the wording and never add caveats. Then one card of kind script with the file.",

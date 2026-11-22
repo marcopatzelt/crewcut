@@ -7,6 +7,7 @@ import type {
   EngineLogin,
   Episode,
   EpisodeDetail,
+  EpisodeInterview,
   EpisodeMedia,
   EpisodeMotion,
   Identity,
@@ -126,6 +127,9 @@ export const api = {
   money: () => request<Money>("GET", "/api/money"),
   prompter: (id: string) => request<PrompterLink>("GET", `/api/episodes/${enc(id)}/prompter`),
   fullAuto: (id: string) => request<{ mode: string; blocked?: string; complete?: boolean }>("GET", `/api/episodes/${enc(id)}/full-auto`),
+  /** The interview bar: "skip" the interview, or "done" after answering in several messages. */
+  interview: (id: string, action: "skip" | "done") =>
+    request<EpisodeInterview | null>("POST", `/api/episodes/${enc(id)}/interview`, { action }),
   setFullAuto: (id: string, mode: string) => request<{ mode: string; blocked?: string; complete?: boolean }>("POST", `/api/episodes/${enc(id)}/full-auto`, { mode }),
   /** What the episode view shows first: thumbnails, the cut, 3D scenes, the rented GPU. */
   media: (id: string) => request<EpisodeMedia>("GET", `/api/episodes/${enc(id)}/media`),

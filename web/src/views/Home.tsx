@@ -12,9 +12,14 @@ import { importFootage, navigate, newEpisode } from "../store/actions";
 import { EMPTY, useUi, type Filter } from "../store/store";
 import { Avatar, SlateFigure } from "../slate/Slate";
 
+/** An open card, or the interview waiting for the creator's answers. */
+function needsYou(e: Episode): boolean {
+  return e.open_cards > 0 || e.interview?.status === "waiting";
+}
+
 const FILTERS: { id: Filter; label: string; test: (e: Episode) => boolean }[] = [
   { id: "all", label: "All", test: () => true },
-  { id: "needs", label: "Needs you", test: (e) => e.open_cards > 0 },
+  { id: "needs", label: "Needs you", test: needsYou },
   { id: "work", label: "In work", test: (e) => !isDone(e) && isActive(e) },
   { id: "long", label: "Long videos", test: (e) => e.kind !== "short" },
   { id: "shorts", label: "Shorts", test: (e) => e.kind === "short" },
@@ -84,6 +89,7 @@ function stateLine(e: Episode): string {
   if (e.historical_status === "parked" || e.historical_status === "paused") return "Paused in earlier studio";
   if (e.historical_status === "archived") return "Archived in earlier studio";
   if (isDone(e)) return `Published ${ago(e.updated)}`;
+  if (e.interview?.status === "waiting") return e.interview.label;
   const step = current(e);
   return step ? `In work, step ${step.n} of ${e.steps.length}` : "In work";
 }
@@ -107,6 +113,7 @@ function Blank({ needs }: { needs?: boolean }) {
 function NeedCard({ e }: { e: Episode }) {
   const step = current(e);
   const needs = e.needs;
+  const interviewing = e.interview?.status === "waiting";
   const n = episodeNumber(e.id);
   const images = needs?.images?.slice(0, 3) ?? [];
   const ab = needs?.kind === "thumbnail";
@@ -118,14 +125,14 @@ function NeedCard({ e }: { e: Episode }) {
       type="button"
       className="need"
       onClick={() => navigate({ kind: "episode", id: e.id })}
-      aria-label={`${e.title}. ${metaOf(e)}. Needs your yes.`}
+      aria-label={`${e.title}. ${metaOf(e)}. ${interviewing ? e.interview?.label : "Needs your yes"}.`}
     >
       <span className={ab && images.length > 1 ? "need-media pick" : "need-media"} aria-hidden="true">
         {e.cover ? <img src={e.cover} alt="" decoding="async" className="need-ground" /> : <Blank needs />}
         <span className="need-top">
           <span className="glass-tag">
             <span className="dot amber" />
-            {needs?.title || "Needs your yes"}
+            {interviewing ? e.interview?.label : needs?.title || "Needs your yes"}
           </span>
           {typeof e.seconds === "number" ? <span className="glass-tag">{clock(e.seconds)}</span> : null}
         </span>
@@ -266,8 +273,8 @@ function useColumns(widest: number, present: boolean) {
 
 function headLine(episodes: readonly Episode[]): string {
   if (!episodes.length) return "Nothing here yet. Start with one sentence.";
-  const needs = episodes.filter((e) => e.open_cards > 0).length;
-  const moving = episodes.filter((e) => !isDone(e) && isActive(e) && e.open_cards === 0).length;
+  const needs = episodes.filter(needsYou).length;
+  const moving = episodes.filter((e) => !isDone(e) && isActive(e) && !needsYou(e)).length;
   const first = needs ? `${countWord(needs)} ${needs === 1 ? "needs" : "need"} your yes.` : "Nothing needs your yes.";
   const second = moving ? (needs ? " Everything else is moving." : " The crew keeps going.") : "";
   return first + second;
@@ -284,9 +291,9 @@ export function Home() {
     const test = FILTERS.find((f) => f.id === filter)?.test ?? (() => true);
     return [...episodes].filter(test).sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated));
   }, [episodes, filter]);
-  const needs = shown.filter((e) => e.open_cards > 0);
-  const allLong = shown.filter((e) => e.open_cards === 0 && e.kind !== "short");
-  const allShorts = shown.filter((e) => e.open_cards === 0 && e.kind === "short");
+  const needs = shown.filter(needsYou);
+  const allLong = shown.filter((e) => !needsYou(e) && e.kind !== "short");
+  const allShorts = shown.filter((e) => !needsYou(e) && e.kind === "short");
   // "All" shows one complete row of each; a filter shows everything.
   const [gridRef, gridCols] = useColumns(4, allLong.length > 0);
   const [shortsRef, shortsCols] = useColumns(7, allShorts.length > 0);

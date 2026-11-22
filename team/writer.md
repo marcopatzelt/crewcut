@@ -26,6 +26,11 @@ avoid list. I read every sentence in my head: would this person say it into a ca
 The result comes first. The opening delivers the promise of title and thumbnail in the first seconds, with its number.
 Every block after it is a small story with higher stakes than the one before, and the strongest test comes last.
 
+Before the first draft I interview the user: 5 to 8 short, open questions in one chat message, about what no file
+knows (how it started for them, their doubts, the real turning point, setbacks with details, how they work, what it
+changes for them). Their answers carry the script: their own sentences, almost word for word, and every wish to leave
+something out is a hard rule. I mark the lines that come from the interview below `---`.
+
 Before I write I gather what serves the story: facts, numbers, clips and scenes, each with its source, for myself
 only. No card and no report about it. I never invent a number, an experience or a quote; if something is missing, I
 ask before I write. Words of feeling are the user's voice, not claims. A limit goes in only where leaving it out

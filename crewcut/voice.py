@@ -8,6 +8,9 @@ Onboarding takes one to three of the user's own videos where they speak to the c
 Each sample is one Markdown file with its source and the plain spoken text, no time stamps. At most three are kept
 (the oldest goes). The Writer reads them before the Humanizer pass; Humanizer's "Embedded" mode keeps the user's own
 words and rhythm.
+
+The answers of an episode's interview (crewcut/interview.py) are the user's own words too: they are kept in
+`brand/voice/interviews/<episode>.md`, the newest three, next to the video samples.
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ from pathlib import Path
 from . import paths
 
 KEEP = 3
+KEEP_INTERVIEWS = 3
 
 
 class VoiceError(Exception):
@@ -94,17 +98,42 @@ def from_url(url: str) -> Path:
     return write_sample(str(info.get("title") or url), url, "captions (yt-dlp)", text)
 
 
-def from_file(src: Path) -> Path:
-    """A recording of the user, transcribed on this machine (faster-whisper)."""
-    from .cut import transcribe
+def transcribe(src: Path) -> str:
+    """The plain spoken text of a recording, transcribed on this machine (faster-whisper, the heavy lane)."""
+    from .conductor import lanes
+    from .cut import transcribe as tr
     if not src.is_file():
         raise VoiceError(f"no such file: {src}")
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory() as tmp, lanes.heavy(f"transcribe {src.name}"):
         out = Path(tmp) / "words.json"
-        transcribe.transcribe_local(src, out, transcribe.Engine())
+        tr.transcribe_local(src, out, tr.Engine())
         words = json.loads(out.read_text(encoding="utf-8"))
-    text = re.sub(r"\s+", " ", " ".join(str(w.get("w", "")).strip() for w in words)).strip()
+    return re.sub(r"\s+", " ", " ".join(str(w.get("w", "")).strip() for w in words)).strip()
+
+
+def from_file(src: Path) -> Path:
+    """A recording of the user, transcribed on this machine (faster-whisper)."""
+    text = transcribe(src)
     return write_sample(src.stem, src.name, "transcribed on this machine (faster-whisper)", text)
+
+
+def interview_folder() -> Path:
+    return folder() / "interviews"
+
+
+def write_interview(episode: str, title: str, text: str) -> Path:
+    """The answers of an episode's interview as a voice sample (the newest KEEP_INTERVIEWS stay)."""
+    if len(text.split()) < 40:
+        raise VoiceError("too few spoken words for a voice sample (need at least about 40)")
+    d = interview_folder()
+    d.mkdir(parents=True, exist_ok=True)
+    out = d / f"{slug(episode)}.md"
+    out.write_text(f"# Interview: {title}\n\n- source: episodes/{episode} (interview answers)\n- method: the user's own "
+                   f"answers in the episode chat\n- added: {dt.date.today().isoformat()}\n\n{text.strip()}\n",
+                   encoding="utf-8")
+    for old in sorted(d.glob("*.md"), key=lambda p: p.stat().st_mtime)[:-KEEP_INTERVIEWS]:
+        old.unlink()
+    return out
 
 
 def add(source: str) -> Path:
@@ -114,8 +143,9 @@ def add(source: str) -> Path:
 
 
 def samples() -> list[Path]:
-    d = folder()
-    return sorted(d.glob("*.md")) if d.is_dir() else []
+    """The video samples, then the interview answers."""
+    d, i = folder(), interview_folder()
+    return (sorted(d.glob("*.md")) if d.is_dir() else []) + (sorted(i.glob("*.md")) if i.is_dir() else [])
 
 
-__all__ = ["add", "samples", "vtt_text", "write_sample", "VoiceError"]
+__all__ = ["add", "samples", "transcribe", "vtt_text", "write_interview", "write_sample", "VoiceError"]

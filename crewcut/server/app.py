@@ -37,6 +37,10 @@ class FullAutoIn(BaseModel):
     mode: str
 
 
+class InterviewIn(BaseModel):
+    action: str        # "skip" or "done"
+
+
 class DeclineIn(BaseModel):
     reason: str | None = None
 
@@ -332,6 +336,27 @@ def create_app(start_worker: bool = True) -> FastAPI:
         except (FileNotFoundError, ValueError):
             raise HTTPException(404, "No such episode.") from None
         return {"url": url, "qr_svg": prompter.qr_svg(url)}
+
+    @app.post("/api/episodes/{eid}/interview")
+    def interview_action(eid: str, body: InterviewIn):
+        """The interview bar: "Skip interview", or "Done answering" after answers in several messages."""
+        from .. import interview
+        try:
+            project = episodes.read(eid)
+        except (FileNotFoundError, ValueError):
+            raise HTTPException(404, "No such episode.") from None
+        status = interview.state(project).get("status")
+        if body.action == "skip":
+            if status in ("done", "skipped"):
+                raise HTTPException(400, f"The interview is already {status}.")
+            interview.skip(eid, "the creator pressed Skip interview")
+        elif body.action == "done":
+            if status != "waiting":
+                raise HTTPException(400, "The interview is not waiting for answers.")
+            interview.finish(eid)
+        else:
+            raise HTTPException(400, 'action must be "skip" or "done".')
+        return interview.summary(episodes.read(eid))
 
     @app.get("/api/episodes/{eid}/full-auto")
     def full_auto_status(eid: str):

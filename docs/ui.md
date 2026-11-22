@@ -41,8 +41,9 @@ the open view ("Crewcut · Episodes", "Crewcut · Claude improves a website 100 
 | Right column (318 px) | Working now (each running job with its newest picture and progress) and Spend | `src/components/Crew.tsx` |
 | Crew chat (372 px, in an episode) | the working tiles of this episode on top (other jobs as one line that opens the home), the money line, the transcript with cards and previews, the composer at the foot | `src/views/EpisodeView.tsx`, `src/components/ChatPane.tsx`, `src/components/CardView.tsx`, `src/components/Composer.tsx` |
 
-**The Episodes home** is the start view. "Needs you" shows each episode with an open card as a large media card (the
-cover, a tag with the question from `needs.title`, the length from `seconds`, the variants from `needs.images` small
+**The Episodes home** is the start view. "Needs you" shows each episode with an open card, or with its interview
+waiting for answers, as a large media card (the cover, a tag with the question from `needs.title` or "Interview:
+waiting for your answers", the length from `seconds`, the variants from `needs.images` small
 inside the picture, the title and the step bar below). "In work and published" is one complete row of 16:9 covers (the
 grid's column count is read from its CSS; "Show all" opens the rest) with the length
 or, while someone works on it, a Slate line ("Editor is cutting, 6 of 10"). "Shorts" is one row of 9:16 frames with

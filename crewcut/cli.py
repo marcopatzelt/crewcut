@@ -129,6 +129,20 @@ def build_parser() -> argparse.ArgumentParser:
     recording.add_argument("file")
     recording.add_argument("--partial", action="store_true")
 
+    iv = sub.add_parser("interview", help="the interview before the first script draft ([steps] interview)")
+    ivsub = iv.add_subparsers(dest="ivcmd", required=True)
+    iva = ivsub.add_parser("ask", help="the Writer posts its 5 to 8 numbered questions; the episode waits for answers")
+    iva.add_argument("episode")
+    iva.add_argument("text", nargs="?", help="the questions (or --file)")
+    iva.add_argument("--file", help="a file in the episode with the questions, e.g. work/interview-questions.md")
+    ivw = ivsub.add_parser("answer", help="voice files from the episode inbox, transcribed on this machine")
+    ivw.add_argument("episode")
+    ivw.add_argument("--audio", action="append", required=True)
+    for name, text in (("skip", "no interview for this episode (the creator decides)"),
+                       ("done", "the answers are complete (the creator decides)"), ("status", "show the interview")):
+        x = ivsub.add_parser(name, help=text)
+        x.add_argument("episode")
+
     sy = sub.add_parser("say", help="a message in the main chat, from the running crew member")
     sy.add_argument("--episode")
     sy.add_argument("--channel", action="store_true")
@@ -453,6 +467,45 @@ def _run(a) -> int:
             from . import prompter
             print(json.dumps(prompter.select_script(a.episode, a.file, a.partial)))
             return 0
+    if a.cmd == "interview":
+        from . import interview
+        p = episodes.read(a.episode)
+        job = db.get("jobs", _job()) if _job() else None
+        if a.ivcmd == "ask":
+            if a.file:
+                text = paths.inside(paths.episode_dir(a.episode), a.file).read_text(encoding="utf-8")
+            elif a.text:
+                text = a.text
+            else:
+                print("crewcut interview ask: give the questions as text or --file.", file=sys.stderr)
+                return 2
+            mid = interview.ask(a.episode, text, author=_identity() if _identity() != "showrunner" else "writer",
+                                job=_job())
+            print(f"Asked in message {mid}. The episode waits for the answers; stop now.")
+            return 0
+        if a.ivcmd == "answer":
+            if job and job.get("kind") == "agent":
+                print("Only the creator answers the interview (the chat, or a voice file dropped into it).",
+                      file=sys.stderr)
+                return 3
+            print(interview.answer_audio(a.episode, a.audio))
+            return 0
+        if a.ivcmd in ("skip", "done"):
+            if job and job.get("kind") == "agent":
+                print("Only the creator skips or ends the interview: the button, or the words in the chat.",
+                      file=sys.stderr)
+                return 3
+            if a.ivcmd == "skip":
+                interview.skip(a.episode, "the creator, on the command line")
+            elif interview.state(p).get("status") != "waiting":
+                print("The interview is not waiting for answers.", file=sys.stderr)
+                return 1
+            else:
+                interview.finish(a.episode)
+            _print(interview.summary(episodes.read(a.episode)) or {"status": "none"}, True)
+            return 0
+        _print(interview.state(p) or {"status": "none", "enabled": interview.enabled()}, True)
+        return 0
     if a.cmd == "say":
         facts = [{"label": fact.split("=", 1)[0].strip(), "value": fact.split("=", 1)[1].strip()}
                  for fact in a.fact if "=" in fact]

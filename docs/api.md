@@ -34,6 +34,9 @@ Optional fields of an episode, for its card in the grid:
   `{"card": 41, "kind": "thumbnail", "title": "Thumbnail A, test B", "images": ["/api/files/…", "…"]}`. The pictures
   are the thumbnail variants for a `thumbnail` card, the 3D frames (or probe stills) for a `spend` card, else the
   card's `preview` or `file` when it is an image.
+- `interview`: the interview before the first script draft, or absent:
+  `{"status": "asking|waiting|done|skipped", "label": "Interview: waiting for your answers", "answers": 2,
+  "questions": 6, "file": "brief/INTERVIEW-v001.md"}`. An episode whose interview is `waiting` belongs in "Needs you".
 - `seconds`: length of the newest export or cut (see `cut` under "Episode media"), or `null`. ffprobe runs once per
   file version (cache keyed by path, size and mtime), not on every call.
 
@@ -57,12 +60,13 @@ See [Full auto](full-auto.md) for review and stop conditions.
 | `GET /api/episodes/{id}/imported-files?folder=&offset=0&limit=100` | | read-only directory listing under `legacy/`: `{folder, total, entries: [{path, name, directory, size?}]}`; at most 100 entries, no hidden files, excluded credential names or links |
 | `POST /api/episodes` | `{"text": "an idea in one sentence"}` | the new episode; the Showrunner starts with the sentence |
 | `GET /api/episodes/{id}/messages?after=ID` | | `[{"id", "at", "author", "text", "card", "cite", "step", "preview", "facts"}]`; `author` is `user` or an identity id; `cite`, `preview` (a file in the episode) and `facts` (`[{"label", "value"}]`) are optional |
-| `POST /api/episodes/{id}/messages` | `{"text": "…"}` | the stored message; the Showrunner answers in later messages |
+| `POST /api/episodes/{id}/messages` | `{"text": "…"}` | the stored message; the Showrunner answers in later messages. While the interview waits, the message is an answer instead (docs/architecture.md, "The interview") |
+| `POST /api/episodes/{id}/interview` | `{"action": "skip"}` or `{"action": "done"}` | `episode.interview` after "Skip interview" or "Done answering"; 400 when the interview is over (skip) or not waiting (done) |
 | `GET /api/channel/messages?after=ID` | | channel history, independent of episode and onboarding histories |
 | `POST /api/channel/messages` | `{"text": "…"}` | stored channel message; Showrunner runs from the studio root without creating an episode |
 | `GET /api/channel/context` | | bounded episode index, active jobs, open decisions and costs |
 | `GET /api/files/{episode}/{path}` | | the file (video, image, text) for previews; only inside the episode folder |
-| `POST /api/episodes/{id}/upload` | multipart, field `file` (one or more) | `[{"path": "inbox/…", "size"}]`; recordings dropped into the chat land in `studio/inbox/<episode>/` and the Editor ingests them |
+| `POST /api/episodes/{id}/upload` | multipart, field `file` (one or more) | `[{"path": "inbox/…", "size"}]`; recordings dropped into the chat land in `studio/inbox/<episode>/` and the Editor ingests them; while the interview waits, audio files (no video) are voice answers, transcribed on this machine |
 | `GET /api/episodes/{id}/prompter` | | `{"url": "http://<lan-host>:4748/p/<token>", "qr_svg": "<svg …>"}` for the teleprompter on a phone |
 
 ## Episode media
