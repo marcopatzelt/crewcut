@@ -128,7 +128,7 @@ flowchart TB
 | 4 Script | The Writer writes in your voice, then runs [Humanizer](https://github.com/blader/humanizer) over the draft with your own spoken words as the sample | the script; the card shows what Humanizer changed |
 | 5 Record | Puts the script on your phone as a teleprompter (QR code, with a remote) | you record |
 | 6 Edit | The Editor transcribes, cuts to the last full take of each sentence, plans the motion graphics from what each moment must show (what fits from the shelf, what to build new, what makes this video better than the last), builds 2D, 3D and motion, mixes the sound; the Critic checks every version against your best video before you see it | the motion plan, style frames, the preview |
-| 7 Thumbnail | The Designer makes the thumbnail and test variants | the thumbnail |
+| 7 Thumbnail | The Designer makes a test set of three different formats from your format library (your own style and outside formats you collected) and rejects near-duplicates | the thumbnail |
 | 8 Blog | *planned* | |
 | 9 Upload | The Publisher uploads through the API: video, thumbnail, captions, schedule, YouTube's altered-or-synthetic-content answer | publish, every time |
 | 10 Results | *planned*: the 48-hour check | |

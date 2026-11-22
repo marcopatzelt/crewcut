@@ -257,6 +257,48 @@ function Options({
   );
 }
 
+export interface ThumbnailVariant {
+  label: string;
+  format?: string | null;
+  format_name?: string | null;
+  kind?: string | null;
+  image?: string | null;
+  text?: string | null;
+}
+
+/** The variants of a thumbnail test set, from `crewcut thumbnail set card`. */
+export function thumbnailVariantsOf(card: Card): ThumbnailVariant[] {
+  const v = card.data?.variants;
+  if (card.kind !== "thumbnail" || !Array.isArray(v)) return [];
+  return v.filter((x): x is ThumbnailVariant => !!x && typeof x === "object" && typeof x.label === "string");
+}
+
+const KIND_WORD: Record<string, string> = { house: "house style", pro: "pro format" };
+
+/** Each variant of the test with its format name under the image, so the user sees the set really differs. */
+export function ThumbnailVariants({ card, variants }: { card: Card; variants: ThumbnailVariant[] }) {
+  return (
+    <div className="thumb-variants">
+      {variants.map((v) => (
+        <figure className="thumb-variant" key={v.label}>
+          {v.image && card.episode ? (
+            <Media episode={card.episode} path={v.image} label={`Variant ${v.label}`} />
+          ) : (
+            <div className="media-box" aria-hidden="true" />
+          )}
+          <figcaption>
+            <span className="thumb-label">{v.label}</span>
+            <span className="one-line" title={v.format_name ?? v.format ?? ""}>
+              {v.format_name ?? v.format ?? "Format not named"}
+            </span>
+            {v.kind ? <span className="meta">{KIND_WORD[v.kind] ?? v.kind}</span> : null}
+          </figcaption>
+        </figure>
+      ))}
+    </div>
+  );
+}
+
 function ProfilePreview({ card }: { card: Card }) {
   const profile = card.data?.profile;
   const rows = profile?.rows?.slice(0, 6) ?? [];
@@ -319,6 +361,8 @@ function CardPreview({
     );
   }
   if (card.kind === "profile") parts.push(<ProfilePreview key="profile" card={card} />);
+  const variants = thumbnailVariantsOf(card);
+  if (variants.length) parts.push(<ThumbnailVariants key="variants" card={card} variants={variants} />);
   if (card.options?.length) {
     parts.push(<Options key="options" options={card.options} chosen={chosen} onChoose={onChoose} label={card.title} />);
   }

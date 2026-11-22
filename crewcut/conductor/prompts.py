@@ -172,7 +172,9 @@ STEP_TASKS = {
             "card of kind topic (the topic, the data reason, the gap) and stop.",
     "title": "Develop title AND thumbnail concept/draft together with the title and thumbnail skills before any script. "
              "Write brief/PACKAGING-vNNN.md with title promise, exact image text, visual idea, draft path, audience and "
-             "evidence plan. Have the Designer develop the draft and the Critic check the pair at 160px. A number "
+             "evidence plan. Have the Designer develop the draft and the Critic check the pair at 160px. Thumbnail drafts "
+             "are a set of three different formats from `crewcut thumbnail formats` (one house style, one pro format "
+             "at least), each with its own hook, never one image in several near-identical versions. A number "
              "goes into a title only when it is measured; unmeasured results stay provisional, never fabricated. End with one "
              "card of kind title: the candidates as options, your recommendation in the body. Then stop.",
     "proof": "This studio switched the optional proof step on. Check the concrete factual claims and numbers the title "
@@ -196,8 +198,12 @@ STEP_TASKS = {
             "3D inserts (estimate first; rented GPU only after a spend card), sound, assembly. Then ask the Critic for a "
             "check with `crewcut job add --identity critic --step edit …`. Only after a clean check: one card of kind "
             "preview with the preview file.",
-    "thumbnail": "Make the thumbnail with the thumbnail skill: complete prompt, reference photo from the pack, 2 to 3 "
-                 "variants with `crewcut thumbnail make`, check each, then one card of kind thumbnail.",
+    "thumbnail": "Make the thumbnail test set with the thumbnail skill: three different formats from "
+                 "`crewcut thumbnail formats` (at least one house style, one pro format), each with its own focal "
+                 "object, text idea, emotion, composition and colour, written into SET.json of the round; one "
+                 "complete prompt per variant, reference photo from the pack, images with `crewcut thumbnail make`. "
+                 "`crewcut thumbnail set check <round>` must pass (redo every variant it names in another format); "
+                 "then the card with `crewcut thumbnail set card <round>`.",
     "upload": "Prepare the upload with the upload skill: package check, title, description, tags, chapters, captions, "
               "thumbnail, schedule. Then one card of kind publish that shows exactly what goes out. Upload only after "
               "the yes, with `crewcut youtube upload`.",

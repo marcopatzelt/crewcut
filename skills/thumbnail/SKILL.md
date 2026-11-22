@@ -1,6 +1,6 @@
 ---
 name: thumbnail
-description: "Makes the YouTube thumbnail of an episode and its A/B test variants: picks a layout template from the style pack, gets a real still frame and a real result image, writes one complete new image prompt per variant, generates the images (crewcut thumbnail make, way codex or api), checks size, colours, face and words (thumb_check.py), and prepares the A/B test. Use for: thumbnail, thumbnail prompt, image prompt, still frame of me, thumbnail variants, A/B test thumbnail, test and compare, check the thumbnail, new thumbnail. Not for the title or the thumbnail text (skill title), not for the upload (skill upload)."
+description: "Makes the YouTube thumbnail of an episode and its A/B test variants: picks three different formats from the format library of the style pack (at least one house style and one pro format), gets a real still frame and a real result image, writes one complete new image prompt per variant, generates the images (crewcut thumbnail make, way codex or api), checks size, colours, face and words (thumb_check.py), and prepares the A/B test. Use for: thumbnail, thumbnail prompt, image prompt, still frame of me, thumbnail variants, A/B test thumbnail, test and compare, check the thumbnail, new thumbnail. Not for the title or the thumbnail text (skill title), not for the upload (skill upload)."
 ---
 
 # Thumbnail
@@ -83,13 +83,38 @@ upload step uploads. Layouts, colours, face rules, word limits and the reference
     checks every candidate and picks the best 2 or 3 as finalists for the A/B test (YouTube allows at most 3). The
     reasons go into `PLAN.md`, one line per candidate.
 
+21. **A test set is three formats, not three versions.** Every A/B set (`thumbnail.formats.per_set`, default 3, the
+    YouTube maximum) uses a different format from the format library (`crewcut thumbnail formats`) for each variant:
+    at least `min_house` in the channel's own style (kind `house`) and at least `min_pro` outside formats (kind
+    `pro`, the user's collected references). Each variant changes the hook, not details: its own focal object, text
+    idea, emotion, composition and colour. Four images that differ only in the result card measure nothing.
+22. **The set check decides, not taste.** `crewcut thumbnail set check <round>` reads `SET.json` (formats and hooks)
+    and compares every pair of finished images: a perceptual hash, the layout (where bright, dark and busy parts sit)
+    and the colours. A pair that is nearly the same picture, the same composition or the same colours fails, and the
+    check names the variant to make again. Make it again with a new complete prompt in another format (rule 1). Only a
+    set that passes goes on a card (`crewcut thumbnail set card <round>`), and the card shows the format under each
+    image.
+23. **Palette and brand marker** (`thumbnail.palette`, `thumbnail.backgrounds`). The pack names the main colour, the
+    allowed grounds and one small constant brand marker (for example a short underline in the brand colour). The
+    check reports the main colour's share and fails a missing marker or a marker colour that takes over the image.
+
 When you apply rules 12 to 20 you may cite them in one line:
 `crewcut say --episode $CREWCUT_EPISODE --cite "pattern break and proof after Vexian's packaging advice" "…"`.
 
+## Format library
+
+`crewcut thumbnail formats [--strong] [--kind house|pro]` lists the formats; `crewcut thumbnail formats show <id>` prints
+one card (recipe, when it fits, example images). The library lives in the style pack (`references/formats/formats.json`,
+one entry per format: id, name, kind, recipe, fits, strong, card, images). The neutral pack has a small generic library
+in Crewcut's own words; the user builds their own from references they collected (outlier thumbnails of their niche,
+their best own thumbnails). Collected images are references only: they stay in the user's studio, never go into a
+public repository, and are never passed to the image model as something to copy. Pick formats whose "fits" matches
+the topic; prefer formats marked strong.
+
 ## Layout templates
 
-The pack lists the allowed layouts in `thumbnail.json` `layouts`; the first one is image 1, the others are test
-variants. Prompt blocks for each: `references/prompt-blocks.md`.
+The pack lists the allowed layouts in `thumbnail.json` `layouts`; the house formats of the library describe them as
+recipes. Prompt blocks for each: `references/prompt-blocks.md`.
 
 | Layout | What it shows | When |
 |---|---|---|
@@ -111,9 +136,10 @@ not invented results. After the test insert real evidence and check again. The l
 
 1. **Read the input:** `brief/TITLE-vNNN.md` (title, promise, thumbnail text), the results of the episode
    (`brief/PROOF-vNNN.md`, `review/`), the final video.
-2. **Pick the layouts:** image 1 from the first layout of the pack, then 5 to 9 more prompt variants (rule 20). Each
-   differs in a real way: the motif, the object (rule 17), the power word (rule 18), the crossover with the title
-   (rule 19) or the face side.
+2. **Pick the formats and write `SET.json`** in the round folder (rule 21): three variants, each with its label,
+   format id, image path and hook (focal object, text, emotion, composition, colour). Check the plan before any image:
+   `crewcut thumbnail set check graphics/thumbnail/vN-x --plan-only`. For more candidates (rule 20), make several
+   images per variant; the finalists that go into `SET.json` are one per format.
 3. **Images of the person:** copy the reference photo into each variant folder. Only when needed, a still frame:
    ```
    python3 skills/thumbnail/scripts/still_frame.py sheet export/<id>-vNNN-final.mp4 --out graphics/thumbnail/vN-x/stills --range 0: --max 30 --face 0.5,0.38
@@ -136,8 +162,10 @@ not invented results. After the test insert real evidence and check again. The l
    ```
    It measures size, colours, face position, size and count, words and numbers, writes upload copies (1280x720 JPG) and
    previews at 320 and 160 px. Look at the previews, then go through the checklist below.
-9. **Card:** `crewcut card propose --episode $CREWCUT_EPISODE --step thumbnail --kind thumbnail --title "Thumbnail A, test B" --file <preview-320.png>`.
-   The user says which one, or what to change, in a sentence.
+9. **Set check, then card:** `crewcut thumbnail set check graphics/thumbnail/vN-x` (rule 22). Redo every variant it
+   names with a new complete prompt, then check again. When it passes:
+   `crewcut thumbnail set card graphics/thumbnail/vN-x --preview <preview-320.png>`. The card shows each variant with its
+   format name. The user says which one, or what to change, in a sentence.
 10. **A/B test** (section below), only with a card.
 
 ## A/B test on YouTube ("Test & compare")
@@ -170,7 +198,8 @@ card (`crewcut rule propose --step thumbnail …`).
 Check by hand on the finished image and the 160 px preview. `thumb_check.py` prints this list.
 1. The face is clearly the person of the reference photo, only lightly refined; no microphone in the hand.
 2. Face position and size as the pack says; only one face.
-3. Colours from the pack only, plus the real colours of the photo and the result; nothing from `avoid_colors`.
+3. Colours from the pack only (main colour, allowed grounds, the small brand marker), plus the real colours of the photo
+   and the result; nothing from `avoid_colors`.
 4. At most `max_numbers` numbers, measured, with proof in the episode, belonging to the shown result.
 5. At most `max_words` words; the video carries every exaggeration.
 6. One product logo; an arrow or circle only when the person does not point.
@@ -183,6 +212,7 @@ Check by hand on the finished image and the 160 px preview. `thumb_check.py` pri
 13. One large object shows the audience and the goal.
 14. One power word that makes people ask "how?", and the video carries it.
 15. Image text and title do not say the same thing: one sets an expectation, the other turns it.
+16. The set uses three different formats (one house, one pro at least), each with its own hook, and passed `set check`.
 
 ## Scripts
 

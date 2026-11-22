@@ -1,0 +1,177 @@
+{
+ "schema": 1,
+ "note": "Generic formats in Crewcut's own words, without images. Your own library in brand/references/formats/formats.json adds to these and replaces formats with the same id.",
+ "formats": [
+  {
+   "id": "house-face-result",
+   "name": "Face points at the result",
+   "kind": "house",
+   "family": "House style",
+   "recipe": "The person large in the left or right third, turned to one large real result and pointing at it; one to three words; at most one number in a box; one product logo.",
+   "fits": "The default image of the channel; any video with a visible result.",
+   "strong": true
+  },
+  {
+   "id": "house-result-vs-result",
+   "name": "Result against result",
+   "kind": "house",
+   "family": "House style",
+   "recipe": "Split in the middle, two equal halves, each a real result with its logo; the one number on the winner's side; no 'vs' between the halves.",
+   "fits": "The video really compares two results of the same test.",
+   "strong": true
+  },
+  {
+   "id": "house-before-after",
+   "name": "Before and after",
+   "kind": "house",
+   "family": "House style",
+   "recipe": "The state before and after side by side, the after larger and brighter.",
+   "fits": "The video changes one thing.",
+   "strong": true
+  },
+  {
+   "id": "house-progress",
+   "name": "Progress in stages",
+   "kind": "house",
+   "family": "House style",
+   "recipe": "Three or four real stages from left to right, each a bit larger, short labels, the last one in the accent box.",
+   "fits": "The video shows rounds or steps.",
+   "strong": true
+  },
+  {
+   "id": "pro-two-word-command",
+   "name": "Two-word command",
+   "kind": "pro",
+   "family": "Pro formats",
+   "recipe": "Face large on one side with a strong expression; on the other side two words in heavy capitals, the second on a coloured box. Nothing else.",
+   "fits": "A method or a person the viewer should copy; a short imperative carries the video.",
+   "strong": false
+  },
+  {
+   "id": "pro-hype-line",
+   "name": "Hype line beside the face",
+   "kind": "pro",
+   "family": "Pro formats",
+   "recipe": "One emotional line in huge type beside the face, a tiny sub-line on a box under it; dark ground.",
+   "fits": "A surprising result the video proves.",
+   "strong": false
+  },
+  {
+   "id": "pro-into-the-trash",
+   "name": "Into the trash",
+   "kind": "pro",
+   "family": "Pro formats",
+   "recipe": "One recognisable object (file, app tile, logo) falling into a bin; the person beside it, thoughtful, hand at the chin; a short line like 'Don't use' with an arrow to the object.",
+   "fits": "Replacing a habit, tool or file the viewer still uses.",
+   "strong": false
+  },
+  {
+   "id": "pro-big-object",
+   "name": "One big object",
+   "kind": "pro",
+   "family": "Pro formats",
+   "recipe": "One oversized object with a label (folder, card, device) in the lower half; the person beside it; two words above with a curved arrow to the object.",
+   "fits": "A set of things to copy or install.",
+   "strong": false
+  },
+  {
+   "id": "pro-tombstone",
+   "name": "Tombstone",
+   "kind": "pro",
+   "family": "Pro formats",
+   "recipe": "A tombstone with the old thing's name on it; the person smirking beside it or the brand name in big type on the other side.",
+   "fits": "Something old is replaced by something new.",
+   "strong": false
+  },
+  {
+   "id": "pro-leaning-back",
+   "name": "Leaning back, it is over",
+   "kind": "pro",
+   "family": "Pro formats",
+   "recipe": "The person leans back relaxed, hands behind the head, the laptop in front does the work; one short line with an arrow to the screen.",
+   "fits": "Automation: the machine now does the job.",
+   "strong": false
+  },
+  {
+   "id": "pro-old-vs-new",
+   "name": "Old against new",
+   "kind": "pro",
+   "family": "Pro formats",
+   "recipe": "Face in the middle; on one side the old tool with a red cross, on the other the new one with a green check; two labels 'old' and 'new' at the top.",
+   "fits": "Switching from one way or tool to another.",
+   "strong": false
+  },
+  {
+   "id": "pro-ui-meter",
+   "name": "Meter in the interface",
+   "kind": "pro",
+   "family": "Pro formats",
+   "recipe": "One large interface element (a limit bar, a progress meter, a counter) beside the face, showing a measured state; two to three words above.",
+   "fits": "Limits, costs, speed or usage, with a real value.",
+   "strong": false
+  },
+  {
+   "id": "pro-rising-curve",
+   "name": "Face plus rising curve",
+   "kind": "pro",
+   "family": "Pro formats",
+   "recipe": "A single curve rising across the image behind or beside the face, the end point marked; one or two words.",
+   "fits": "Growth or improvement with a measured result.",
+   "strong": false
+  },
+  {
+   "id": "pro-icon-grid",
+   "name": "Grid of concepts",
+   "kind": "pro",
+   "family": "Pro formats",
+   "recipe": "A clean grid of six to twelve simple icons or tiles, no face or a small face; one caption.",
+   "fits": "'Every part of X explained' videos.",
+   "strong": false
+  },
+  {
+   "id": "pro-logo-equation",
+   "name": "Logo equation",
+   "kind": "pro",
+   "family": "Pro formats",
+   "recipe": "Logo plus logo equals a result, in big symbols across the image; the person small or absent.",
+   "fits": "Combining two tools into one result.",
+   "strong": false
+  },
+  {
+   "id": "pro-two-logos",
+   "name": "Face between two logos",
+   "kind": "pro",
+   "family": "Pro formats",
+   "recipe": "The person at a laptop in the middle, one large logo on each side, a short verdict line on top.",
+   "fits": "A head-to-head test of two tools.",
+   "strong": false
+  },
+  {
+   "id": "pro-quote-underlined",
+   "name": "Quote with one word underlined",
+   "kind": "pro",
+   "family": "Pro formats",
+   "recipe": "A short quote in quotation marks over the lower part of the image, one word underlined in the accent colour; the face above it.",
+   "fits": "A bold claim the video backs up.",
+   "strong": false
+  },
+  {
+   "id": "pro-giant-number",
+   "name": "Giant number behind the head",
+   "kind": "pro",
+   "family": "Pro formats",
+   "recipe": "One huge measured number across the top, partly behind the head; nothing else.",
+   "fits": "Money or a measured amount is the point of the video.",
+   "strong": false
+  },
+  {
+   "id": "pro-headline-still",
+   "name": "Headline plus reaction still",
+   "kind": "pro",
+   "family": "Pro formats",
+   "recipe": "Two to three words in heavy capitals on the left, a reaction picture on the right.",
+   "fits": "News and commentary.",
+   "strong": false
+  }
+ ]
+}

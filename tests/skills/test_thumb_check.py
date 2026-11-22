@@ -80,3 +80,19 @@ def test_colour_value():
     assert tc.colour_value("#0B0E14", p) == (11, 14, 20)
     assert tc.colour_value("accent", p) == tc.hex_rgb(p.value("brand.colors.accent"))
     assert tc.colour_value(None, p) is None
+
+
+def test_palette_main_colour_and_small_brand_marker():
+    from PIL import ImageDraw
+    L = {"main": (217, 119, 87), "main_min": 0.02, "marker": (35, 32, 214), "marker_share": [0.002, 0.05]}
+    im = Image.new("RGB", (640, 360), (20, 20, 19))
+    d = ImageDraw.Draw(im)
+    d.rectangle((40, 40, 300, 120), fill=(217, 119, 87))       # terracotta word box
+    d.rectangle((40, 130, 200, 138), fill=(35, 32, 214))       # the small blue underline
+    levels = {t.split()[0] + t.split()[1]: lvl for lvl, t in tc.palette_findings(im, L)}
+    assert levels == {"Maincolour": "NOTE", "Brandmarker": "OK"}
+    blue = Image.new("RGB", (640, 360), (35, 32, 214))         # the old all-blue look
+    assert any(lvl == "CHECK" and "small marker" in t for lvl, t in tc.palette_findings(blue, L))
+    plain = Image.new("RGB", (640, 360), (20, 20, 19))
+    texts = [t for lvl, t in tc.palette_findings(plain, L) if lvl == "CHECK"]
+    assert any("missing" in t for t in texts) and any("at least 2%" in t for t in texts)

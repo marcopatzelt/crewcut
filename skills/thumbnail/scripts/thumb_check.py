@@ -9,7 +9,9 @@ Per image:
          854x480); upload file not exactly 1280x720 or 2 MB and more; with --text: far more words than max_words
   CHECK  a colour from thumbnail.avoid_colors over 0.5 %; edge colour far from thumbnail.background; face position,
          size or count against thumbnail.json; with --text: more words than max_words, more numbers than max_numbers
-  NOTE   accent colour share; no face found; text without a title word
+         palette (thumbnail.palette): main colour under main_min_share, brand marker outside marker_share (a missing
+         marker, or the marker colour taking over the image); edge colour is checked against thumbnail.backgrounds
+  NOTE   accent colour share; main colour and marker shares; no face found; text without a title word
   OK     everything else that was measured
 Limits come from the style pack (thumbnail.json, colours from brand.json). The face check needs OpenCV and the YuNet
 model (see SKILL.md); without them it says so and goes on.
@@ -83,8 +85,46 @@ def limits(pack) -> dict:
         "max_numbers": t("max_numbers", 1),
         "avoid": t("avoid_colors", []) or [],
         "background": colour_value(t("background"), pack),
+        "backgrounds": [c for c in (colour_value(v, pack) for v in (t("backgrounds", []) or [])) if c],
         "accent": colour_value("accent", pack),
+        "main": colour_value(t("palette.main"), pack),
+        "main_min": float(t("palette.main_min_share", 0.0) or 0.0),
+        "marker": colour_value(t("palette.marker"), pack),
+        "marker_share": t("palette.marker_share"),
     }
+
+
+def hue_share(img: Image.Image, colour: tuple, tol: float = 14.0, min_sat: float = 0.5, min_val: float = 0.3) -> float:
+    """Share of pixels with the hue of `colour` (also in light and shadow): hue within tol degrees, saturated."""
+    small = img.convert("RGB").resize((320, 180), Image.LANCZOS)
+    hsv = np.asarray(small.convert("HSV"), dtype=np.float32)
+    hue, sat, val = hsv[..., 0] * 360 / 255, hsv[..., 1] / 255, hsv[..., 2] / 255
+    ref = np.asarray(Image.new("RGB", (1, 1), colour).convert("HSV"), dtype=np.float32)[0, 0]
+    d = np.abs(hue - ref[0] * 360 / 255)
+    d = np.minimum(d, 360 - d)
+    return float(((d <= tol) & (sat >= min_sat) & (val >= min_val)).mean())
+
+
+def palette_findings(img: Image.Image, L: dict) -> list[tuple[str, str]]:
+    out = []
+    if L.get("main"):
+        share = hue_share(img, L["main"])
+        low = share < L.get("main_min", 0.0)
+        out.append(("CHECK" if low else "NOTE", f"Main colour {share:.1%} of the image"
+                    + (f"; the pack wants at least {L['main_min']:.0%}." if low else ".")))
+    span = L.get("marker_share")
+    if L.get("marker") and isinstance(span, (list, tuple)) and len(span) == 2:
+        share = hue_share(img, L["marker"], tol=16.0, min_sat=0.45, min_val=0.25)
+        lo, hi = float(span[0]), float(span[1])
+        if share < lo:
+            out.append(("CHECK", f"Brand marker colour {share:.2%} of the image: the small constant marker is "
+                        f"missing (at least {lo:.1%})."))
+        elif share > hi:
+            out.append(("CHECK", f"Brand marker colour {share:.1%} of the image: it should stay a small marker "
+                        f"(at most {hi:.0%}), not the main colour."))
+        else:
+            out.append(("OK", f"Brand marker colour {share:.1%} of the image (a small constant marker)."))
+    return out
 
 
 # ---------------------------------------------------------------- pure functions
@@ -293,17 +333,19 @@ def check_image(
     for name, share in cs["avoid"].items():
         if share > 0.005:
             out.append(("CHECK", f"{name} covers {share:.1%} of the image; the pack avoids it."))
-    if L["background"]:
-        dist = float(np.linalg.norm(np.array(cs["edge_rgb"]) - np.array(L["background"])))
+    grounds = L.get("backgrounds") or ([L["background"]] if L["background"] else [])
+    if grounds:
+        dist = min(float(np.linalg.norm(np.array(cs["edge_rgb"]) - np.array(g))) for g in grounds)
         out.append(
             (
                 "CHECK" if dist > 80 else "OK",
-                f"Edge colour is {dist:.0f} away from the pack background "
+                f"Edge colour is {dist:.0f} away from the nearest pack background "
                 "(more than 80 counts as a different background).",
             )
         )
-    if cs["accent"] is not None:
+    if cs["accent"] is not None and not L.get("marker"):
         out.append(("NOTE", f"Accent colour {cs['accent']:.1%} of the image."))
+    out += palette_findings(img, L)
     out += face_findings(detect_faces(path) if faces else None, L)
     if text:
         out += text_findings(text, title, L["max_words"], L["max_numbers"])

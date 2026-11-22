@@ -1,10 +1,18 @@
 {
   "schema": 1,
-  "layouts": ["face-result", "result-vs-result", "before-after"],
+  "layouts": [
+    "face-result",
+    "result-vs-result",
+    "before-after"
+  ],
   "face": true,
   "face_position": "left",
   "max_words": 4,
-  "colors": ["accent", "ink", "paper"],
+  "colors": [
+    "accent",
+    "ink",
+    "paper"
+  ],
   "reference_photo": null,
   "variants": 3,
   "face_min_area": 0.06,
@@ -13,5 +21,18 @@
   "avoid_colors": [],
   "background": null,
   "style_reference": null,
-  "sources": {}
+  "sources": {},
+  "formats": {
+    "library": "references/formats",
+    "per_set": 3,
+    "min_house": 1,
+    "min_pro": 1
+  },
+  "palette": {
+    "main": "accent",
+    "main_min_share": 0.0,
+    "marker": null,
+    "marker_share": null
+  },
+  "backgrounds": []
 }

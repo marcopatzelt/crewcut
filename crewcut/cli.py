@@ -261,6 +261,21 @@ def build_parser() -> argparse.ArgumentParser:
     tm.add_argument("--way", choices=["codex", "api"], default=None)
     tm.add_argument("--variants", type=int, default=1)
     tm.add_argument("--out", help="folder in the episode, default graphics/thumbnail")
+    tf = tsub.add_parser("formats", help="the format library of the style pack")
+    tf.add_argument("formats_cmd", nargs="?", choices=["list", "show"], default="list")
+    tf.add_argument("id", nargs="?")
+    tf.add_argument("--kind", choices=["house", "pro"])
+    tf.add_argument("--strong", action="store_true", help="only the formats marked strong for this channel")
+    tf.add_argument("--json", action="store_true")
+    ts = tsub.add_parser("set", help="check an A/B set for real variety, or put it on one card")
+    ts.add_argument("setcmd", choices=["check", "card"])
+    ts.add_argument("round", help="the round folder in the episode, e.g. graphics/thumbnail/v2-formats")
+    ts.add_argument("--episode")
+    ts.add_argument("--plan-only", action="store_true", help="check SET.json before the images exist")
+    ts.add_argument("--json", action="store_true")
+    ts.add_argument("--title")
+    ts.add_argument("--body")
+    ts.add_argument("--preview", help="optional preview image for the card (e.g. the 160 px sheet)")
 
     y = sub.add_parser("youtube", help="YouTube Data API: sign in, upload, status")
     ysub = y.add_subparsers(dest="ycmd", required=True)
@@ -688,6 +703,12 @@ def _run(a) -> int:
         _print(facts if a.json else fetch.summary(facts) + f"\nSaved: {out}", a.json)
         return 0
     if a.cmd == "thumbnail":
+        if a.tcmd == "formats":
+            from .thumbnail import formats
+            return formats.cli(a)
+        if a.tcmd == "set":
+            from .thumbnail import variety
+            return variety.cli(a)
         from .thumbnail import make
         return make.cli(a)
     if a.cmd == "youtube":

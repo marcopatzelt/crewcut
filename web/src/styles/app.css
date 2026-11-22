@@ -676,6 +676,35 @@ svg.lucide {
   margin-top: 0;
 }
 
+/* a thumbnail test set: every variant with its format name under it */
+.thumb-variants {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.thumb-variant {
+  margin: 0;
+  min-width: 0;
+}
+
+.thumb-variant figcaption {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 6px;
+  min-width: 0;
+}
+
+.thumb-variant .thumb-label {
+  font-weight: 600;
+}
+
+.thumb-variant .meta {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .card-actions {
   display: flex;
   align-items: center;
