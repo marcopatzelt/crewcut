@@ -23,7 +23,7 @@ upload step uploads. Layouts, colours, face rules, word limits and the reference
   spend card with the amount first and wait for it. Default to `codex`.
 - **Never overwrite.** Every round gets a new folder `graphics/thumbnail/vN-<purpose>/`, one subfolder per variant
   (`A-<motif>/`, `B-<motif>/`). The scripts stop when a target file exists.
-- **Only real things.** The person from the reference photo or a real still frame. Results as real screenshots from the
+- **Only real things.** The person as in the face references (reference photo, real frames, approved thumbnails). Results as real screenshots from the
   video or the test. Only measured numbers.
 - **Never edit text in a generated image by script.** A wrong image gets a new complete prompt.
 
@@ -31,14 +31,23 @@ upload step uploads. Layouts, colours, face rules, word limits and the reference
 
 1. **One complete new prompt per variant, never an edit prompt.** Edits drift; a full prompt is repeatable. A disliked
    image gets a changed full prompt in a new run.
-2. **Fixed images first.** Image 1 is the reference photo of the person (`thumbnail.json` `reference_photo`, a file in
-   `brand/`). If the pack has a `style_reference` (the user's best own thumbnail), it is image 2 for style only: the
-   prompt says what it takes (colours, light, type, face size). It does not take the layout unless the user's pack rules
-   explicitly request that layout. Then the results. `crewcut thumbnail make` prepends the pack's fixed images in this
-   order automatically; `--ref` adds episode result images. A missing configured reference stops generation.
-   A still frame (`still_frame.py`) only when the person needs other clothes or another pose.
-3. **The face stays the person.** Slightly crisper eyes and a little more expression are fine; face shape, hair and
-   clothes stay. Remove microphones and selfie arms.
+2. **Fixed images first, chosen by the variant's format.** `crewcut thumbnail make` attaches them by itself, in this
+   order, and puts a numbered list of the images and their roles at the top of the prompt (refer to images by role,
+   not by number):
+   - **Face references:** the reference photo (`thumbnail.json` `reference_photo`) plus the extra face references of
+     the pack (`thumbnail.identity.references`: real frames or approved thumbnails of the person from different
+     angles, up to `identity.max_references` in all). Several angles keep the face the person's.
+   - **A pro format:** its example image(s) from the format library, as the layout example (composition, placement,
+     sizes, kind of graphics; never its person, text, logos or colours). The house thumbnail is not attached.
+   - **A house format:** the pack's `style_reference` for style only (the prompt says what it takes: light, type, face
+     size). **The control variant:** `thumbnail.control.reference` (or the style reference): its look is followed.
+   - Then the episode's result images (`--ref`).
+   The format comes from `SET.json` (the variant whose prompt or folder this is) or `--format`; `--control` marks the
+   control. Each run is recorded in the variant folder's `REFERENCES.json`. A missing configured reference stops
+   generation. A still frame (`still_frame.py`) only when the person needs other clothes or another pose.
+3. **The face stays the person.** The image model draws the person from the face references; slightly crisper eyes
+   and a little more expression are fine; face shape, eyes, skin, hair and clothes stay. Remove microphones and selfie
+   arms. The identity gate (rule 24) decides, not the eye alone.
 4. **Colours from the pack** (`thumbnail.colors`, `background`; avoid `avoid_colors`). No strong glow or halo unless the
    pack's rules say otherwise.
 5. **At most `max_numbers` numbers**, measured, belonging to exactly the result in the image. Money as an amount with
@@ -94,9 +103,43 @@ upload step uploads. Layouts, colours, face rules, word limits and the reference
     check names the variant to make again. Make it again with a new complete prompt in another format (rule 1). Only a
     set that passes goes on a card (`crewcut thumbnail set card <round>`), and the card shows the format under each
     image.
-23. **Palette and brand marker** (`thumbnail.palette`, `thumbnail.backgrounds`). The pack names the main colour, the
-    allowed grounds and one small constant brand marker (for example a short underline in the brand colour). The
-    check reports the main colour's share and fails a missing marker or a marker colour that takes over the image.
+23. **Palette, brand marker and colour limits** (`thumbnail.palette`, `thumbnail.backgrounds`). The pack names the main
+    colour, the allowed grounds, optionally one small constant brand marker (for example a short underline in the brand
+    colour) and `palette.limits`: colours to keep out, each with a `max_share`. The check reports the main colour's
+    share, fails a missing marker or a marker colour that takes over the image, and warns when a limited colour covers
+    more than its share. The control variant (rule 26) is exempt.
+
+24. **The identity gate.** `crewcut thumbnail set check` measures the main face of every variant with a person against
+    the pack's face references (face embedding, cosine similarity; `crewcut thumbnail face check <image>` for one
+    image). Below `thumbnail.identity.min_similarity` the variant fails as a look-alike: make it again with a new
+    complete prompt and stronger face references (more angles, a frame close to the wanted pose and expression). The
+    threshold is calibrated on the user's real thumbnails and rejected look-alikes
+    (`crewcut thumbnail face calibrate --positive … --negative … --write`). When the check cannot run (OpenCV or the
+    models missing) it fails the set; it never passes silently. Variants without a person set `"face": false`.
+    `crewcut thumbnail make` checks every new image at once and tries again up to `identity.tries` times; an image with
+    the wrong face is kept as `…-wrong-face.png`, and raw attempts never show in the app (only a round whose set check
+    passed does). The gate catches look-alikes, not every fine drift: a face that an embedding still calls the same
+    person can look wider or have another nose. So the set check also writes `SET-FACES.jpg`, each variant's face next to
+    the first face references at the same size: look at it before the card.
+    **How to keep the face:** face references are tight head-and-shoulder crops of approved thumbnails and sharp real
+    frames (frontal and a slight 3/4; no selfies, no screenshots; `identity.use_reference_photo: false` drops a weak
+    reference photo). Better still, edit an image that already has the right face (`crewcut thumbnail make --edit
+    <image>`: the person stays, background, layout, text and pose change) instead of drawing the face anew. Make the face
+    large (about 40 % of the image height or more), take a real expression from a frame instead of an invented smile, and
+    keep words about facial features in the prompt few: the references do that work.
+25. **Real-photo fallback.** Only when a variant keeps failing the gate: put a real frame of the person into the
+    design. `crewcut thumbnail face frames <videos> --out <dir>` finds sharp, large frames of the person (look at
+    `sheet.jpg`; pick expression and pose for the format, or adapt the layout to the closest frame),
+    `face save` takes the full frame, `face cutout` cuts the person out (rembg), `face compose` places the cutout over
+    the designed background and graphics with light retouch only (colour match, rim light, slight sharpen; no change
+    of geometry) and records the source in `<image>.face.json`.
+26. **One control variant.** A set may hold one control (`"role": "control"` in `SET.json`): the channel's current,
+    proven style, so the test shows whether the new formats beat it. It is exempt from the palette and colour rules
+    (rule 23); face, words, readability and the near-duplicate check still apply. The card marks it
+    (`thumbnail.control.name`).
+27. **Finalists and reserve.** YouTube tests `per_set` (3) at a time. A set may hold up to `max_candidates` (default 5)
+    variants; `SET.json` `finalists` names the 3 for the test (normally including the control), the rest is the reserve
+    for a second round. The card shows the suggestion and marks the reserve.
 
 When you apply rules 12 to 20 you may cite them in one line:
 `crewcut say --episode $CREWCUT_EPISODE --cite "pattern break and proof after Vexian's packaging advice" "…"`.
@@ -140,7 +183,8 @@ not invented results. After the test insert real evidence and check again. The l
    format id, image path and hook (focal object, text, emotion, composition, colour). Check the plan before any image:
    `crewcut thumbnail set check graphics/thumbnail/vN-x --plan-only`. For more candidates (rule 20), make several
    images per variant; the finalists that go into `SET.json` are one per format.
-3. **Images of the person:** copy the reference photo into each variant folder. Only when needed, a still frame:
+3. **Images of the person:** `crewcut thumbnail make` attaches the pack's face references by itself (rule 2). For a
+   pose the references do not show, add a fitting real frame as a face reference. Only when needed, a still frame:
    ```
    python3 skills/thumbnail/scripts/still_frame.py sheet export/<id>-vNNN-final.mp4 --out graphics/thumbnail/vN-x/stills --range 0: --max 30 --face 0.5,0.38
    python3 skills/thumbnail/scripts/still_frame.py save export/<id>-vNNN-final.mp4 88.0 graphics/thumbnail/vN-x/A-x/1-still-88.0s.png
@@ -153,8 +197,9 @@ not invented results. After the test insert real evidence and check again. The l
    in order, the layout with sizes in percent, the exact text, the colours and what must be absent.
 6. **Write `PLAN.md`** in the round folder: images in which order, which prompt, why these variants, the pattern-break
    sentences (rule 12), then check and test.
-7. **Generate:** `crewcut thumbnail make --episode $CREWCUT_EPISODE --prompt A-x/prompt.txt --ref A-x/1-photo.jpg --ref A-x/3-result.png --way codex --variants 4`, once per prompt variant (rule 20).
-   Way `api` only after an accepted spend card.
+7. **Generate:** `crewcut thumbnail make --episode $CREWCUT_EPISODE --prompt <round>/A-x/prompt.txt --out <round>/A-x --ref <round>/A-x/3-result.png --way codex --variants 4`, once per prompt variant (rule 20).
+   The face references and the format's example or style reference come automatically (rule 2); check the printed
+   "References:" line. Way `api` only after an accepted spend card.
 8. **Check:**
    ```
    python3 skills/thumbnail/scripts/thumb_check.py A-x/thumbnail-v001.png B-y/thumbnail-v001.png \
@@ -162,8 +207,9 @@ not invented results. After the test insert real evidence and check again. The l
    ```
    It measures size, colours, face position, size and count, words and numbers, writes upload copies (1280x720 JPG) and
    previews at 320 and 160 px. Look at the previews, then go through the checklist below.
-9. **Set check, then card:** `crewcut thumbnail set check graphics/thumbnail/vN-x` (rule 22). Redo every variant it
-   names with a new complete prompt, then check again. When it passes:
+9. **Set check, then card:** `crewcut thumbnail set check graphics/thumbnail/vN-x` (rules 22 to 27: variety, palette,
+   identity gate, references used, control, finalists). Redo every variant it names with a new complete prompt, then
+   check again. When it passes:
    `crewcut thumbnail set card graphics/thumbnail/vN-x --preview <preview-320.png>`. The card shows each variant with its
    format name. The user says which one, or what to change, in a sentence.
 10. **A/B test** (section below), only with a card.
@@ -196,7 +242,8 @@ card (`crewcut rule propose --step thumbnail …`).
 ## Checklist
 
 Check by hand on the finished image and the 160 px preview. `thumb_check.py` prints this list.
-1. The face is clearly the person of the reference photo, only lightly refined; no microphone in the hand.
+1. The face is clearly the person of the reference photo, only lightly refined, and passed the identity gate; no
+   microphone in the hand.
 2. Face position and size as the pack says; only one face.
 3. Colours from the pack only (main colour, allowed grounds, the small brand marker), plus the real colours of the photo
    and the result; nothing from `avoid_colors`.
@@ -212,13 +259,15 @@ Check by hand on the finished image and the 160 px preview. `thumb_check.py` pri
 13. One large object shows the audience and the goal.
 14. One power word that makes people ask "how?", and the video carries it.
 15. Image text and title do not say the same thing: one sets an expectation, the other turns it.
-16. The set uses three different formats (one house, one pro at least), each with its own hook, and passed `set check`.
+16. The set uses different formats (one house, one pro at least, at most one control), each with its own hook, every
+    pro variant made from its format example, and passed `set check`.
 
 ## Scripts
 
 | Script | Call | What it does |
 |---|---|---|
 | `scripts/thumb_check.py` | `IMAGE [IMAGE2 IMAGE3] [--title T] [--text X …] [--convert] [--compare IMG …] [--out DIR]` | format, 16:9, at least 1280x720, upload file 1280x720 under 2 MB, avoided colours, edge against the pack background, accent share, face (with OpenCV and the YuNet model), words, numbers, money, title words; previews at 320 and 160 px; the checklist and the pack rules |
+| `crewcut thumbnail face` | `check IMG …`, `calibrate --positive … --negative … [--write]`, `frames VIDEO … --out DIR`, `save VIDEO TIME OUT`, `cutout IMG OUT`, `compose --background BG --person CUT --height H --x X [--overlay FG] [--rim #hex] OUT` | the identity gate for single images, its calibration, and the real-photo fallback (rules 24, 25); needs `crewcut[faces]` (OpenCV; the YuNet and SFace models download once) |
 | `scripts/still_frame.py` | `sheet VIDEO --out DIR [--range A:B …] [--step 0.5] [--spacing 1] [--max 24] [--face X,Y] [--crop face\|full]` and `save VIDEO TIME TARGET.png` | candidates every 0.5 s, sharpness in the face window, skin share drops graphics, numbered contact sheet; saves the chosen frame at full size, never overwrites |
 
 The face check needs `opencv-python-headless` and the YuNet face detector model from the OpenCV model zoo (MIT,

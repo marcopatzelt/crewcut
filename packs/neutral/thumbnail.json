@@ -26,7 +26,9 @@
     "library": "references/formats",
     "per_set": 3,
     "min_house": 1,
-    "min_pro": 1
+    "min_pro": 1,
+    "max_candidates": 5,
+    "max_control": 1
   },
   "palette": {
     "main": "accent",
@@ -34,5 +36,14 @@
     "marker": null,
     "marker_share": null
   },
-  "backgrounds": []
+  "backgrounds": [],
+  "identity": {
+    "references": [],
+    "max_references": 4,
+    "min_similarity": 0.5
+  },
+  "control": {
+    "name": "control",
+    "reference": null
+  }
 }

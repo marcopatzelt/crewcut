@@ -11,10 +11,20 @@ changes measures nothing. This module checks a round's plan (`SET.json`) and its
   (nearly the same picture), when the layouts correlate (the same composition), or when the colour histograms nearly
   match (the same colours). The later variant of such a pair must be made again with a new complete prompt.
 
+- the person: the main face of every variant with a person is measured against the pack's face references
+  (`identity.py`); a look-alike fails and is made again with stronger references;
+- the references: which images each variant was made from (`REFERENCES.json` of `crewcut thumbnail make`); a pro
+  format made from the house thumbnail instead of its format example fails.
+
+A set may hold up to `max_candidates` variants; YouTube tests `per_set` at a time, so the plan names the finalists and
+the rest is the reserve for a second round. One variant may be the control (`"role": "control"`): the channel's
+current proven style, exempt from the new palette rules, but checked for face, words and near-duplicates.
+
 `SET.json`:
-    {"schema": 1, "title": "...", "variants": [
+    {"schema": 1, "title": "...", "finalists": ["A", "C", "E"], "variants": [
       {"label": "A", "format": "house-face-result", "image": "A-x/thumbnail-v001.png", "prompt": "A-x/prompt.txt",
-       "hook": {"focal_object": "...", "text": "...", "emotion": "...", "composition": "...", "colour": "..."}}]}
+       "hook": {"focal_object": "...", "text": "...", "emotion": "...", "composition": "...", "colour": "..."}},
+      {"label": "E", "role": "control", "format": "house-face-result", "image": "E-x/thumbnail-v001.png", ...}]}
 """
 
 from __future__ import annotations
@@ -39,9 +49,12 @@ DEFAULTS: dict[str, Any] = {
     "layout_max": 0.60,
     "colour_max": 0.90,
     "same_words": 0.6,
+    "max_candidates": 5,
+    "max_control": 1,
 }
 SET_FILE = "SET.json"
 CHECK_FILE = "SET-CHECK.json"
+FACES_FILE = "SET-FACES.jpg"   # each variant's face next to the face references, for the eye
 
 
 def settings(pack=None) -> dict[str, Any]:
@@ -165,7 +178,8 @@ def palette_report(path: str | Path, pack) -> dict[str, Any] | None:
     main = _pack_colour(pack, pack.value("thumbnail.palette.main"))
     marker = _pack_colour(pack, pack.value("thumbnail.palette.marker"))
     span = pack.value("thumbnail.palette.marker_share")
-    if not main and not marker:
+    limits = [x for x in (pack.value("thumbnail.palette.limits") or []) if isinstance(x, dict)]
+    if not main and not marker and not limits:
         return None
     with Image.open(path) as im:
         arr = np.asarray(im.convert("RGB").resize((320, 180), Image.BILINEAR), dtype=np.float32)
@@ -182,6 +196,15 @@ def palette_report(path: str | Path, pack) -> dict[str, Any] | None:
             elif share > hi:
                 out["problems"].append(f"the brand marker colour covers {share:.1%}; it stays a small marker "
                                        f"(at most {hi:.0%})")
+    out["warnings"] = []
+    for x in limits:
+        colour = _pack_colour(pack, x.get("colour"))
+        if not colour:
+            continue
+        share = float(accent_mask(arr, colour, 16.0, 0.45).mean())
+        most = float(x.get("max_share", 0.01))
+        if share > most:
+            out["warnings"].append(f"{x.get('name') or colour} covers {share:.1%} (at most {most:.0%})")
     return out
 
 
@@ -199,25 +222,53 @@ def same_idea(a: str, b: str, threshold: float) -> bool:
     return len(wa & wb) / len(wa | wb) >= threshold
 
 
+def is_control(v: dict) -> bool:
+    return str(v.get("role") or "").lower() == "control"
+
+
+def finalists(plan: dict, cfg: dict) -> tuple[list[str], list[str]]:
+    """The finalists for one YouTube test and the reserve. Without a list: the control first, then in order."""
+    variants = plan.get("variants") or []
+    labels = [str(v.get("label") or i + 1) for i, v in enumerate(variants)]
+    fin = [str(x) for x in plan.get("finalists") or []]
+    if not fin:
+        ctrl = [lbl for lbl, v in zip(labels, variants, strict=True) if is_control(v)]
+        fin = (ctrl + [lbl for lbl in labels if lbl not in ctrl])[: cfg["per_set"]]
+        fin = [lbl for lbl in labels if lbl in fin]
+    return fin, [lbl for lbl in labels if lbl not in fin]
+
+
 def check_plan(plan: dict, library: dict[str, dict], cfg: dict | None = None) -> list[str]:
     cfg = {**DEFAULTS, **(cfg or {})}
     problems: list[str] = []
     variants = plan.get("variants") or []
-    if len(variants) != cfg["per_set"]:
-        problems.append(f"The set has {len(variants)} variants; it needs exactly {cfg['per_set']}.")
+    most = max(cfg["per_set"], cfg["max_candidates"])
+    if not cfg["per_set"] <= len(variants) <= most:
+        problems.append(f"The set has {len(variants)} variants; it needs {cfg['per_set']}"
+                        + (f" to {most}" if most > cfg["per_set"] else " exactly") + ".")
     labels = [str(v.get("label") or i + 1) for i, v in enumerate(variants)]
+    controls = [lbl for lbl, v in zip(labels, variants, strict=True) if is_control(v)]
+    if len(controls) > cfg["max_control"]:
+        problems.append(f"{len(controls)} control variants ({', '.join(controls)}); at most {cfg['max_control']}.")
+    fin = plan.get("finalists")
+    if fin is not None:
+        if len(fin) != min(cfg["per_set"], len(variants)) or not set(map(str, fin)) <= set(labels):
+            problems.append(f"finalists must name {cfg['per_set']} of the variants ({', '.join(labels)}).")
+    elif len(variants) > cfg["per_set"]:
+        problems.append(f"The set has more than {cfg['per_set']} variants: name the {cfg['per_set']} finalists "
+                        "for the test in SET.json (\"finalists\"); the rest is the reserve.")
     kinds = []
     for label, v in zip(labels, variants, strict=True):
         fid = v.get("format")
         f = library.get(fid) if fid else None
-        if not f:
+        if not f and not (is_control(v) and not fid):
             problems.append(f"{label}: format {fid!r} is not in the format library (crewcut thumbnail formats).")
-        kinds.append((f or {}).get("kind"))
+        kinds.append(None if is_control(v) else (f or {}).get("kind"))
         hook = v.get("hook") or {}
         missing = [k for k in HOOK_FIELDS if not str(hook.get(k) or "").strip()]
         if missing:
             problems.append(f"{label}: the hook needs {', '.join(missing)}.")
-    formats = [v.get("format") for v in variants]
+    formats = [v.get("format") for v in variants if not is_control(v)]
     if len(set(formats)) != len(formats):
         problems.append("Two variants use the same format; every variant needs its own format.")
     if kinds.count("house") < cfg["min_house"]:
@@ -241,10 +292,40 @@ def read_plan(round_dir: Path) -> dict:
     return json.loads(p.read_text(encoding="utf-8"))
 
 
+def references_used(round_dir: Path, v: dict) -> dict[str, Any] | None:
+    """Which images a variant was made from: SET.json `references`, else the run of `crewcut thumbnail make` in the
+    variant folder (REFERENCES.json) that made this image, else its last run."""
+    if v.get("references"):
+        return {"source": "SET.json", "references": v["references"]}
+    img = round_dir / str(v.get("image") or "")
+    f = img.parent / "REFERENCES.json"
+    if not f.is_file():
+        return None
+    runs = json.loads(f.read_text(encoding="utf-8")).get("runs") or []
+    run = next((r for r in reversed(runs) if img.name in (r.get("images") or [])), runs[-1] if runs else None)
+    if not run:
+        return None
+    return {"source": "make" if img.name in (run.get("images") or []) else "make (last run, image renamed)",
+            "format": run.get("format"), "references": run.get("references") or []}
+
+
+def reference_problem(label: str, v: dict, used: dict | None, library: dict[str, dict]) -> str | None:
+    f = library.get(v.get("format")) or {}
+    if used is None or is_control(v) or f.get("kind") != "pro":
+        return None
+    roles = {r.get("role") for r in used.get("references") or [] if isinstance(r, dict)}
+    if "layout" not in roles:
+        return (f"{label}: made without the example image of its pro format {v.get('format')!r}"
+                + (" (with the house style reference instead)" if roles & {"style", "control"} else "")
+                + "; make it again with `crewcut thumbnail make` so the format example is attached")
+    return None
+
+
 def check_round(round_dir: Path, library: dict[str, dict], cfg: dict | None = None,
-                images: bool = True, pack=None) -> dict[str, Any]:
+                images: bool = True, pack=None, gate=None) -> dict[str, Any]:
     """Check plan and images of one round; write SET-CHECK.json next to SET.json. Images may be missing while the
-    round is only planned: then `ok` covers the plan and `images_ready` is false."""
+    round is only planned: then `ok` covers the plan and `images_ready` is false. With a pack that has face
+    references the identity gate runs on every variant with a person (`gate` replaces it in tests)."""
     cfg = {**DEFAULTS, **(cfg or {})}
     plan = read_plan(round_dir)
     problems = check_plan(plan, library, cfg)
@@ -253,19 +334,57 @@ def check_round(round_dir: Path, library: dict[str, dict], cfg: dict | None = No
     pairs, redo, missing = [], [], []
     prints: dict[str, dict] = {}
     palette: dict[str, dict] = {}
+    faces: dict[str, dict] = {}
+    refs: dict[str, Any] = {}
+    warnings: list[str] = []
+    gate_error = None
+    if images and gate is None and pack is not None:
+        from . import identity
+        if identity.enabled(pack):
+            try:
+                gate = identity.Gate.for_pack(pack)
+            except identity.Unavailable as e:
+                gate_error = str(e)
+
+    def mark(label):
+        if label not in redo:
+            redo.append(label)
     if images:
         for label, v in zip(labels, variants, strict=True):
             img = round_dir / str(v.get("image") or "")
+            refs[label] = references_used(round_dir, v)
+            why = reference_problem(label, v, refs[label], library)
+            if why:
+                problems.append(why + ".")
+                mark(label)
             if v.get("image") and img.is_file():
                 prints[label] = fingerprint(img)
-                rep = palette_report(img, pack) if pack is not None else None
+                rep = palette_report(img, pack) if pack is not None and not is_control(v) else None
                 if rep:
                     palette[label] = rep
                     problems += [f"{label}: {p}." for p in rep["problems"]]
-                    if rep["problems"] and label not in redo:
-                        redo.append(label)
+                    warnings += [f"{label}: {w}." for w in rep.get("warnings", [])]
+                    if rep["problems"]:
+                        mark(label)
+                if v.get("face", True) is not False and (gate is not None or gate_error):
+                    if gate_error:
+                        faces[label] = {"ok": False, "problem": f"the identity check could not run: {gate_error}"}
+                    else:
+                        faces[label] = gate.measure(img)
+                    if not faces[label]["ok"]:
+                        problems.append(f"{label}: {faces[label]['problem']}. Make it again with more face "
+                                        "references; after repeated failures use the real-photo fallback.")
+                        mark(label)
             else:
                 missing.append(label)
+        shown = [(lbl, round_dir / str(v.get("image")), faces[lbl].get("box"), faces[lbl].get("similarity"))
+                 for lbl, v in zip(labels, variants, strict=True) if faces.get(lbl, {}).get("box")]
+        if shown and gate is not None and getattr(gate, "ref_paths", None):
+            from . import identity
+            try:
+                identity.face_sheet(round_dir / FACES_FILE, shown, gate.ref_paths[:2], gate.embed)
+            except OSError:
+                pass
         for la, lb in combinations([lbl for lbl in labels if lbl in prints], 2):
             c = compare(prints[la], prints[lb], cfg)
             pairs.append({"a": la, "b": lb, **c})
@@ -274,9 +393,14 @@ def check_round(round_dir: Path, library: dict[str, dict], cfg: dict | None = No
                                 "new complete prompt in another format and hook.")
                 if lb not in redo:
                     redo.append(lb)
+    fin, reserve = finalists(plan, cfg)
     result = {"ok": not problems, "images_ready": images and not missing, "missing_images": missing,
-              "problems": problems, "redo": redo, "pairs": pairs, "palette": palette,
+              "problems": problems, "warnings": warnings, "redo": redo, "pairs": pairs, "palette": palette,
+              "identity": faces,
+              "references": refs,
               "formats": {lbl: v.get("format") for lbl, v in zip(labels, variants, strict=True)},
+              "control": [lbl for lbl, v in zip(labels, variants, strict=True) if is_control(v)],
+              "finalists": fin, "reserve": reserve,
               "settings": {k: cfg[k] for k in DEFAULTS}}
     (round_dir / CHECK_FILE).write_text(json.dumps(result, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     return result
@@ -292,16 +416,28 @@ def _round_dir(a) -> tuple[str, Path]:
     return episode, paths.inside(paths.episode_dir(episode), a.round)
 
 
-def card_variants(round_dir: Path, plan: dict, library: dict[str, dict], episode_dir: Path) -> list[dict]:
-    """What the thumbnail card shows: each image with its label and format name."""
+def card_variants(round_dir: Path, plan: dict, library: dict[str, dict], episode_dir: Path,
+                  check: dict | None = None, control_name: str = "control") -> list[dict]:
+    """What the thumbnail card shows: each image with its label, format name, role, references and face score."""
+    check = check or {}
+    fin = set(check.get("finalists") or finalists(plan, {**DEFAULTS})[0])
     out = []
     for i, v in enumerate(plan.get("variants") or []):
+        label = str(v.get("label") or i + 1)
         f = library.get(v.get("format"), {})
         img = round_dir / str(v.get("image") or "")
-        out.append({"label": str(v.get("label") or i + 1), "format": v.get("format"),
-                    "format_name": f.get("name", v.get("format")), "kind": f.get("kind"),
+        name = f.get("name", v.get("format")) or ""
+        if is_control(v):
+            name = f"{control_name}: {name}" if name else control_name
+        used = (check.get("references") or {}).get(label) or {}
+        out.append({"label": label, "format": v.get("format"), "format_name": name,
+                    "kind": "control" if is_control(v) else f.get("kind"),
+                    "role": "control" if is_control(v) else "variant", "finalist": label in fin,
                     "image": img.relative_to(episode_dir).as_posix() if img.is_file() else None,
-                    "text": (v.get("hook") or {}).get("text")})
+                    "text": (v.get("hook") or {}).get("text"),
+                    "references": [f"{r.get('file')} ({r.get('role')})" for r in used.get("references") or []
+                                   if isinstance(r, dict)],
+                    "face_similarity": ((check.get("identity") or {}).get(label) or {}).get("similarity")})
     return out
 
 
@@ -323,11 +459,24 @@ def cli(a) -> int:
         else:
             for label, rep in result["palette"].items():
                 print(f"{label}: main colour {rep.get('main_share', 0):.1%}, brand marker {rep.get('marker_share', 0):.2%}")
+            for label in result["control"]:
+                print(f"{label}: control variant (proven channel style), palette rules not applied")
+            for label, rep in result["identity"].items():
+                sim = rep.get("similarity")
+                print(f"{label}: face " + ("-" if sim is None else f"{sim:.2f}") + (" OK" if rep["ok"] else " WRONG"))
+            for label, used in result["references"].items():
+                if used:
+                    print(f"{label}: made from " + ", ".join(f"{r.get('file')} ({r.get('role')})"
+                                                             for r in used["references"] if isinstance(r, dict)))
+                else:
+                    print(f"{label}: references unknown (no REFERENCES.json)")
             for p in result["pairs"]:
                 print(f"{p['a']}-{p['b']}: hash distance {p['phash_distance']}, layout {p['layout']:.2f}, colour "
                       f"{p['colour']:.2f}" + ("  TOO SIMILAR" if p["too_similar"] else ""))
             for line in result["problems"]:
                 print(f"PROBLEM {line}")
+            for line in result["warnings"]:
+                print(f"WARNING {line}")
             if result["missing_images"]:
                 print(f"Not made yet: {', '.join(result['missing_images'])} (the plan was checked).")
             print("OK: real variety." if result["ok"] else f"NOT OK. Redo: {', '.join(result['redo']) or 'the plan'}.")
@@ -340,12 +489,19 @@ def cli(a) -> int:
         return 1
     ep = paths.episode_dir(episode)
     plan = read_plan(round_dir)
-    variants = card_variants(round_dir, plan, library, ep)
+    variants = card_variants(round_dir, plan, library, ep, result,
+                             str(pack.value("thumbnail.control.name") or "control"))
     title = a.title or "Thumbnail test: " + ", ".join(f"{v['label']} {v['format_name']}" for v in variants)
-    card = approvals.propose(episode, "thumbnail", "thumbnail", title, body=a.body or "",
+    body = a.body or ""
+    if result["reserve"]:
+        body = (body + "\n\n" if body else "") + (f"Suggested for the test: {', '.join(result['finalists'])}. "
+                                                    f"Reserve for a second round: {', '.join(result['reserve'])}.")
+    card = approvals.propose(episode, "thumbnail", "thumbnail", title, body=body,
                              file=(round_dir / SET_FILE).relative_to(ep).as_posix(),
-                             options=[f"{v['label']} · {v['format_name']}" for v in variants],
-                             data={"variants": variants, "set_check": (round_dir / CHECK_FILE).relative_to(ep).as_posix()},
+                             options=[f"{v['label']} · {v['format_name']}" + ("" if v["finalist"] else " (reserve)")
+                                      for v in variants],
+                             data={"variants": variants, "finalists": result["finalists"], "reserve": result["reserve"],
+                                   "set_check": (round_dir / CHECK_FILE).relative_to(ep).as_posix()},
                              preview=a.preview)
     print(f"card #{card['id']}")
     return 0

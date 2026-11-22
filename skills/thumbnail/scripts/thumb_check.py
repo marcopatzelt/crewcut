@@ -91,6 +91,8 @@ def limits(pack) -> dict:
         "main_min": float(t("palette.main_min_share", 0.0) or 0.0),
         "marker": colour_value(t("palette.marker"), pack),
         "marker_share": t("palette.marker_share"),
+        "limits": [(colour_value(x.get("colour"), pack), float(x.get("max_share", 0.01)), x.get("name") or x.get("colour"))
+                   for x in (t("palette.limits", []) or []) if isinstance(x, dict) and colour_value(x.get("colour"), pack)],
     }
 
 
@@ -124,6 +126,10 @@ def palette_findings(img: Image.Image, L: dict) -> list[tuple[str, str]]:
                         f"(at most {hi:.0%}), not the main colour."))
         else:
             out.append(("OK", f"Brand marker colour {share:.1%} of the image (a small constant marker)."))
+    for colour, most, name in L.get("limits") or []:
+        share = hue_share(img, colour, tol=16.0, min_sat=0.45, min_val=0.25)
+        if share > most:
+            out.append(("CHECK", f"{name} covers {share:.1%} of the image (at most {most:.0%}); the pack keeps it out."))
     return out
 
 
@@ -320,7 +326,7 @@ def detect_faces(path: str) -> list[dict] | None:
 
 
 def check_image(
-    path: str, L: dict, title: str | None, text: str | None, faces: bool
+    path: str, L: dict, title: str | None, text: str | None, faces: bool, control: bool = False
 ) -> tuple[Image.Image | None, list]:
     try:
         img = Image.open(path)
@@ -334,6 +340,9 @@ def check_image(
         if share > 0.005:
             out.append(("CHECK", f"{name} covers {share:.1%} of the image; the pack avoids it."))
     grounds = L.get("backgrounds") or ([L["background"]] if L["background"] else [])
+    if control:
+        out.append(("OK", "Control variant in the channel's proven style: palette, grounds and colour limits not applied."))
+        grounds = []
     if grounds:
         dist = min(float(np.linalg.norm(np.array(cs["edge_rgb"]) - np.array(g))) for g in grounds)
         out.append(
@@ -345,7 +354,7 @@ def check_image(
         )
     if cs["accent"] is not None and not L.get("marker"):
         out.append(("NOTE", f"Accent colour {cs['accent']:.1%} of the image."))
-    out += palette_findings(img, L)
+    out += [] if control else palette_findings(img, L)
     out += face_findings(detect_faces(path) if faces else None, L)
     if text:
         out += text_findings(text, title, L["max_words"], L["max_numbers"])
@@ -362,13 +371,15 @@ def main(argv=None):
     ap.add_argument("--compare", action="append", default=[], help="images to show next to yours in the preview")
     ap.add_argument("--pack", help="style pack folder (default: studio/brand, else packs/neutral)")
     ap.add_argument("--no-faces", action="store_true", help="skip the face check")
+    ap.add_argument("--control", action="append", default=[], type=int,
+                    help="number (from 1) of the image that is the control variant (no palette rules)")
     a = ap.parse_args(argv)
     pack = load_pack(a.pack)
     L = limits(pack)
     errors, own = 0, []
     for i, path in enumerate(a.images):
         text = a.text[i] if i < len(a.text) else None
-        img, found = check_image(path, L, a.title, text, not a.no_faces)
+        img, found = check_image(path, L, a.title, text, not a.no_faces, (i + 1) in a.control)
         upload = any(t.startswith("Upload file") for _, t in found)
         other = [t for s, t in found if s == "ERROR" and not t.startswith("Upload file")]
         if a.convert and img is not None and upload:
@@ -382,7 +393,7 @@ def main(argv=None):
                     cover_resize(img).save(target, "JPEG", quality=90)
                     print(f"\n{path} ({img.width}x{img.height}): converted to {target}")
                 path = target
-                img, found = check_image(path, L, a.title, text, not a.no_faces)
+                img, found = check_image(path, L, a.title, text, not a.no_faces, (i + 1) in a.control)
         print(
             f"\n{path}"
             + (f"  ({img.width}x{img.height}, {os.path.getsize(path) / 1024:.0f} KB, {img.format})" if img else "")

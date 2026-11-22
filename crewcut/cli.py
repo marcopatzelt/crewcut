@@ -275,6 +275,11 @@ def build_parser() -> argparse.ArgumentParser:
     tm.add_argument("--way", choices=["codex", "api"], default=None)
     tm.add_argument("--variants", type=int, default=1)
     tm.add_argument("--out", help="folder in the episode, default graphics/thumbnail")
+    tm.add_argument("--format", help="format id of the variant (default: from the round's SET.json)")
+    tm.add_argument("--control", action="store_true", help="the control variant in the channel's proven style")
+    tm.add_argument("--edit", help="edit this image (in the episode) instead of a new image: it keeps the person's face")
+    tm.add_argument("--tries", type=int, help="tries per image when the face check finds the wrong face")
+    tm.add_argument("--no-face-check", action="store_true", help="skip the face check right after each image")
     tf = tsub.add_parser("formats", help="the format library of the style pack")
     tf.add_argument("formats_cmd", nargs="?", choices=["list", "show"], default="list")
     tf.add_argument("id", nargs="?")
@@ -290,6 +295,8 @@ def build_parser() -> argparse.ArgumentParser:
     ts.add_argument("--title")
     ts.add_argument("--body")
     ts.add_argument("--preview", help="optional preview image for the card (e.g. the 160 px sheet)")
+    from .thumbnail import identity as _identity
+    _identity.add_parser(tsub)
 
     y = sub.add_parser("youtube", help="YouTube Data API: sign in, upload, status")
     ysub = y.add_subparsers(dest="ycmd", required=True)
@@ -762,6 +769,9 @@ def _run(a) -> int:
         if a.tcmd == "set":
             from .thumbnail import variety
             return variety.cli(a)
+        if a.tcmd == "face":
+            from .thumbnail import identity
+            return identity.cli(a)
         from .thumbnail import make
         return make.cli(a)
     if a.cmd == "youtube":

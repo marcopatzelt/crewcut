@@ -99,7 +99,7 @@ def test_plan_needs_formats_kinds_and_a_new_hook():
     assert any("A and B share the same text" in p for p in variety.check_plan(same_text, LIB))
     short = plan()
     short["variants"] = short["variants"][:2]
-    assert any("exactly 3" in p for p in variety.check_plan(short, LIB))
+    assert any("needs 3 to 5" in p for p in variety.check_plan(short, LIB))
     unknown = plan()
     unknown["variants"][1]["format"] = "nothing"
     assert any("not in the format library" in p for p in variety.check_plan(unknown, LIB))

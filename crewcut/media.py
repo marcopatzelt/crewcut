@@ -39,6 +39,7 @@ ALL_ROOTS = (("render", None), ("graphics", None), ("review", None), ("work", "s
 _REF = re.compile(r"^\d{1,2}-")              # inputs of a thumbnail round: 1-photo.jpg, 3-result.png, 1-still-88.0s.png
 _ROUND = re.compile(r"^v(\d+)\b", re.I)      # graphics/thumbnail/v2-face/
 _VARIANT = re.compile(r"^([A-Z])(?:[-_ ](.*))?$")   # graphics/thumbnail/v2-face/A-face-right/
+_RAW = re.compile(r"^\d{8}-\d{6}-(codex|api)-\d+\.", re.I)   # raw output of `crewcut thumbnail make`, not checked
 _VNUM = re.compile(r"(?:^|[^A-Za-z0-9])v(\d+)(?=$|[^0-9])")
 _FRAME = re.compile(r"^\d{4}\.png$")
 _3D = re.compile(r"\b3d\b|blender", re.I)
@@ -105,7 +106,7 @@ def _versions(d: Path, prefix: str) -> list[tuple[int, Path]]:
 # ---- thumbnails ------------------------------------------------------------------------------------------------------
 def _drafts(d: Path) -> list[Path]:
     """Images in d that are thumbnails: not the inputs, preview sheets or 1280x720 upload copies."""
-    return [p for p in _files(d) if p.suffix.lower() in IMAGES and not _REF.match(p.name)
+    return [p for p in _files(d) if p.suffix.lower() in IMAGES and not _REF.match(p.name) and not _RAW.match(p.name)
             and not p.name.lower().startswith("preview-") and "-1280x720" not in p.name]
 
 
@@ -116,8 +117,36 @@ def _best(imgs: list[Path]) -> Path | None:
     return max(imgs, key=lambda p: (p.name.lower().startswith("thumbnail"), vnum(p.name) or 0, _mtime(p)))
 
 
+def _set_variants(group: Path) -> list[tuple[str, str | None, Path]] | None:
+    """A round with a SET.json (`crewcut thumbnail set`) shows only after its set check passed with all images made,
+    and then exactly the images the plan names. None: the round has no SET.json."""
+    plan = _json(group / "SET.json")
+    if not isinstance(plan, dict):
+        return None
+    check = _json(group / "SET-CHECK.json")
+    if not (isinstance(check, dict) and check.get("ok") and check.get("images_ready")):
+        return []
+    out = []
+    for v in plan.get("variants") or []:
+        if not isinstance(v, dict) or not v.get("label") or not v.get("image"):
+            continue
+        try:
+            img = paths.inside(group, str(v["image"]))
+        except ValueError:
+            continue
+        if img.is_file() and img.suffix.lower() in IMAGES:
+            m = _VARIANT.match(img.parent.name)
+            out.append((str(v["label"]), m.group(2) if m else None, img))
+    if any(_mtime(img) > _mtime(group / "SET-CHECK.json") for _, _, img in out):
+        return []                               # an image changed after the check: check again first
+    return out
+
+
 def _variants_in(group: Path) -> list[tuple[str, str | None, Path]]:
     """(id, motif, image) per variant: one folder per variant (A-face-right/), else the images in file order."""
+    planned = _set_variants(group)
+    if planned is not None:
+        return planned
     out: list[tuple[str, str | None, Path]] = []
     for d in _subdirs(group):
         m = _VARIANT.match(d.name)

@@ -26,6 +26,15 @@ Crewcut itself is MIT licensed (`LICENSE`). These parts come from others. Each k
   `templates/3d/`, `templates/motion/plates/` and `examples/launch-film/` are Crewcut's own (MIT); pictures they render
   belong to whoever renders them.
 
+## Face models of the thumbnail identity gate (downloaded at build or first use, checked by SHA-256)
+
+- YuNet face detector (`face_detection_yunet_2023mar.onnx`), MIT, and SFace face recognizer
+  (`face_recognition_sface_2021dec.onnx`), Apache-2.0, both from the OpenCV model zoo,
+  https://github.com/opencv/opencv_zoo. Run with OpenCV (`opencv-python-headless`, Apache-2.0). The image stores them
+  in `/opt/face-models`; `crewcut/thumbnail/identity.py` pins their checksums.
+- The real-photo fallback can call rembg (MIT, https://github.com/danielgatis/rembg) when the user installs it; it is
+  not part of the image.
+
 ## Person matting on rented GPUs (downloaded at run time, never shipped)
 
 - RobustVideoMatting (Peter Lin et al.), https://github.com/PeterL1n/RobustVideoMatting, GPL-3.0. Crewcut does not

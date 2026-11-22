@@ -309,10 +309,34 @@ def test_an_answer_about_an_older_round_is_not_picked(eid, ep):
 
 def test_flat_thumbnails_take_letters_in_file_order(eid, ep):
     for i in (2, 1):
-        png(ep / "graphics" / "thumbnail" / f"20261116-1010{i}0-codex-{i}.png")
+        png(ep / "graphics" / "thumbnail" / f"thumbnail-{i}-v001.png")
     got = media.thumbnails(eid)
     assert [(t["id"], t["label"]) for t in got] == [("A", "Variant A"), ("B", "Variant B")]
-    assert got[0]["url"].endswith("codex-1.png")
+    assert got[0]["url"].endswith("thumbnail-1-v001.png")
+
+
+def test_raw_attempts_stay_hidden(eid, ep):
+    png(ep / "graphics" / "thumbnail" / "20261116-101010-codex-1.png")
+    png(ep / "graphics" / "thumbnail" / "v2-x" / "A-face" / "20261116-101010-codex-1.png")
+    assert media.thumbnails(eid) == []
+
+
+def test_a_planned_round_shows_only_after_its_set_check_passed(eid, ep):
+    import json as _json
+    old = ep / "graphics" / "thumbnail" / "v1-old"
+    png(old / "A-old" / "thumbnail-v001.png")
+    rnd = ep / "graphics" / "thumbnail" / "v2-set"
+    png(rnd / "A-house" / "thumbnail-v001.png")
+    png(rnd / "B-split" / "thumbnail-v001.png")
+    png(rnd / "B-split" / "thumbnail-v002.png")
+    (rnd / "SET.json").write_text(_json.dumps({"variants": [
+        {"label": "A", "image": "A-house/thumbnail-v001.png"}, {"label": "B", "image": "B-split/thumbnail-v001.png"}]}))
+    assert [t["url"].split("/")[-2] for t in media.thumbnails(eid)] == ["A-old"]     # not checked yet
+    (rnd / "SET-CHECK.json").write_text(_json.dumps({"ok": False, "images_ready": True}))
+    assert [t["url"].split("/")[-2] for t in media.thumbnails(eid)] == ["A-old"]     # failed
+    (rnd / "SET-CHECK.json").write_text(_json.dumps({"ok": True, "images_ready": True}))
+    got = media.thumbnails(eid)
+    assert [t["id"] for t in got] == ["A", "B"] and got[1]["url"].endswith("B-split/thumbnail-v001.png")
 
 
 # ---- the strip: background, once per video, cached ---------------------------------------------------------------------

@@ -66,14 +66,16 @@ RUN cd tools && (npm ci --no-audit --no-fund || npm install --no-audit --no-fund
  && npx --yes playwright-core install --with-deps chromium \
  && rm -rf /var/lib/apt/lists/*
 
-# Python side: the app with speech recognition and the YouTube API
+# Python side: the app with speech recognition, the YouTube API and the face models of the thumbnail identity gate
 COPY pyproject.toml README.md LICENSE ./
 COPY crewcut/ crewcut/
+ENV CREWCUT_FACE_MODELS=/opt/face-models
 RUN python3 -m venv /opt/venv \
  && /opt/venv/bin/pip install --upgrade pip \
- && /opt/venv/bin/pip install ".[speech,youtube]" \
+ && /opt/venv/bin/pip install ".[speech,youtube,faces]" \
  && ln -s /opt/venv/bin/crewcut /usr/local/bin/crewcut \
- && bash -lc 'crewcut workspace --help >/dev/null'
+ && bash -lc 'crewcut workspace --help >/dev/null' \
+ && /opt/venv/bin/python -c "from crewcut.thumbnail import identity; identity.ensure_models()"
 
 COPY --from=blender /opt/blender /opt/blender
 RUN if [ -x /opt/blender/blender ]; then ln -s /opt/blender/blender /usr/local/bin/blender; fi
