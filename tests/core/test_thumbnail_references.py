@@ -1,4 +1,5 @@
 import json
+import os
 
 import pytest
 
@@ -72,3 +73,54 @@ def test_episode_reference_cannot_escape_episode(reference_pack):
 def test_no_fixed_references_keeps_existing_flow(crew):
     episode = episodes.create("No fixed photos")["id"]
     assert reference_images(episode, []) == []
+
+
+FAKE_CODEX = r'''#!/usr/bin/env python3
+"""Parses like `codex exec`: --image takes every following value, the prompt comes from stdin otherwise.
+Like Codex in the container, it saves the image in its own folder only, because its sandbox cannot copy it."""
+import json, os, re, sys
+args, images, positional, i = sys.argv[2:], [], [], 0
+while i < len(args):
+    if args[i] == "--image":
+        i += 1
+        while i < len(args) and not args[i].startswith("-"):
+            images.append(args[i]); i += 1
+    elif args[i] in ("--sandbox", "-c"):
+        i += 2
+    elif args[i].startswith("-"):
+        i += 1
+    else:
+        positional.append(args[i]); i += 1
+prompt = positional[0] if positional else sys.stdin.read()
+if not prompt.strip():
+    print("No prompt provided via stdin."); sys.exit(1)
+json.dump({"images": images, "prompt": prompt}, open(os.environ["FAKE_CODEX_SEEN"], "w"))
+from PIL import Image
+folder = os.path.join(os.environ["CODEX_HOME"], "generated_images", "01a2-thread")
+os.makedirs(folder, exist_ok=True)
+Image.new("RGB", (1672, 941), "white").save(os.path.join(folder, "exec-1.png"))
+print(json.dumps({"type": "thread.started", "thread_id": "01a2-thread"}))
+print(json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": "The sandbox blocked saving."}}))
+'''
+
+
+def test_codex_way_attaches_every_reference_and_keeps_the_prompt(tmp_path, monkeypatch):
+    from PIL import Image
+
+    from crewcut.thumbnail.make import codex_command, make_codex
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "codex").write_text(FAKE_CODEX)
+    (bin_dir / "codex").chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    monkeypatch.setenv("FAKE_CODEX_SEEN", str(tmp_path / "seen.json"))
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex"))
+    refs = [tmp_path / "photo.jpg", tmp_path / "style.png"]
+    for r in refs:
+        r.write_bytes(b"synthetic")
+    assert codex_command(refs)[-2:] == ["--image", str(refs[1])]
+    out = make_codex("Marco points at the result. Text: SCHNITT.", refs, tmp_path / "thumb" / "a.png")
+    seen = json.loads((tmp_path / "seen.json").read_text())
+    assert seen["images"] == [str(r) for r in refs]
+    assert seen["prompt"].endswith("PROMPT:\nMarco points at the result. Text: SCHNITT.") and "16:9" in seen["prompt"]
+    assert Image.open(out).size == (1672, 941) and "--json" in codex_command(refs)

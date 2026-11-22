@@ -1,6 +1,7 @@
 """Make thumbnail images from one complete prompt and the reference images.
 
-Way A, Codex: runs the user's own Codex CLI image tool. Generated artifacts are recovered
+Way A, Codex: runs the user's own Codex CLI image tool, one new session per image (like a new ChatGPT
+chat), with the reference images attached and the prompt on stdin. Generated artifacts are recovered
 from Codex's image folder when its workspace sandbox cannot copy them to the requested output.
 Way B, image API: the user's OpenAI key, paid per image, always behind a spend card.
 The method (layouts, one complete new prompt per image, never an edit, checks) lives in skills/thumbnail/.
@@ -9,6 +10,7 @@ The method (layouts, one complete new prompt per image, never an edit, checks) l
 from __future__ import annotations
 
 import base64
+import json
 import os
 import re
 import shutil
@@ -46,14 +48,21 @@ def choose_way(asked: str | None) -> str:
     return ways[0]
 
 
-def codex_command(prompt: str, refs: list[Path], out: Path) -> list[str]:
-    instr = ("Create exactly one image with your image generation tool. Use the attached reference images as "
-             "described in the prompt. Do not edit an earlier image; generate a new one from the complete prompt. "
-             f"Save it as {out.name} in the current folder and reply with the file name only.\n\nPROMPT:\n{prompt}")
-    cmd = ["codex", "exec", "--skip-git-repo-check", "--sandbox", "workspace-write", "-c", 'approval_policy="never"']
+def codex_instruction(prompt: str, out: Path) -> str:
+    return ("Create exactly one image with your image generation tool, in a new image, never an edit of an earlier "
+            "one, and never drawn with code. Use the attached reference images as described in the prompt. Format: "
+            "16:9 landscape (wide, like 1672x941), a YouTube thumbnail; state this format in your image prompt, "
+            "unless the prompt below names another format. "
+            f"Save it as {out.name} in the current folder and reply with the file name only.\n\nPROMPT:\n{prompt}")
+
+
+def codex_command(refs: list[Path]) -> list[str]:
+    """The prompt goes through stdin: `--image` takes several values and would swallow a trailing prompt."""
+    cmd = ["codex", "exec", "--json", "--skip-git-repo-check", "--sandbox", "workspace-write",
+           "-c", 'approval_policy="never"']
     for r in refs:
-        cmd += ["--image", str(r)]  # untested: attach reference images to the first prompt
-    return cmd + [instr]
+        cmd += ["--image", str(r)]
+    return cmd
 
 
 def make_codex(prompt: str, refs: list[Path], out: Path) -> Path:
@@ -61,24 +70,53 @@ def make_codex(prompt: str, refs: list[Path], out: Path) -> Path:
     timeout = int(config.get("thumbnail", "codex_timeout_minutes", 10)) * 60
     from ..engines.codex import Codex
     started = time.time()
-    r = subprocess.run(codex_command(prompt, refs, out), cwd=str(out.parent), capture_output=True, text=True,
-                       timeout=timeout, stdin=subprocess.DEVNULL, env={**os.environ, **Codex().env()})
+    r = subprocess.run(codex_command(refs), cwd=str(out.parent), capture_output=True, text=True, timeout=timeout,
+                       input=codex_instruction(prompt, out), env={**os.environ, **Codex().env()})
     if not out.is_file():
         recover_codex_image(r.stdout or "", out, started)
     if not out.is_file():
-        last = (r.stdout or r.stderr).strip()[-300:]
+        last = (last_codex_message(r.stdout or "") or r.stderr or "").strip()[-300:]
         raise RuntimeError(f"Codex did not save an image (exit {r.returncode}). Its last words: {last}")
     return out
 
 
+def codex_events(output: str) -> list[dict]:
+    events = []
+    for line in output.splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(event, dict):
+            events.append(event)
+    return events
+
+
+def last_codex_message(output: str) -> str:
+    texts = [e["item"].get("text", "") for e in codex_events(output)
+             if e.get("type") == "item.completed" and isinstance(e.get("item"), dict)
+             and e["item"].get("type") == "agent_message"]
+    return texts[-1] if texts else output
+
+
 def recover_codex_image(output: str, out: Path, started: float) -> bool:
-    """Retrieve only a new generated-image artifact referenced by this Codex run."""
+    """Retrieve only a new generated-image artifact of this Codex run.
+
+    Codex saves generated images under CODEX_HOME/generated_images/<thread id>/. Its workspace sandbox often cannot
+    copy them out (inside a container it cannot start at all), and it does not print the path, so the thread id
+    from `--json` finds the folder. A Markdown link in the reply still works as before."""
     from PIL import Image
 
     from ..engines.codex import codex_home
     root = (Path(codex_home()) / "generated_images").resolve()
-    for link in re.findall(r"\]\(([^)]+)\)", output):
-        candidate = Path(link.strip("<>"))
+    candidates = [Path(link.strip("<>")) for link in re.findall(r"\]\(([^)]+)\)", last_codex_message(output))]
+    for event in codex_events(output):
+        thread = str(event.get("thread_id") or "") if event.get("type") == "thread.started" else ""
+        if re.fullmatch(r"[A-Za-z0-9-]+", thread) and (root / thread).is_dir():
+            candidates += sorted((f for f in (root / thread).iterdir() if f.suffix.lower() in (".png", ".jpg", ".jpeg",
+                                                                                           ".webp")),
+                                 key=lambda f: f.stat().st_mtime, reverse=True)
+    for candidate in candidates:
         if not candidate.is_absolute():
             continue
         candidate = candidate.resolve()
