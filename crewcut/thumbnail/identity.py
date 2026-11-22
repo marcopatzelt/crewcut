@@ -468,6 +468,12 @@ def cli(a) -> int:
             res["positives"], res["negatives"] = pos, neg
             res["references"] = gate.ref_names
             print(json.dumps(res, indent=1, ensure_ascii=False))
+            if a.write and not res["separated"]:
+                # A look-alike scores like the person: a threshold above it would reject the real faces too.
+                print("Not written: the face model scores some look-alikes as high as the real faces. A threshold "
+                      "above them rejects real images; keep the pack's value and judge those look-alikes on the "
+                      "face sheet.")
+                return 1
             if a.write:
                 tj = Path(pack.dir) / "thumbnail.json"
                 data = json.loads(tj.read_text(encoding="utf-8"))

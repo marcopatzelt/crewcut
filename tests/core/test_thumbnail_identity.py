@@ -34,6 +34,25 @@ def test_threshold_sits_in_the_gap_or_above_every_lookalike():
         identity.threshold([], [0.2])
 
 
+def test_calibrate_does_not_write_a_threshold_that_rejects_real_faces(pack_with_formats, monkeypatch, capsys):
+    _, root = pack_with_formats
+    before = (root / "thumbnail.json").read_text()
+    sims = {"real-a": 0.78, "real-b": 0.82, "look-a": 0.81, "look-b": 0.33}
+
+    class FakeGate:
+        def __init__(self, *a, **k):
+            self.ref_names = ["frame-1.jpg"]
+
+        def measure(self, path):
+            return {"similarity": sims[str(path).rsplit("/", 1)[-1]]}
+    monkeypatch.setattr(identity, "Gate", FakeGate)
+    a = types.SimpleNamespace(facecmd="calibrate", positive=["real-a", "real-b"], negative=["look-a", "look-b"],
+                              write=True, episode=None)
+    assert identity.cli(a) == 1
+    assert "Not written" in capsys.readouterr().out
+    assert (root / "thumbnail.json").read_text() == before
+
+
 def test_gate_passes_the_person_and_fails_a_lookalike(tmp_path):
     embed = fake_embed({"lookalike": "lookalike", "empty": "none"})
     gate = identity.Gate([tmp_path / "marco-photo.jpg", tmp_path / "marco-frame.jpg"], 0.6, embed)
