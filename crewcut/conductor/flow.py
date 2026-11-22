@@ -176,6 +176,20 @@ def on_card_decided(card: dict) -> None:
     from . import review
     if review.on_limit_card(card):   # the Critic's last round still said back; the user decides
         return
+    tl = (card.get("data") or {}).get("time_limit")
+    if tl:   # a run hit the time limit twice
+        if accepted:
+            j = db.get("jobs", tl["job"]) or {}
+            queue.add(episode, card.get("identity") or j.get("identity") or "editor", card.get("step"),
+                      f"The user said continue (card #{card['id']}). Your run (job {tl['job']}) stopped at the time "
+                      "limit. Continue where you stopped; do not redo finished parts." +
+                      ("" if tl.get("resume") else "\n\nYour task was:\n" + (j.get("task") or "")),
+                      heavy=bool(j.get("heavy")),
+                      data={k: v for k, v in (("resume", tl.get("resume")), ("continues", tl.get("continues")),
+                                              ("time_limits", 1)) if v})
+        else:
+            post(episode, "It stays stopped. Say in the chat what should happen instead.", card=card["id"])
+        return
     if episode == ONBOARDING:
         if kind == "profile" and accepted:
             db.kv_set("onboarded", "1")
@@ -313,6 +327,8 @@ def after_job(job: dict, res) -> None:
         from .. import interview
         interview.after_ask_job(job, res.ok)
     if not res.ok:
+        if getattr(res, "timed_out", False) and episode and _after_time_limit(job, res):
+            return
         from .. import team
         name = (team.get(job["identity"]) or {}).get("name", job["identity"])
         post(target, f"{name} stopped: {engines.scrub(res.error)[:200]}. Say \"try again\" and I restart it.")
@@ -325,6 +341,61 @@ def after_job(job: dict, res) -> None:
         if job["identity"] in ("editor", "designer"):
             from ..cut import prune
             prune.after_write(paths.episode_dir(episode))   # older intermediate renders go (the newest two stay)
+
+
+def _files_since(episode: str, started: str | None, limit: int = 15) -> list[str]:
+    """The episode's files written since a run started, newest first (what that run made so far)."""
+    since = db.parse_time(started) or 0
+    root = paths.episode_dir(episode)
+    found = []
+    for p in root.rglob("*"):
+        rel = p.relative_to(root)
+        if rel.parts[0].startswith(".") or not p.is_file():
+            continue
+        try:
+            t = p.stat().st_mtime
+        except OSError:
+            continue
+        if t >= since:
+            found.append((t, str(rel)))
+    found.sort(reverse=True)
+    out = [r for _, r in found[:limit]]
+    return out + ([f"… and {len(found) - limit} more"] if len(found) > limit else [])
+
+
+def _after_time_limit(job: dict, res) -> bool:
+    """A crew member's run hit the time limit in the middle of its work. The first time it continues by itself, in the
+    same session; the second time a card asks the user. True when handled here."""
+    from .. import approvals, team
+    if job.get("kind") != "agent" or queue.is_reply(job):
+        return False
+    d = job.get("data") or {}
+    name = (team.get(job["identity"]) or {}).get("name", job["identity"])
+    minutes = round((db.parse_time(job.get("ended")) or 0) - (db.parse_time(job.get("started")) or 0)) // 60
+    files = _files_since(job["episode"], job.get("started"))
+    session = res.session or d.get("session")
+    resume = {"resume": {"engine": d.get("engine"), "session": session}} if session and d.get("engine") else {}
+    first = d.get("continues") or job["id"]
+    if int(d.get("time_limits") or 0) >= 1:   # it continued once already: the user decides
+        approvals.propose(job["episode"], job.get("step"), "other",
+                          f"{name} hit the time limit twice: continue once more?",
+                          body=(f"Job {job['id']} stopped after {minutes} min, for the second time (first: job "
+                                f"{first}). Files so far: {', '.join(files) or 'none'}.\n\nYes: it continues where it "
+                                "stopped. No: it stays stopped; say in the chat what should happen instead."),
+                          identity=job["identity"], job=None,
+                          data={"time_limit": {"job": job["id"], "continues": first, **resume}})
+        return True
+    task = (f"Your last run (job {job['id']}) stopped at the time limit after {minutes} min, in the middle of the "
+            "work. Continue where you stopped: do not start again and do not redo finished parts. Files so far: "
+            f"{', '.join(files) or 'none written yet'}. Check what is done, then finish the rest of the task.")
+    if not resume:
+        task += "\n\nYour task was:\n" + job["task"]
+    jid = queue.add(job["episode"], job["identity"], job.get("step"), task, heavy=bool(job.get("heavy")),
+                    data={**resume, "continues": first, "time_limits": int(d.get("time_limits") or 0) + 1})
+    db.update("jobs", jid, doing="Continuing after the time limit")
+    post(job["episode"], f"{name} hit the time limit after {minutes} min and continues where it stopped (once; a "
+         "second time I ask you).", job=jid)
+    return True
 
 
 def on_upload(episode: str, files: list[str]) -> int:
