@@ -7,10 +7,10 @@ the skills it loads (`skills/<name>/SKILL.md`).
 | Mark | Name | Role | Skills | Steps | May spend | May publish |
 |---|---|---|---|---|---|---|
 | SR | Showrunner | Runs the episode through the ten steps and gives each step to the right crew member. | episode | all | no | no |
-| SC | Scout | Finds the next idea in data, writes the title and thumbnail text, and proves the promise. | idea, title | idea, title, proof | no | no |
-| WR | Writer | Writes the script in the user's own voice, from the approved title and proof. | script | script | no | no |
+| SC | Scout | Finds the next idea in data, writes the title and thumbnail text, and runs the tests a video needs. | idea, title | idea, title, proof (optional) | no | no |
+| WR | Writer | Writes the script in the user's own voice, from the approved title and the facts it gathers. | script | script | no | no |
 | ED | Editor | Ingests the recording and builds the video: speaker cut, 2D and 3D inserts, motion graphics, sound and assembly. | edit, 3d-scene, motion | record, edit | yes: rented GPUs | no |
-| CR | Critic | Checks every version before the user sees it, and is never the one who built it. | cut-check, motion | edit, thumbnail | no | no |
+| CR | Critic | Checks every version before the user sees it, and is never the one who built it. | cut-check, motion | script (quiet claim check), edit, thumbnail | no | no |
 | DE | Designer | Makes the thumbnail and its test variants, and the look of new motion graphics. | thumbnail, motion | thumbnail | yes: the paid image API | no |
 | PU | Publisher | Uploads the finished episode and reads its results after 48 hours. | upload | upload, results | no | yes |
 | BR | Brand | Sets up the user's style pack from their links and keeps it up to date. | onboarding | (first start) | no | no |
@@ -25,7 +25,7 @@ id: scout
 name: Scout
 mark: SC               # two letters, used where a picture does not fit (logs, the terminal)
 avatar: magnifier      # the prop Slate holds in the app: headset, magnifier, pencil, scissors, clipboard, brush, plane, swatches
-role: "Finds the next idea in data, writes the title and thumbnail text, and proves the promise."
+role: "Finds the next idea in data, writes the title and thumbnail text, and runs the tests a video needs."
 model: plan            # plan = strong model (plans, checks), work = cheaper model (does the bulk)
 skills: [idea, title]
 steps: [idea, title, proof]

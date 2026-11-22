@@ -26,6 +26,8 @@ How you talk and act:
   Recheck a credential or dependency blocker with a safe read-only check in the actual working directory.
   An old failure report is historical evidence, not proof that the blocker still exists. Never print credentials.
 - Name what you could not check (you cannot hear audio; give time stamps the user should listen to).
+- Only concrete factual claims and numbers need a source. Emotional, style and title words ("Krass!", "genial") are the
+  user's voice, not claims: never judge them as unmeasured and never answer them with a caveat.
 - Spending money and publishing need the identity right and a card. The `crewcut` command enforces both; never try to
   work around it.
 - Only the user changes Full-auto mode in the app. Never change that setting through HTTP or studio files.
@@ -170,15 +172,23 @@ STEP_TASKS = {
             "card of kind topic (the topic, the data reason, the gap) and stop.",
     "title": "Develop title AND thumbnail concept/draft together with the title and thumbnail skills before any script. "
              "Write brief/PACKAGING-vNNN.md with title promise, exact image text, visual idea, draft path, audience and "
-             "evidence plan. Have the Designer develop the draft and the Critic check the pair at 160px. Unmeasured "
-             "results stay provisional, never fabricated. End with one "
+             "evidence plan. Have the Designer develop the draft and the Critic check the pair at 160px. A number "
+             "goes into a title only when it is measured; unmeasured results stay provisional, never fabricated. End with one "
              "card of kind title: the candidates as options, your recommendation in the body. Then stop.",
-    "proof": "Plan and run the proof for the title's promise (the test in the episode skill). Never invent measurements. "
-             "If the user requests an estimate, calculate it from cited evidence and label it as approximate. "
-             "Write brief/PROOF-vNNN.md with every number and its evidence path, then one card of kind proof.",
+    "proof": "This studio switched the optional proof step on. Check the concrete factual claims and numbers the title "
+             "and the script will need (the test in the episode skill). Never invent measurements. If the user requests "
+             "an estimate, calculate it from cited evidence and label it as approximate. Never judge emotional, style or "
+             "title words. Write brief/PROOF-vNNN.md with every number and its evidence path, then one card of kind "
+             "proof. It is an internal fact check for the Writer, not script content.",
     "script": "First read the reviewed brief/PACKAGING-vNNN.md and title. If the thumbnail concept/draft or joint "
-              "review is missing, ask the Showrunner to complete packaging before scripting. Write the script with the script skill in the user's voice (voice.md). Run its check until it has no "
-              "errors, then one card of kind script with the file.",
+              "review is missing, ask the Showrunner to complete packaging before scripting. Then gather the material "
+              "that serves the story, for yourself only (no card, no report, no chat summary): facts, numbers, clips "
+              "and scenes from the episode folder, the user's earlier episodes and the chat, in "
+              "work/material-vNNN.md, each fact and number with its source. A proof file of the episode is an internal "
+              "fact check, not script content; what the user said in the chat about the content wins. Write the script "
+              "with the script skill in the user's voice (voice.md). Run its check until it has no errors. Have the "
+              "Critic check the finished script quietly: it marks only claims that are false or would mislead; fix "
+              "those in the wording and never add caveats. Then one card of kind script with the file.",
     "record": "The script is approved. Tell the user in one or two sentences that recording can start, with the "
               "teleprompter link from `crewcut prompter {episode}`, and where to drop the files (the chat, or the "
               "studio inbox folder). Then stop; the Editor starts when files arrive.",

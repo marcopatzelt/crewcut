@@ -33,8 +33,14 @@ max_rounds = 2             # rounds (message and answer) per topic, then the Sho
 max_fix_rounds = 3         # fix rounds between the Critic and the builder per piece of work
 max_per_episode = 20       # crew messages per episode
 
+[steps]
+# Optional steps of a new episode (older episodes skip them when they get there). Proof is a separate fact check with
+# its own card. Off: the Writer gathers the facts, numbers, clips and scenes that serve the story while preparing the
+# script, with no card and no report, and the Critic quietly checks the finished script for false or misleading claims.
+proof = false
+
 [queue]
-heavy_parallel = 1         # heavy jobs (render, transcription, assembly) at the same time
+heavy_parallel = 1        # heavy jobs (render, transcription, assembly) at the same time
 
 [render]
 location = "local"         # where motion graphics render: "local" (this computer, needs effectcraft-cli; the image has

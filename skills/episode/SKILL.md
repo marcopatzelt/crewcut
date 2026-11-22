@@ -1,6 +1,6 @@
 ---
 name: episode
-description: "The conductor's method for one episode: the ten steps from idea to the 48-hour check, who does each step, which card the user approves, the rules for step 3 (proof), and how the episode status stays true. Use when a new episode starts or the next step is unclear: \"new episode\", \"start a video\", \"next video\", \"what is next\", \"where are we\", \"episode status\", \"run the episode\". Not for the work inside one step when it is clear which skill does it."
+description: "The conductor's method for one episode: the ten steps from idea to the 48-hour check, who does each step, which card the user approves, the optional step 3 (proof, off by default), and how the episode status stays true. Use when a new episode starts or the next step is unclear: \"new episode\", \"start a video\", \"next video\", \"what is next\", \"where are we\", \"episode status\", \"run the episode\". Not for the work inside one step when it is clear which skill does it."
 ---
 
 # Episode
@@ -25,13 +25,15 @@ crewcut chat --episode <id> --last 12                  # what the user said late
 
 ## 2. The ten steps
 
-A step starts when the step before it is done. The blog (8) is planned; it may later run next to 6 and 7.
+A step starts when the step before it is done. The blog (8) is planned; it may later run next to 6 and 7. Proof (3) is
+optional and off by default (`[steps] proof` in `config/crewcut.toml`); a step that is off shows "switched off" and
+the episode goes from title straight to script.
 
 | # | Step | Who | Skill | Result in `episodes/<id>/` | Done when | Card |
 |---|---|---|---|---|---|---|
 | 1 | `idea` | Scout | `skills/idea/` | `brief/BRIEF.md` (topic, source, data) | the user said yes to the topic | `topic` |
 | 2 | `title` | Scout | `skills/title/` | `brief/TITLE-vNNN.md` | the user chose a title and the thumbnail text | `title` |
-| 3 | `proof` | Scout | this skill, section 3 | `brief/PROOF-vNNN.md`, raw data in `review/` | every number for title and script has evidence | `proof` |
+| 3 | `proof` (optional, off by default) | Scout | this skill, section 3 | `brief/PROOF-vNNN.md`, raw data in `review/` | every factual claim and number for title and script has evidence | `proof` |
 | 4 | `script` | Writer | `skills/script/` | `brief/SCRIPT-vNNN.md` | script check 0 errors, the user approved it | `script` |
 | 5 | `record` | the user; Editor ingests | `skills/edit/` | `originals/`, `brief/ingest-*.json` | every take is saved and its sound checked to the end | none |
 | 6 | `edit` | Editor, then Critic | `skills/edit/` | `edit/plan-vNNN.json`, `export/<id>-vNNN-preview.mp4`, `review/cut-check-vNNN.json` | 0 errors in the cut check, the user approved the preview, the final is built | `preview`, then `final` |
@@ -50,9 +52,21 @@ exactly that. So step 2 always comes before step 4.
 files, the last full take counts, no cut into running speech, re-takes) live in `skills/edit/`. Read them before the
 first file is ingested.
 
-## 3. Step 3: proof
+## 3. Facts and tests: inside the script step, or the optional step 3
 
-There is no own skill for the test that proves the promise. The Scout runs it with these rules.
+By default there is no proof step and no proof card. The Writer gathers the material that serves the story while
+preparing the script: facts, numbers, clips and scenes, for itself only in `work/material-vNNN.md`, with no card and
+no report for the user. A test that needs a run follows the rules below; the Writer asks the Showrunner to give it to
+the Scout (or, when it costs money, to the Editor).
+
+What needs a source: concrete factual claims and numbers. What never does: emotional, style and title words ("Krass!",
+"genial"). They are the user's voice, not claims; never judge them as unmeasured. The user's own title rule (a number
+only when it is measured) stays. The Critic quietly checks the finished script and marks only claims that are false or
+would mislead; the Writer fixes the wording. Limits go into the script only where leaving them out would mislead the
+viewer, in one sentence, never as a list of caveats.
+
+A studio that wants a separate fact check with its own card switches step 3 on (`[steps] proof = true`). Its result
+is an internal fact check for the Writer, never script content.
 
 1. **Real measurements only.** Nothing estimated, nothing invented. A number without evidence does not go into title
    or script.
@@ -68,8 +82,9 @@ There is no own skill for the test that proves the promise. The Scout runs it wi
 8. **Heavy runs** (GPU, many hours) go through the job queue. Anything that costs money needs a `spend` card; only an
    identity with `may_spend: true` rents. Ask the Editor through `crewcut job add`.
 
-Result: `brief/PROOF-vNNN.md` with one line per number: the value, what it measures, and the path of its evidence in
-`review/`. Then the `proof` card: "what goes into the video".
+Result: one line per fact or number: the value, what it measures, and the path of its evidence in `review/`. In the
+script step it stays in `work/material-vNNN.md`. Only when step 3 is on, it is `brief/PROOF-vNNN.md` with the `proof`
+card.
 
 ## 4. Cards and approvals
 

@@ -70,3 +70,28 @@ def test_invalid_lifecycle_is_rejected(crew):
     project = episodes.create("Example")
     with pytest.raises(ValueError):
         episodes.set_lifecycle(project["id"], "published")
+
+
+def test_proof_is_optional_and_off_by_default(crew, studio):
+    proof = episodes.create("Default studio")["steps"]["proof"]
+    assert proof["status"] == "skipped" and proof["note"] == episodes.SWITCHED_OFF
+    (studio / "config").mkdir()
+    (studio / "config" / "crewcut.toml").write_text("[steps]\nproof = true\n")
+    assert episodes.create("Proof switched on")["steps"]["proof"]["status"] == "open"
+
+
+def test_title_yes_goes_straight_to_script_when_proof_is_off(crew, studio, monkeypatch):
+    from crewcut.conductor import flow
+    started = []
+    monkeypatch.setattr(flow, "start_step", lambda episode, step, seed="": started.append(step))
+    (studio / "config").mkdir()
+    cfg = studio / "config" / "crewcut.toml"
+    cfg.write_text("[steps]\nproof = true\n")
+    eid = episodes.create("Began while proof was on")["id"]
+    cfg.write_text("[steps]\nproof = false\n")
+    episodes.set_step(eid, "idea", "done")
+    flow.on_card_decided({"id": 1, "episode": eid, "kind": "title", "status": "accepted", "title": "Pick a title",
+                          "options": ["Claude cuts my videos now. Wow!"], "choice": 0})
+    assert started == ["script"]
+    p = episodes.read(eid)
+    assert p["steps"]["proof"]["status"] == "skipped" and p["title"] == "Claude cuts my videos now. Wow!"

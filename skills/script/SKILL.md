@@ -1,6 +1,6 @@
 ---
 name: script
-description: "Writes the spoken script of an episode in the user's own voice (voice.md), in teleprompter form, after title and proof are fixed: opening that delivers the title's promise, small stories with rising stakes, the critical side, a verdict in its own form, the channel's closing line. skills/script/scripts/script_check.py checks form, sentences, opening, ending, numbers against the proof, and length. Delivered through the web teleprompter (crewcut prompter). Use when: \"write the script\", \"teleprompter text\", \"rewrite the script\", \"shorten the script\", \"make it sound natural\", \"script for the episode\". Not for titles or thumbnails. Short scripts: the `--short` mode of the check and skills/shorts."
+description: "Writes the spoken script of an episode in the user's own voice (voice.md), in teleprompter form, after the title is fixed: opening that delivers the title's promise, small stories with rising stakes, the critical side, a verdict in its own form, the channel's closing line. skills/script/scripts/script_check.py checks form, sentences, opening, ending, numbers against the gathered facts, and length. Delivered through the web teleprompter (crewcut prompter). Use when: \"write the script\", \"teleprompter text\", \"rewrite the script\", \"shorten the script\", \"make it sound natural\", \"script for the episode\". Not for titles or thumbnails. Short scripts: the `--short` mode of the check and skills/shorts."
 ---
 
 # Script
@@ -11,7 +11,13 @@ or proves the promise of title and thumbnail.
 ## Before you write
 
 1. Title and thumbnail text are approved (`brief/TITLE-vNNN.md`). No title, no script.
-2. The proof is approved (`brief/PROOF-vNNN.md`). Never invent a number, an experience or a quote. If something is
+2. **Gather the material that serves the story**, for yourself only: no card, no report, no chat summary. Facts,
+   numbers, clips and scenes from the episode folder, the user's earlier episodes and the chat go into
+   `work/material-vNNN.md`, each fact and number with its source (a file path or a link). Pick what makes the story
+   stronger, not everything that is true. Only concrete factual claims and numbers need a source; emotional, style and
+   title words ("Krass!", "genial") are the user's voice, never claims to measure. A proof file
+   (`brief/PROOF-vNNN.md`, only when the studio switched step 3 on) is an internal fact check, not script content; what
+   the user said in the chat about the content wins. Never invent a number, an experience or a quote. If something is
    missing, ask through the chat (`crewcut say`) before writing; the script has no gaps or placeholders.
 3. Read `voice.md` (how the user speaks, words to use and to avoid), `brand/rules/script.md`, and the length in
    `edit-style.json` (`length_minutes`) with the speaking rate in `channel.json` (`script.words_per_minute`).
@@ -33,8 +39,9 @@ Two forms. Use the **test form** for a tool or a claim; use the **story form** w
 6. **Small stories with rising stakes.** Each block between opening and verdict has a goal, an obstacle and a solution;
    from block to block the stakes rise (more data, more money, a harder test). The strongest test comes last, before
    the verdict; the opening may announce it but not give it away.
-7. **The critical side.** The vendor's number against the own or an independent measurement; the limits. If the tool
-   does not keep its promise, say it, and the title goes back to the title step.
+7. **The critical side.** The vendor's number against the own or an independent measurement. A limit goes in only
+   where leaving it out would mislead the viewer, in one sentence, never as a list of caveats. If the tool does not
+   keep its promise, say it, and the title goes back to the title step.
 8. **The verdict, in its own form** each time: a task for the viewer, the one number that stays, what it means for the
    user's own work, a callback to the opening image. Not a fixed closing question.
 9. **The end.** If `channel.json` has an offer or must-mention (`script.end_mentions`), it comes in the last sentences,
@@ -70,7 +77,7 @@ The user reads from a phone next to the camera.
 
 ## Steps
 
-1. Fill the structure with the proven numbers.
+1. Fill the structure with the gathered facts and numbers.
 2. Cut: every sentence carries or proves the promise.
 3. Bring it into the user's voice. Read every sentence in your head: would the user say this into the camera?
 4. Write the draft to `work/script-draft-vNNN.md` with the next free number; never overwrite a version.
@@ -79,12 +86,15 @@ The user reads from a phone next to the camera.
    applied>"`.
 6. Check until 0 errors:
    `python3 skills/script/scripts/script_check.py brief/SCRIPT-vNNN.md --title "<title>" --name "<tool>"
-   --proof brief/PROOF-vNNN.md`. Read every warning and hint; a hint you keep gets one sentence of reason below `---`.
+   --facts work/material-vNNN.md`. Read every warning and hint; a hint you keep gets one sentence of reason below `---`.
    If you change the script to pass the check, record the pass again: the card needs the record of the exact file.
-7. Card: `crewcut card propose --episode <id> --step script --kind script --title "Script, version N" --file
+7. **Quiet claim check.** Have the Critic read the finished script against `work/material-vNNN.md`. It marks only
+   claims that are false or would mislead the viewer, never a word of feeling or style. Fix those in the wording itself and run
+   step 6 again; never add a caveat because of a note. Nothing of this goes to the user.
+8. Card: `crewcut card propose --episode <id> --step script --kind script --title "Script, version N" --file
    brief/SCRIPT-vNNN.md --body "<words>, about <min> min, check: 0 errors"`, then `crewcut card wait`. The card shows
    "Humanized" with what changed; without the record it is refused and says what to run.
-8. After the yes: `crewcut prompter <id>` prints the phone link and a QR code. Tell the user in one message: the link,
+9. After the yes: `crewcut prompter <id>` prints the phone link and a QR code. Tell the user in one message: the link,
    how many parts, about how long. The teleprompter shows only the text above `---`.
 
 ## Humanizer pass

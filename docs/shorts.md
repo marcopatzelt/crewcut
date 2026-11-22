@@ -7,7 +7,7 @@ A Short is its own small episode in portrait (1080 x 1920) with fewer steps. Two
 | Material | an episode you already recorded | what you really did, told in 30 to 50 seconds |
 | What you do | one yes | pick an idea, talk freely, record yourself |
 | What for | bring viewers to the long video | test quickly what lands, reach on your own |
-| Steps | Idea, Title, Edit, Thumbnail, Upload, Results (6) | Idea, Title, Proof, Script, Record, Edit, Thumbnail, Upload, Results (9) |
+| Steps | Idea, Title, Edit, Thumbnail, Upload, Results (6) | Idea, Title, Proof (optional, off by default), Script, Record, Edit, Thumbnail, Upload, Results (9) |
 
 Start one by saying it ("make shorts", "make a short about …", "clip episode 3"), or:
 

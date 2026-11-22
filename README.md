@@ -106,7 +106,7 @@ Ten steps. The crew works between them; you decide at each card.
 flowchart TB
     subgraph before["Before you record"]
         direction LR
-        s1["1 · Idea<br/>Scout"] --> s2["2 · Title<br/>Scout"] --> s3["3 · Proof<br/>Scout"] --> s4["4 · Script<br/>Writer"]
+        s1["1 · Idea<br/>Scout"] --> s2["2 · Title<br/>Scout"] --> s3["3 · Proof<br/>optional, off by default"] --> s4["4 · Script<br/>Writer"]
     end
     subgraph after["After you record"]
         direction LR
@@ -117,14 +117,14 @@ flowchart TB
     classDef you fill:#0f7b5f,color:#ffffff,stroke:#0f7b5f
     classDef planned stroke-dasharray: 4 4,color:#888888
     class s5 you
-    class s8,s10 planned
+    class s3,s8,s10 planned
 ```
 
 | Step | What the crew does | What you decide |
 |---|---|---|
 | 1 Idea | The Scout looks at what works in your niche and ranks topics, title and thumbnail first | the topic |
 | 2 Title | Writes title and thumbnail text before a word of script exists | the title |
-| 3 Proof | Runs the test the title promises and collects the numbers that go into the video | what goes in |
+| 3 Proof | Optional and off by default: a separate fact check with its own card. Without it the Writer gathers the facts, numbers, clips and scenes that serve the story while preparing the script, and the Critic quietly checks the finished script for false or misleading claims | nothing (on: the facts) |
 | 4 Script | The Writer writes in your voice, then runs [Humanizer](https://github.com/blader/humanizer) over the draft with your own spoken words as the sample | the script; the card shows what Humanizer changed |
 | 5 Record | Puts the script on your phone as a teleprompter (QR code, with a remote) | you record |
 | 6 Edit | The Editor transcribes, cuts to the last full take of each sentence, plans the motion graphics from what each moment must show (what fits from the shelf, what to build new, what makes this video better than the last), builds 2D, 3D and motion, mixes the sound; the Critic checks every version against your best video before you see it | the motion plan, style frames, the preview |
@@ -212,7 +212,7 @@ with a check when it is done.
 
 | | Crew member | What it does | May |
 |---|---|---|---|
-| <img src="docs/brand/crew/scout.svg" width="56" alt=""> | **Scout** | Finds the topic in data, writes title and thumbnail text, runs the proof | |
+| <img src="docs/brand/crew/scout.svg" width="56" alt=""> | **Scout** | Finds the topic in data, writes title and thumbnail text, runs the tests a video needs | |
 | <img src="docs/brand/crew/writer.svg" width="56" alt=""> | **Writer** | Writes the script in your voice | |
 | <img src="docs/brand/crew/editor.svg" width="56" alt=""> | **Editor** | Ingests your recordings, cuts the speaker, builds 2D and 3D, sound and assembly | rent a GPU, with your card |
 | <img src="docs/brand/crew/critic.svg" width="56" alt=""> | **Critic** | Checks every version against your best video; never the one who built it | |

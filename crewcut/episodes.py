@@ -13,7 +13,7 @@ from . import db, events, paths
 STEPS = [
     {"id": "idea", "n": 1, "label": "Idea", "owner": "scout", "card": "topic"},
     {"id": "title", "n": 2, "label": "Title", "owner": "scout", "card": "title"},
-    {"id": "proof", "n": 3, "label": "Proof", "owner": "scout", "card": "proof"},
+    {"id": "proof", "n": 3, "label": "Proof", "owner": "scout", "card": "proof", "optional": True},
     {"id": "script", "n": 4, "label": "Script", "owner": "writer", "card": "script"},
     {"id": "record", "n": 5, "label": "Record", "owner": "editor", "card": None},
     {"id": "edit", "n": 6, "label": "Edit", "owner": "editor", "card": "preview"},
@@ -23,6 +23,11 @@ STEPS = [
     {"id": "results", "n": 10, "label": "Results", "owner": "publisher", "card": None, "planned": True},
 ]
 STEP_IDS = [s["id"] for s in STEPS]
+# Steps a studio can switch on or off in config/crewcut.toml [steps], with their default. Proof (a separate fact check
+# with its own card) is off by default: the Writer gathers the facts, numbers, clips and scenes that serve the story
+# while preparing the script, without a card or a report.
+OPTIONAL_STEPS = {"proof": False}
+SWITCHED_OFF = "switched off in this studio"
 # A Short is its own small episode with fewer steps (docs/shorts.md): a clip comes from a finished episode, an original
 # is recorded for itself. Steps that a mode does not have are not shown.
 SHORT_STEPS = {
@@ -33,6 +38,25 @@ KINDS = ("episode", "short")
 STATUSES = ("open", "working", "waiting", "done", "skipped", "unknown")
 LIFECYCLES = ("active", "planned", "parked", "archived")
 FOLDERS = ("brief", "originals", "work", "audio", "broll", "graphics", "edit", "render", "review", "export")
+
+
+def step_enabled(step: str) -> bool:
+    """False for an optional step the studio has switched off; every other step is always on."""
+    if step not in OPTIONAL_STEPS:
+        return True
+    from . import config
+    return bool(config.get("crewcut", f"steps.{step}", OPTIONAL_STEPS[step]))
+
+
+def skip_switched_off(steps: dict) -> list[str]:
+    """Mark optional steps that are switched off and not started yet as skipped (also in older episodes). Returns them."""
+    off = []
+    for sid in OPTIONAL_STEPS:
+        st = steps.get(sid)
+        if st is not None and st.get("status") == "open" and not step_enabled(sid):
+            steps[sid] = {"status": "skipped", "note": SWITCHED_OFF, "at": db.now()}
+            off.append(sid)
+    return off
 
 
 def step_info(step: str) -> dict:
@@ -103,6 +127,7 @@ def create(title: str, source: str | None = None, fmt: str | None = None, kind: 
         for sid in STEP_IDS:
             if sid not in step_ids:
                 steps[sid] = {"status": "skipped", "absent": True}
+    skip_switched_off(steps)
     steps["idea"]["status"] = "working"
     project = {
         "id": eid, "title": title, "created": db.now(), "format": fmt, "fps": int(pack.value("edit_style.fps", 25)),

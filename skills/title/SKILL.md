@@ -6,7 +6,7 @@ description: "Writes and checks the YouTube title and the thumbnail text of an e
 # Title
 
 The title comes before the script. Title and thumbnail set what the viewer expects; the video must deliver exactly
-that. The Scout writes the title after the idea step and before the proof and the script.
+that. The Scout writes the title after the idea step and before the script.
 
 Not here: the thumbnail image (`skills/thumbnail/`), the first sentence of the video (`skills/script/`).
 
@@ -19,6 +19,8 @@ Read the thumbnail skill. Save brief/PACKAGING-vNNN.md: title promise, exact ima
 audience, evidence plan and the independent Critic review at 160 px. A title keyword plus a verdict can appear
 in the image; the image must add a different statement, not repeat the title. Numbers are optional.
 Before measurements, label outcomes provisional and never fabricate proof. Recheck the package after the test.
+A number goes into a title only when it is measured. Emotional and style words ("Krass!", "genial") are a hook,
+not a claim: they need no measurement and no caveat, and nobody marks them as unmeasured.
 Do not defer the first visual concept until the edit is done. The later thumbnail step finalizes real evidence.
 
 ## Method
@@ -61,9 +63,9 @@ Do not defer the first visual concept until the edit is done. The later thumbnai
 8. **Card.** `crewcut card propose --episode <id> --step title --kind title --title "Pick a title" --file
    brief/TITLE-vNNN.md --body "Recommendation: option 1. <one sentence why>" --option "<1>" … --option "<5>"`, then
    `crewcut card wait`.
-9. **Hand over.** To the proof step: the promise and the number to measure. To the script: promise, tool, number. To the
-   Designer: title, thumbnail text, verdict, the three variants.
-10. **After the proof, check again.** Do the number and the hook still hold? If not, write a new version and a new card
+9. **Hand over.** To the script (and to the proof step, when the studio switched it on): the promise, the tool and
+   the number to measure. To the Designer: title, thumbnail text, verdict, the three variants.
+10. **After the test, check again.** Does the number still hold? If not, write a new version and a new card
    before the script starts.
 
 A title change after the upload needs a card and goes through `skills/upload/`.

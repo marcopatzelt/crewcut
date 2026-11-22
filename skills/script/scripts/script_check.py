@@ -8,9 +8,9 @@ Limits come from the active style pack (crewcut.brand): channel.json "script", "
 edit-style.json "length_minutes", and voice.md ("## Words to avoid", "## Words to use").
 
   python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --title "The title" --name ToolName
-  python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --proof brief/PROOF-v001.md --json
+  python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --facts work/material-v001.md --json
   python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --text-only     (the spoken part only)
-  python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --short [--language de] [--proof F]
+  python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --short [--language de] [--facts F]
 
 --short checks a Short's script with the reel rules instead (see check_short): word range from edit-style.json
 "shorts.words", more I-sentences than you-sentences, a turn (expectation, then the break), an uneven real number or a
@@ -366,16 +366,17 @@ def check_script(text: str, pack, title: str | None = None, names: list[str] | t
     # 10. The Writer's motion marks: at most five, below the --- line.
     check_motion_marks(text, body, add, passed, stats)
 
-    # 11. No number without proof.
+    # 11. No number without a source (the facts the Writer gathered, or a proof file when that step is on).
     if proof is not None:
         proof_nums = {norm_number(x) for x in NUMBER.findall(proof)}
         script_nums = [x for x in dict.fromkeys(NUMBER.findall(body)) if len(norm_number(x)) >= 2 or "%" in x
                        or "," in x or "." in x]
         missing = [x for x in script_nums if norm_number(x) not in proof_nums]
         if missing:
-            add("warn", "proof", f"numbers not found in the proof file: {', '.join(missing[:8])}. Every number needs proof.")
+            add("warn", "proof", f"numbers not found in the facts file: {', '.join(missing[:8])}. Every number needs a "
+                "source.")
         else:
-            passed.append(f"proof: all {len(script_nums)} numbers appear in the proof file")
+            passed.append(f"proof: all {len(script_nums)} numbers appear in the facts file")
 
     order = {"error": 0, "warn": 1, "hint": 2}
     found.sort(key=lambda f: order[f["level"]])
@@ -590,7 +591,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("file", help="script file, e.g. brief/SCRIPT-v001.md")
     ap.add_argument("--title", help="the approved title; its numbers must be in the opening")
     ap.add_argument("--name", action="append", default=[], help="a name the opening must say (repeatable)")
-    ap.add_argument("--proof", help="proof file (brief/PROOF-vNNN.md); every number in the script must be in it")
+    ap.add_argument("--facts", "--proof", dest="proof", metavar="FILE",
+                    help="the gathered facts (work/material-vNNN.md, or brief/PROOF-vNNN.md when the proof step is on); "
+                         "every number in the script must be in it")
     ap.add_argument("--pack", help="style pack folder (default: the active pack)")
     ap.add_argument("--text-only", action="store_true", help="print only the spoken part")
     ap.add_argument("--short", action="store_true", help="a Short's script: the reel rules instead of the long rules")

@@ -206,6 +206,8 @@ def on_card_decided(card: dict) -> None:
         post(episode, f"{card['title']} · approved" + (f" · {picked}" if picked else ""), card=card["id"])
         from .. import full_auto
         project = episodes.read(episode)
+        if episodes.skip_switched_off(project["steps"]):   # e.g. proof, switched off after this episode began
+            episodes.write(episode, project)
         nxt = (_first_open_step(project) if not full_auto.active(episode) or step not in ("edit", "title", "thumbnail")
                else next((s for s in ("edit", "title", "thumbnail", "upload") if project["steps"].get(s, {}).get("status") != "done"), None))
         if nxt:

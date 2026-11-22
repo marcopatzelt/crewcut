@@ -198,7 +198,7 @@ Environment set by the conductor for every agent run: `CREWCUT_STUDIO`, `CREWCUT
 |---|---|---|---|---|
 | 1 | `idea` | Scout | `brief/BRIEF.md` | topic |
 | 2 | `title` | Scout | `brief/TITLE-vNNN.md` | title and thumbnail text |
-| 3 | `proof` | Scout | `brief/PROOF-vNNN.md`, raw data in `review/` | what goes into the video |
+| 3 | `proof` (optional, off by default: `[steps] proof` in `config/crewcut.toml`) | Scout | `brief/PROOF-vNNN.md`, raw data in `review/`; off: the Writer keeps its facts in `work/material-vNNN.md` | the facts (only when on) |
 | 4 | `script` | Writer | `brief/SCRIPT-vNNN.md` | script |
 | 5 | `record` | the user; Editor ingests | `originals/`, `brief/ingest-<time>.json` | none (the user records) |
 | 6 | `edit` | Editor, then Critic | `work/words-*.json`, `edit/selects-vNNN.json`, `edit/cut-plan-vNNN.json`, `work/speaker-vNNN.mov`, `audio/voice-vNNN.wav`, `work/edit-decisions-vNNN.json`, `work/cut-verification-vNNN.json`, `review/takes-vNNN.json`, `edit/plan-vNNN.json`, `export/<id>-vNNN-preview.mp4`, `review/cut-check-vNNN.json` | mix, preview, then final |
