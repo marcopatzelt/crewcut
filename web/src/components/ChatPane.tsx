@@ -8,7 +8,7 @@ import { ErrorLine, Facts, identityOf, Loading, Media } from "./bits";
 import { Avatar, SlateFigure } from "../slate/Slate";
 import { CardItem } from "./CardView";
 import { ExchangeLine } from "./Exchange";
-import { ago, bytes } from "../lib/format";
+import { ago, bytes, hm } from "../lib/format";
 import { FormattedText } from "./FormattedText";
 import { loadThread, uploadFiles, viewToHash } from "../store/actions";
 import { EMPTY, useUi, type UploadLine } from "../store/store";
@@ -76,6 +76,15 @@ function IdentityMessage({
   );
 }
 
+/** "Delivered to the Editor at 20:05": a running crew member got this message at its next step (conductor/deliver.py). */
+function Delivered({ m, team }: { m: Message; team: Identity[] | undefined }) {
+  if (!m.delivered?.length) return null;
+  const firsts = new Map<string, string>();
+  for (const d of m.delivered) if (!firsts.has(d.identity)) firsts.set(d.identity, d.at);
+  const parts = [...firsts].map(([id, at]) => `the ${identityOf(team, id).name} at ${hm(at)}`);
+  return <div className="delivered">Delivered to {parts.join(", ")}</div>;
+}
+
 function MessageBlock({
   m,
   card,
@@ -98,7 +107,10 @@ function MessageBlock({
       {onlyTitle ? null : m.exchange?.messages?.length ? (
         <ExchangeLine m={m} exchange={m.exchange} team={team} />
       ) : m.author === "user" ? (
-        <div className={fresh ? "user is-new" : "user"}><FormattedText text={m.text} episode={episode} /></div>
+        <>
+          <div className={fresh ? "user is-new" : "user"}><FormattedText text={m.text} episode={episode} /></div>
+          <Delivered m={m} team={team} />
+        </>
       ) : (
         <IdentityMessage m={m} team={team} steps={steps} episode={episode} fresh={fresh} />
       )}

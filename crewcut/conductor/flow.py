@@ -17,7 +17,7 @@ STEP_DONE = {"topic": "idea", "title": "title", "proof": "proof", "script": "scr
 
 def post(episode: str, text: str, author: str = "showrunner", cite: str | None = None, card: int | None = None,
          job: int | None = None, step: str | None = None, preview: str | None = None,
-         facts: list[dict] | None = None, exchange: dict | None = None) -> int:
+         facts: list[dict] | None = None, exchange: dict | None = None, relay_for: list[str] | None = None) -> int:
     if step is None and job:
         step = (db.get("jobs", job) or {}).get("step")
     if step is None and episode and not episode.startswith("_") and author != "user":
@@ -25,7 +25,8 @@ def post(episode: str, text: str, author: str = "showrunner", cite: str | None =
             step = episodes.read(episode).get("step")
         except (FileNotFoundError, ValueError):
             step = None
-    extra = {k: v for k, v in (("preview", preview), ("facts", facts), ("exchange", exchange)) if v}
+    extra = {k: v for k, v in (("preview", preview), ("facts", facts), ("exchange", exchange), ("for", relay_for))
+             if v}
     scope = "channel" if episode == "_channel" else "onboarding" if episode == ONBOARDING else "episode"
     mid = db.insert("messages", at=db.now(), episode="" if scope == "channel" else episode, scope=scope,
                     author=author, text=text, cite=cite, card=card, job=job,
@@ -41,7 +42,10 @@ def message(mid: int) -> dict:
            "scope": m["scope"], "job": m.get("job"), "author": m["author"], "text": m["text"],
            "cite": m.get("cite"), "card": m.get("card"), "step": m.get("step")}
     extra = m.get("data") if isinstance(m.get("data"), dict) else {}
-    out.update({k: extra[k] for k in ("preview", "facts", "exchange") if extra.get(k)})
+    out.update({k: extra[k] for k in ("preview", "facts", "exchange", "for") if extra.get(k)})
+    if out["scope"] == "episode" and (m["author"] == "user" or extra.get("for")):
+        from . import deliver
+        out["delivered"] = deliver.deliveries(mid)   # "Delivered to the Editor at 20:05" under the message
     return out
 
 
@@ -108,6 +112,7 @@ def user_message(episode: str, text: str) -> dict:
     from .. import interview
     if interview.on_message(episode, text, mid):   # while it waits, every message is an interview answer
         return message(mid)
+    from . import deliver
     open_cards = [c for c in _cards(episode) if c["status"] == "open"]
     cards_txt = "; ".join(f"#{c['id']} {c['kind']} '{c['title']}' by {c['identity']}" for c in open_cards) or "none"
     task = (f"The user wrote in the chat of episode {episode}: {text!r}\n"
@@ -118,7 +123,8 @@ def user_message(episode: str, text: str) -> dict:
             "[--choice N]` (never for spend, publish or final cards: those need the button). If it is a correction "
             "that should hold for future videos, propose a rule. If it asks for work, assign it with `crewcut job "
             "add`; the conductor already starts the owner of the next step after every yes, so never add a job for a "
-            "step that is working or waiting. Read the recent chat with `crewcut chat --episode " + episode + " --last 12` if you need context.")
+            "step that is working or waiting. Read the recent chat with `crewcut chat --episode " + episode + " --last 12` if you need context.\n"
+            + deliver.reply_note(episode))
     queue.add(episode, "showrunner", None, task, data={"reply_to": mid})   # the reply lane: no wait behind crew work
     return message(mid)
 

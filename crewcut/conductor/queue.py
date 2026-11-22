@@ -178,6 +178,9 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
     from .. import ownskills
     # step work loads the user's own skill of that step, whoever started the run: the step, the chat or a card answer
     task_text = j["task"] + (ownskills.run_line(ownskills.for_job(j["identity"], j["step"])) if j["step"] else "")
+    from . import deliver
+    if deliver.receives({**j, "status": "running", "started": j.get("started") or db.now()}):
+        task_text += "\n\n" + deliver.prompt_line()   # the user's later chat messages reach this run (deliver.py)
     prompt, agent, with_identity = task_text, None, True
     ident_for_prompt = ident
     if eng.name == "claude":

@@ -104,7 +104,7 @@ A skill never hard-codes a colour, font, logo, loudness or mix limit. It reads t
 | `ledger.py` | cost book: add, totals for today / episode / month, cap | core |
 | `episodes.py` | create and read episodes, `project.json`, the ten steps | core |
 | `studio_import.py` | offline legacy studio copy, manifests and visible references; no jobs or publication | core |
-| `conductor/` | steps, job queue (one heavy job at a time; chat answers in their own reply lane, one per episode), engine runner | core |
+| `conductor/` | steps, job queue (one heavy job at a time; chat answers in their own reply lane, one per episode; a chat message that arrives while a crew member runs reaches it once at its next `crewcut doing`, `say`, `chat` or `card propose`, and the chat shows when, `conductor/deliver.py`), engine runner | core |
 | `engines/` | one interface (`base.py`: Task, Event, RunResult; start, stream, stop, resume), two engines on the user's own subscription (`claude_code.py` default, `codex.py` beta) and the version manager (`versions.py`: newest version, smoke test, way back); see [engine.md](engine.md) | core |
 | `plugin.py` | builds Crewcut as a Claude Code plugin (skills, crew agents, guard hook) | core |
 | `server/` | FastAPI app, API under `/api`, SSE at `/api/events`, teleprompter, serves `web/dist` | core |

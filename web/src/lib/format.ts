@@ -66,15 +66,21 @@ export function day(iso: string, now = new Date()): string {
   return d.getFullYear() === now.getFullYear() ? base : `${base} ${d.getFullYear()}`;
 }
 
+/** "17:05", local time. */
+export function hm(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 /** "Friday 17:00" within a week, else "21 Nov 17:00". */
 export function when(iso: string, now = new Date()): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   const diff = (d.getTime() - now.getTime()) / 86_400_000;
-  if (diff >= 0 && diff < 6.5) return `${days[d.getDay()]} ${hm}`;
-  return `${day(iso, now)} ${hm}`;
+  if (diff >= 0 && diff < 6.5) return `${days[d.getDay()]} ${hm(iso)}`;
+  return `${day(iso, now)} ${hm(iso)}`;
 }
 
 export function sameDay(iso: string | null | undefined, now = new Date()): boolean {

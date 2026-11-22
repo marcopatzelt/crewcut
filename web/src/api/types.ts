@@ -364,6 +364,14 @@ export interface Message {
   facts?: Fact[] | null;
   /** Optional: a finished exchange between two crew members (docs/crew-talk.md), shown as one collapsed line. */
   exchange?: Exchange | null;
+  /** The running crew members this message reached at their next step, and when (conductor/deliver.py). */
+  delivered?: Delivery[] | null;
+}
+
+export interface Delivery {
+  identity: string;
+  job: number;
+  at: string;
 }
 
 /** One direct message between two crew members (docs/crew-talk.md). */

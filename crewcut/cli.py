@@ -150,6 +150,8 @@ def build_parser() -> argparse.ArgumentParser:
     sy.add_argument("--preview", help="a video or image in the episode to show under the message")
     sy.add_argument("--fact", action="append", default=[], help='a row of a small table: "Loudness=-14.1 LUFS"')
     sy.add_argument("--to", help="a crew member: crew talk instead of the chat (only when crew talk is on)")
+    sy.add_argument("--for", dest="relay_for", action="append", default=[],
+                    help="a running crew member that gets this chat message at its next step (the Showrunner relays)")
     sy.add_argument("--about", help="crew talk: the file (or time stamp) the message is about")
     sy.add_argument("--kind", choices=["fix", "question", "notice"], help="crew talk: what the message is")
     sy.add_argument("--expects", choices=["reply", "none"], default=None)
@@ -393,13 +395,34 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"step": "error", "text": str(e)}), flush=True)
             return 2
     try:
-        return int(_run(a) or 0)
+        code = int(_run(a) or 0)
+        _deliver_news(a)
+        return code
     except PermissionError as e:
         print(str(e), file=sys.stderr)
         return 3
     except (FileNotFoundError, ValueError, KeyError) as e:
         print(f"crewcut: {e}", file=sys.stderr)
         return 1
+
+
+NEWS_AT = {"doing", "say", "chat"}   # frequent calls of a running crew member: new chat messages come with them
+
+
+def _deliver_news(a) -> None:
+    """Print the user's chat messages that reached the episode after this job started (conductor/deliver.py)."""
+    jid = _job()
+    if not jid or not (a.cmd in NEWS_AT or (a.cmd == "card" and getattr(a, "ccmd", None) == "propose")):
+        return
+    from .conductor import deliver
+    try:
+        msgs = deliver.take(jid)
+    except Exception as e:  # noqa: BLE001 - delivery must never break the command it rides on
+        print(f"crewcut: could not check for new chat messages ({type(e).__name__}).", file=sys.stderr)
+        return
+    msgs = [m for m in msgs if m["id"] not in getattr(a, "_shown", set())]   # `crewcut chat` printed those already
+    if msgs:
+        print("\n" + deliver.block(msgs), flush=True)
 
 
 def _run(a) -> int:
@@ -547,7 +570,13 @@ def _run(a) -> int:
             return 0
         if a.preview:
             paths.inside(paths.episode_dir(ep), a.preview)
-        flow.post(ep, a.text, author=_identity(), cite=a.cite, job=_job(), preview=a.preview, facts=facts or None)
+        from . import team
+        unknown = [x for x in a.relay_for if team.get(x) is None]
+        if unknown:
+            print(f"crewcut say: no crew member called {', '.join(unknown)}.", file=sys.stderr)
+            return 2
+        flow.post(ep, a.text, author=_identity(), cite=a.cite, job=_job(), preview=a.preview, facts=facts or None,
+                  relay_for=a.relay_for or None)
         return 0
     if a.cmd == "doing":
         jid = _job()
@@ -563,6 +592,7 @@ def _run(a) -> int:
         ep = "_channel" if a.channel or (not a.episode and os.environ.get("CREWCUT_CONVERSATION_SCOPE") == "channel") else _env_episode(a)
         from . import channel
         history = channel.recent(a.last) if ep == channel.TRANSPORT else flow.messages(ep)[-a.last:]
+        a._shown = {m["id"] for m in history} if ep == os.environ.get("CREWCUT_EPISODE") else set()
         for m in history:
             who = "user" if m["author"] == "user" else m["author"]
             card = f" [card #{m['card']}]" if m.get("card") else ""
