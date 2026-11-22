@@ -124,13 +124,15 @@ class Codex(Engine):
             out.append(Event("raw", str(t or "unknown"), {"raw": obj}))  # never swallow an event Crewcut does not know
         return out
 
-    def probe(self, timeout_s: int = 180) -> tuple[bool, str]:
+    def probe(self, timeout_s: int = 180, model: str | None = None) -> tuple[bool, str]:
         ok, why = self.login_status()
         if not ok:
             return False, why
+        cmd = [self.binary(), "exec", "--json", "--skip-git-repo-check", "--sandbox", "read-only"]
+        if model:
+            cmd += ["-m", model]
         try:
-            r = subprocess.run([self.binary(), "exec", "--json", "--skip-git-repo-check", "--sandbox", "read-only",
-                                "Reply with the single word: ok"], capture_output=True, text=True, timeout=timeout_s,
+            r = subprocess.run([*cmd, "Reply with the single word: ok"], capture_output=True, text=True, timeout=timeout_s,
                                env={**os.environ, **self.env()}, stdin=subprocess.DEVNULL)
         except subprocess.TimeoutExpired:
             return False, f"no answer within {timeout_s} s"

@@ -169,3 +169,19 @@ def test_interview_lines_are_marked_and_traced(neutral):
     loose = GOOD + '[[interview: 1 | "words nobody says"]]\n'
     assert "interview" in kinds(sc.check_script(loose, neutral, interview=INTERVIEW), "warn")
     assert "interview_marks" not in sc.check_script(GOOD, neutral)["stats"]   # only with --interview
+
+
+def test_colons_slashes_and_brackets_are_errors_in_every_mode(neutral):
+    text = "Ollama runs five models: all local.\nCost/benefit (roughly) is good.\n\n---\nShots: terminal\n"
+    long = {f["text"].split(":")[0] for f in sc.check_script(text, neutral)["findings"] if f["area"] == "speak"}
+    assert {"a colon", "a slash", "a bracket"} <= long
+    assert any(f["area"] == "speak" for f in sc.check_short(text, neutral, "en")["findings"] if f["level"] == "error")
+
+
+def test_spoken_mode_runs_only_speak_and_story(tmp_path, capsys):
+    f = tmp_path / "SCRIPT-v001.md"
+    f.write_text("Here is the result: 35 cents.\n")
+    assert sc.main([str(f), "--spoken"]) == 1
+    assert "a colon" in capsys.readouterr().out
+    f.write_text("Here is the result. It cost 35 cents.\n")
+    assert sc.main([str(f), "--spoken"]) == 0

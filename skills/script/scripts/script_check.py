@@ -12,6 +12,11 @@ edit-style.json "length_minutes", and voice.md ("## Words to avoid", "## Words t
   python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --interview brief/INTERVIEW-v001.md
   python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --text-only     (the spoken part only)
   python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --short [--language de] [--facts F]
+  python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --spoken    (speak and story checks only)
+
+Every mode checks that the spoken text reads aloud (crewcut.spoken): no colon, semicolon, bracket, slash, arrow, list
+mark or notes section above the line; a script card is refused otherwise. The long mode and --spoken also read the
+story: the plan below --- (premise, arc, 3 to 5 beats), list smell, staged run-ups, repeats, the subscribe line.
 
 --short checks a Short's script with the reel rules instead (see check_short): word range from edit-style.json
 "shorts.words", more I-sentences than you-sentences, a turn (expectation, then the break), an uneven real number or a
@@ -61,6 +66,33 @@ def _brand():
         sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
         from crewcut import brand
     return brand
+
+
+def _spoken():
+    _brand()
+    from crewcut import spoken
+    return spoken
+
+
+def speak_check(text: str, add, passed: list[str]) -> None:
+    """Hard: every mark in the teleprompter text reads aloud (crewcut.spoken). Headings, list marks and timestamps are
+    reported by form_check already."""
+    found = [f for f in _spoken().speakable(MOTION_MARK.sub(" ", text))     # marks: check_motion_marks
+             if f["kind"] not in ("heading", "list", "timestamp")]
+    for f in found:
+        add("error", "speak", f["text"] + ". Say it in words; shot ideas and notes go below ---.")
+    if not found:
+        passed.append("speak: no colon, semicolon, bracket, slash or notes section in the spoken text")
+
+
+def story_check(text: str, add, passed: list[str], lang: str | None = None) -> None:
+    """The story plan below --- and the reading help for the Critic: list smell, staged run-ups, repeats, the place
+    of the subscribe line (crewcut.spoken.story)."""
+    found = _spoken().story(text, lang)
+    for f in found:
+        add(f["level"], f["area"], f["text"])
+    if not any(f["level"] == "error" for f in found):
+        passed.append("story: plan below --- and no strong list smell")
 
 
 def load_pack(pack_dir: str | None = None):
@@ -233,11 +265,7 @@ def form_check(raw: str, dash_lv: str, add, passed: list[str]) -> list[str]:
         if not s:
             clean.append("")
             continue
-        heading = False
-        if re.search(r"[\[\]{}]", s):
-            hit("error", "square or curly bracket (stage notes go below ---)", nr, s)
-        if re.search(r"[()]", s):
-            hit("warn", "round bracket (hard to say aloud)", nr, s)
+        heading = False      # brackets, colons and slashes: speak_check
         if s.startswith("#") or re.match(r"^={2,}", s):
             hit("error", "heading", nr, s)
             heading = True
@@ -272,8 +300,10 @@ def check_script(text: str, pack, title: str | None = None, names: list[str] | t
         if lv in LEVELS:
             found.append({"level": lv, "area": area, "text": msg})
 
-    # 1. Teleprompter form: only words the user says.
+    # 1. Teleprompter form: only words the user says, every mark readable aloud, told as one story.
     clean = form_check(raw, level(pack, "dash"), add, passed)
+    speak_check(text, add, passed)
+    story_check(text, add, passed)
 
     bl = blocks("\n".join(clean))
     if not bl:
@@ -533,6 +563,7 @@ def check_short(text: str, pack, lang: str | None = None, proof: str | None = No
             found.append({"level": lv, "area": area, "text": msg})
 
     clean = form_check(raw, "off", add, passed)          # dashes are in the phrase list
+    speak_check(text, add, passed)
     bl = blocks("\n".join(clean))
     if not bl:
         raise ValueError("no spoken text above the --- line")
@@ -630,6 +661,26 @@ def check_short(text: str, pack, lang: str | None = None, proof: str | None = No
             "manual": ["The user confirms the story really happened (\"This really happened\")."]}
 
 
+def check_spoken(text: str, lang: str | None = None) -> dict:
+    """Only the speak and story checks: for a studio whose own skill has its own script check."""
+    found: list[dict] = []
+    passed: list[str] = []
+
+    def add(lv: str, area: str, msg: str):
+        if lv in LEVELS:
+            found.append({"level": lv, "area": area, "text": msg})
+
+    for f in _spoken().speakable(text):
+        add("error", "speak", f["text"] + ". Say it in words; shot ideas and notes go below ---.")
+    if not found:
+        passed.append("speak: every mark reads aloud")
+    story_check(text, add, passed, lang)
+    order = {"error": 0, "warn": 1, "hint": 2}
+    found.sort(key=lambda f: order[f["level"]])
+    errors = sum(1 for f in found if f["level"] == "error")
+    return {"mode": "spoken", "findings": found, "passed": passed, "errors": errors, "ready": errors == 0}
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Check a spoken script against the method and the style pack.")
     ap.add_argument("file", help="script file, e.g. brief/SCRIPT-v001.md")
@@ -643,6 +694,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--pack", help="style pack folder (default: the active pack)")
     ap.add_argument("--text-only", action="store_true", help="print only the spoken part")
     ap.add_argument("--short", action="store_true", help="a Short's script: the reel rules instead of the long rules")
+    ap.add_argument("--spoken", action="store_true",
+                    help="only the speak and story checks (next to a studio's own script check, which stays as it is)")
     ap.add_argument("--language", help="with --short: language of the word and phrase lists (default: the pack's)")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
@@ -655,6 +708,19 @@ def main(argv: list[str] | None = None) -> int:
         m = re.search(r"^---[ \t]*$", text, re.M)
         sys.stdout.write(text[:m.start()] if m else text)
         return 0
+    if a.spoken:
+        r = check_spoken(text, a.language)
+        r["file"] = str(p)
+        if a.json:
+            print(json.dumps(r, ensure_ascii=False, indent=1))
+        else:
+            print(f"Speak and story check: {p}\n")
+            for f in r["findings"]:
+                print(f"  {f['level']:<5} [{f['area']}] {f['text']}")
+            for x in r["passed"]:
+                print(f"  ok    {x}")
+            print(f"\nResult: {r['errors']} errors. Ready for the user: {'yes' if r['ready'] else 'no'}")
+        return 0 if r["ready"] else 1
     pack = load_pack(a.pack)
     proof = Path(a.proof).read_text(encoding="utf-8") if a.proof else None
     try:

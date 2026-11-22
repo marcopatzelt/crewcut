@@ -107,7 +107,8 @@ class Engine:
     def login_status(self) -> tuple[bool, str]:
         raise NotImplementedError
 
-    def probe(self, timeout_s: int = 120) -> tuple[bool, str]:
+    def probe(self, timeout_s: int = 120, model: str | None = None) -> tuple[bool, str]:
+        """A tiny real call that proves the login; with `model`, that this model runs on the user's plan."""
         raise NotImplementedError
 
     def env(self) -> dict[str, str]:

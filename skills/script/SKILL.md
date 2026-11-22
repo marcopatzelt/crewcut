@@ -1,6 +1,6 @@
 ---
 name: script
-description: "Writes the spoken script of an episode in the user's own voice (voice.md), in teleprompter form, after the title is fixed: opening that delivers the title's promise, small stories with rising stakes, the critical side, a verdict in its own form, the channel's closing line. skills/script/scripts/script_check.py checks form, sentences, opening, ending, numbers against the gathered facts, and length. Delivered through the web teleprompter (crewcut prompter). Use when: \"write the script\", \"teleprompter text\", \"rewrite the script\", \"shorten the script\", \"make it sound natural\", \"script for the episode\". Not for titles or thumbnails. Short scripts: the `--short` mode of the check and skills/shorts."
+description: "Writes the spoken script of an episode in the user's own voice (voice.md), in teleprompter form, after the title is fixed: a story plan first (premise, arc, beats), opening that delivers the title's promise, small stories with rising stakes, the critical side, a verdict in its own form, the channel's closing line. skills/script/scripts/script_check.py checks form (every mark reads aloud), story (plan, list smell, run-ups), sentences, opening, ending, numbers against the gathered facts, and length. Delivered through the web teleprompter (crewcut prompter). Use when: \"write the script\", \"teleprompter text\", \"rewrite the script\", \"shorten the script\", \"make it sound natural\", \"script for the episode\". Not for titles or thumbnails. Short scripts: the `--short` mode of the check and skills/shorts."
 ---
 
 # Script
@@ -33,6 +33,11 @@ or proves the promise of title and thumbnail.
 4. Read `voice.md` (how the user speaks, words to use and to avoid), `brand/rules/script.md`, and the length in
    `edit-style.json` (`length_minutes`) with the speaking rate in `channel.json` (`script.words_per_minute`).
 5. Read the endings of the last three scripts, so this verdict takes a new form.
+6. **Story first** (`references/story.md`). Before the first sentence of the draft, write the story plan into the
+   script notes below `---`: one premise sentence (the through-line), the arc (hook, tension or problem, turning point,
+   payoff, close) and the 3 to 5 beats that serve it. Brief items, chat notes and interview answers are a material
+   pool: take what serves the arc and drop the rest. An example the user gives is a hint at the kind of moment, never
+   a line to insert word for word. The card is refused for a long script without this plan.
 
 ## Structure
 
@@ -58,6 +63,11 @@ Two forms. Use the **test form** for a tool or a claim; use the **story form** w
 9. **The end.** If `channel.json` has an offer or must-mention (`script.end_mentions`), it comes in the last sentences,
    in the user's words. The last sentence is the channel's `closing_line` when there is one.
 
+**Transitions.** Each beat ties to the one before with cause or contrast ("deshalb", "aber", "und dann"; "so", "but",
+"and then"), never with a new topic. A new topic needs a bridge sentence. A paragraph that could swap places with its
+neighbour is a list item: tie it in or cut it. No staged run-ups ("Jetzt kommt der Teil, der alles ändert", "here's
+where it gets interesting") and no idea told twice.
+
 **Comparison videos:** at most two blocks with the same build in a row; the third changes form. A new hook at the half.
 Each statement once. Cost and time of all candidates once, together on screen, not at the end of every block.
 
@@ -75,7 +85,11 @@ Each statement once. Cost and time of all candidates once, together on screen, n
 
 The user reads from a phone next to the camera.
 
-- Only spoken text above a line `---`. Notes for the edit (scenes, clips, where each number comes from) go below it.
+- Only spoken text above a line `---`. Notes for the edit (the story plan, scenes, clips, where each number comes
+  from) go below it; shot ideas under "Shots" ("Bildideen"). The teleprompter shows nothing below the line.
+- **Every mark reads aloud.** No colon, semicolon, bracket, slash, arrow or list mark in the spoken text: say it in
+  words ("rund 35 Cent", not "Ergebnis: 35 Cent"). This is a hard check: `script_check.py` reports it as an error and
+  the script card is refused while one is left.
 - A paragraph is one breath: 1 to `script.paragraph_max_sentences` sentences. One empty line is a short pause.
 - Three empty lines separate parts: there the edit can cut, there the teleprompter pages, there a clip can run.
 - No brackets, stage notes, headings, chapters, timestamps or title line. Dashes only if the pack allows them.
@@ -99,12 +113,19 @@ The user reads from a phone next to the camera.
    `python3 skills/script/scripts/script_check.py brief/SCRIPT-vNNN.md --title "<title>" --name "<tool>"
    --facts work/material-vNNN.md`. Read every warning and hint; a hint you keep gets one sentence of reason below `---`.
    If you change the script to pass the check, record the pass again: the card needs the record of the exact file.
-7. **Quiet claim check.** Have the Critic read the finished script against `work/material-vNNN.md`. It marks only
-   claims that are false or would mislead the viewer, never a word of feeling or style. Fix those in the wording itself and run
-   step 6 again; never add a caveat because of a note. Nothing of this goes to the user.
+   A studio skill with its own check: run that one, and also `python3 $CREWCUT_APP/skills/script/scripts/script_check.py
+   brief/SCRIPT-vNNN.md --spoken` (only the speak and story checks).
+7. **Story pass and quiet claim check.** Have the Critic (subagent `crewcut:critic`) read the finished script twice.
+   First for the story (`references/story.md`, "The story pass"): does every paragraph push the premise, is there a
+   list smell (the check names the paragraphs without a bridge), an idea told twice, a staged run-up, a subscribe line
+   inside a beat or at the end? The Critic rewrites those parts or sends the draft back; a draft like that never
+   reaches the user. Then against `work/material-vNNN.md`: it marks only claims that are false or would mislead the
+   viewer, never a word of feeling or style. Fix those in the wording itself and run step 6 again; never add a caveat
+   because of a note. Nothing of this goes to the user.
 8. Card: `crewcut card propose --episode <id> --step script --kind script --title "Script, version N" --file
    brief/SCRIPT-vNNN.md --body "<words>, about <min> min, check: 0 errors"`, then `crewcut card wait`. The card shows
-   "Humanized" with what changed; without the record it is refused and says what to run.
+   "Humanized" with what changed; without the record it is refused and says what to run. It is also refused while
+   the spoken text has a mark that does not read aloud, or a long script has no story plan or a strong list smell.
 9. After the yes: `crewcut prompter <id>` prints the phone link and a QR code. Tell the user in one message: the link,
    how many parts, about how long. The teleprompter shows only the text above `---`.
 
@@ -124,10 +145,13 @@ shows the version.
   would smooth them; every number, name, claim and the promise of the title. The pass changes how it sounds, never
   what it says.
 - **What is out of scope:** making text pass AI detectors. Humanizer edits for people, and so do we.
+- **The hook may keep a device.** In a dramatic opening a deliberate device, such as a short triad of parallel
+  sentences, may stay. Everywhere else the rules above apply.
 
 ## What the check cannot see
 
-Whether an example grows too broad, whether a part leaves the thread, whether a test fits the promise, whether the voice
+The list-smell check only finds paragraphs without a connector or a shared word; it cannot tell whether a beat pushes
+the premise. Whether an example grows too broad, whether a part leaves the thread, whether a test fits the promise, whether the voice
 sounds like the user. That is reading work in steps 2 and 3.
 
 ## Planned

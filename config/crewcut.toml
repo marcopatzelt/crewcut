@@ -15,6 +15,11 @@ crew = "runs"              # runs: every crew member is its own Claude Code run 
 plugin = true              # load Crewcut as a Claude Code plugin (skills, crew agents, guard hook)
 plan_model = ""            # empty = the model Claude Code picks for your plan; any name Claude Code knows works
 work_model = ""
+# The writing steps on the strongest model. A crew member's entry in role_models wins over its step, the step over
+# plan_model and work_model. At start Crewcut tries each of these models once; one your plan does not include is
+# skipped, and those runs use plan_model or work_model. Crew members called as subagents use the caller's model.
+step_models = {idea = "opus", title = "opus", script = "opus"}
+role_models = {}           # e.g. {writer = "opus", editor = "sonnet"}
 probe_model = ""           # the model of the tiny login test at start; empty = Claude Code's default
 extra_args = []            # passed to every run, unchanged, e.g. ["--fallback-model", "sonnet"]
 env = {}                   # extra environment for every run
@@ -23,6 +28,8 @@ env = {}                   # extra environment for every run
 channel = "latest"
 plan_model = ""            # empty = the model Codex picks for your plan
 work_model = ""
+step_models = {}           # as for Claude Code, with Codex model names
+role_models = {}
 extra_args = []
 config = []                # -c key=value pairs passed to every run, e.g. ['model_verbosity="low"']
 env = {}

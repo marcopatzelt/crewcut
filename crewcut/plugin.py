@@ -81,8 +81,14 @@ def build(dest: Path | None = None) -> Path:
         shutil.copytree(d, tmp / "skills" / d.name, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     (tmp / "agents").mkdir()
     models = config.get("crewcut", "engine.claude", {}) or {}
+    from . import engines
     for ident in team.all_identities():
-        role_model = models.get("plan_model" if ident.get("model") == "plan" else "work_model") or None
+        # a crew member called as a subagent: its own role model, else its tier model, else the model of the run that
+        # calls it ("inherit"), so the Critic's story pass in the Writer's run reads with the Writer's model
+        role_model = (models.get("role_models") or {}).get(ident["id"])
+        if role_model and engines.model_ok("claude", str(role_model)) is False:
+            role_model = None
+        role_model = role_model or models.get("plan_model" if ident.get("model") == "plan" else "work_model") or "inherit"
         (tmp / "agents" / f"{ident['id']}.md").write_text(agent_markdown(ident, role_model), encoding="utf-8")
     (tmp / "hooks").mkdir()
     (tmp / "hooks" / "hooks.json").write_text(json.dumps(hooks(), indent=2) + "\n", encoding="utf-8")

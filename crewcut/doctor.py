@@ -170,6 +170,8 @@ def checks(ci: bool = False, probe: bool = False) -> list[dict]:
             add(OK if pok else ERROR, "engine probe", detail,
                 "" if pok else ("Make a new token with `claude setup-token`; some containers reject old ones (401)."
                                 if eng.name == "claude" else "Log in to Codex again: `crewcut engine login codex`."))
+            if pok:
+                _probe_models(eng, add)
     add(NOTE, "other engine", f"{other.label}{' (beta)' if other.beta else ''}: "
         + ("installed" if other.installed() else "not installed") + "; say \"use " + other.label + "\" to switch")
 
@@ -221,6 +223,25 @@ def checks(ci: bool = False, probe: bool = False) -> list[dict]:
     except OSError as e:
         add(ERROR, "studio folder", f"not writable: {e}", "Mount a folder you own at /studio.")
     return out
+
+
+def _probe_models(eng, add) -> None:
+    """Try each step and role model once (config/crewcut.toml step_models, role_models). A model the plan does not
+    include is remembered as unusable, and those runs use the plan or work model instead."""
+    from . import engines
+    seen = {}
+    try:
+        seen = json.loads(db.kv_get(engines.MODEL_PROBE) or "{}")
+    except ValueError:
+        seen = {}
+    mine = {}
+    for model in engines.configured_models(eng.name):
+        ok, detail = eng.probe(model=model)
+        mine[model] = ok
+        add(OK if ok else WARN, f"model {model}", "runs on this plan" if ok else detail,
+            "" if ok else "The steps and crew members set to this model use the plan or work model instead.")
+    seen[eng.name] = mine
+    db.kv_set(engines.MODEL_PROBE, json.dumps(seen))
 
 
 def main(as_json: bool = False, ci: bool = False, probe: bool = False) -> int:

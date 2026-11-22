@@ -141,8 +141,7 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
     ident = team.get(j["identity"])
     cfg = config.load("crewcut").get("engine", {})
     ecfg = cfg.get(eng.name, {}) or {}
-    models = engines.models(eng.name)
-    model = models["plan"] if ident.get("model") == "plan" else models["work"]
+    model = engines.model_for(ident, j["step"], eng.name)   # role_models, step_models, then plan or work
     cwd = paths.episode_dir(j["episode"]) if j["episode"] else paths.studio_root()
     cwd.mkdir(parents=True, exist_ok=True)
     resume = data.get("resume") or {}

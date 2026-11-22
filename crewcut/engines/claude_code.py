@@ -195,7 +195,7 @@ class ClaudeCode(Engine):
                              {"raw": obj}))
         return out
 
-    def probe(self, timeout_s: int = 120) -> tuple[bool, str]:
+    def probe(self, timeout_s: int = 120, model: str | None = None) -> tuple[bool, str]:
         if not self.installed():
             return False, "claude is not installed"
         ok, why = self.login_status()
@@ -203,7 +203,7 @@ class ClaudeCode(Engine):
             return False, why
         from .. import config
         cmd = [self.binary(), "-p", "Reply with the single word: ok", "--output-format", "json"]
-        probe_model = config.get("crewcut", "engine.claude.probe_model", "")
+        probe_model = model or config.get("crewcut", "engine.claude.probe_model", "")
         if probe_model:
             cmd += ["--model", probe_model]
         try:

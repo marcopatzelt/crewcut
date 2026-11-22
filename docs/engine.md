@@ -57,9 +57,17 @@ channel = "latest"
 crew = "runs"            # or "subagents"
 plan_model = ""          # empty = the model Claude Code picks for your plan; any name Claude Code knows works
 work_model = ""
+step_models = {idea = "opus", title = "opus", script = "opus"}   # the default: writing on the strongest model
+role_models = {}         # e.g. {writer = "opus"}: a crew member's model wins over its step
 extra_args = ["--fallback-model", "sonnet"]
 env = {}
 ```
+
+**Which model a run gets:** `role_models[<crew member>]`, else `step_models[<step>]`, else `plan_model` or
+`work_model` by the crew member's tier, else the engine's default. At start (`crewcut doctor --probe`) Crewcut tries each
+step and role model once with a one-word call; a model the plan does not include is remembered and skipped, so those
+runs fall back to the tier model instead of failing. A crew member called as a subagent (the Critic's story pass in
+the Writer's run) uses the model of the run that calls it, unless `role_models` names one for it.
 
 ```yaml
 # team/critic.md (front matter)

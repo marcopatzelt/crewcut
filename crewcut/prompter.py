@@ -80,10 +80,12 @@ def _points(par: str, n: int = 8) -> list[str]:
 
 
 def parse_script(text: str) -> list[dict]:
-    """Blocks for the teleprompter. Everything after the first line that is only `---` is notes for the edit."""
+    """Blocks for the teleprompter. Everything after the first line that is only `---` is notes for the edit, and so is
+    a notes section ("Bildideen:", "Shots:") that slipped above it (crewcut.spoken.prompter_text)."""
+    from . import spoken
     m = re.search(r"(?m)^---\s*$", text)
-    if m and text[:m.start()].strip():
-        text = text[:m.start()]
+    if not m or text[:m.start()].strip():
+        text = spoken.prompter_text(text)
     blocks = []
     for par in re.split(r"\n\s*\n", text):
         par = par.strip()

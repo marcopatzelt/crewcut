@@ -65,6 +65,8 @@ def propose(episode: str | None, step: str | None, kind: str, title: str, body: 
                 data = {**(data or {}), "standing_offer": True}  # the quiet second button on a Short's card
         except FileNotFoundError:
             pass
+    if kind == "script" and p is not None and p.suffix.lower() in (".md", ".txt"):
+        _require_story(episode, p)  # raises spoken.Unspeakable: marks that do not read aloud, no story plan, a list
     if episode and episode != "_onboarding":
         from . import humanize
         hz = humanize.for_card(paths.episode_dir(episode), kind, file)  # raises humanize.Missing for a script card
@@ -85,6 +87,27 @@ def propose(episode: str | None, step: str | None, kind: str, title: str, body: 
         if j:
             events.emit("activity", episode=episode, identity=identity, data=queue.job_view(j))
     return card
+
+
+def _require_story(episode: str | None, p: Path) -> None:
+    """A script reaches the user only when every word of its teleprompter text reads aloud and, for a long video,
+    when it is told as one story: a story plan below the --- line and no strong list smell (crewcut.spoken)."""
+    from . import spoken
+    text = p.read_text(encoding="utf-8")
+    spoken.require_speakable(text, p.name)
+    short = False
+    if episode and episode != "_onboarding":
+        from . import episodes
+        try:
+            short = episodes.read(episode).get("kind") == "short"
+        except FileNotFoundError:
+            short = False
+    if short:
+        return
+    errors = [f["text"] for f in spoken.story(text) if f["level"] == "error"]
+    if errors:
+        raise spoken.Unspeakable(f"{p.name} reads like a list, not one story. " + " ".join(errors)
+                                 + " Have the Critic do the story pass (skills/script, step Story critic) first.")
 
 
 def get(card_id: int) -> dict | None:
