@@ -302,6 +302,8 @@ def cmd_grade(args) -> int:
             raise CutError(f"{rel(ep, out)} exists already. Use a new version.")
         out.parent.mkdir(parents=True, exist_ok=True)
         media.run(grade.apply_cmd(pic, vf, out))
+        from . import prune
+        prune.after_write(ep, lambda m: print(m, file=sys.stderr))
         _out(args, {"graded": rel(ep, out), "filter": vf}, f"graded: {rel(ep, out)}")
         return 0
     times = [float(t) for t in args.times.split(",") if t.strip()]

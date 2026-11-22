@@ -225,6 +225,8 @@ def build(plan_path: Path, ep_dir: Path, resume: bool = False, reuse: str | None
                 "voice_channel_levels_db": levels, "framing": "full rotated source frame, only the planned zoom",
                 "plan": rel(ep_dir, plan_path), "reused": reused}
     write_new_json(out["manifest"], manifest)
+    from . import prune
+    prune.after_write(ep_dir, log)   # only the newest two speaker cuts and clip folders stay
     return {"frames": total, "seconds": round(total / fps, 2), "clips": len(clips),
             "manifest": rel(ep_dir, out["manifest"]), "speaker": manifest["rough"], "voice": manifest["voice"]}
 

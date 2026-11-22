@@ -1,7 +1,9 @@
 """Recordings that land in studio/inbox/<episode>/ start the Editor by themselves.
 
 Copying an SD card takes minutes, so a file counts only when its size has not changed for two checks in a row. Each file
-is announced once. Only episodes whose record step is waiting or working are watched.
+is announced once. While the record step waits or works, the files start the Editor's ingest and edit. After it, until
+the video is published, a new file is announced to the Editor as an additional recording (a second camera copied a
+minute later). Episodes whose record step has not come yet keep their files for later.
 """
 
 from __future__ import annotations
@@ -24,6 +26,28 @@ def _seen(eid: str) -> set[str]:
         return set()
 
 
+def _mode(project: dict) -> str | None:
+    """'record' while recording is the step, 'more' after it until the video is out, else None (not watched)."""
+    steps = project.get("steps", {})
+    record = steps.get("record", {}).get("status")
+    if record in ("waiting", "working"):
+        return "record"
+    if record not in ("done", "skipped"):
+        return None
+    upload = steps.get("upload", {}).get("status")
+    if upload == "done":
+        return None
+    if upload in (None, "skipped") and steps.get("edit", {}).get("status") == "done":
+        return None   # no upload step in this episode: the finished edit is the end
+    return "more"
+
+
+def _editor_busy(eid: str) -> bool:
+    with db.conn() as c:
+        return c.execute("SELECT 1 FROM jobs WHERE episode = ? AND identity = 'editor' AND status IN ('queued', "
+                         "'running') LIMIT 1", (eid,)).fetchone() is not None
+
+
 def scan(sizes: dict[str, int]) -> list[tuple[str, list[str]]]:
     """One pass. `sizes` keeps the sizes of the last pass. Returns [(episode, new stable files)] and announces them."""
     from . import flow
@@ -37,7 +61,8 @@ def scan(sizes: dict[str, int]) -> list[tuple[str, list[str]]]:
             p = episodes.read(eid)
         except (FileNotFoundError, ValueError):
             continue
-        if p.get("steps", {}).get("record", {}).get("status") not in ("waiting", "working"):
+        mode = _mode(p)
+        if mode is None:
             continue
         seen = _seen(eid)
         ready = []
@@ -53,7 +78,10 @@ def scan(sizes: dict[str, int]) -> list[tuple[str, list[str]]]:
             sizes[rel] = size
         if ready:
             db.kv_set(f"inbox_seen:{eid}", json.dumps(sorted(seen | set(ready))))
-            flow.on_upload(eid, ready)
+            if mode == "record" and not _editor_busy(eid):
+                flow.on_upload(eid, ready)
+            else:   # after the record step, or while an Editor already works on this episode's files
+                flow.on_more_media(eid, ready)
             out.append((eid, ready))
     return out
 

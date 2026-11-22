@@ -654,6 +654,8 @@ def build_short(plan: dict, ep_dir: Path, words_mode: str = "new", engine_factor
               "listen": listen_list(plan["pieces"], edges, issues, seconds),
               "framing": "9:16 crop of the original around the face, scaled to the output size"}
     write_new_json(out["report"], report)
+    from . import prune
+    prune.after_write(ep_dir, log)
     return report
 
 

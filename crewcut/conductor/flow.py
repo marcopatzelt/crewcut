@@ -6,7 +6,7 @@ sending a declined card back to its author, posting short status lines as the Sh
 
 from __future__ import annotations
 
-from .. import db, episodes, events
+from .. import db, episodes, events, paths
 from . import prompts, queue
 
 ONBOARDING = "_onboarding"  # pseudo-episode id for the onboarding chat and its profile card
@@ -173,6 +173,9 @@ def on_card_decided(card: dict) -> None:
         else:
             post(episode, "Shorts keep asking for your yes.", card=card["id"])
         return
+    from . import review
+    if review.on_limit_card(card):   # the Critic's last round still said back; the user decides
+        return
     if episode == ONBOARDING:
         if kind == "profile" and accepted:
             db.kv_set("onboarded", "1")
@@ -316,6 +319,12 @@ def after_job(job: dict, res) -> None:
         return
     if (job["identity"] == "showrunner" or channel_child) and not said and res.text.strip():
         post(target, engines.scrub(res.text).strip()[:2000], job=job["id"], author=job["identity"])
+    if episode and not channel_child:
+        from . import review
+        review.after_review(job, res.text)   # the Critic's verdict starts the next round or asks the user
+        if job["identity"] in ("editor", "designer"):
+            from ..cut import prune
+            prune.after_write(paths.episode_dir(episode))   # older intermediate renders go (the newest two stay)
 
 
 def on_upload(episode: str, files: list[str]) -> int:
@@ -329,6 +338,32 @@ def on_upload(episode: str, files: list[str]) -> int:
                      f"`crewcut ingest {episode} <files>`, check the sound to the end of every file and report problems "
                      f"with time stamps. When all takes are safe, mark the step: `crewcut episode step {episode} record "
                      "done`, then continue with the edit step: " + prompts.step_task("edit", episode), heavy=False)
+
+
+def on_more_media(episode: str, files: list[str]) -> int:
+    """Media for an episode whose recording step is over but whose video is not published yet: a second camera, a
+    retake, a recorder file. The Editor hears of it once: a running Editor at its next `crewcut` call, a queued one in
+    its task, else a new short run."""
+    names = ", ".join(files[:6]) + (" …" if len(files) > 6 else "")
+    task = (f"Additional recording arrived in the studio inbox for this episode after the record step: {files}. Ingest "
+            f"it with `crewcut ingest {episode} <files>`, check its sound to the end, and decide whether it belongs in "
+            "the cut (a second camera angle, a retake, separate sound). Say in one sentence what it is and what you do "
+            "with it." + (" Leave the record step as it is." if episodes.read(episode).get("steps", {}).get("record", {})
+                          .get("status") in ("done", "skipped") else ""))
+    from . import deliver
+    running = [j for j in deliver.receivers(episode) if j["identity"] == "editor"]
+    if running:
+        post(episode, f"Additional recording arrived: {names}. {task}", author="showrunner", relay_for=["editor"])
+        return running[0]["id"]
+    with db.conn() as c:
+        queued = db.row(c.execute("SELECT * FROM jobs WHERE episode = ? AND identity = 'editor' AND status = 'queued' "
+                                  "ORDER BY id LIMIT 1", (episode,)).fetchone())
+    if queued:
+        db.update("jobs", queued["id"], task=queued["task"] + "\n\n" + task)
+        post(episode, f"Additional recording arrived: {names}. The Editor takes it in its next run.")
+        return queued["id"]
+    post(episode, f"Additional recording arrived: {names}. The Editor checks it now.")
+    return queue.add(episode, "editor", "edit", task, heavy=False)
 
 
 def start_onboarding(text: str) -> int:

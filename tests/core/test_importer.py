@@ -101,6 +101,7 @@ def test_inbox_watcher_waits_for_stable_files(crew, studio, tmp_path, no_jobs, m
     assert any(k.get("heavy") is False or a[1] == "editor" for a, k in no_jobs)
     assert json.loads(db.kv_get(f"inbox_seen:{p['id']}"))
     episodes.set_step(p["id"], "record", "done")
+    episodes.set_step(p["id"], "upload", "done")
     (box / "C0002.MP4").write_bytes(b"x")
     inbox.scan(sizes)
-    assert inbox.scan(sizes) == []           # record done: no longer watched
+    assert inbox.scan(sizes) == []           # published: no longer watched

@@ -149,6 +149,11 @@ def system_prompt(identity: dict, episode: str | None, step: str | None, with_id
         if identity.get("id") == "critic":
             step_line += ("Bundle all findings of one version into ONE message to the crew member who built it "
                           "(`--kind fix`).\n")
+    if episode and identity.get("id") == "critic":
+        step_line += ("End every review report (review/critic-<version>.md) with two lines: `Verdict: back` (it goes "
+                      "back to the builder) or `Verdict: show` (the user may see it), and `Round: N of M`. The conductor "
+                      "reads them: it wakes the builder for the next round, or asks the user after the last round. Do "
+                      "not queue the builder's next round yourself.\n")
     rules = HOUSE_RULES.format(episode=episode or "<id>")
     if conversation_scope == "channel":
         from .. import channel
@@ -198,8 +203,8 @@ STEP_TASKS = {
               "studio inbox folder). Then stop; the Editor starts when files arrive.",
     "edit": "Build the video with the edit skill: ingest and check the files, transcribe, speaker cut, edit plan, 2D and "
             "3D inserts (estimate first; rented GPU only after a spend card), sound, assembly. Then ask the Critic for a "
-            "check with `crewcut job add --identity critic --step edit …`. Only after a clean check: one card of kind "
-            "preview with the preview file.",
+            "check with `crewcut job add --identity critic --step edit …` and stop: the conductor wakes you with its verdict. "
+            "Only after a clean check: one card of kind preview with the preview file.",
     "thumbnail": "Make the thumbnail test set with the thumbnail skill: three different formats from "
                  "`crewcut thumbnail formats` (at least one house style, one pro format), each with its own focal "
                  "object, text idea, emotion, composition and colour, written into SET.json of the round; one "
