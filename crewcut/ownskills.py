@@ -146,6 +146,20 @@ def prompt_block(skills: list[dict], unusable: list[dict] | None = None) -> str:
     return "\n".join(lines) + "\n"
 
 
+def run_line(skills: list[dict]) -> str:
+    """Said in the task of every run that does a step's work (the step run, a job from the chat, the answer to a card),
+    not only in the system text: a resumed conversation does not load a skill again by itself, and it may have changed."""
+    if not skills:
+        return ""
+    names = ", ".join(f"`{PLUGIN}:{s['name']}` ({s['folder']}/SKILL.md)" for s in skills)
+    replaced = sorted({r for s in skills for r in s["replaces"]})
+    over = (" Where it covers the work, use its references and scripts, not those of Crewcut's "
+            f"{', '.join(f'`{r}`' for r in replaced)} skill." if replaced else "")
+    return (f"\n\nBefore you work: load the user's own skill for this work, {names} (Claude Code: the Skill tool with "
+            "its `studio:` name; otherwise its SKILL.md), also when this conversation loaded it before. Say in your "
+            f"first progress line which own skill you follow.{over}")
+
+
 def skill_texts(skills: list[dict], limit: int = TEXT_LIMIT) -> str:
     """The SKILL.md and adapter text of these skills, for engines without plugins (Codex)."""
     parts, used = [], 0
@@ -217,5 +231,5 @@ def build_plugin(dest: Path | None = None) -> Path | None:
     return dest
 
 
-__all__ = ["configured", "for_job", "unusable_for_job", "for_identity", "prompt_block", "skill_texts", "build_plugin", "plugin_dir",
+__all__ = ["configured", "for_job", "unusable_for_job", "for_identity", "prompt_block", "run_line", "skill_texts", "build_plugin", "plugin_dir",
            "PLUGIN", "ADAPTER"]

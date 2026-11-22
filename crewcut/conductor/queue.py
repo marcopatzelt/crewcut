@@ -175,7 +175,10 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
     env["CREWCUT_WORKSPACES"] = str(workspace_root)
     extra = [str(x) for x in (ecfg.get("extra_args") or [])] + [str(x) for x in (ident.get("extra_args") or [])]
     opts: dict = {}
-    prompt, agent, with_identity = j["task"], None, True
+    from .. import ownskills
+    # step work loads the user's own skill of that step, whoever started the run: the step, the chat or a card answer
+    task_text = j["task"] + (ownskills.run_line(ownskills.for_job(j["identity"], j["step"])) if j["step"] else "")
+    prompt, agent, with_identity = task_text, None, True
     ident_for_prompt = ident
     if eng.name == "claude":
         pdir = plugin_dir()
@@ -201,7 +204,7 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
                 opts["flags"] = ["--forward-subagent-text"]
                 prompt = (f"Hand this work to your crew member {ident.get('name')} (the subagent `{NAME}:"
                           f"{j['identity']}`) and stay with it until it is done. Do not do the work yourself.\n\n"
-                          f"{j['task']}")
+                          f"{task_text}")
                 ident_for_prompt = team.get("showrunner") or ident
             else:
                 agent = f"{NAME}:{j['identity']}"

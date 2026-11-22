@@ -103,6 +103,33 @@ def test_subagent_mode_selects_by_the_worker_and_agent_files_list_them(own, monk
     assert "my-showrunner" not in md
 
 
+def test_every_run_of_a_step_loads_its_own_skill(own, monkeypatch):
+    """The step run, a job from the chat and the answer to a card (a resumed conversation) are each told in their own
+    task to load the step's own skill, the same one, not only in the system text."""
+    from crewcut import approvals, db, episodes
+    from crewcut.conductor import flow
+    monkeypatch.setattr(queue, "plugin_dir", lambda: "/plugin/crewcut")
+    episode = episodes.create("Synthetic episode")["id"]
+    step_run = flow.start_step(episode, "title")
+    db.update("jobs", step_run, data={"engine": "claude", "session": "synthetic-session"})
+    card = approvals.propose(episode, "title", "rule", "New rule for title: synthetic", identity="scout",
+                             data={"step": "title", "rule": "synthetic", "source": "test"}, job=step_run)
+    approvals.decide(card["id"], accepted=False, reason="Not like this")
+    with db.conn() as c:
+        answer = queue.get(c.execute("SELECT MAX(id) AS id FROM jobs").fetchone()["id"])
+    assert answer["task"].startswith("The user did not accept card") and answer["data"]["resume"]
+    from_chat = queue.get(queue.add(episode, "scout", "title", "The user asked for shorter titles."))
+    for job in (queue.get(step_run), answer, from_chat):
+        for engine in ("claude", "codex"):
+            t = queue.build_task(job, engines.get(engine), dict(job.get("data") or {}))
+            assert "load the user's own skill for this work, `studio:my-titles`" in t.prompt
+            assert "also when this conversation loaded it before" in t.prompt
+            assert "not those of Crewcut's `title` skill" in t.prompt
+            assert "my-ideas" not in t.prompt and "my-showrunner" not in t.prompt
+    chat_reply = {"id": 9, "episode": episode, "step": None, "identity": "showrunner", "task": "answer", "data": {}}
+    assert "load the user's own skill" not in queue.build_task(chat_reply, engines.get("claude"), {}).prompt
+
+
 def test_a_long_skill_is_named_instead_of_pasted(own):
     skills = ownskills.for_job("scout", "title")
     assert "too long to include" in ownskills.skill_texts(skills, limit=10)
