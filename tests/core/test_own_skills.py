@@ -73,6 +73,7 @@ def test_claude_loads_them_as_a_plugin_with_links_to_the_studio(own, monkeypatch
         own / "skills" / "my-titles" / "scripts" / "check.py").resolve()
     assert "`studio:my-titles`" in t.system and "wins over Crewcut's generic skills" in t.system
     assert "overrides Crewcut's `title`" in t.system and "CREWCUT.md" in t.system
+    assert "before any Crewcut skill" in t.system
     assert "Rule: titles in German" not in t.prompt                     # Claude reads it as a skill, not as text
     before = (pdir / ".crewcut-links.json").stat().st_mtime_ns
     ownskills.build_plugin()
@@ -160,3 +161,11 @@ def test_an_unreadable_folder_is_reported_not_a_crash(own, monkeypatch):
     assert by["my-titles"]["ok"]
     text = prompts.system_prompt(team.get("scout"), None, "idea")
     assert "`studio:my-ideas`" not in text and "`my-ideas` belongs to this work but cannot be used" in text
+
+
+def test_a_replaced_crewcut_skill_points_to_the_users_own(own):
+    ident = {**team.get("scout"), "skills": ["title", "idea"]}
+    text = prompts.system_prompt(ident, None, "title")
+    assert "title/SKILL.md (here only for Crewcut's commands and workflow: the user's `studio:my-titles` comes first)" \
+        in text
+    assert "idea/SKILL.md (here only" not in text

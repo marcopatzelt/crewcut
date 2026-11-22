@@ -40,7 +40,8 @@ def add(episode: str | None, identity: str, step: str | None, task: str, kind: s
                 return existing["id"]
             waiting = connection.execute(
                 "SELECT id FROM cards WHERE episode = ? AND step = ? AND status = 'open'", (episode, step)).fetchone()
-            if waiting or project.get("steps", {}).get(step, {}).get("status") in ("working", "waiting"):
+            # "working" without an active job (checked above) is only the mark of a new episode: nothing works
+            if waiting or project.get("steps", {}).get(step, {}).get("status") == "waiting":
                 raise ValueError("This episode step is already working or waiting for approval.")
             child_data = {**(data or {}), "conversation_scope": "episode", "origin_scope": "channel"}
             jid = connection.execute(

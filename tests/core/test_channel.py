@@ -163,6 +163,16 @@ def test_child_dispatch_and_results(crew):
         queue.add(episode, "writer", "script", "Retry", parent=parent)
 
 
+def test_a_new_episode_from_the_channel_gets_its_first_job(crew):
+    # `crewcut episode new` marks the idea step working before any job exists; the channel may still start it once
+    parent = channel.user_message("New episode, start with the idea")["job"]
+    episode = episodes.create("Synthetic new episode")["id"]
+    assert episodes.read(episode)["steps"]["idea"]["status"] == "working"
+    child = queue.add(episode, "scout", "idea", "Find the idea", parent=parent)
+    assert queue.get(child)["status"] == "queued"
+    assert queue.add(episode, "scout", "idea", "Again", parent=parent) == child   # the running one, never a second
+
+
 def test_context_is_bounded_without_file_contents(crew):
     project = episodes.create("Synthetic target")
     project["history"] = {"distribution": "published"}

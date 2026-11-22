@@ -132,8 +132,9 @@ def prompt_block(skills: list[dict], unusable: list[dict] | None = None) -> str:
                 if s["replaces"] else "")
         lines.append(f"- `{PLUGIN}:{s['name']}`: {s['folder']}/SKILL.md{extra}{over}")
     lines += [
-        "Load each one before you start (Claude Code: the Skill tool with its `studio:` name; otherwise read its "
-        "SKILL.md), then read its adapter note and follow the references the skill says to read for your task.",
+        "Load each one first, before any Crewcut skill (Claude Code: the Skill tool with its `studio:` name; "
+        "otherwise read its SKILL.md), then read its adapter note and follow the references the skill says to read "
+        "for your task. Say in your first progress line which own skill you follow.",
         "Precedence: on content, voice, language, style, structure of deliverables, data and checks the user's skill "
         "wins over Crewcut's generic skills and over your own preferences. Crewcut keeps its tools, commands, cards, "
         "episode files and all safety rules. A newer explicit user correction (chat, a later dated rule in "

@@ -112,14 +112,18 @@ def system_prompt(identity: dict, episode: str | None, step: str | None, with_id
              f"How you work:\n{identity.get('soul', '').strip()}\n") if with_identity else ""
     rights = (f"Your rights: may spend money: {'yes' if identity.get('may_spend') else 'no'}; "
               f"may publish: {'yes' if identity.get('may_publish') else 'no'}.\n")
+    from .. import briefing, ownskills
+    who = worker or identity.get("id")
+    own = ownskills.for_job(who, step)
+    own_line = ownskills.prompt_block(own, ownskills.unusable_for_job(who, step))
+    replaced = {r: s["name"] for s in own for r in s["replaces"]}
     skills = identity.get("skills") or []
     skill_line = ""
     if skills:
-        skill_paths = ", ".join(f"{paths.skills_dir() / s / 'SKILL.md'}" for s in skills)
+        skill_paths = ", ".join(f"{paths.skills_dir() / s / 'SKILL.md'}" + (
+            f" (here only for Crewcut's commands and workflow: the user's `{ownskills.PLUGIN}:{replaced[s]}` comes "
+            "first)" if s in replaced else "") for s in skills)
         skill_line = f"Your skills (read the one for your step before you start): {skill_paths}\n"
-    from .. import briefing, ownskills
-    who = worker or identity.get("id")
-    own_line = ownskills.prompt_block(ownskills.for_job(who, step), ownskills.unusable_for_job(who, step))
     ctx = ""
     if episode:
         try:
