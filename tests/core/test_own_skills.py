@@ -145,3 +145,18 @@ def test_channel_brief_reaches_every_job(studio, crew):
 def test_neutral_studio_has_no_brief(studio):
     from crewcut import briefing
     assert briefing.text() == ""
+
+
+def test_an_unreadable_folder_is_reported_not_a_crash(own, monkeypatch):
+    real_is_file = Path.is_file
+
+    def is_file(self):
+        if self.name == "SKILL.md" and self.parent.name == "my-ideas":
+            raise PermissionError(13, "Permission denied")
+        return real_is_file(self)
+    monkeypatch.setattr(Path, "is_file", is_file)
+    by = {s["name"]: s for s in ownskills.configured()}
+    assert not by["my-ideas"]["ok"] and "cannot be read" in by["my-ideas"]["problem"]
+    assert by["my-titles"]["ok"]
+    text = prompts.system_prompt(team.get("scout"), None, "idea")
+    assert "`studio:my-ideas`" not in text and "`my-ideas` belongs to this work but cannot be used" in text

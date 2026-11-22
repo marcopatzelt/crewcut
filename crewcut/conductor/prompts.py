@@ -118,7 +118,8 @@ def system_prompt(identity: dict, episode: str | None, step: str | None, with_id
         skill_paths = ", ".join(f"{paths.skills_dir() / s / 'SKILL.md'}" for s in skills)
         skill_line = f"Your skills (read the one for your step before you start): {skill_paths}\n"
     from .. import briefing, ownskills
-    own_line = ownskills.prompt_block(ownskills.for_job(worker or identity.get("id"), step))
+    who = worker or identity.get("id")
+    own_line = ownskills.prompt_block(ownskills.for_job(who, step), ownskills.unusable_for_job(who, step))
     ctx = ""
     if episode:
         try:

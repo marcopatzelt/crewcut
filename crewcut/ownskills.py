@@ -77,17 +77,20 @@ def configured() -> list[dict]:
             continue
         spec = {"name": str(item["name"]), "steps": _list(item.get("steps")), "roles": _list(item.get("roles")),
                 "replaces": _list(item.get("replaces")), "path": item.get("path")}
-        folder = _folder(spec)
-        problem = None
-        if folder is None:
-            problem = "its path leaves the studio folder"
-        elif not (folder / "SKILL.md").is_file():
-            problem = f"no SKILL.md in {folder}"
-        elif not skill_name(folder):
-            problem = "SKILL.md has no name in its front matter"
-        real = folder.resolve() if folder else None  # scripts that find their files next to them see their real place
-        spec.update(folder=str(real) if real else None, ok=problem is None, problem=problem,
-                    adapter=str(real / ADAPTER) if real and (real / ADAPTER).is_file() else None)
+        problem, real, adapter = None, None, None
+        try:  # a folder the app may not read is reported, never a crash of the job
+            folder = _folder(spec)
+            if folder is None:
+                problem = "its path leaves the studio folder"
+            elif not (folder / "SKILL.md").is_file():
+                problem = f"no SKILL.md in {folder}"
+            elif not skill_name(folder):
+                problem = "SKILL.md has no name in its front matter, or it cannot be read"
+            real = folder.resolve() if folder else None  # scripts that find files next to them see their real place
+            adapter = str(real / ADAPTER) if real and (real / ADAPTER).is_file() else None
+        except OSError as e:
+            problem = f"cannot be read ({type(e).__name__}: {e.strerror or e})"
+        spec.update(folder=str(real) if real else None, ok=problem is None, problem=problem, adapter=adapter)
         out.append(spec)
     return out
 
@@ -104,6 +107,11 @@ def for_job(identity: str | None, step: str | None) -> list[dict]:
     return [s for s in configured() if s["ok"] and _applies(s, identity, step)]
 
 
+def unusable_for_job(identity: str | None, step: str | None) -> list[dict]:
+    """Own skills that belong to this job but cannot be used: the crew says so instead of silently going generic."""
+    return [s for s in configured() if not s["ok"] and _applies(s, identity, step)]
+
+
 def for_identity(ident: dict) -> list[dict]:
     """The usable own skills a crew member may need on any of its steps (for its agent file)."""
     steps = set(ident.get("steps") or [])
@@ -111,10 +119,12 @@ def for_identity(ident: dict) -> list[dict]:
             and ("*" in s["steps"] or steps & set(s["steps"]))]
 
 
-def prompt_block(skills: list[dict]) -> str:
+def prompt_block(skills: list[dict], unusable: list[dict] | None = None) -> str:
     """What every engine is told about the user's own skills of this job: which, where, and who wins."""
+    missing = [f"- The user's own skill `{s['name']}` belongs to this work but cannot be used: {s['problem']}. Tell the "
+               "user in one sentence; never guess its content." for s in unusable or []]
     if not skills:
-        return ""
+        return "\n".join(missing) + "\n" if missing else ""
     lines = ["Your studio's own skills for this work (written by the user; they come first):"]
     for s in skills:
         extra = f"; adapter note {s['adapter']}" if s["adapter"] else ""
@@ -131,7 +141,7 @@ def prompt_block(skills: list[dict]) -> str:
         "Where the skill names old paths, tools or manual steps, follow its adapter note; when none covers it, use the "
         "matching crewcut command and say in one line what you mapped. Run its scripts from its folder with absolute "
         "paths and treat their errors like the errors of a Crewcut check. Never edit the user's SKILL.md.",
-    ]
+    ] + missing
     return "\n".join(lines) + "\n"
 
 
@@ -206,5 +216,5 @@ def build_plugin(dest: Path | None = None) -> Path | None:
     return dest
 
 
-__all__ = ["configured", "for_job", "for_identity", "prompt_block", "skill_texts", "build_plugin", "plugin_dir",
+__all__ = ["configured", "for_job", "unusable_for_job", "for_identity", "prompt_block", "skill_texts", "build_plugin", "plugin_dir",
            "PLUGIN", "ADAPTER"]
