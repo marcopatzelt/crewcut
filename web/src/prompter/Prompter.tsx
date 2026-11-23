@@ -1,6 +1,14 @@
-// The teleprompter: the script in big letters on a phone. Tap or Space plays and pauses.
-// Follow shared controls without allowing stale reads or progress reports to undo phone commands.
+// The teleprompter: the script as numbered speaking blocks in big letters, on phones and on the prompter glass.
+// Every screen follows one shared timeline (timeline.ts, sync.ts). Tap a block on any screen and every screen jumps to
+// its start; Previous, Repeat and Next do the same for the blocks around the reading line. A hand scroll on one screen
+// moves the others with it. The block on the reading line is marked on every screen.
 import {
+  AlignLeft,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpToLine,
+  ChevronLeft,
+  ChevronRight,
   FlipHorizontal2,
   List,
   LoaderCircle,
@@ -9,26 +17,18 @@ import {
   Play,
   Plus,
   RotateCcw,
-  AlignLeft,
-  ArrowUp,
-  ArrowDown,
 } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PrompterControl, PrompterScript } from "../api/types";
+import { measure, placeOn, scrollFor, type Layout } from "./geometry";
 import { guidePercent, ReadingLine } from "./ReadingLine";
+import { DEFAULT_CONTROL, httpSource, PrompterSync, type PrompterSource } from "./sync";
+import { DEFAULT_CPS, normalizeBlocks, placeAt, stepTarget, type Block, type ControlPatch } from "./timeline";
 
-export const DEFAULT_CONTROL: PrompterControl = { playing: false, speed: 1, position: 0, mirror: false, size: 1 };
-const POLL_MS = 200;
+export { DEFAULT_CONTROL, httpSource, type PrompterSource };
+
 const SPEED = { min: 0.3, max: 3, step: 0.1 };
 const SIZE = { min: 0.6, max: 2, step: 0.1 };
-
-export interface PrompterSource {
-  script(): Promise<PrompterScript>;
-  getControl(): Promise<PrompterControl>;
-  setControl(c: Partial<PrompterControl>): Promise<void>;
-  /** false when nothing else follows this screen (a source without a server, as in the tests). */
-  shared: boolean;
-}
 
 /** Reads the token from /p/<token> (or ?token= during development). */
 export function tokenFromLocation(loc: Pick<Location, "pathname" | "search">): string | null {
@@ -37,44 +37,7 @@ export function tokenFromLocation(loc: Pick<Location, "pathname" | "search">): s
   return new URLSearchParams(loc.search).get("token");
 }
 
-export function httpSource(token: string): PrompterSource {
-  const base = `/p/${encodeURIComponent(token)}`;
-  let writes = Promise.resolve();
-  const json = async <T,>(res: Response): Promise<T> => {
-    if (!res.ok) throw new Error(`The server answered ${res.status}.`);
-    return (await res.json()) as T;
-  };
-  return {
-    shared: true,
-    script: () => fetch(`${base}/script`).then((r) => json<PrompterScript>(r)),
-    getControl: () => fetch(`${base}/control`, { cache: "no-store" }).then((r) => json<PrompterControl>(r)),
-    setControl: (c) => {
-      const sent = writes.then(async () => {
-      const res = await fetch(`${base}/control`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(c),
-      });
-      if (!res.ok) throw new Error(`The server answered ${res.status}.`);
-      });
-      writes = sent.catch(() => undefined);
-      return sent;
-    },
-  };
-}
-
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, Math.round(v * 10) / 10));
-
-function differs(a: PrompterControl, b: PrompterControl): boolean {
-  return (
-    a.playing !== b.playing ||
-    a.mirror !== b.mirror ||
-    Math.abs(a.speed - b.speed) > 0.001 ||
-    Math.abs(a.size - b.size) > 0.001 ||
-    (a.guide ?? 33) !== (b.guide ?? 33) ||
-    Math.abs(a.position - b.position) > 0.005
-  );
-}
 
 function Panel({
   ctl,
@@ -85,7 +48,7 @@ function Panel({
 }: {
   ctl: PrompterControl;
   mode: "full" | "points";
-  change: (patch: Partial<PrompterControl>) => void;
+  change: (patch: ControlPatch) => void;
   setMode: (m: "full" | "points") => void;
   dim: boolean;
 }) {
@@ -139,8 +102,39 @@ function Panel({
       >
         <FlipHorizontal2 size={16} aria-hidden="true" />
       </button>
-      <button type="button" className="pr-btn" aria-label="Back to the start" onClick={() => change({ position: 0, playing: false })}>
-        <RotateCcw size={16} aria-hidden="true" />
+      <button type="button" className="pr-btn" aria-label="Back to the start" title="Back to the start" onClick={() => change({ action: "start" })}>
+        <ArrowUpToLine size={16} aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
+/** Previous, Repeat and Next: big enough for a thumb, the same on every screen. */
+function BlockBar({ blocks, current, step, dim }: {
+  blocks: Block[];
+  current: number;
+  step: (kind: "prev" | "next" | "repeat") => void;
+  dim: boolean;
+}) {
+  const number = blocks[current]?.n ?? null;
+  const total = blocks.filter((b) => !b.heading).length;
+  return (
+    <div className={dim ? "pr-panel pr-blocks dim" : "pr-panel pr-blocks"} role="toolbar" aria-label="Speaking blocks">
+      <button type="button" className="pr-btn pr-step" aria-label="Previous block"
+        disabled={stepTarget(blocks, current, -1) === null} onClick={() => step("prev")}>
+        <ChevronLeft size={20} aria-hidden="true" />
+        Previous
+      </button>
+      <button type="button" className="pr-btn pr-step repeat"
+        aria-label={number === null ? "Repeat block" : `Repeat block ${number} of ${total}`}
+        disabled={!blocks.length} onClick={() => step("repeat")}>
+        <RotateCcw size={20} aria-hidden="true" />
+        {number === null ? "Repeat" : `Repeat ${number}`}
+      </button>
+      <button type="button" className="pr-btn pr-step" aria-label="Next block"
+        disabled={stepTarget(blocks, current, 1) === null} onClick={() => step("next")}>
+        Next
+        <ChevronRight size={20} aria-hidden="true" />
       </button>
     </div>
   );
@@ -152,15 +146,26 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
   const [mode, setMode] = useState<"full" | "points">("full");
   const [ctl, setCtl] = useState<PrompterControl>(DEFAULT_CONTROL);
   const [offline, setOffline] = useState(false);
+  const [current, setCurrent] = useState(0);
+  const [flash, setFlash] = useState<{ block: number; cue: number } | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
-  const ctlRef = useRef(ctl);
-  const lastSent = useRef<PrompterControl | null>(null);
-  const revision = useRef(0);
-  const pending = useRef(0);
-  const failures = useRef(0);
-  ctlRef.current = ctl;
-  const modeRef = useRef(mode);
-  modeRef.current = mode;
+  const copy = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLOListElement>(null);
+  const sync = useRef<PrompterSync | null>(null);
+  const blocks = useMemo(() => normalizeBlocks(script?.blocks ?? []), [script]);
+  const blocksRef = useRef(blocks);
+  blocksRef.current = blocks;
+  const pace = useRef({ weights: [] as number[], cps: DEFAULT_CPS });
+  const weights = useMemo(() => blocks.map((b) => b.weight), [blocks]);
+  pace.current = { weights, cps: script?.cps ?? DEFAULT_CPS };
+  const currentRef = useRef(0);
+  const layout = useRef<Layout | null>(null);
+  const dirty = useRef(true);
+  const frame = useRef(0);
+  const endSent = useRef<number | null>(null);
+  // A hand scroll: touching, the time of the last scroll by hand (ms), and whether this touch moved the text.
+  const hand = useRef({ touching: false, at: -1e9, moved: false, timer: 0 as unknown as ReturnType<typeof setTimeout> });
+  const loaded = useRef(false);
 
   const loadScript = useCallback(() => {
     if (!source) return;
@@ -169,134 +174,210 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
       .script()
       .then((s) => {
         setScript(s);
-        setMode(s.mode === "points" ? "points" : "full");
+        if (!loaded.current) setMode(s.mode === "points" ? "points" : "full");
+        loaded.current = true;
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Something went wrong."));
   }, [source]);
 
   useEffect(loadScript, [loadScript]);
 
-  // Switching between full text and key points keeps the reader at the same place.
-  const modePos = useRef<number | null>(null);
-  const switchMode = useCallback((m: "full" | "points") => {
+  // A finger on the text (a touch that ended unseen, as when the phone locks, counts for 4 s at most) or a scroll by
+  // hand in the last 250 ms: this screen does not move the text itself.
+  const byHand = () => {
+    const since = performance.now() - hand.current.at;
+    return (hand.current.touching && since < 4000) || since < 250;
+  };
+
+  const getLayout = (): Layout | null => {
     const el = scroller.current;
-    if (el) {
-      const max = el.scrollHeight - el.clientHeight;
-      modePos.current = max > 0 ? el.scrollTop / max : 0;
+    const text = copy.current;
+    if (!el || !text) return null;
+    if (dirty.current || !layout.current) {
+      const line = el.parentElement?.querySelector<HTMLElement>(":scope > .pr-line") ?? null;
+      layout.current = measure(el, text, line, guidePercent(sync.current?.state.guide));
+      dirty.current = false;
     }
-    setMode(m);
-  }, []);
+    return layout.current;
+  };
 
-  const position = useCallback((): number => {
-    const el = scroller.current;
-    if (!el) return ctlRef.current.position;
-    const max = el.scrollHeight - el.clientHeight;
-    return max > 0 ? el.scrollTop / max : 0;
-  }, []);
+  const markCurrent = (block: number) => {
+    if (currentRef.current === block) return;
+    currentRef.current = block;
+    setCurrent(block);
+  };
 
-  const jump = useCallback((p: number) => {
-    const el = scroller.current;
-    if (!el) return;
-    el.scrollTop = p * Math.max(0, el.scrollHeight - el.clientHeight);
-  }, []);
-
-  useLayoutEffect(() => {
-    if (modePos.current === null) return;
-    jump(modePos.current);
-    modePos.current = null;
-  }, [mode, jump]);
-
-  /** A change made on this device: apply it here and tell the others. */
-  const change = useCallback(
-    (patch: Partial<PrompterControl>) => {
-      const next = { ...ctlRef.current, position: remote ? ctlRef.current.position : position(), ...patch };
-      ctlRef.current = next;
-      setCtl(next);
-      if ("position" in patch && !remote) jump(next.position);
-      revision.current += 1;
-      if (source?.shared) {
-        lastSent.current = next;
-        pending.current += 1;
-        source.setControl(patch).catch(() => setOffline(true)).finally(() => { pending.current -= 1; });
-      }
-    },
-    [jump, position, remote, source],
-  );
-
-  // Follow the shared control.
-  useEffect(() => {
-    if (!source?.shared) return;
-    let stop = false;
-    let timer: ReturnType<typeof setTimeout>;
-    const tick = async () => {
-      try {
-        if (pending.current) return;
-        const started = revision.current;
-        const theirs = await source.getControl();
-        failures.current = 0;
-        setOffline(false);
-        if (stop || pending.current || started !== revision.current) return;
-        const mine = ctlRef.current;
-        const sent = lastSent.current;
-        if (!sent || differs(theirs, sent)) {
-          const jumped = !sent || Math.abs(theirs.position - sent.position) > 0.005;
-          setCtl({ ...theirs, position: jumped ? theirs.position : mine.position });
-          if (jumped && !remote) jump(theirs.position);
-          lastSent.current = theirs;
-        } else if (!remote && mine.playing) {
-          // The playing screen reports where it is, so a remote shows the right place.
-          const report = { ...mine, position: position() };
-          if (!sent || Math.abs(report.position - sent.position) > 0.005) {
-            lastSent.current = report;
-            await source.setControl({ position: report.position });
-          }
-        }
-      } catch {
-        failures.current += 1;
-        if (failures.current >= 3) setOffline(true);
-      } finally {
-        if (!stop) timer = setTimeout(() => void tick(), POLL_MS);
-      }
-    };
-    void tick();
-    return () => {
-      stop = true;
-      clearTimeout(timer);
-    };
-  }, [jump, position, remote, source]);
-
-  // Scroll while playing.
-  useEffect(() => {
-    if (remote || !ctl.playing) return;
-    let frame = 0;
-    let last = performance.now();
-    let carry = 0;
-    const step = (now: number) => {
+  // One frame: put the shared place on the reading line (unless a hand scrolls here) and mark its block.
+  const draw = useCallback(() => {
+    frame.current = 0;
+    const s = sync.current;
+    const { weights, cps } = pace.current;
+    if (!s || !weights.length) return;
+    const state = s.state;
+    const place = placeAt(state, weights, cps, s.clock.now());
+    if (!byHand()) {
       const el = scroller.current;
-      const dt = Math.min(0.1, (now - last) / 1000);
-      last = now;
-      if (el) {
-        const fontPx = parseFloat(getComputedStyle(el.firstElementChild ?? el).fontSize) || 40;
-        carry += ctlRef.current.speed * fontPx * 0.75 * dt;
-        const whole = Math.floor(carry);
-        if (whole >= 1) {
-          el.scrollTop += whole;
-          carry -= whole;
-        }
-        if (el.scrollTop >= el.scrollHeight - el.clientHeight - 1) {
-          setCtl((c) => ({ ...c, playing: false }));
-          return;
-        }
+      const l = getLayout();
+      if (el && l) {
+        const top = scrollFor(l, place.block, place.offset);
+        if (Math.abs(el.scrollTop - top) >= 1) el.scrollTop = top;
       }
-      frame = requestAnimationFrame(step);
+      markCurrent(place.block);
+    }
+    if (place.end && state.playing && endSent.current !== (state.seq ?? 0)) {
+      endSent.current = state.seq ?? 0;
+      void s.send({ action: "end" });
+    }
+    if (state.playing && !place.end) frame.current = requestAnimationFrame(draw);
+  }, []); // reads refs only
+
+  const kick = useCallback(() => {
+    if (!frame.current) frame.current = requestAnimationFrame(draw);
+  }, [draw]);
+
+  useEffect(() => () => cancelAnimationFrame(frame.current), []);
+
+  // Follow the shared state.
+  useEffect(() => {
+    if (!source) return;
+    const s = new PrompterSync(source, (state, off) => {
+      setCtl(state);
+      setOffline(off);
+    });
+    sync.current = s;
+    s.setScript(pace.current.weights, pace.current.cps);
+    s.start();
+    return () => {
+      s.stop();
+      if (sync.current === s) sync.current = null;
     };
-    frame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frame);
-  }, [ctl.playing, remote]);
+  }, [source]);
+
+  useEffect(() => {
+    sync.current?.setScript(pace.current.weights, pace.current.cps);
+  }, [weights, script]);
+
+  // A new script version on the server (approved again, changed): load it.
+  const reloadedFor = useRef<string | null>(null);
+  useEffect(() => {
+    const v = ctl.version;
+    if (!script || !v || script.version === undefined || v === script.version || reloadedFor.current === v) return;
+    reloadedFor.current = v;
+    loadScript();
+  }, [ctl.version, script, loadScript]);
+
+  // Mark the block a jump went to, on every screen (not when the page opens).
+  const lastCue = useRef<number | null>(null);
+  useEffect(() => {
+    if (ctl.seq === undefined) return;
+    const cue = ctl.cue ?? 0;
+    if (lastCue.current !== null && cue > lastCue.current) setFlash({ block: ctl.block ?? 0, cue });
+    lastCue.current = cue;
+  }, [ctl.seq, ctl.cue, ctl.block]);
+
+  // Layout changes move the text: measure again before the next frame.
+  useLayoutEffect(() => {
+    dirty.current = true;
+    kick();
+  }, [blocks, mode, ctl.size, ctl.guide, ctl.mirror, kick]);
+
+  useEffect(() => {
+    kick();
+  }, [ctl, kick]);
+
+  useEffect(() => {
+    const again = () => {
+      dirty.current = true;
+      kick();
+    };
+    window.addEventListener("resize", again);
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(again) : null;
+    if (observer && copy.current) observer.observe(copy.current);
+    void document.fonts?.ready.then(again).catch(() => undefined);
+    return () => {
+      window.removeEventListener("resize", again);
+      observer?.disconnect();
+    };
+  }, [kick, script, remote]);
+
+  // A hand scroll here: every other screen follows at once, and the end of the scroll goes to the take log.
+  const endScroll = () => {
+    const h = hand.current;
+    clearTimeout(h.timer);
+    const el = scroller.current;
+    const l = getLayout();
+    if (h.moved && el && l && sync.current) {
+      const p = placeOn(l, el.scrollTop);
+      sync.current.scroll(p.block, p.offset, true);
+    }
+    h.moved = false;
+    h.at = -1e9;
+    kick();
+  };
+  const finishScroll = useCallback(() => {
+    const h = hand.current;
+    clearTimeout(h.timer);
+    if (h.touching && performance.now() - h.at < 4000) {
+      h.timer = setTimeout(finishScroll, 250);
+      return;
+    }
+    if (performance.now() - h.at < 200) {
+      h.timer = setTimeout(finishScroll, 250);
+      return;
+    }
+    endScroll();
+  }, []); // reads refs only
+
+  const onScroll = () => {
+    const h = hand.current;
+    const now = performance.now();
+    if (!((h.touching && now - h.at < 4000) || now - h.at < 250)) return; // this screen's own move along the timeline
+    h.at = now;
+    h.moved = true;
+    const el = scroller.current;
+    const l = getLayout();
+    if (!el || !l || !sync.current) return;
+    const p = placeOn(l, el.scrollTop);
+    markCurrent(p.block);
+    sync.current.scroll(p.block, p.offset, false);
+    clearTimeout(h.timer);
+    h.timer = setTimeout(finishScroll, 250);
+  };
+
+  const touchStart = () => {
+    hand.current.touching = true;
+    hand.current.at = performance.now();
+  };
+  const touchEnd = () => {
+    hand.current.touching = false;
+    hand.current.at = performance.now();
+    clearTimeout(hand.current.timer);
+    hand.current.timer = setTimeout(finishScroll, 250);
+  };
+  const wheel = () => {
+    hand.current.at = performance.now();
+    clearTimeout(hand.current.timer);
+    hand.current.timer = setTimeout(finishScroll, 250);
+  };
+  useEffect(() => () => clearTimeout(hand.current.timer), []);
+
+  const change = useCallback((patch: ControlPatch) => {
+    // A command right after a hand scroll: the scroll's end is written first, so the command starts from there.
+    if (hand.current.moved && !hand.current.touching) endScroll();
+    void sync.current?.send(patch);
+  }, []); // reads refs only
+  const jumpTo = useCallback((block: number) => change({ action: "jump", block }), [change]);
+  const step = useCallback((kind: "prev" | "next" | "repeat") => {
+    const all = blocksRef.current;
+    if (!all.length) return;
+    const here = Math.min(currentRef.current, all.length - 1);
+    const target = kind === "repeat" ? here : stepTarget(all, here, kind === "next" ? 1 : -1);
+    if (target !== null) change({ action: kind, block: target });
+  }, [change]);
 
   // Keep the screen on while it plays, where the browser allows it.
   useEffect(() => {
-    if (!ctl.playing || remote) return;
+    if (!ctl.playing) return;
     const nav = navigator as Navigator & { wakeLock?: { request(type: "screen"): Promise<{ release(): Promise<void> }> } };
     let lock: { release(): Promise<void> } | null = null;
     nav.wakeLock
@@ -308,12 +389,22 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
     return () => {
       void lock?.release().catch(() => undefined);
     };
-  }, [ctl.playing, remote]);
+  }, [ctl.playing]);
 
-  // Keys: Space plays and pauses, arrows change the speed, +/- the size, M mirrors, P switches the mode.
+  // The remote keeps the marked block in view, unless a thumb moved the list a moment ago.
+  const listTouched = useRef(-1e9);
+  useEffect(() => {
+    if (!remote || performance.now() - listTouched.current < 3000) return;
+    const row = list.current?.querySelector<HTMLElement>(`[data-index="${current}"]`);
+    if (row && typeof row.scrollIntoView === "function") row.scrollIntoView({ block: "center" });
+  }, [current, remote]);
+
+  // Keys: Space plays and pauses, arrows change the speed, +/- the size, M mirrors, P switches the mode, Home goes to
+  // the start. Page Down or N goes to the next block, Page Up or B to the previous one, R repeats the block (a
+  // presenter clicker sends Page Up and Page Down).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const c = ctlRef.current;
+      const c = sync.current?.state ?? DEFAULT_CONTROL;
       if (e.target instanceof HTMLButtonElement && (e.key === " " || e.key === "Enter")) return;
       if (e.key === " ") {
         e.preventDefault();
@@ -331,14 +422,23 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
       } else if (e.key === "m" || e.key === "M") {
         change({ mirror: !c.mirror });
       } else if (e.key === "p" || e.key === "P") {
-        switchMode(modeRef.current === "full" ? "points" : "full");
+        setMode((m) => (m === "full" ? "points" : "full"));
       } else if (e.key === "Home") {
-        change({ position: 0, playing: false });
+        e.preventDefault();
+        change({ action: "start" });
+      } else if (e.key === "PageDown" || e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        step("next");
+      } else if (e.key === "PageUp" || e.key === "b" || e.key === "B") {
+        e.preventDefault();
+        step("prev");
+      } else if (e.key === "r" || e.key === "R") {
+        step("repeat");
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [change, switchMode]);
+  }, [change, step]);
 
   if (!source) {
     return (
@@ -365,16 +465,45 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
     );
   }
 
+  const dim = ctl.playing && !remote;
+  const dock = (
+    <div className="pr-dock">
+      <BlockBar blocks={blocks} current={current} step={step} dim={dim} />
+      <Panel ctl={ctl} mode={mode} change={change} setMode={setMode} dim={dim} />
+    </div>
+  );
+  const blockClass = (i: number, base: string) =>
+    [base, i === current ? "current" : i < current ? "past" : "", flash?.block === i ? "cued" : ""].filter(Boolean).join(" ");
+  const breakBefore = (i: number) => i > 0 && blocks[i]?.section !== blocks[i - 1]?.section;
+
   if (remote) {
     return (
       <div className="pr-remote">
-        <h1>{script.title}</h1>
-        {script.note ? <p className="pr-value" role="note">{script.note}</p> : null}
-        <p className="pr-value">Remote. The screen with the text follows these buttons.</p>
-        <Panel ctl={ctl} mode={mode} change={change} setMode={switchMode} dim={false} />
+        <header className="pr-remote-head">
+          <h1>{script.title}</h1>
+          {script.note ? <p className="pr-value" role="note">{script.note}</p> : null}
+          <p className="pr-value">Remote. Tap a block and every screen jumps to it.</p>
+        </header>
+        <ol className="pr-list" ref={list} aria-label="Speaking blocks"
+          onTouchStart={() => { listTouched.current = performance.now(); }}
+          onWheel={() => { listTouched.current = performance.now(); }}>
+          {blocks.map((b, i) => (
+            <li key={i} data-index={i} className={breakBefore(i) ? "pr-row break" : "pr-row"}>
+              {b.heading ? (
+                <p className="pr-row-heading">{b.text}</p>
+              ) : (
+                <button key={flash?.block === i ? `cue-${flash.cue}` : "row"} type="button" className={blockClass(i, "pr-row-btn")}
+                  aria-current={i === current ? "true" : undefined} aria-label={`Block ${b.n}: ${b.text}`}
+                  onClick={() => jumpTo(i)}>
+                  <span className="pr-row-num" aria-hidden="true">{b.n}</span>
+                  <span className="pr-row-text">{b.text}</span>
+                </button>
+              )}
+            </li>
+          ))}
+        </ol>
         <section className="pr-guide-controls" aria-label="Reading line position">
           <h2>Reading line</h2>
-          <p className="pr-value">Move the line on your teleprompter screen.</p>
           <div>
             <button type="button" className="pr-btn" aria-label="Move reading line up"
               disabled={guidePercent(ctl.guide) <= 10} onClick={() => change({ guide: guidePercent(guidePercent(ctl.guide) - 2) })}>
@@ -389,6 +518,7 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
           </div>
         </section>
         {offline ? <p className="pr-value">Not in sync. Trying again.</p> : null}
+        {dock}
       </div>
     );
   }
@@ -398,30 +528,43 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
       <div
         ref={scroller}
         className="pr-scroll"
-        onClick={() => change({ playing: !ctlRef.current.playing })}
-        aria-label="Script. Tap to play or pause."
+        onScroll={onScroll}
+        onTouchStart={touchStart}
+        onTouchEnd={touchEnd}
+        onTouchCancel={touchEnd}
+        onWheel={wheel}
+        aria-label="Script. Tap a block to start there."
       >
         <div className={ctl.mirror ? "pr-text mirror" : "pr-text"} style={{ ["--size" as string]: ctl.size, ["--guide" as string]: guidePercent(ctl.guide) }}>
-          <div className="pr-copy">
-          <div className="pr-heading">
-            <p className="pr-title">{script.title}</p>
-            {script.note ? <p className="pr-title" role="note">{script.note}</p> : null}
-          </div>
-          {mode === "full"
-            ? script.blocks.map((b, i) => <p key={i}>{b.text}</p>)
-            : script.blocks.map((b, i) => (
-                <ul key={i}>
-                  {(b.points.length ? b.points : [b.text]).map((p, j) => (
-                    <li key={j}>{p}</li>
-                  ))}
-                </ul>
-              ))}
+          <div className="pr-copy" ref={copy}>
+            <div className="pr-heading">
+              <p className="pr-title">{script.title}</p>
+              {script.note ? <p className="pr-title" role="note">{script.note}</p> : null}
+            </div>
+            {blocks.map((b, i) => (
+              <Fragment key={i}>
+                {breakBefore(i) ? <div className="pr-break" aria-hidden="true" /> : null}
+                <div key={flash?.block === i ? `cue-${flash.cue}` : "block"} className={blockClass(i, b.heading ? "pr-block heading" : "pr-block")}
+                  data-index={i} aria-current={i === current ? "true" : undefined} onClick={() => jumpTo(i)}>
+                  {b.n !== null ? <span className="pr-num" aria-hidden="true"><span>{b.n}</span></span> : null}
+                  {mode === "full" || b.heading ? (
+                    <p>{b.text}</p>
+                  ) : (
+                    <ul>
+                      {(b.points.length ? b.points : [b.text]).map((p, j) => (
+                        <li key={j}>{p}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </Fragment>
+            ))}
           </div>
         </div>
       </div>
-      <ReadingLine value={ctl.guide} onChange={guide => change({ guide })} />
-      {offline ? <p className="pr-note">Not in sync with the remote. Trying again.</p> : null}
-      <Panel ctl={ctl} mode={mode} change={change} setMode={switchMode} dim={ctl.playing} />
+      <ReadingLine value={ctl.guide} onChange={(guide) => change({ guide })} />
+      {offline ? <p className="pr-note">Not in sync. Trying again.</p> : null}
+      {dock}
     </div>
   );
 }

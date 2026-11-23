@@ -14,7 +14,12 @@ All paths are relative to the episode folder `studio/episodes/<id>/`. Every comm
 ## Before you record
 
 - **Teleprompter.** `crewcut prompter <episode>` prints a link and a QR code. Open it on your phone. It shows the
-  script as full text or as points only. A second phone or the desktop can be the remote.
+  script as full text or as points only, in numbered speaking blocks (one paragraph each; a line marks a new section).
+  A second phone or the desktop can be the remote. Tap a block, or use **Previous**, **Repeat** and **Next**, and every
+  screen jumps to the start of that block at once. Say a block as often as you like: the editor cuts between blocks
+  and picks the take (the last complete one, unless you say otherwise).
+  Every jump, repeat, play and pause is written with its UTC time to `brief/prompter-log-<date>.jsonl`, so the editor
+  can find where each block's takes start.
 - **Focus.** Fix the focus on your face (manual focus or face tracking). Record ten seconds and look at them sharp on a
   big screen before the real take.
 - **Microphone.** A clip-on radio microphone into the camera is the safe default. Most receivers put the voice on one

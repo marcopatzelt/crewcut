@@ -46,6 +46,15 @@ the episode folder. Exact arguments of every tool: `crewcut cut <tool> --help`.
    leaves a word rest. Better: a whole sentence from the main recording as a bridge.
 6. **Probe every edge.** The text must match with the whole first and the whole last word.
 
+**Hint: the teleprompter's take log.** The speaker records in numbered speaking blocks (one paragraph of the script
+each) and may repeat a block several times. When `brief/prompter-log-<date>.jsonl` exists, each line is one jump on
+the teleprompter: `time` (UTC, milliseconds), `action` (`jump`, `repeat`, `next`, `prev`, `scroll`, `start`, `play`,
+`pause`), `block` (the number on the screen), `words` (its first words) and `script`. A `repeat` of block 12 at
+14:03:12.345 means a new take of block 12 starts a few seconds later. To line the log up with a recording, take the
+file's start time from its ingest report (`created`) and check the offset at the first block you can hear: camera
+clocks can be off by minutes or a time zone. Use the log to find where the takes of a block start and how many there
+are; which take wins is still decided by the rules above and by listening. The log can be missing or incomplete.
+
 ## 5. Double sentence starts (required before building)
 
 `crewcut cut doubles <selects>` finds a short piece (under 2 s) at the start of a select followed by the same sentence

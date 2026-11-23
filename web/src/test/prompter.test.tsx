@@ -54,15 +54,16 @@ describe("teleprompter", () => {
     fireEvent.click(screen.getByRole("button", { name: "Move reading line down" }));
     await act(async () => { finish({ ...DEFAULT_CONTROL, guide: 33 }); });
     expect(screen.getByLabelText("Reading line percent").textContent).toBe("37 %");
-    expect(posted).toHaveBeenLastCalledWith({ guide: 37 });
+    expect(posted).toHaveBeenLastCalledWith(expect.objectContaining({ guide: 37 }));
   });
   it("moves the reading line from the phone without starting playback", async () => {
     const posted = vi.fn().mockResolvedValue(undefined);
     render(<Prompter source={source({ shared: true, setControl: posted })} remote />);
     fireEvent.click(await screen.findByRole("button", { name: "Move reading line down" }));
-    expect(posted).toHaveBeenLastCalledWith({ guide: 35 });
+    expect(posted).toHaveBeenLastCalledWith(expect.objectContaining({ guide: 35 }));
+    expect(posted.mock.calls[0]?.[0]).not.toHaveProperty("playing");
     fireEvent.click(screen.getByRole("button", { name: "Move reading line up" }));
-    expect(posted).toHaveBeenLastCalledWith({ guide: 33 });
+    expect(posted).toHaveBeenLastCalledWith(expect.objectContaining({ guide: 33 }));
     fireEvent.click(screen.getByRole("button", { name: "Reset line" }));
     expect(screen.getByLabelText("Reading line percent").textContent).toBe("33 %");
   });
@@ -115,9 +116,35 @@ describe("teleprompter", () => {
     expect(posted[posted.length - 1]?.speed).toBe(1.6);
   });
 
-  it("shows only the panel in remote mode", async () => {
-    render(<Prompter source={source()} remote />);
+  it("shows the blocks as a list to tap and the controls in remote mode, not the reading view", async () => {
+    const { container } = render(<Prompter source={source()} remote />);
     expect(await screen.findByRole("toolbar", { name: "Teleprompter controls" })).toBeTruthy();
-    expect(screen.queryByText("The first sentence of the script.")).toBeNull();
+    expect(screen.getByRole("toolbar", { name: "Speaking blocks" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Block 2: The second sentence." })).toBeTruthy();
+    expect(container.querySelector(".pr-scroll")).toBeNull();
+  });
+
+  it("numbers the blocks and keeps section breaks visible", async () => {
+    const sections: PrompterScript = { ...script, blocks: [
+      { text: "Intro one.", points: [], n: 1, section: 1 },
+      { text: "Intro two.", points: [], n: 2, section: 1 },
+      { text: "Part two starts.", points: [], n: 3, section: 2 },
+    ] };
+    const { container } = render(<Prompter source={source({ script: async () => sections })} remote={false} />);
+    await screen.findByText("Part two starts.");
+    expect([...container.querySelectorAll(".pr-num")].map((n) => n.textContent)).toEqual(["1", "2", "3"]);
+    const breaks = container.querySelectorAll(".pr-break");
+    expect(breaks).toHaveLength(1);
+    expect(breaks[0]?.nextElementSibling?.textContent).toContain("Part two starts.");
+  });
+
+  it("jumps with Page Down, Page Up and R on a screen without a server", async () => {
+    const { container } = render(<Prompter source={source()} remote={false} />);
+    await screen.findByText("The second sentence.");
+    fireEvent.keyDown(window, { key: "PageDown" });
+    await waitFor(() => expect(container.querySelector("[aria-current='true']")?.getAttribute("data-index")).toBe("1"));
+    expect(screen.getByRole("button", { name: "Repeat block 2 of 2" })).toBeTruthy();
+    fireEvent.keyDown(window, { key: "PageUp" });
+    await waitFor(() => expect(container.querySelector("[aria-current='true']")?.getAttribute("data-index")).toBe("0"));
   });
 });

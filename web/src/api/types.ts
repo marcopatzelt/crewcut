@@ -428,20 +428,52 @@ export interface UploadResult {
   size: number;
 }
 
+/** One speaking block: a paragraph of the spoken text (or a heading, which has no number). */
+export interface PrompterBlock {
+  text: string;
+  points: string[];
+  heading?: boolean;
+  /** The number on the screens, 1 for the first spoken block. null for a heading. */
+  n?: number | null;
+  /** Several blank lines or a heading start a new section (1, 2, …). */
+  section?: number;
+  /** The block's length on the shared timeline: its characters plus a breath. */
+  weight?: number;
+}
+
 export interface PrompterScript {
   title: string;
   note?: string | null;
   mode: "full" | "points";
-  blocks: Array<{ text: string; points: string[] }>;
+  blocks: PrompterBlock[];
+  /** Characters per second at speed 1.0. */
+  cps?: number;
+  /** Changes when the shown script file changes. */
+  version?: string;
 }
 
 export interface PrompterControl {
   guide?: number;
   playing: boolean;
   speed: number;
+  /** The old position as a share of the whole text, kept for pages opened before the speaking blocks. */
   position: number;
   mirror: boolean;
   size: number;
+  /** The shared timeline: the anchor (block index and offset 0..1 in it) at server time `at` (ms). */
+  block?: number;
+  offset?: number;
+  at?: number;
+  /** Raised by the server on every write; screens apply only newer states. */
+  seq?: number;
+  /** The screen that wrote this state. */
+  by?: string;
+  /** Raised on every jump, so every screen marks the block it jumped to. */
+  cue?: number;
+  /** Server time of the answer (ms) and how long the server waited for a change (ms). */
+  now?: number;
+  waited?: number;
+  version?: string;
 }
 
 /** The pseudo-episode that holds the onboarding chat. It never appears in state.episodes. */

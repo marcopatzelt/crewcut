@@ -72,8 +72,9 @@ svg {
   max-width: 1200px;
   margin: 0 auto;
   /* Centre the first spoken line on the guide. Keep total padding constant
-     so moving the guide preserves the current reading position. */
-  padding: calc(var(--guide, 33) * 1vh - 0.675em) max(24px, 6vw) calc((100 - var(--guide, 33)) * 1vh + 0.675em);
+     so moving the guide preserves the current reading position. The left
+     padding leaves room for the block numbers on a phone. */
+  padding: calc(var(--guide, 33) * 1vh - 0.675em) max(24px, 6vw) calc((100 - var(--guide, 33)) * 1vh + 0.675em) max(40px, 6vw);
   transform-origin: center;
 }
 
@@ -84,16 +85,93 @@ svg {
 .pr-copy { position: relative; }
 .pr-heading { position: absolute; bottom: 100%; left: 0; right: 0; }
 
-.pr-text p {
+/* One speaking block: a paragraph with its number in the margin. Tap it to start there on every screen. The block on
+   the reading line has a filled number; the blocks already read are dimmed. */
+.pr-block {
+  position: relative;
   margin: 0 0 1.2em;
+  cursor: pointer;
+  isolation: isolate;
+  transition: opacity var(--t-fade) linear;
+}
+
+.pr-block p,
+.pr-block ul {
+  margin: 0;
+}
+
+.pr-block.past {
+  opacity: 0.4;
+}
+
+.pr-block.heading p {
+  font-size: 0.6em;
+  color: var(--prompter-ink-2);
+}
+
+.pr-num {
+  position: absolute;
+  right: 100%;
+  top: 0;
+  height: 1.35em;
+  display: flex;
+  align-items: center;
+  padding-right: 0.15em;
+}
+
+.pr-num > span {
+  font-size: max(11px, 0.28em);
+  line-height: 1;
+  font-weight: 600;
+  padding: 0.3em 0.45em;
+  border-radius: var(--r-full);
+  color: var(--prompter-ink-2);
+}
+
+.pr-block.current .pr-num > span {
+  background: var(--prompter-line);
+  color: var(--prompter-bg);
+}
+
+/* A jump marks its block on every screen for a moment. */
+.pr-block.cued::after,
+.pr-row-btn.cued::after {
+  content: "";
+  position: absolute;
+  inset: -0.1em -0.25em;
+  z-index: -1;
+  border-radius: var(--r-ctl);
+  background: var(--prompter-line);
+  opacity: 0;
+  pointer-events: none;
+  animation: pr-cue var(--t-doze) var(--ease-out);
+}
+
+.pr-row-btn.cued::after {
+  inset: 0;
+}
+
+@keyframes pr-cue {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Several blank lines in the script: a new section. */
+.pr-break {
+  width: 3em;
+  margin: 0.6em 0 1.8em;
+  border-top: 2px solid var(--prompter-ink-2);
+  opacity: 0.4;
 }
 
 .pr-text ul {
-  margin: 0 0 0.9em;
   padding: 0;
   list-style: none;
 }
-
 .pr-text li {
   margin: 0 0 0.5em;
   padding-left: 0.9em;
@@ -134,21 +212,31 @@ svg {
 .pr-line::before { content: ""; position: absolute; top: 50%; left: 0; right: 0; border-top: 2px solid var(--prompter-line); }
 .pr-line svg { position: absolute; left: 8px; top: 6px; }
 .pr-line:hover, .pr-line:focus-visible, .pr-line.dragging { opacity: 1; }
-.pr-guide-controls { margin-top: 24px; }
-.pr-guide-controls h2 { font-size: 20px; margin-bottom: 8px; }
-.pr-guide-controls > div { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+.pr-guide-controls { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.pr-guide-controls h2 { font-size: 13px; line-height: 20px; margin: 0; color: var(--prompter-ink-2); font-weight: 500; }
+.pr-guide-controls > div { display: flex; gap: 4px; align-items: center; justify-content: center; flex-wrap: wrap; }
 
-.pr-panel {
+/* The controls at the bottom: the speaking blocks above the teleprompter controls. */
+.pr-dock {
   position: fixed;
   left: 50%;
   bottom: max(16px, env(safe-area-inset-bottom));
   transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 32px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.pr-panel {
   display: flex;
   align-items: center;
   gap: 4px;
   flex-wrap: wrap;
   justify-content: center;
-  max-width: calc(100% - 32px);
+  max-width: 100%;
   padding: 6px;
   border-radius: var(--r-composer);
   background: var(--prompter-panel);
@@ -195,6 +283,46 @@ svg {
   padding: 0 16px;
 }
 
+.pr-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Previous, Repeat and Next: 56 px high, wide enough to hit with a thumb while recording. */
+.pr-blocks {
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+.pr-btn.pr-step {
+  height: 56px;
+  min-width: 96px;
+  padding: 0 14px;
+  gap: 6px;
+  font-size: 15px;
+}
+
+.pr-btn.pr-step.repeat {
+  background: var(--prompter-ink);
+  color: var(--prompter-bg);
+  min-width: 128px;
+}
+
+/* On a touch screen the block buttons never fade while the text plays. */
+@media (hover: none) {
+  .pr-blocks.dim {
+    opacity: 1;
+  }
+}
+
+/* On a screen with a mouse (the desktop window on the prompter glass, steered from a phone) nothing covers the text
+   while it plays; the controls come back under the mouse. */
+@media (hover: hover) and (pointer: fine) {
+  .pr-panel.dim {
+    opacity: 0;
+  }
+}
+
 .pr-value {
   min-width: 48px;
   text-align: center;
@@ -234,16 +362,18 @@ svg {
   color: var(--prompter-ink-2);
 }
 
-/* The remote page: only the panel, big. */
+/* The remote page: the blocks as a list to tap, the controls big at the bottom. */
 .pr-remote {
   position: fixed;
   inset: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-  padding: 24px;
+  gap: 12px;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+}
+
+.pr-remote-head {
+  text-align: center;
 }
 
 .pr-remote h1 {
@@ -254,9 +384,88 @@ svg {
   text-align: center;
 }
 
-.pr-remote .pr-panel {
+.pr-remote-head .pr-value {
+  margin: 4px 0 0;
+}
+
+.pr-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pr-row.break {
+  margin-top: 12px;
+  padding-top: 12px;
+  box-shadow: inset 0 1px 0 var(--edge-light);
+}
+
+.pr-row-heading {
+  margin: 4px 12px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--prompter-ink-2);
+}
+
+.pr-row-btn {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 12px;
+  border-radius: var(--r-ctl);
+  text-align: left;
+  font-size: 17px;
+  line-height: 24px;
+  color: var(--prompter-ink);
+}
+
+.pr-row-btn.past {
+  color: var(--prompter-ink-2);
+}
+
+.pr-row-btn.current {
+  background: var(--prompter-panel);
+  box-shadow: inset 3px 0 0 var(--prompter-line);
+}
+
+.pr-row-num {
+  min-width: 28px;
+  font-weight: 600;
+  color: var(--prompter-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.pr-row-btn.current .pr-row-num {
+  color: var(--prompter-line);
+}
+
+.pr-row-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.pr-row-btn.current .pr-row-text {
+  -webkit-line-clamp: unset;
+}
+
+.pr-remote .pr-dock {
   position: static;
   transform: none;
+  align-self: center;
+  max-width: 100%;
+}
+
+.pr-remote .pr-panel {
   max-width: 560px;
 }
 
@@ -303,6 +512,9 @@ svg {
 
 @media (prefers-reduced-motion: reduce) {
   .pr-panel,
+  .pr-block,
+  .pr-block.cued::after,
+  .pr-row-btn.cued::after,
   .spin {
     transition: none;
     animation: none;

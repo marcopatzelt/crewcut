@@ -372,8 +372,9 @@ Separate port (`4748` by default), reachable from a phone in the same network. E
 | Method and path | Answer |
 |---|---|
 | `GET /p/{token}` | the teleprompter page |
-| `GET /p/{token}/script` | `{"title", "mode": "full" or "points", "blocks": [{"text", "points": ["…"]}]}` |
-| `GET /p/{token}/control`, `POST /p/{token}/control` | `{"playing": bool, "speed": 1.0, "position": 0.0, "mirror": false, "size": 1.0}` (a second phone or the desktop can be the remote) |
+| `GET /p/{token}/script` | `{"title", "mode": "full" or "points", "cps": 17.0, "version", "blocks": [{"text", "points": ["…"], "n": 1, "section": 1, "weight": 120}]}`: numbered speaking blocks (`n` is null for a heading), a new `section` after two or more blank lines, `weight` the block's characters plus a breath on the timeline, `cps` characters per second at speed 1.0 |
+| `GET /p/{token}/control[?after=<seq>&wait=<s>]` | `{"playing", "speed", "mirror", "size", "guide", "block", "offset", "at", "seq", "by", "cue", "now", "waited", "version", "position"}`. The shared timeline: the anchor (`block` index, `offset` 0..1 in it) at server time `at` (ms), moving `cps × speed` characters a second while playing. `seq` rises with every write, `by` is the screen that wrote it, `cue` rises with every jump, `now` is the server time. With `after` and `wait` (at most 25 s) the answer waits until `seq` differs from `after`. |
+| `POST /p/{token}/control` | Settings (`playing`, `speed`, `mirror`, `size`, `guide`) and an optional `action` with `client` (the screen's id): `jump`, `next`, `prev`, `repeat` with `block` (to its start; while playing the text holds there 1.5 s), `start` (the beginning, paused), `scroll` and `scrolled` with `block` and `offset` (a hand scroll and its end), `end`. Answers the new state. Jumps, repeats, the end of a hand scroll, play and pause add a line to the take log `brief/prompter-log-<UTC date>.jsonl`: `{"time": "…Z", "unix_ms", "action", "block", "section", "offset", "playing", "script", "words"}`. |
 
 ## Stop a rented GPU, make a Short
 

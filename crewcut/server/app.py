@@ -7,7 +7,9 @@ import json
 import mimetypes
 import os
 import re
+import secrets
 import shutil
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -709,10 +711,24 @@ def create_prompter_app() -> FastAPI:
     if (dist / "assets").is_dir():
         app.mount("/assets", StaticFiles(directory=dist / "assets"), name="assets")
 
+    known: dict[str, str] = {}  # token -> episode, checked again on every request
+
     def episode_of(token: str) -> str:
-        eid = episodes.by_prompter_token(token) if len(token) >= 12 else None
+        if len(token) < 12:
+            raise HTTPException(404, "Unknown teleprompter link.")
+        eid = known.get(token)
+        if eid:
+            try:
+                if secrets.compare_digest(episodes.read(eid).get("prompter_token", ""), token):
+                    return eid
+            except (OSError, ValueError):
+                pass
+        eid = episodes.by_prompter_token(token)
         if not eid:
             raise HTTPException(404, "Unknown teleprompter link.")
+        if len(known) > 64:
+            known.clear()
+        known[token] = eid
         return eid
 
     @app.get("/favicon.svg", include_in_schema=False)
@@ -735,8 +751,16 @@ def create_prompter_app() -> FastAPI:
         return prompter.script(episode_of(token))
 
     @app.get("/p/{token}/control")
-    def get_control(token: str):
-        return prompter.control(episode_of(token))
+    async def get_control(token: str, after: int | None = None, wait: float = 0.0):
+        """The shared state. With `after` (the seq a screen has) and `wait` (seconds, at most 25) the answer waits until
+        the state changes, so every screen hears a command at once. `waited` (ms) lets the screen set its clock."""
+        eid = episode_of(token)
+        started = time.monotonic()
+        if after is not None and wait > 0:
+            await prompter.wait_change(eid, after, min(wait, 25.0))
+        state = prompter.control(eid)
+        state["waited"] = round((time.monotonic() - started) * 1000)
+        return state
 
     @app.post("/p/{token}/control")
     async def post_control(token: str, request: Request):

@@ -1,9 +1,12 @@
 # Prompter on a chosen screen
 
-Phone controls send only the changed setting. Progress reports send only position,
-so they cannot overwrite a newer pause, speed or reading-guide command. Writes
-stay in order; polling waits for each response and rejects reads started before
-a local command. The next read starts after 200 ms, without a fixed settling delay.
+The desktop window shows the same numbered speaking blocks as the phone and follows
+the same shared timeline: tap a block or press **Previous**, **Repeat** or **Next** on
+the phone, and the window jumps to the start of that block at once. A hand scroll on
+the phone moves the window with it, up and down. No screen reports its scroll position;
+each computes the place from the shared anchor, the server time and the speed, so a
+playing window cannot undo a command from the phone (the cause of the sync bug of
+23 Nov 2026). The window hides its controls while the text plays.
 
 For recording pauses, place `SCRIPT-v001.prompter.json` beside `SCRIPT-v001.md`.
 It contains `source_sha256` (the script's SHA-256) and a `paragraphs` array of strings.

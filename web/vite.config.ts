@@ -49,7 +49,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": { target: api, changeOrigin: false },
-      "^/p/[^/]+/(script|control)$": { target: prompter, changeOrigin: false },
+      "^/p/[^/]+/(script|control)(\\?.*)?$": { target: prompter, changeOrigin: false },
     },
   },
   test: {

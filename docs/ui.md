@@ -301,14 +301,24 @@ animation (`crewcut-demo.webp` and `.mp4`, dark) come from `tools/ci/readme_shot
 A second Vite entry, `prompter.html`, served by the teleprompter port at `/p/<token>` (assets under `/assets/`).
 
 - Reads the token from the path (`?token=` during development) and loads `/p/<token>/script`.
-- Big text on a black background with a reading line at a third of the height. Full text or key points. The controls
-  sit in one capsule with material at the bottom, every target at least 44 px. On an iPhone the text uses the system
-  font.
-- Tap the text or press Space to play and pause. Arrow up and down change the speed, `+` and `-` the size, `M` mirrors,
-  `P` switches the mode, Home goes back to the start.
-- Follows `/p/<token>/control` every 500 ms. A change on this screen is posted at once; the playing screen reports its
-  position while it plays, so a second phone or the desktop can drive it. `?remote=1` shows only the controls (the
-  "Open the remote" link in the Teleprompter popover).
+- Big text on a black background with a reading line at a third of the height. Full text or key points, in numbered
+  speaking blocks (one paragraph each, its number in the margin; a short line marks a new section). The block on the
+  reading line has a filled number, blocks already read are dimmed, and a jump marks its block for a moment. On an
+  iPhone the text uses the system font.
+- At the bottom: **Previous**, **Repeat** and **Next** (56 px high) above the capsule with Play, speed, size, mode,
+  mirror and back to the start, every target at least 44 px. On a touch screen the block buttons never fade; on a
+  screen with a mouse the controls disappear while the text plays and come back under the mouse.
+- Tap a block to start there. Space plays and pauses. Arrow up and down change the speed, `+` and `-` the size, `M`
+  mirrors, `P` switches the mode, Home goes back to the start, Page Down or `N` to the next block, Page Up or `B` to the
+  previous one, `R` repeats the block (a presenter clicker sends Page Up and Page Down).
+- Every screen follows one shared timeline (`src/prompter/timeline.ts`, `sync.ts`): the anchor (block and the share of
+  it), the server time it was set and the speed. A screen computes the place from these, so it never reports its scroll
+  position back. Commands and hand scrolls are posted at once and in order; the server numbers every write and holds
+  `GET /p/<token>/control?after=<seq>&wait=20` open until something newer exists, so a tap on one phone moves every
+  screen within a fraction of a second. A screen asks again at once when the phone wakes up or comes back online, and a
+  screen opened late starts at the shared place. A jump while the text plays holds at the block's start for 1.5 s.
+- `?remote=1` shows the blocks as a list to tap (the marked block stays in view), the block buttons and the controls
+  (the "Open the remote" link in the Teleprompter popover).
 - Keeps the phone screen on while it plays, where the browser allows it (Wake Lock).
 
 ## Run against a local server
