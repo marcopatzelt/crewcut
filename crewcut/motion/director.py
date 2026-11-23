@@ -22,7 +22,13 @@ The JSON (``schema`` 1)::
 
 ``column`` is ``a`` (on the shelf: ``piece`` is a template name, ``params`` its values), ``b`` (built new: ``piece`` is
 the id of a ``new`` entry), ``c`` (a chosen upgrade: ``piece`` is its id) or ``-`` (no motion: the speaker carries
-it). Most beats get ``-``.
+it, or a recording plays). Most beats get ``-``.
+
+Every full-frame picture of the video has its own row, whatever renders it: a motion template, a comp built for this
+video, a 2D scene (``piece`` names a 2D scene of the pack or the app) or a 3D scene. The density line counts them
+all, the render path refuses a full-frame insert without its row (``motion_gate``) and without the yes on its style
+frame (``custom.style_frame_gate``). A beat may be split into several rows (``"n": "12a"``, ``"12b"``); every full-frame
+insert names its own row.
 """
 
 from __future__ import annotations
@@ -41,6 +47,11 @@ from . import references as refs_mod
 
 COLUMNS = ("a", "b", "c", "-")
 MOTION = ("a", "b", "c")
+RENDERS = ("motion", "2d", "3d")
+FLAT_2D = ("Beat {n}: the 2D scene {piece} as the whole full-frame picture reads as a slide. Prefer a motion piece "
+           "from the shelf (crewcut motion library) or a comp built for this video in the launch film's craft (a "
+           "camera that never stops, layers in depth, symbol and label close together); a 2D window belongs inside "
+           "such a shot as one element. The style frame card and the slide check decide.")
 EFFORTS = ("S", "M", "L")
 SOURCE_KINDS = ("lesson", "reference", "baseline", "retention")
 UPGRADES = (2, 4)
@@ -183,6 +194,48 @@ def shelf_rows() -> list[dict]:
     return rows
 
 
+def scenes() -> dict[str, dict]:
+    """2D and 3D scenes a row may name in column (a): ``name -> {"render": "2d"|"3d", "kind": "full"|"overlay"}``.
+    The pack's own scenes (``brand/templates/2d``, ``brand/templates/3d``) come first, then the app's."""
+    from ..render import plan as rplan
+    out: dict[str, dict] = {}
+    dirs = []
+    pack = paths.brand_dir()
+    if pack.resolve() != paths.neutral_pack_dir().resolve():
+        dirs.append(pack / "templates")
+    dirs.append(paths.templates_dir())
+    for root in dirs:
+        for render in ("2d", "3d"):
+            d = root / render
+            if not d.is_dir():
+                continue
+            shared = set(rplan.SHARED[render])
+            for f in sorted(d.glob(f"*{rplan.EXT[render]}")):
+                if f.name in shared or f.name.endswith(".scene.json"):
+                    continue
+                out.setdefault(f.stem, {"render": render, "kind": "overlay" if f.stem == "keyword" else "full"})
+    return out
+
+
+def render_of(plan: dict, b: dict, shelf: dict[str, dict] | None = None,
+              found: dict[str, dict] | None = None) -> str:
+    """What renders a row: ``motion`` (a shelf template or a comp), ``2d`` or ``3d`` (a scene). A row may say it with
+    ``"render"``; else column (a) looks the piece up on the motion shelf first, then among the scenes."""
+    if b.get("render") in RENDERS:
+        return str(b["render"])
+    piece = str(b.get("piece") or "").partition("@")[0]
+    if b.get("column") == "a":
+        shelf = _shelf(plan) if shelf is None else shelf
+        if piece in shelf:
+            return "motion"
+        found = scenes() if found is None else found
+        return found.get(piece, {}).get("render", "motion")
+    if b.get("column") == "b":
+        x = _new_by_id(plan).get(piece) or {}
+        return str(x.get("render")) if x.get("render") in RENDERS else "motion"
+    return "motion"
+
+
 def skeleton(episode: str, short: bool | None = None) -> Path:
     """Write ``edit/motion-plan-vNNN.json`` (and ``.md``) with the beats from the words file, the Writer's marks, the
     shelf and the inputs the director reads. Returns the JSON path."""
@@ -236,11 +289,13 @@ def _up_by_id(plan: dict) -> dict[str, dict]:
     return {str(u.get("id")): u for u in plan.get("upgrades") or [] if isinstance(u, dict)}
 
 
-def _is_overlay(plan: dict, b: dict, shelf: dict[str, dict]) -> bool:
+def _is_overlay(plan: dict, b: dict, shelf: dict[str, dict], found: dict[str, dict] | None = None) -> bool:
     if b.get("overlay") is not None:
         return bool(b["overlay"])
     if b.get("column") == "a":
-        return (shelf.get(str(b.get("piece") or "").partition("@")[0]) or {}).get("kind") == "overlay"
+        name = str(b.get("piece") or "").partition("@")[0]
+        row = shelf.get(name) or (found or {}).get(name) or {}
+        return row.get("kind") == "overlay"
     if b.get("column") == "b":
         return (_new_by_id(plan).get(str(b.get("piece"))) or {}).get("kind") == "overlay"
     return False
@@ -258,23 +313,25 @@ def compute(plan: dict, ep_dir: Path) -> dict:
     if plan.get("words") and (ep_dir / plan["words"]).is_file():
         words = dens.norm_words(json.loads((ep_dir / plan["words"]).read_text(encoding="utf-8")))
     shelf = _shelf(plan)
+    found = scenes()
     inserts = []
     for b in moving(plan):
-        overlay = _is_overlay(plan, b, shelf)
+        overlay = _is_overlay(plan, b, shelf, found)
         start = float(b["at"] if b.get("at") is not None else b.get("start") or 0.0)
         length = float(b.get("length_s") or DEFAULT_LEN["overlay" if overlay else "full"])
         scene = str(b.get("piece") or "").partition("@")[0] if b.get("column") == "a" else None
-        inserts.append({"id": f"beat{b['n']}", "kind": "motion", "scene": scene,
-                        "source": None if scene else f"motion/{b.get('piece')}/comp.jsx",
+        render = render_of(plan, b, shelf, found)
+        inserts.append({"id": f"beat{b['n']}", "kind": render, "scene": scene,
+                        "source": None if scene or render != "motion" else f"motion/{b.get('piece')}/comp.jsx",
                         "start": round(start, 3), "end": round(start + length, 3), "transparent": overlay})
     pseudo = {"format": "portrait" if plan.get("short") else plan.get("format") or "landscape", "inserts": inserts}
     rep = dens.count(pseudo, words, dens.limits(pack.value("edit_style", {}) or {}),
                      total_s=float(plan.get("duration_s") or 0) or None)
     c, mx = rep["counts"], rep["max"]
     heroes = sum(c["heroes"].values())
-    line = (f"full-frame {c['big']} of max {mx['big']} · all motion {c['motion']} in {tc(rep['duration_s'])} "
-            f"(max {mx['motion']}) · heroes {heroes}")
-    plan["density"] = {"line": line, "counts": {k: c[k] for k in ("motion", "big", "overlays", "heroes")},
+    line = (f"full-frame {c['big']} of max {mx['big']}{dens.kinds_text(c.get('big_by_kind') or {})} · all motion "
+            f"{c['motion']} in {tc(rep['duration_s'])} (max {mx['motion']}) · heroes {heroes}")
+    plan["density"] = {"line": line, "counts": {k: c[k] for k in ("motion", "big", "overlays", "heroes", "big_by_kind")},
                        "max": mx, "findings": [f for f in rep["findings"] if f["level"] in ("ERROR", "CHECK")]}
     new = [n for n in plan.get("new") or [] if not n.get("struck")]
     ups = [u for u in plan.get("upgrades") or [] if u.get("chosen") and not u.get("struck")]
@@ -297,11 +354,17 @@ def check(plan: dict, ep_dir: Path) -> tuple[list[str], list[str]]:
     warns: list[str] = []
     compute(plan, ep_dir)
     shelf = _shelf(plan)
-    names = {_plain(n) for n in shelf}
+    found = scenes()
+    names = {_plain(n) for n in shelf} | {_plain(n) for n in found}
     new, ups = _new_by_id(plan), _up_by_id(plan)
     beats = [b for b in plan.get("beats") or [] if isinstance(b, dict)]
     if not beats:
         errors.append("the plan has no beats")
+    seen: set[str] = set()
+    for b in beats:
+        if str(b.get("n")) in seen:
+            errors.append(f"beat {b.get('n')} appears twice: give a split beat its own number (12a, 12b)")
+        seen.add(str(b.get("n")))
     for b in beats:
         n = b.get("n")
         col = str(b.get("column") or "")
@@ -312,6 +375,13 @@ def check(plan: dict, ep_dir: Path) -> tuple[list[str], list[str]]:
         if col not in COLUMNS:
             errors.append(f"beat {n}: column must be a, b, c or - (no motion), not {col or 'empty'}")
             continue
+        if col == "-" and not b.get("struck"):
+            words = set(re.findall(r"[a-z0-9_]+", str(b.get("picture") or "").lower()))
+            named = sorted(w for w in words if "_" in w and (w in found or w in shelf))
+            if named:
+                errors.append(f"beat {n}: column - leaves the beat to the speaker, but the picture names graphics "
+                              f"({', '.join(named)}): give every full-frame picture its own row (column a, b or c), "
+                              "so the card counts it and it gets its style frame")
         if col == "-" or b.get("struck"):
             continue
         pic = _plain(b.get("picture"))
@@ -319,8 +389,12 @@ def check(plan: dict, ep_dir: Path) -> tuple[list[str], list[str]]:
             errors.append(f"beat {n}: the picture only names a template; say what happens on screen first")
         piece = str(b.get("piece") or "")
         if col == "a":
-            if piece.partition("@")[0] not in shelf:
-                errors.append(f"beat {n}: {piece or 'no piece'} is not on the shelf (crewcut motion library)")
+            name = piece.partition("@")[0]
+            if name not in shelf and name not in found:
+                errors.append(f"beat {n}: {piece or 'no piece'} is not on the shelf (crewcut motion library) and is "
+                              "not a 2D or 3D scene")
+            elif name not in shelf and found[name]["render"] == "2d" and not _is_overlay(plan, b, shelf, found):
+                warns.append(FLAT_2D.format(n=n, piece=name))
         elif col == "b":
             if piece not in new:
                 errors.append(f"beat {n}: column b names the new piece in 'new' (id {piece or 'missing'})")
@@ -378,7 +452,26 @@ def check(plan: dict, ep_dir: Path) -> tuple[list[str], list[str]]:
                       "piece, or ask for a higher cap")
     for f in plan["density"]["findings"]:
         warns.append(f"density: {f['text']}")
+    missing = uncovered(plan, ep_dir)
+    if missing:
+        warns.append(f"{missing['plan']} shows {len(missing['ids'])} full-frame picture(s) without a row in this plan: "
+                     f"{', '.join(missing['ids'][:12])}{' …' if len(missing['ids']) > 12 else ''}. Every full-frame "
+                     "insert names its own row (\"beat\", \"column\"); the render refuses it otherwise")
     return errors, warns
+
+
+def uncovered(plan: dict, ep_dir: Path) -> dict | None:
+    """Full-frame graphic inserts of the newest edit plan without a motion row of ``plan`` (None when all have one)."""
+    p = _newest(ep_dir / "edit", "plan-v*.json")
+    if p is None:
+        return None
+    try:
+        edit = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    rows = {str(b.get("n")) for b in moving(plan)}
+    ids = [str(e.get("id")) for e in gated(edit) if not e.get("transparent") and str(e.get("beat")) not in rows]
+    return {"plan": p.name, "ids": ids} if ids else None
 
 
 # ---------------------------------------------------------------- the Markdown for people
@@ -388,7 +481,9 @@ def _piece_txt(plan: dict, b: dict) -> str:
     col, piece = b.get("column"), str(b.get("piece") or "")
     if col == "a":
         params = ", ".join(f"{k}: {v}" for k, v in (b.get("params") or {}).items())
-        return f"{piece} {{{params}}}" if params else piece
+        render = render_of(plan, b)
+        tag = f" ({render.upper()})" if render != "motion" else ""
+        return f"{piece}{tag} {{{params}}}" if params else f"{piece}{tag}"
     if col == "b":
         x = _new_by_id(plan).get(piece) or {}
         return f'custom "{piece}"' + (f", {x['plates']} plate{'s' if x['plates'] != 1 else ''}" if x.get("plates")
@@ -533,7 +628,8 @@ def card_data(plan: dict, p: Path, ep_dir: Path) -> dict:
                 "purpose": b.get("purpose"), "picture": b.get("picture"), "struck": bool(b.get("struck"))}
         if b.get("column") == "a":
             a.append({**base, "piece": b.get("piece"), "params": b.get("params") or {}, "length_s": b.get("length_s"),
-                      "cost_usd": float(b.get("cost_usd") or 0), "media": _media(plan, b)})
+                      "render": render_of(plan, b), "cost_usd": float(b.get("cost_usd") or 0),
+                      "media": _media(plan, b)})
         elif b.get("column") in ("b", "c"):
             (b_rows if b["column"] == "b" else c_rows).append({**base, "piece": b.get("piece"),
                                                                "length_s": b.get("length_s")})
@@ -698,30 +794,47 @@ def _row_problem(plan: dict, e: dict) -> str | None:
         want = str(row.get("piece") or "").partition("@")[0]
         if str(e.get("scene") or "").partition("@")[0] != want:
             return f"it uses {e.get('scene') or 'no scene'}, beat {beat} of {v} says {want}"
-    if col == "b" and not e.get("source"):
+    if col == "b" and e.get("kind") == "motion" and not e.get("source"):
         return f"column b is a piece built for this video (source motion/<id>/comp.jsx), beat {beat}"
     return None
 
 
+def gated(plan_json: dict) -> list[dict]:
+    """The inserts that need a row of the approved motion plan: every motion insert and every full-frame 2D or 3D
+    insert (recordings, 2D overlays over the speaker and keywords do not)."""
+    return [e for e in (plan_json or {}).get("inserts") or [] if isinstance(e, dict)
+            and (e.get("kind") == "motion" or (e.get("kind") in ("2d", "3d") and not e.get("transparent")
+                                               and e.get("scene") not in dens.KEYWORD_SCENES))]
+
+
 def motion_gate(episode_dir: Path | str, plan_json: dict) -> list[str]:
-    """Refusals for ``crewcut render plan``: motion inserts without a row in an approved motion plan (motion plan 3.1
-    check 2). Each insert names its row with ``"beat"`` and ``"column"``. Column (a) may also come from a plan whose
-    card is still open (shelf pieces may be built meanwhile); columns (b) and (c) wait for the yes. An empty list
-    means every motion insert may render. The caller skips this with ``--no-gate`` (tests only)."""
+    """Refusals for ``crewcut render plan``: motion inserts and full-frame 2D and 3D inserts without a row in an
+    approved motion plan (motion plan 3.1 check 2). Each insert names its row with ``"beat"`` and ``"column"``; two
+    full-frame inserts never share a row, so the plan counts every full-frame picture. Column (a) may also come from a
+    plan whose card is still open (shelf pieces may be built meanwhile); columns (b) and (c) wait for the yes. An empty
+    list means every insert may render. The caller skips this with ``--no-gate`` (tests only)."""
     ep_dir = Path(episode_dir)
-    inserts = [e for e in (plan_json or {}).get("inserts") or [] if isinstance(e, dict) and e.get("kind") == "motion"]
+    inserts = gated(plan_json)
     if not inserts:
         return []
     acc, opn = _plan_cards(ep_dir.name)
     approved, why_a = _card_plan(ep_dir, acc)
     pending, why_o = _card_plan(ep_dir, opn) if opn and (not acc or opn["id"] > acc["id"]) else (None, None)
     out = []
+    rows_used: dict[str, str] = {}
     for e in inserts:
         iid = e.get("id")
         if e.get("beat") is None or e.get("column") not in MOTION:
-            out.append(f"{iid}: no beat and column; every motion insert comes from a row of the approved motion plan "
+            what = "motion insert" if e.get("kind") == "motion" else f"full-frame {str(e.get('kind')).upper()} insert"
+            out.append(f"{iid}: no beat and column; every {what} comes from a row of the approved motion plan "
                        '("beat": N, "column": "a", "b" or "c")')
             continue
+        if not e.get("transparent"):
+            first = rows_used.setdefault(str(e.get("beat")), str(iid))
+            if first != str(iid):
+                out.append(f"{iid}: beat {e.get('beat')} is already the row of {first}; give every full-frame picture "
+                           "its own row (split the beat: 12a, 12b), so the motion plan counts it")
+                continue
         prob = _row_problem(approved, e) if approved else None
         if approved and prob is None:
             continue

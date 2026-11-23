@@ -54,21 +54,27 @@ def progress_fn(plan: Plan) -> Callable[[str, float | None], None]:
     return report
 
 
-# ---- 2D -----------------------------------------------------------------------------------------------------------
-def render_2d(plan: Plan, ids: list[str] | None = None, images_only: bool = False,
-              runner: media.Runner = media.run, log: Callable = print) -> list[dict]:
-    return html.render_2d(plan, ids, images_only, runner, log)
+# ---- the gates: a row in the approved motion plan and the yes on a style frame -------------------------------------
+GATED = ("2d", "3d", "motion")
 
 
-# ---- motion graphics: here or on one rented machine --------------------------------------------------------------
-def motion_gates(plan: Plan, ids: list[str] | None = None) -> list[str]:
-    """Why motion inserts may not render yet: no row in the approved motion plan (crewcut motion plan), or a custom
-    piece (`source`) whose style-frame card has no yes. Empty: all may render."""
+def needs_style_frame(ins) -> bool:
+    """Every full-frame insert (2D, 3D, motion) and every custom motion piece shows a style frame before it is
+    animated. Overlays over the speaker (a keyword, a lower third) and recordings do not."""
+    if ins.kind == "2d" and ins.scene == "keyword":
+        return False
+    return ins.kind in GATED and (not ins.transparent or (ins.kind == "motion" and bool(ins.source)))
+
+
+def insert_gates(plan: Plan, ids: list[str] | None = None, kinds: tuple[str, ...] = GATED) -> list[str]:
+    """Why inserts of these kinds may not render yet: no row in the approved motion plan (crewcut motion plan), or no
+    yes on the style-frame card (crewcut motion style-frame). Empty: all may render."""
     from ..motion import custom, director
     raw = json.loads(plan.path.read_text(encoding="utf-8"))
-    out = list(director.motion_gate(plan.episode_dir, raw))
-    for ins in plan.of_kind("motion", ids):
-        if ins.source:
+    kind_of = {x.id: x.kind for x in plan.inserts}
+    out = [w for w in director.motion_gate(plan.episode_dir, raw) if kind_of.get(w.split(":", 1)[0]) in kinds]
+    for ins in plan.inserts:
+        if ins.kind in kinds and needs_style_frame(ins) and (not ids or ins.id in ids):
             why = custom.style_frame_gate(plan.episode_dir, ins.id)
             if why:
                 out.append(why)
@@ -77,16 +83,39 @@ def motion_gates(plan: Plan, ids: list[str] | None = None) -> list[str]:
     return out
 
 
+def motion_gates(plan: Plan, ids: list[str] | None = None) -> list[str]:
+    """The gates of the motion inserts (see ``insert_gates``)."""
+    return insert_gates(plan, ids, ("motion",))
+
+
+def _wait(plan: Plan, kind: str, ids: list[str] | None, what: str) -> None:
+    why = insert_gates(plan, ids, (kind,))
+    if why:
+        raise Waiting(f"{what} wait: " + "; ".join(why))
+
+
+# ---- 2D -----------------------------------------------------------------------------------------------------------
+def render_2d(plan: Plan, ids: list[str] | None = None, images_only: bool = False,
+              runner: media.Runner = media.run, log: Callable = print, gate: bool = True) -> list[dict]:
+    """The 2D inserts (Chromium). With `gate` (always, except tests), a full-frame 2D insert without its row in the
+    approved motion plan or without the yes on its style frame waits (exit 3); `crewcut render probe` still makes the
+    still for the style frame."""
+    if gate and any(needs_style_frame(x) for x in plan.of_kind("2d", ids)):
+        _wait(plan, "2d", ids, "Full-frame 2D inserts")
+    return html.render_2d(plan, ids, images_only, runner, log)
+
+
+# ---- motion graphics: here or on one rented machine --------------------------------------------------------------
+
+
 def render_motion(plan: Plan, ids: list[str] | None = None, draft: bool = False, location: str | None = None,
                   compute=None, runner: media.Runner = media.run, log: Callable = print, backend=None,
                   max_usd: float | None = None, gate: bool = True) -> dict:
     """crewcut.render.motion.render_motion with the job's progress line; a spend card or a refusal of the compute
     session becomes Waiting (exit code 3). With `gate` (always, except tests), inserts without an approved motion plan
-    row or without the yes on their style frame wait (exit 3)."""
+    row or without the yes on their style frame (every full-frame insert and every custom piece) wait (exit 3)."""
     if gate and plan.of_kind("motion", ids):
-        why = motion_gates(plan, ids)
-        if why:
-            raise Waiting("Motion graphics wait: " + "; ".join(why))
+        _wait(plan, "motion", ids, "Motion graphics")
     where = motion.location(location)
     if where == "rented" and compute is None:
         compute = load_compute()
@@ -195,8 +224,12 @@ def _compute_error(compute, e: Exception) -> Exception | None:
 
 def render_3d(plan: Plan, mode: str | None = None, gpus: int = 2, ids: list[str] | None = None,
               samples: int | None = None, draft: bool = False, max_usd: float | None = None, compute=None,
-              runner: media.Runner = media.run, log: Callable = print) -> dict:
+              runner: media.Runner = media.run, log: Callable = print, gate: bool = True) -> dict:
+    """The 3D inserts. With `gate` (always, except tests), a full-frame 3D insert without its motion plan row or the
+    yes on its style frame waits (exit 3); `crewcut render probe` makes the half-size still for the style frame."""
     todo = [x for x in plan.of_kind("3d", ids) if plan.missing(x)]
+    if gate and any(needs_style_frame(x) for x in todo):
+        _wait(plan, "3d", [x.id for x in todo], "Full-frame 3D inserts")
     frames = sum(len(plan.missing(x)) for x in todo)
     if draft:
         samples = samples or 32
@@ -340,7 +373,7 @@ def render_all(plan: Plan, mode: str | None = None, gpus: int = 2, samples: int 
     rented) is for motion and 3D. Without effectcraft-cli the motion step fails with one sentence, unless the plan
     says `"motion_without_engine": "skip"`: then the cut leaves those inserts out and says so in its notes."""
     out: dict = {"ok": False}
-    out["2d"] = render_2d(plan, runner=runner, log=log)
+    out["2d"] = render_2d(plan, runner=runner, log=log, gate=gate)
     if not _rows_ok(out["2d"]):
         log("2D inserts failed; not cutting")
         return out
@@ -367,7 +400,7 @@ def render_all(plan: Plan, mode: str | None = None, gpus: int = 2, samples: int 
     if not _rows_ok(rm["rows"]):
         log("Motion graphics inserts are not complete; not cutting")
         return out
-    out["3d"] = render_3d(plan, mode, gpus, None, samples, draft, max_usd, compute, runner=runner, log=log)
+    out["3d"] = render_3d(plan, mode, gpus, None, samples, draft, max_usd, compute, runner=runner, log=log, gate=gate)
     if not _rows_ok(out["3d"]["rows"]):
         log("3D inserts are not complete; not cutting")
         return out

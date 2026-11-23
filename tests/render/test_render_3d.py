@@ -185,18 +185,18 @@ def test_rented_needs_approval_becomes_waiting(episode, tmp_path):
     plan = plan_3d(episode)
     compute = FakeCompute(tmp_path, block=NeedsApproval(7))
     with pytest.raises(workbench.Waiting) as e:
-        workbench.render_3d(plan, mode="rented", compute=compute, runner=FakeRunner(), log=lambda *a: None)
+        workbench.render_3d(plan, mode="rented", compute=compute, runner=FakeRunner(), log=lambda *a: None, gate=False)
     assert e.value.card_id == 7
     compute = FakeCompute(tmp_path, block=Refused("month cap reached"))
     with pytest.raises(workbench.Waiting, match="month cap"):
-        workbench.render_3d(plan, mode="rented", compute=compute, runner=FakeRunner(), log=lambda *a: None)
+        workbench.render_3d(plan, mode="rented", compute=compute, runner=FakeRunner(), log=lambda *a: None, gate=False)
 
 
 def test_local_render_batches_and_timings(episode, monkeypatch):
     monkeypatch.setenv("CREWCUT_BLENDER", "/opt/blender/blender")
     plan = plan_3d(episode)                              # 30 + 2 frames
     run = FakeRunner()
-    r = workbench.render_3d(plan, mode="local", runner=run, log=lambda *a: None)
+    r = workbench.render_3d(plan, mode="local", runner=run, log=lambda *a: None, gate=False)
     calls = [c for c in run.calls if c[0] == "/opt/blender/blender"]
     assert r["way"] == "local" and len(calls) == 4      # batches of 10 frames
     c = calls[0]
@@ -206,14 +206,14 @@ def test_local_render_batches_and_timings(episode, monkeypatch):
     assert blender.local_sec_per_frame(False) is not None
     assert r["rows"][0]["clip_ok"] and plan.by_id("d1").clip.is_file()
     run2 = FakeRunner()
-    r2 = workbench.render_3d(plan, mode=None, runner=run2, log=lambda *a: None)   # nothing missing: no decision needed
+    r2 = workbench.render_3d(plan, mode=None, runner=run2, log=lambda *a: None, gate=False)   # nothing missing: no decision needed
     assert r2["way"] == "none" and not [c for c in run2.calls if "blender" in c[0]]
 
 
 def test_draft_lowers_samples(episode, monkeypatch):
     monkeypatch.setenv("CREWCUT_BLENDER", "blender")
     run = FakeRunner()
-    workbench.render_3d(plan_3d(episode), mode="local", draft=True, runner=run, log=lambda *a: None)
+    workbench.render_3d(plan_3d(episode), mode="local", draft=True, runner=run, log=lambda *a: None, gate=False)
     c = next(c for c in run.calls if c[0] == "blender")
     assert c[c.index("--samples") + 1] == "32"
 
@@ -259,7 +259,7 @@ def test_no_card_when_renting_does_not_pay_or_gpu_here(episode, tmp_path, monkey
 def test_cli_exit_3_while_the_card_is_open(episode, tmp_path, monkeypatch, capsys):
     plan = plan_3d(episode)
     monkeypatch.setattr(workbench, "load_compute", lambda: FakeCompute(tmp_path))
-    code = cli.main(["3d", str(plan.path), "--json"])
+    code = cli.main(["3d", str(plan.path), "--json", "--no-gate"])
     out = capsys.readouterr().out
     assert code == 3 and '"exit": 3' in out and '"card": 1' in out
 
@@ -297,7 +297,7 @@ def test_cap_reached_mid_run_stops_every_machine(episode, tmp_path):
     plan = plan_3d(episode, frames_s=2.0)
     compute = FakeCompute(tmp_path, delays=(0.01, 0.01), refuse_after=1)
     with pytest.raises(workbench.Waiting, match="session cap"):
-        workbench.render_3d(plan, mode="rented", gpus=2, compute=compute, runner=FakeRunner(), log=lambda *a: None)
+        workbench.render_3d(plan, mode="rented", gpus=2, compute=compute, runner=FakeRunner(), log=lambda *a: None, gate=False)
     assert compute.sessions[0][1].destroyed
     assert all(len(m.runs) <= 2 for m in compute.machines)          # nobody kept trying after the refusal
     assert plan.missing(plan.by_id("d1"))

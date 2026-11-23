@@ -222,6 +222,10 @@ button.mp-row:disabled {
   gap: 8px;
 }
 
+.sf-pics:has(> .sf-side:nth-child(3)) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .sf-pair.is-portrait .sf-pics {
   grid-template-columns: repeat(2, minmax(0, 120px));
 }

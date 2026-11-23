@@ -25,9 +25,13 @@ Taste checks (values from edit-style.json and brand.json of the style pack):
   logo        a logo in the logo corner of every full-screen 2D insert (only when brand.json has a logo)
   end-card    the last full-screen part starts at the sentence with an end-card cue word (cut_words.end_card_cue)
   mix, pace   3D share and shots per minute against graphics_mix and pace_cuts_per_minute (NOTE only)
-  motion-*    motion density (plans with "kind": "motion" inserts): lengths, big moments, motion per minute, 6 s
-              gaps, one per sentence, heroes, sounds, first and last seconds (edit-style.json motion, else neutral);
+  motion-*    motion density (plans with motion inserts or full-frame 2D/3D scenes): every full-frame graphic,
+              whatever its kind, counts as a full-frame and a motion moment; lengths, 6 s gaps, one per sentence,
+              heroes, sounds, first and last seconds stay on motion inserts (edit-style.json motion, else neutral);
               keywords_max counts keyword and keyword_pop together
+  slide       every full-frame insert, measured on the video (crewcut.render.slide): a camera that stands still
+              for most of the hold is an ERROR ("slide" when the frame is also flat: one ground colour, a text
+              window or boxes, an icon far from its label, one block in the middle); a recording gets a CHECK
 The rules in rules/cut.md of the style pack are printed as the manual list.
 
 Writes review/cut-check-vNNN.json. Exit 0 = no ERROR, 1 = at least one ERROR, 2 = usage.
@@ -594,7 +598,9 @@ def check(plan_path: Path, video: Path | None, pack, rep: cl.Report, media: bool
                 "end-card",
                 f"Last full-screen part starts {off:+.1f} s from the end-card sentence (allowed -1.5 to +0.5)",
             )
-    if any(e.get("kind") == "motion" for e in plan.get("inserts") or []):
+    if any(e.get("kind") == "motion" for e in plan.get("inserts") or []) or any(
+        e.get("kind") in ("2d", "3d") and not e.get("transparent") for e in plan.get("inserts") or []
+    ):
         motion_density(plan, ep, pack, rep, P, total_s)
     grade = list((ep / "review").glob("grade*")) if (ep / "review").is_dir() else []
     rep.add(
@@ -652,7 +658,10 @@ def check(plan_path: Path, video: Path | None, pack, rep: cl.Report, media: bool
         lw, lh = 1920, 1080
         box = corner_box(L["logo_placement"], L["logo_size"], lw, lh) if L["logo_file"] else None
         for i in ins:
-            if not i["full"] or i.get("kind") == "clip":
+            if not i["full"]:
+                continue
+            slide_check(video, i, fps, rep, A)
+            if i.get("kind") == "clip":
                 continue
             first = frame(video, i["start_f"] / fps + 0.5 / fps, 480, 270)
             if first is not None:
@@ -742,6 +751,17 @@ def check(plan_path: Path, video: Path | None, pack, rep: cl.Report, media: bool
             if roll["level"] == "ERROR"
             else None,
         )
+
+
+def slide_check(video: Path, i: dict, fps: float, rep: cl.Report, area: str) -> None:
+    """The slide check of one full-frame insert (crewcut.render.slide), measured on the video."""
+    slide = cl.app_module("crewcut.render.slide")
+    found = slide.check(
+        str(video),
+        [{"id": i["id"], "kind": i.get("kind"), "start": i["start_f"] / fps, "end": i["end_f"] / fps, "full": True}],
+    )
+    for f in found:
+        rep.add(area, f["level"], f["id"], f["text"], f["time"], f["fix"])
 
 
 def motion_density(plan: dict, ep: Path, pack, rep: cl.Report, area: str, total_s: float) -> None:

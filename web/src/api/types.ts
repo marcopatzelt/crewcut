@@ -569,6 +569,10 @@ export interface StyleFrame {
   ref_url: string | null;
   /** "reference", "the bar", or the sentence for no reference */
   ref_label: string;
+  /** a frame of the launch film: the craft bar every full-frame insert is compared with */
+  launch?: string | null;
+  launch_url?: string | null;
+  launch_shows?: string | null;
   hue?: { dominant_share: number; ok: boolean; coloured_share?: number; accent_area_limit?: number; sparse_accent?: boolean } | null;
 }
 
@@ -576,6 +580,8 @@ export interface StyleFrameData {
   insert: string;
   round: number;
   frames: StyleFrame[];
+  /** further inserts of the plan that reuse the same piece; the yes covers them too */
+  covers: string[];
 }
 
 /** card.data.template of a template card ("Keep it in your library?"). */

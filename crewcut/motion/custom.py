@@ -11,8 +11,12 @@
       comp.jsx     the comp: a template header and one function; it starts as a ground with a slow push
 
 The plan names it with ``"source": "motion/<insert-id>/comp.jsx"`` and it renders through the same code as a library
-template. ``crewcut motion style-frame`` opens the ``style-frame`` card (our frame next to the reference, per format);
-nothing animated is built before its yes (``style_frame_gate``).
+template. ``crewcut motion style-frame`` opens the ``style-frame`` card (our frame next to the reference and a frame of
+the launch film, per format); nothing animated is built before its yes (``style_frame_gate``).
+
+Every full-frame insert gets a style frame, not only custom pieces: a shelf template, a 2D scene or a 3D scene of the
+edit plan too. Its frames go to the same ``motion/<insert-id>/`` folder (without a comp); ``--also`` lets one card cover
+other inserts that reuse the same piece with other words, so the card says which inserts its yes allows.
 """
 
 from __future__ import annotations
@@ -27,6 +31,7 @@ from . import library
 ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
 FORMAT_OF = (("landscape", 1.5), ("portrait", 0.67))
 IMAGES = (".png", ".jpg", ".jpeg", ".webp")
+LAUNCH_DIR = ("motion", "launch-frames")   # under the app's templates/: stills of the launch film (the craft bar)
 
 
 class CustomError(ValueError):
@@ -175,20 +180,97 @@ def _fallback_refs(ep_dir: Path, d: Path) -> list[tuple[Path, str]]:
     return out
 
 
+# ---------------------------------------------------------------- the launch film's frames
+
+
+def launch_dir() -> Path:
+    return paths.templates_dir().joinpath(*LAUNCH_DIR)
+
+
+def launch_frames() -> dict:
+    """The launch film's reference stills (``templates/motion/launch-frames/index.json``)."""
+    import json
+    p = launch_dir() / "index.json"
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"default": None, "frames": []}
+    data["frames"] = [f for f in data.get("frames") or [] if (launch_dir() / str(f.get("file") or "")).is_file()]
+    return data
+
+
+def launch_frame(insert_id: str, scene: str | None = None, want: str | None = None) -> dict | None:
+    """The launch film still a style frame is shown next to: ``want`` by id, else the one whose ``fits`` words match
+    the insert's id and scene, else the default (a tilted card grid in depth)."""
+    data = launch_frames()
+    frames = data["frames"]
+    if not frames:
+        return None
+    by_id = {f["id"]: f for f in frames}
+    if want:
+        if want not in by_id:
+            raise CustomError(f"no launch film frame {want}; choose one of {', '.join(by_id)}")
+        return by_id[want]
+    words = set(re.split(r"[^a-z0-9_]+", f"{insert_id} {scene or ''}".lower())) - {""}
+    words |= {w for x in list(words) for w in x.split("_")}
+    best, score = None, 0
+    for f in frames:
+        n = len(words & {str(w).lower() for w in f.get("fits") or []})
+        if n > score:
+            best, score = f, n
+    return best or by_id.get(str(data.get("default"))) or frames[0]
+
+
+def plan_insert(ep_dir: Path, insert_id: str) -> dict | None:
+    """The insert ``insert_id`` in the newest edit plan that has it (None when no plan names it)."""
+    import json
+    plans = sorted((ep_dir / "edit").glob("plan-v*.json"), key=lambda f: (len(f.stem), f.stem), reverse=True)
+    for p in plans:
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        for e in data.get("inserts") or []:
+            if isinstance(e, dict) and str(e.get("id")) == insert_id:
+                return {**e, "_plan": p.name}
+    return None
+
+
+def is_custom(d: Path) -> bool:
+    """A piece built for this video (``crewcut motion new``): it has a comp or a brief."""
+    return (d / "comp.jsx").is_file() or (d / "brief.md").is_file()
+
+
 def style_frame(episode: str, insert_id: str, ours: list[str], refs: list[str] | None = None,
-                natural: bool = False, identity: str | None = None, craft_review: str | None = None) -> dict:
+                natural: bool = False, identity: str | None = None, craft_review: str | None = None,
+                also: list[str] | None = None, launch: str | None = None) -> dict:
     """Open the ``style-frame`` card: our frame of the strongest moment next to the reference (or the library
-    sample, or the bar), per format. Our frames are kept as ``frame-v<N>-<format>.png`` in the piece's folder;
-    references from outside the episode are copied into its ``refs/``. Refuses a frame that fails the hue check
-    (one hue above 30 % of the coloured pixels) unless ``natural``."""
+    sample, or the bar) and a frame of the launch film, per format. Our frames are kept as ``frame-v<N>-<format>.png``
+    in the insert's folder; references from outside the episode are copied into its ``refs/``. Refuses a frame that
+    fails the hue check (one hue above 30 % of the coloured pixels) unless ``natural``.
+
+    ``insert_id`` is a custom piece (``crewcut motion new``) or any insert of the edit plan (a shelf template, a 2D or
+    a 3D scene). ``also`` names further inserts of the plan that reuse the same piece; the card covers them too.
+    ``launch`` picks the launch film frame by id (``crewcut motion style-frame --launch list``)."""
     from .. import approvals
     from . import palette
     d = piece_dir(episode, insert_id)
     ep_dir = d.parent.parent
-    if not d.is_dir():
-        raise CustomError(f"no custom piece {insert_id}: run `crewcut motion new {episode} {insert_id} --from <brief>`")
+    entry = plan_insert(ep_dir, insert_id)
+    if not d.is_dir() and entry is None:
+        raise CustomError(f"no custom piece and no insert {insert_id} in an edit plan: run `crewcut motion new "
+                          f"{episode} {insert_id} --from <brief>`, or write the insert into the plan first")
+    covers: list[str] = []
+    for other in also or []:
+        if not ID.match(other) or other == insert_id:
+            raise CustomError(f"--also {other!r}: another insert id of the plan")
+        if plan_insert(ep_dir, other) is None:
+            raise CustomError(f"--also {other}: no such insert in an edit plan")
+        covers.append(other)
     if not ours:
         raise CustomError("give our frame with --ours (one per format the piece needs)")
+    custom_piece = d.is_dir() and is_custom(d)
+    (d / "refs").mkdir(parents=True, exist_ok=True)
     from . import quality
     craft = None
     if quality.required() or craft_review:
@@ -234,30 +316,50 @@ def style_frame(episode: str, insert_id: str, ours: list[str], refs: list[str] |
         fr["ref"] = rp.relative_to(ep_dir).as_posix() if _inside(rp, ep_dir) else None
         fr["ref_url"] = library.file_url(rp)
         fr["ref_label"] = label
+    lf = launch_frame(insert_id, str((entry or {}).get("scene") or ""), launch)
     for fr in frames.values():
         fr["ours_url"] = f"/api/files/{episode}/{fr['ours']}"
         if fr.get("ref"):
             fr["ref_url"] = f"/api/files/{episode}/{fr['ref']}"
+        if lf and fr["format"] == "landscape":
+            target = d / "refs" / f"launch-{lf['file']}"
+            if not target.exists():
+                shutil.copy2(launch_dir() / lf["file"], target)
+            rel = target.relative_to(ep_dir).as_posix()
+            fr.update(launch=rel, launch_url=f"/api/files/{episode}/{rel}", launch_id=lf["id"],
+                      launch_time=lf.get("time"), launch_shows=lf.get("shows"))
     order = [f for f in ("landscape", "portrait", "stage") if f in frames]
     first = frames[order[0]]
-    images = [u for fr in (frames[f] for f in order) for u in (fr["ours_url"], fr.get("ref_url")) if u][:3]
+    images = [u for fr in (frames[f] for f in order) for u in (fr["ours_url"], fr.get("launch_url"), fr.get("ref_url"))
+              if u][:3]
+    kind = "custom" if custom_piece else str((entry or {}).get("kind") or "motion")
+    names = ", ".join([insert_id, *covers])
     return approvals.propose(
-        episode, "edit", "style-frame", f"Style frame of {insert_id}, round {rnd}",
-        body=("Our frame of the strongest moment next to the reference" + (", per format" if len(order) > 1 else "")
+        episode, "edit", "style-frame", f"Style frame of {names}, round {rnd}",
+        body=("Our frame of the strongest moment next to the launch film" + (" and the reference" if any(
+            fr.get("ref_url") for fr in frames.values()) else "") + (", per format" if len(order) > 1 else "")
+              + (f". It covers {len(covers) + 1} inserts that reuse the same piece" if covers else "")
               + ". Nothing animated is built before your yes; a note goes back to the Designer."),
-        file=first["ours"], data={"insert": insert_id, "round": rnd, "frames": [frames[f] for f in order],
-                                  "images": images, **({"craft_review": craft} if craft else {})},
+        file=first["ours"], data={"insert": insert_id, "covers": covers, "round": rnd, "piece": kind,
+                                  "shelf": not custom_piece, "scene": (entry or {}).get("scene"),
+                                  "frames": [frames[f] for f in order], "images": images,
+                                  **({"craft_review": craft} if craft else {})},
         identity=identity or "designer")
 
 
+def covered(card: dict, insert_id: str) -> bool:
+    """A style-frame card answers for its insert and the inserts it covers (``--also``)."""
+    d = card.get("data") or {}
+    return d.get("insert") == insert_id or insert_id in (d.get("covers") or [])
+
+
 def style_frame_gate(episode_dir: Path | str, insert_id: str) -> str | None:
-    """Exit-3 reason while the style frame of custom insert ``insert_id`` is not accepted (None: it may be built).
-    The render path calls it for inserts with ``source`` (custom pieces) before rendering the animation; tests skip
-    it with ``--no-gate``."""
+    """Exit-3 reason while the style frame of insert ``insert_id`` is not accepted (None: it may be built). The render
+    path calls it for every full-frame insert (2D, 3D, motion) and for custom pieces before it renders the animation;
+    tests skip it with ``--no-gate``."""
     from .. import approvals
     ep = Path(episode_dir).name
-    cards = [c for c in approvals.list_cards(episode=ep) if c["kind"] == "style-frame"
-             and (c.get("data") or {}).get("insert") == insert_id]
+    cards = [c for c in approvals.list_cards(episode=ep) if c["kind"] == "style-frame" and covered(c, insert_id)]
     if not cards:
         return (f"{insert_id}: no style frame card yet. One real frame of the strongest moment first "
                 f"(`crewcut motion style-frame {ep} {insert_id} --ours <frame>`); nothing animated before its yes.")

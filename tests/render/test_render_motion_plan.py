@@ -220,7 +220,8 @@ def test_lengths_kinds_and_density_warnings(episode, studio):
     assert "2 motion moments in the sentence at 0:00.4: m1, k3" in w
     assert "Hero templates {'ranking': 2}" in w
     assert "m1 starts at 0.4 s; the first 3 s show the speaker alone" in w
-    assert "5 motion moments in 0.2 min" in w
+    # every full-frame graphic counts: the 2D counter s1 is a motion moment too (5 motion inserts + 1)
+    assert "6 motion moments in 0.2 min" in w
 
 
 def test_shorts_limits_and_keywords(episode, studio):
@@ -229,7 +230,8 @@ def test_shorts_limits_and_keywords(episode, studio):
     plan = make(episode, studio, roll(start=3.5, end=7.0), roll(id="m2", start=7.5, end=11.0, cues={}),
                 roll(id="m3", start=11.5, end=15.0, cues={}), format="portrait", base={"color": "soft", "seconds": 20})
     w = "\n".join(plan.warnings)
-    assert "3 full-frame motion inserts (at most 2 in a Short)" in w
+    # the basic plan's 2D counter s1 fills the frame too: it counts with the three number_rolls
+    assert "4 full-frame inserts (2D 1, motion 3) (at most 2 in a Short)" in w
     assert "apart" not in w                                                # Shorts have no 6 s gap rule
     plan = make(episode, studio, pop(start=8.0, end=10.0))
     assert "2 keywords (keyword + keyword_pop) over the speaker (at most 1)" in plan.warnings

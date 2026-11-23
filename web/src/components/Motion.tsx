@@ -133,7 +133,8 @@ export function styleFrameOf(card: Card): StyleFrameData | null {
   const d = card.data;
   const frames = list<StyleFrameData["frames"][number]>(d?.frames).filter((f) => obj(f) && typeof f.ours_url === "string");
   if (!frames.length) return null;
-  return { insert: String(d?.insert ?? ""), round: typeof d?.round === "number" ? d.round : 1, frames };
+  const covers = list<unknown>(d?.covers).filter((x): x is string => typeof x === "string");
+  return { insert: String(d?.insert ?? ""), round: typeof d?.round === "number" ? d.round : 1, frames, covers };
 }
 
 export function templateOf(card: Card): MotionTemplate | null {

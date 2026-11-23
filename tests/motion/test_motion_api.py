@@ -79,7 +79,8 @@ def test_needs_shows_the_pictures_a_motion_card_names(studio, tmp_path):
     custom.new(eid, "m3", brief)
     card = custom.style_frame(eid, "m3", [str(image(tmp_path / "o.png"))], [str(image(tmp_path / "r.png"))])
     n = media.needs(eid)
-    assert n["card"] == card["id"] and n["kind"] == "style-frame" and len(n["images"]) == 2
+    assert n["card"] == card["id"] and n["kind"] == "style-frame" and len(n["images"]) == 3
+    assert any("launch-" in u for u in n["images"])          # our frame, a launch film frame, the reference
 
 
 def test_cli_plan_check_card(studio, capsys):

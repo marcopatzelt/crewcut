@@ -26,7 +26,7 @@ The motion workflow (no engine; docs/motion-workflow.md):
     crewcut motion plan EPISODE [--short] | --check [--file F] [--card]
     crewcut motion library [--no-episodes]
     crewcut motion new EPISODE INSERT_ID --from brief.md
-    crewcut motion style-frame EPISODE INSERT_ID --ours F [--ours F] [--ref F] [--natural]
+    crewcut motion style-frame EPISODE INSERT_ID --ours F [--ours F] [--ref F] [--natural] [--also ID,ID] [--launch ID]
     crewcut motion promote EPISODE INSERT_ID --name NAME [--title T]
     crewcut motion report EPISODE --skeleton | --from F
     crewcut motion lessons
@@ -1126,17 +1126,29 @@ def new_cmd(app: App, episode, insert_id, brief):
 @cli.command("style-frame")
 @click.argument("episode")
 @click.argument("insert_id")
-@click.option("--ours", multiple=True, required=True, help="Our frame (one per format; repeat for both).")
+@click.option("--ours", multiple=True, help="Our frame (one per format; repeat for both).")
 @click.option("--ref", multiple=True, help="The reference frame (else refs/, else the bar's frames).")
 @click.option("--natural", is_flag=True, help="Grass, sky or footage: the one-hue limit does not apply.")
 @click.option("--craft-review", help="The independent Critic's JSON report against a channel benchmark.")
+@click.option("--also", help="Other inserts of the plan that reuse the same piece, comma separated: one card for all.")
+@click.option("--launch", help="The launch film frame to compare with, by id ('list' shows them); default: picked "
+              "from the insert's id and scene.")
 @click.pass_obj
 @handle_error
-def style_frame_cmd(app: App, episode, insert_id, ours, ref, natural, craft_review):
-    """Open the style-frame card: our frame next to the reference. Nothing animated is built before its yes."""
+def style_frame_cmd(app: App, episode, insert_id, ours, ref, natural, craft_review, also, launch):
+    """Open the style-frame card: our frame next to a launch film frame and the reference. Every full-frame insert
+    (a custom piece, a shelf template, a 2D or 3D scene) gets one; nothing animated is built before its yes."""
     from .. import approvals
     from . import custom
-    c = custom.style_frame(episode, insert_id, list(ours), list(ref), natural=natural, craft_review=craft_review)
+    if launch == "list":
+        frames = custom.launch_frames()["frames"]
+        out(app, frames, "\n".join(f"{f['id']:<14} {f.get('time')} s  {f.get('shows')}" for f in frames))
+        return
+    if not ours:
+        raise custom.CustomError("give our frame with --ours (one per format the piece needs)")
+    covers = [x.strip() for x in (also or "").split(",") if x.strip()]
+    c = custom.style_frame(episode, insert_id, list(ours), list(ref), natural=natural, craft_review=craft_review,
+                           also=covers, launch=launch)
     out(app, approvals.view(c), f"card #{c['id']} is open: {c['title']}")
 
 

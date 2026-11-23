@@ -270,6 +270,25 @@ describe("the style-frame card", () => {
     expect(await screen.findByText("Landscape 16:9 · Colour check passed: coloured area 8 % of the image (channel limit 30 %)")).toBeTruthy();
   });
 
+  it("shows a launch film frame beside ours and names the inserts the yes covers", async () => {
+    const shelf = structuredClone(frameCard);
+    const data = shelf.data as { frames: Array<Record<string, unknown>>; covers?: string[] };
+    Object.assign(data.frames[0]!, {
+      launch: "motion/m3/refs/launch-card-grid.jpg",
+      launch_url: "/api/files/003-local-ai/motion/m3/refs/launch-card-grid.jpg",
+      launch_shows: "a tilted grid of cards in depth",
+    });
+    data.covers = ["m4", "m5"];
+    openCardIn(shelf);
+    const group = await screen.findByRole("group", { name: "Style frame of m3, round 1" });
+    expect(within(group).getByRole("img", { name: "Launch film, Landscape 16:9" }).getAttribute("src")).toBe(
+      "/api/files/003-local-ai/motion/m3/refs/launch-card-grid.jpg",
+    );
+    expect(within(group).getByRole("img", { name: "Reference, Landscape 16:9" })).toBeTruthy();
+    expect(within(group).getByText(/Launch film: a tilted grid of cards in depth/)).toBeTruthy();
+    expect(within(group).getByText("Your yes also covers m4, m5: they reuse this piece.")).toBeTruthy();
+  });
+
   it("puts our frame next to the reference per format, and the yes builds from it", async () => {
     const calls = openCardIn(frameCard, { "POST /api/cards/20/accept": { ...frameCard, status: "accepted" } });
     const group = await screen.findByRole("group", { name: "Style frame of m3, round 1" });

@@ -1,6 +1,11 @@
 """Motion density of an edit plan: the counts of the motion plan's density rules (not overloaded) and the length
 limits of motion inserts. Pure Python (json and re only), so the check scripts in ``skills/cut-check`` can import it.
 
+Every full-frame graphic counts, whatever its kind: a 2D scene, a 3D scene and a motion insert that fill the frame are
+all full-frame moments (``big``) and motion moments. The timing rules of EffectCraft pieces (lengths per template,
+the 6 s gap, one per sentence, heroes, sounds, the speaker alone at the start and end) stay on ``"kind": "motion"``.
+Recordings (``"kind": "clip"``) are footage, not designed graphics, and are not counted.
+
 Limits come from the style pack's ``edit-style.json`` ``motion`` block when it has one, else the neutral numbers
 below. ``speaker_min_seconds``, ``speaker_open_close_seconds``, ``keywords_max`` and ``shorts.end_face_s`` are the
 pack's existing values.
@@ -21,6 +26,7 @@ from typing import Any
 
 HEROES = ("big_claim", "card_gallery", "ranking")
 KEYWORD_SCENES = ("keyword", "keyword_pop")
+GRAPHICS = ("2d", "3d", "motion")      # designed pictures; a full-frame one counts as a full-frame moment
 
 NEUTRAL: dict[str, Any] = {
     "insert_s": [3.0, 6.0],            # full-frame motion insert length
@@ -220,8 +226,11 @@ def count(plan: dict, words: list[dict], L: dict, template_sounds: dict[str, int
                       "raw": e})
     every.sort(key=lambda x: x["start"])
     motion = [x for x in every if x["kind"] == "motion"]
-    big = [x for x in motion if x["full"]]
+    big = [x for x in every if x["full"] and x["kind"] in GRAPHICS     # every full-frame graphic, whatever its kind
+           and not (x["kind"] == "2d" and x["scene"] in KEYWORD_SCENES)]
+    moments = sorted(motion + [x for x in big if x["kind"] != "motion"], key=lambda x: x["start"])
     overlays = [x for x in motion if not x["full"]]
+    by_kind = {k: sum(1 for x in big if x["kind"] == k) for k in GRAPHICS if any(x["kind"] == k for x in big)}
     ends = [x["end"] for x in every] + [w["e"] for w in words[-1:]]
     if total_s is None:
         total_s = max(ends or [0.0]) + float(plan.get("tail") or 0.0)
@@ -255,27 +264,30 @@ def count(plan: dict, words: list[dict], L: dict, template_sounds: dict[str, int
         big_max = int(L["big_moments"][1])
         if minutes > big_max:                       # long videos: at most 1 per minute
             big_max = int(minutes * L["big_per_minute_max"])
+    kinds = kinds_text(by_kind)
+    what = "full-frame inserts" + kinds if kinds else "full-frame motion inserts"
     if len(big) > big_max:
-        add("ERROR", "motion-big", f"{len(big)} full-frame motion inserts (at most {big_max}"
-            + (" in a Short)" if short else f" in {minutes:.1f} min)"), fix="Drop the weakest big moment")
-    elif not short and motion and len(big) < L["big_moments"][0]:
-        add("NOTE", "motion-big", f"{len(big)} full-frame motion inserts (usual {L['big_moments'][0]} to "
+        add("ERROR", "motion-big", f"{len(big)} {what} (at most {big_max}"
+            + (" in a Short)" if short else f" in {minutes:.1f} min)"),
+            fix="Drop the weakest full-frame picture, or let the speaker carry it")
+    elif not short and moments and len(big) < L["big_moments"][0]:
+        add("NOTE", "motion-big", f"{len(big)} {what} (usual {L['big_moments'][0]} to "
             f"{L['big_moments'][1]}); fine when the speaker carries the video")
     else:
-        add("OK", "motion-big", f"{len(big)} full-frame motion inserts (at most {big_max})")
+        add("OK", "motion-big", f"{len(big)} {what} (at most {big_max})")
 
-    # all motion
+    # all motion: motion inserts and every full-frame graphic
     if short:
         lo, hi = L["shorts"]["total"]
         motion_max = int(hi)
-        lvl = "ERROR" if len(motion) > hi else ("NOTE" if len(motion) < lo else "OK")
-        add(lvl, "motion-total", f"{len(motion)} motion moments in this Short (pack: {lo} to {hi})")
+        lvl = "ERROR" if len(moments) > hi else ("NOTE" if len(moments) < lo else "OK")
+        add(lvl, "motion-total", f"{len(moments)} motion moments in this Short (pack: {lo} to {hi})")
     else:
         limit = L["per_minute_max"] * minutes
         motion_max = int(limit + 1e-9)
-        rate = len(motion) / minutes if minutes else 0.0
-        add("ERROR" if len(motion) > limit + 1e-9 else "OK", "motion-rate",
-            f"{len(motion)} motion moments in {minutes:.1f} min = {rate:.1f} per minute "
+        rate = len(moments) / minutes if minutes else 0.0
+        add("ERROR" if len(moments) > limit + 1e-9 else "OK", "motion-rate",
+            f"{len(moments)} motion moments in {minutes:.1f} min = {rate:.1f} per minute "
             f"(at most {L['per_minute_max']:g} on average)", fix="Cut motion where the speaker already carries it")
     gaps = []
     if not short:
@@ -367,7 +379,7 @@ def count(plan: dict, words: list[dict], L: dict, template_sounds: dict[str, int
 
     # mix (note only)
     full_time = sum(x["end"] - x["start"] for x in every if x["full"])
-    motion_time = sum(x["end"] - x["start"] for x in big)
+    motion_time = sum(x["end"] - x["start"] for x in motion if x["full"])
     share = motion_time / full_time if full_time else 0.0
     if L.get("mix_motion") is not None and full_time:
         add("NOTE", "motion-mix", f"Motion is {share:.0%} of the full-screen insert time "
@@ -376,15 +388,30 @@ def count(plan: dict, words: list[dict], L: dict, template_sounds: dict[str, int
     return {
         "format": fmt, "short": short, "duration_s": round(total_s, 3), "minutes": round(minutes, 2),
         "limits": {k: v for k, v in L.items() if k != "source"}, "limits_from": L["source"],
-        "counts": {"motion": len(motion), "big": len(big), "overlays": len(overlays), "heroes": heroes,
-                   "per_minute": round(len(motion) / minutes, 2) if minutes else None, "keywords": kw,
+        "counts": {"motion": len(moments), "big": len(big), "overlays": len(overlays), "heroes": heroes,
+                   "big_by_kind": by_kind, "motion_inserts": len(motion),
+                   "per_minute": round(len(moments) / minutes, 2) if minutes else None, "keywords": kw,
                    "sounds": sounds, "motion_share_of_full": round(share, 3)},
         "max": {"big": big_max, "motion": motion_max, "heroes": hmax},
-        "moments": [{"id": x["id"], "scene": x["scene"], "source": x["source"], "start": round(x["start"], 3),
-                     "end": round(x["end"], 3), "full": x["full"]} for x in motion],
+        "moments": [{"id": x["id"], "kind": x["kind"], "scene": x["scene"], "source": x["source"],
+                     "start": round(x["start"], 3), "end": round(x["end"], 3), "full": x["full"]} for x in moments],
         "lengths": lengths, "gaps": gaps, "sentences": per_sentence, "speaker_between": between,
         "skipped": skipped, "findings": found,
     }
+
+
+def kinds_text(by_kind: dict[str, int]) -> str:
+    """`` (2D 38, motion 2)`` when more than motion fills the frame; empty when every full-frame insert is motion."""
+    if not by_kind or set(by_kind) == {"motion"}:
+        return ""
+    names = {"2d": "2D", "3d": "3D", "motion": "motion"}
+    return " (" + ", ".join(f"{names[k]} {n}" for k, n in by_kind.items()) + ")"
+
+
+def full_frame_graphics(plan: dict) -> list[dict]:
+    """The plan's full-frame graphic inserts (2D, 3D, motion; not recordings, not overlays)."""
+    return [e for e in plan.get("inserts") or [] if isinstance(e, dict) and e.get("kind") in GRAPHICS
+            and not e.get("transparent") and not (e.get("kind") == "2d" and e.get("scene") in KEYWORD_SCENES)]
 
 
 def neighbours(report: dict, iid: str, window: float) -> list[str]:

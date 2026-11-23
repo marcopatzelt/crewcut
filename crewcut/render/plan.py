@@ -938,7 +938,7 @@ class Plan:
         the density report of crewcut.motion.density (lengths, big moments, motion per minute, the 6 s gap, one per
         sentence, heroes, sounds, the speaker alone at the start and end, keyword and keyword_pop together)."""
         ms = [x for x in self.inserts if x.kind == "motion"]
-        if not ms:
+        if not ms and not any(x.kind in ("2d", "3d") and not x.transparent for x in self.inserts):
             return []
         out = []
         for x in ms:

@@ -29,7 +29,7 @@ from . import lessons as lessons_mod
 from . import references as refs_mod
 
 HIGHER_IS_BETTER = ("caused_share", "upgrades_landed_share", "retention_held_share")
-LOWER_IS_BETTER = ("critic_errors",)
+LOWER_IS_BETTER = ("critic_errors", "slides")
 STRENGTHS = (3, 6)
 VERDICTS = {"better": "better than the bar", "first": "the first motion report: it can become the bar",
             "back": "back to the Editor: nothing is named better than the bar, or the bar's strengths got worse",
@@ -83,8 +83,11 @@ def _newest(folder: Path, pattern: str) -> Path | None:
 
 def measured(ep_dir: Path) -> dict:
     """What the machine can count for a finished video: motion moments, full-frame, overlays, custom pieces and heroes
-    from the newest edit plan; the Critic's errors from the newest review bundle; retention from
-    ``review/retention.json`` when it exists."""
+    from the newest edit plan; the Critic's errors from the newest review bundle; the slides the style check found
+    in the newest ``review/cut-check-vNNN.json``; retention from ``review/retention.json`` when it exists.
+
+    Every full-frame graphic counts, whatever renders it: ``full_frame`` and ``motion_moments`` hold the full-frame
+    2D and 3D scenes too (``full_frame_by_kind`` splits them), so a video of flat 2D windows cannot look calm here."""
     out: dict[str, Any] = {}
     plan_p = _newest(ep_dir / "edit", "plan-v*.json")
     if plan_p:
@@ -93,9 +96,23 @@ def measured(ep_dir: Path) -> dict:
         except (OSError, ValueError):
             plan = {}
         ms = [e for e in plan.get("inserts") or [] if isinstance(e, dict) and e.get("kind") == "motion"]
-        out.update(plan=plan_p.name, motion_moments=len(ms), full_frame=sum(1 for e in ms if not e.get("transparent")),
+        full = dens.full_frame_graphics(plan)
+        by_kind = {k: sum(1 for e in full if e.get("kind") == k) for k in dens.GRAPHICS
+                   if any(e.get("kind") == k for e in full)}
+        out.update(plan=plan_p.name, motion_moments=len(ms) + sum(1 for e in full if e.get("kind") != "motion"),
+                   full_frame=len(full), full_frame_by_kind=by_kind,
                    overlays=sum(1 for e in ms if e.get("transparent")), custom=sum(1 for e in ms if e.get("source")),
                    heroes=sum(1 for e in ms if str(e.get("scene") or "").partition("@")[0] in dens.HEROES))
+    check = _newest(ep_dir / "review", "cut-check-v*.json")
+    if check:
+        try:
+            found = json.loads(check.read_text(encoding="utf-8")).get("findings") or []
+            slides = [f for f in found if isinstance(f, dict) and str(f.get("id") or "").startswith("slide:")]
+            if slides:
+                out["slides"] = sum(1 for f in slides if f.get("level") == "ERROR")
+                out["slide_check"] = f"review/{check.name}"
+        except (OSError, ValueError):
+            pass
     bundles = sorted((ep_dir / "review").glob("motion-v*/bundle.json"), key=lambda f: (len(f.parent.name),
                                                                                        f.parent.name))
     b = bundles[-1] if bundles else None

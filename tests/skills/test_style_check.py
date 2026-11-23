@@ -1,9 +1,12 @@
 import json
 import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from s2_helpers import APP, pack, script  # noqa: E402
@@ -134,3 +137,48 @@ def test_plan_check_without_media(tmp_path):
     assert lv["keyword-words"] == "ERROR"         # 6 words
     assert lv["open"] == "OK" and lv["video"] == "NOTE"
     assert os.path.exists(ep / "review" / "cut-check-v001.json")
+
+
+def test_full_frame_2d_scenes_count_in_the_motion_density(tmp_path):
+    """A plan of 2D scenes only is counted too: every full-frame graphic is a full-frame moment."""
+    ep = tmp_path / "003-flat"
+    (ep / "edit").mkdir(parents=True)
+    (ep / "work").mkdir()
+    (ep / "work" / "words-v001.json").write_text(json.dumps(WORDS))
+    inserts = [{"id": f"w{i}", "kind": "2d", "scene": "headline", "start": 4.0 + 7 * i, "end": 7.0 + 7 * i,
+                "data": {"title": "X"}} for i in range(6)]
+    plan = {"format": "landscape", "fps": 25, "words": "work/words-v001.json", "tail": 2.0, "inserts": inserts}
+    p = ep / "edit" / "plan-v001.json"
+    p.write_text(json.dumps(plan))
+    sc.main([str(p), "--no-media", "--pack", str(APP / "packs" / "neutral")])
+    rep = json.loads((ep / "review" / "cut-check-v001.json").read_text())
+    big = next(f for f in rep["findings"] if f["id"] == "motion-big")
+    assert big["level"] == "ERROR" and big["text"].startswith("6 full-frame inserts (2D 6) (at most 5")
+
+
+@pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg is not installed")
+def test_the_slide_check_runs_on_every_full_frame_insert_of_the_video(tmp_path):
+    from PIL import Image, ImageDraw
+
+    im = Image.new("RGB", (640, 360), (250, 250, 252))
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle([160, 110, 480, 250], radius=10, fill="white", outline=(200, 200, 215))
+    for i in range(3):
+        d.rectangle([190, 140 + i * 30, 400 - i * 30, 152 + i * 30], fill=(20, 20, 30))
+    video = tmp_path / "flat.mp4"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-loop", "1", "-i", "-", "-t", "4", "-r", "25", "-c:v", "libx264",
+                    "-pix_fmt", "yuv420p", "-f", "mp4", str(video)], input=_png(im), check=True)
+    rep = sc.cl.Report({})
+    sc.slide_check(video, {"id": "w1", "kind": "2d", "start_f": 0, "end_f": 100}, 25, rep, "Picture")
+    sc.slide_check(video, {"id": "c1", "kind": "clip", "start_f": 0, "end_f": 100}, 25, rep, "Picture")
+    lv = {i["id"]: (i["level"], i["text"]) for i in rep.items}
+    assert lv["slide:w1"][0] == "ERROR" and "reads as a slide" in lv["slide:w1"][1]
+    assert lv["slide:c1"][0] == "CHECK"
+
+
+def _png(im) -> bytes:
+    import io
+
+    buf = io.BytesIO()
+    im.save(buf, "PNG")
+    return buf.getvalue()

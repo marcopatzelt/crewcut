@@ -8,6 +8,7 @@
     crewcut render cut     <plan.json>
     crewcut render shown   <plan.json>
     crewcut render all     <plan.json> [--local | --rented] [--gpus N]     (2d, motion, 3d, cut)
+    crewcut render slides  <plan.json> [--video FILE] [--ids a,b]       (the slide check of the full-frame inserts)
     crewcut render measure <image.png> [--pack DIR]
     crewcut render samples [--out DIR] [--formats landscape,portrait] [--frame -1] [--pack DIR]
     crewcut render capture <episode> --url URL | --html FILE | --terminal FILE [--seconds S] [--scroll KEYS]
@@ -30,7 +31,7 @@ from .. import brand
 from . import assemble, capture, measure, music, workbench
 from .plan import Plan, PlanError
 
-COMMANDS = ("plan", "2d", "motion", "3d", "probe", "cut", "shown", "all", "measure", "samples", "capture",
+COMMANDS = ("plan", "2d", "motion", "3d", "probe", "cut", "shown", "all", "slides", "measure", "samples", "capture",
             "music-bed")
 
 
@@ -77,6 +78,7 @@ def parser() -> argparse.ArgumentParser:
     p = plan_cmd("2d", "render the 2D inserts with Chromium")
     p.add_argument("--ids", help="only these inserts, comma separated")
     p.add_argument("--images-only", action="store_true", help="PNG frames only, no encoding")
+    p.add_argument("--no-gate", action="store_true", help="tests only: skip the motion plan and style-frame gates")
     p = plan_cmd("motion", "render the motion graphics inserts with EffectCraft")
     p.add_argument("--ids", help="only these inserts, comma separated")
     p.add_argument("--draft", action="store_true", help="8 motion blur samples, into its own folder (never cut)")
@@ -99,6 +101,7 @@ def parser() -> argparse.ArgumentParser:
     p = plan_cmd("3d", "render the 3D inserts with Blender")
     p.add_argument("--ids", help="only these inserts, comma separated")
     way(p)
+    p.add_argument("--no-gate", action="store_true", help="tests only: skip the motion plan and style-frame gates")
     p = plan_cmd("probe", "still frames at half size")
     p.add_argument("ids", nargs="?", help="inserts, comma separated (default: every 3D insert)")
     p.add_argument("--frame", help="frame numbers inside the insert, comma separated (default: after the last cue)")
@@ -108,6 +111,11 @@ def parser() -> argparse.ArgumentParser:
     p = plan_cmd("all", "2d, motion, 3d and cut")
     way(p)
     p.add_argument("--no-gate", action="store_true", help="tests only: skip the motion plan and style-frame gates")
+    p = plan_cmd("slides", "the slide check: does a full-frame insert of the video stand still and look flat?")
+    p.add_argument("--video", help="the video (default: the plan's output)")
+    p.add_argument("--ids", help="only these inserts, comma separated")
+    p.add_argument("--crop-top", type=float, default=0.0,
+                   help="share of the height to leave out at the top (a review reel with a label bar)")
     p = sub.add_parser("measure", help="measure a still against the style pack")
     p.add_argument("image")
     p.add_argument("--pack", help="a style pack folder (default: the active pack)")
@@ -232,14 +240,14 @@ def run(a: argparse.Namespace, out: dict) -> int:
     if a.cmd == "plan":
         s = plan.summary()
         s["notes"] = workbench.motion_notes(plan)
-        if plan.of_kind("motion"):
-            s["notes"] += [f"waits: {x}" for x in workbench.motion_gates(plan)]
+        if any(workbench.needs_style_frame(x) for x in plan.inserts) or plan.of_kind("motion"):
+            s["notes"] += [f"waits: {x}" for x in workbench.insert_gates(plan)]
         out.update(s)
         if not a.json:
             _print_plan(s)
         return 0
     if a.cmd == "2d":
-        rows = workbench.render_2d(plan, _ids(a.ids), a.images_only, log=log)
+        rows = workbench.render_2d(plan, _ids(a.ids), a.images_only, log=log, gate=not a.no_gate)
         out["rows"] = rows
         if not a.json:
             _print_rows("2d", rows)
@@ -266,7 +274,8 @@ def run(a: argparse.Namespace, out: dict) -> int:
                       + (f"  ({row['reason']})" if row.get("reason") else ""))
         return 0 if all(row.get("place") for row in r["rows"]) else 1
     if a.cmd == "3d":
-        r = workbench.render_3d(plan, mode, a.gpus, _ids(a.ids), a.samples, a.draft, a.max_usd, log=log)
+        r = workbench.render_3d(plan, mode, a.gpus, _ids(a.ids), a.samples, a.draft, a.max_usd, log=log,
+                                gate=not a.no_gate)
         out.update(r)
         if not a.json:
             _print_rows("3d", r["rows"])
@@ -291,6 +300,23 @@ def run(a: argparse.Namespace, out: dict) -> int:
         if not a.json:
             print(f"Locked: {r['output']}  sha256 {r['sha256'][:16]}")
         return 0
+    if a.cmd == "slides":
+        from . import slide
+        video = Path(a.video).expanduser() if a.video else plan.output
+        if not video.is_file():
+            raise PlanError(f"video not found: {video}; build it first (crewcut render cut) or give --video")
+        ids = _ids(a.ids)
+        rows = [{"id": x.id, "kind": x.kind, "start": x.start_s, "end": x.end_s, "full": not x.transparent}
+                for x in plan.inserts if not ids or x.id in ids]
+        found = slide.check(str(video), rows, crop_top=a.crop_top)
+        out["findings"] = found
+        out["counts"] = {lv: sum(1 for f in found if f["level"] == lv) for lv in ("ERROR", "CHECK", "OK")}
+        if not a.json:
+            for f in found:
+                print(f"{f['level']:<5} {f['text']}")
+            c = out["counts"]
+            print(f"Slide check: {c['ERROR']} ERROR, {c['CHECK']} CHECK, {c['OK']} OK of {len(found)} full-frame inserts")
+        return 1 if out["counts"]["ERROR"] else 0
     if a.cmd == "all":
         r = workbench.render_all(plan, mode, a.gpus, a.samples, a.draft, a.max_usd, log=log, gate=not a.no_gate)
         out.update({k: v for k, v in r.items() if k != "ok"})

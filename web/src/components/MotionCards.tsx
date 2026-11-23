@@ -107,19 +107,28 @@ export function StyleFramePreview({ card }: { card: Card }) {
                 <Media episode={episode} path={f.ours} src={f.ours_url} label={`Our frame, ${fmt}`} />
                 <span className="sf-label">Ours</span>
               </div>
-              <div className="sf-side">
-                {f.ref_url ? (
-                  <Media episode={episode} path={f.ref ?? f.ref_url} src={f.ref_url} label={`${ref}, ${fmt}`} />
-                ) : (
-                  <div className="sf-none">{f.ref_label.charAt(0).toUpperCase() + f.ref_label.slice(1)}.</div>
-                )}
-                <span className="sf-label">{ref}</span>
-              </div>
+              {f.launch_url ? (
+                <div className="sf-side">
+                  <Media episode={episode} path={f.launch ?? f.launch_url} src={f.launch_url} label={`Launch film, ${fmt}`} />
+                  <span className="sf-label">Launch film</span>
+                </div>
+              ) : null}
+              {f.ref_url || !f.launch_url ? (
+                <div className="sf-side">
+                  {f.ref_url ? (
+                    <Media episode={episode} path={f.ref ?? f.ref_url} src={f.ref_url} label={`${ref}, ${fmt}`} />
+                  ) : (
+                    <div className="sf-none">{f.ref_label.charAt(0).toUpperCase() + f.ref_label.slice(1)}.</div>
+                  )}
+                  <span className="sf-label">{ref}</span>
+                </div>
+              ) : null}
             </div>
-            <figcaption className="sf-cap">{[fmt, hue].filter(Boolean).join(" · ")}</figcaption>
+            <figcaption className="sf-cap">{[fmt, hue, f.launch_shows ? `Launch film: ${f.launch_shows}` : null].filter(Boolean).join(" · ")}</figcaption>
           </figure>
         );
       })}
+      {sf.covers.length ? <p className="meta sf-covers">Your yes also covers {sf.covers.join(", ")}: they reuse this piece.</p> : null}
     </div>
   );
 }

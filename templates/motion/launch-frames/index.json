@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "source": "docs/launch/crewcut-launch-web.mp4 (examples/launch-film), 1920 x 1080, 60 fps; stills at 960 x 540",
+  "about": "The craft bar for every full-frame insert. A style frame card shows our frame next to one of these. They set craft (depth, a camera that never stops, symbol and label close together, light), not the subject.",
+  "default": "card-grid",
+  "frames": [
+    {"id": "logo-iris", "file": "logo-iris.jpg", "time": 1.6,
+     "shows": "the 3D logo on soft rings in the next scene's colours; the iris opens from a swirl",
+     "fits": ["logo", "brand", "intro", "open", "chapter", "chapter_card", "title"]},
+    {"id": "prompt-meadow", "file": "prompt-meadow.jpg", "time": 3.3,
+     "shows": "a glass prompt bar over a rendered meadow, the camera pushing in toward it",
+     "fits": ["prompt", "prompt_bar", "chat", "input", "search", "command", "terminal", "window", "claude", "ask"]},
+    {"id": "prompt-pushed", "file": "prompt-pushed.jpg", "time": 5.2,
+     "shows": "the same bar after a push to 320 %: big type, depth of field behind it, the text types in",
+     "fits": ["typing", "text", "code", "file", "json", "transcript", "document", "rule", "rules", "report", "list"]},
+    {"id": "card-grid", "file": "card-grid.jpg", "time": 8.6,
+     "shows": "a tilted grid of cards in depth with soft shadows, icons on coloured cards, the camera drifting",
+     "fits": ["cards", "card_gallery", "grid", "tiles", "gallery", "thumbnail", "thumbnails", "role", "roles", "team",
+              "agents", "crew", "compare", "numbers", "boxes", "market", "studies"]},
+    {"id": "word-reel", "file": "word-reel.jpg", "time": 11.0,
+     "shows": "a word reel over a tilted, blurred interface; the box lands on the spoken word",
+     "fits": ["word_reel", "steps", "words", "menu", "ranking", "order", "pipeline", "workflow", "process"]},
+    {"id": "type-3d", "file": "type-3d.jpg", "time": 13.4,
+     "shows": "3D type smashes in with paint and objects in depth; one word in the accent",
+     "fits": ["number", "number_roll", "keyword", "keyword_pop", "claim", "counter", "count", "price", "cost",
+              "minutes", "hours", "big", "word", "callout", "versus", "quote"]},
+    {"id": "end-lockup", "file": "end-lockup.jpg", "time": 16.9,
+     "shows": "the lockup after the flakes converge: logo and name close together, slow push",
+     "fits": ["end", "end_lockup", "outro", "lockup", "cta", "subscribe", "link", "free"]}
+  ]
+}

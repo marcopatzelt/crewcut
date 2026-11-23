@@ -31,7 +31,9 @@ Two roots:
 ## Layers of knowledge
 
 `motion/quality.py` supplies private craft benchmarks to every edit job and binds independent
-style-frame and animation reviews to exact media. `render/plate_quality.py` keeps probe and
+style-frame and animation reviews to exact media. `render/slide.py` is the slide check: it measures on the video
+whether a full-frame insert's camera stands still and its frame is flat (calibrated against the launch film), for
+the style check and `crewcut render slides`. `render/plate_quality.py` keeps probe and
 final quality separate and validates returned custom Blender plates. See [motion craft](motion-craft.md).
 
 Preview/final cards may bind `data.production_review` to an independent Critic's
@@ -46,8 +48,9 @@ not authorize music generation. Unscoped budgets retain their episode-wide meani
 `full_auto.py` stores an explicit per-episode mode and revision in the database. The existing worker assigns
 production cards to a Critic; only that assigned review may decide under the current revision. Turning the mode off
 revokes pending automatic upload permission. Existing card checks and spending boundaries remain.
-`motion/dispatch.py` gives each approved style frame a fresh designer session in its own insert folder, then a
-focused Critic review. The Editor owns the shared plan and assembly. Up to five agent jobs can run; jobs for the
+`motion/dispatch.py` gives each approved style frame of a custom piece a fresh designer session in its own insert
+folder, then a focused Critic review; an approved style frame of a shelf template or a 2D or 3D scene goes to the
+Editor's fan-in instead. The Editor owns the shared plan and assembly. Up to five agent jobs can run; jobs for the
 same insert stay serial and heavy rendering retains its separate limit. See [Full auto](full-auto.md).
 
 ### Computer media
@@ -316,7 +319,7 @@ and [motion.md](motion.md)):
 | `layer` | null or `"behind"` (overlays only): meant to sit behind the speaker; rendered as an overlay until the matte step composites it |
 | `plates` | Blender plates the comp needs: `[{"id", "script", "args", "frames"}]`; only their shape is checked for now |
 | `sound` | true: the template's `@sounds` become `hits`, `whooshes` or `typing` events of the cut (one per insert) |
-| `beat`, `column` | the row of the approved motion plan this insert comes from (for the Critic) |
+| `beat`, `column` | the row of the approved motion plan this insert comes from (for the Critic). Every motion insert and every full-frame 2D or 3D insert needs one, its own; the render waits for the row and for the yes on the insert's style frame (`render/workbench.py` `insert_gates`) |
 | `place`, `fit`, `anchor` | as for every full-frame insert; with `place` top in proof-top the comp renders at the stage size (format `"stage"`, 1080 x 960) |
 
 Plan-level keys for motion: `motion_cap_usd` (lowers the rented cap: $2 a video, $0.50 a Short) and

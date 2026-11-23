@@ -8,11 +8,22 @@ from .custom import piece_dir
 
 
 def dispatch(card: dict) -> int:
+    """After the yes on a style frame: a custom piece gets its own designer session; a shelf template, a 2D or a 3D
+    scene of the edit plan (``"shelf": true`` on the card) needs no new build, so the Editor renders it with the rest
+    once no other style frame is open (the fan-in in ``tick``). Returns the designer job, or 0."""
     from ..conductor import queue
     episode = card["episode"]
-    insert = (card.get("data") or {}).get("insert")
+    data = card.get("data") or {}
+    insert = data.get("insert")
     if not isinstance(insert, str):
         raise ValueError("Style-frame card needs an insert ID.")
+    if data.get("shelf"):
+        from ..conductor import flow
+        names = ", ".join([insert, *(data.get("covers") or [])])
+        flow.post(episode, f"Style frame of {names} approved (card #{card['id']}): the Editor renders it with the "
+                  "other approved inserts.")
+        db.kv_set(f"motion_assembly_pending:{episode}", "1")
+        return 0
     folder = piece_dir(episode, insert)
     paths.inside(paths.episode_dir(episode), folder.relative_to(paths.episode_dir(episode)))
     folder.mkdir(parents=True, exist_ok=True)
