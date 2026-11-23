@@ -1,6 +1,6 @@
 ---
 name: script
-description: "Writes the spoken script of an episode in the user's own voice (voice.md), in teleprompter form, after the title is fixed: a story plan first (premise, arc, beats), opening that delivers the title's promise, small stories with rising stakes, the critical side, a verdict in its own form, the channel's closing line. skills/script/scripts/script_check.py checks form (every mark reads aloud), story (plan, list smell, run-ups), sentences, opening, ending, numbers against the gathered facts, and length. Delivered through the web teleprompter (crewcut prompter). Use when: \"write the script\", \"teleprompter text\", \"rewrite the script\", \"shorten the script\", \"make it sound natural\", \"script for the episode\". Not for titles or thumbnails. Short scripts: the `--short` mode of the check and skills/shorts."
+description: "Writes the spoken script of an episode in the user's own voice (voice.md), in teleprompter form, after the title is fixed: a story plan first (premise, arc, beats), the script craft (references/craft.md: hook in 30 seconds, depth pattern, spoken rhythm, an ending with exactly one call to action), opening that delivers the title's promise, small stories with rising stakes, the critical side, a verdict in its own form, the channel's closing line. skills/script/scripts/script_check.py checks form (every mark reads aloud), story (plan, list smell, run-ups), sentences, opening, ending, numbers against the gathered facts, length, and the craft (--craft for the craft alone). Delivered through the web teleprompter (crewcut prompter). Use when: \"write the script\", \"teleprompter text\", \"rewrite the script\", \"shorten the script\", \"make it sound natural\", \"script for the episode\". Not for titles or thumbnails. Short scripts: the `--short` mode of the check and skills/shorts."
 ---
 
 # Script
@@ -30,10 +30,14 @@ or proves the promise of title and thumbnail.
    file's "Do not mention" list, and any such wish in the answers) is a hard rule, also when paraphrased. Below `---`
    mark each spoken line that comes from the interview: `[[interview: 3 | "the spoken words"]]`, and run the check
    with `--interview brief/INTERVIEW-vNNN.md`. Never answer or skip the interview for the user.
-4. Read `voice.md` (how the user speaks, words to use and to avoid), `brand/rules/script.md`, and the length in
-   `edit-style.json` (`length_minutes`) with the speaking rate in `channel.json` (`script.words_per_minute`).
+4. Read `voice.md` (how the user speaks, words to use and to avoid), `brand/rules/script.md`, and the length: the
+   episode's brief wins (a long explainer with depth runs 11 to 14 minutes, a short test 3 to 5), otherwise
+   `edit-style.json` (`length_minutes`), with the speaking rate in `channel.json` (`script.words_per_minute`).
+   Depth needs words: never cut an explainer to a short length the brief did not ask for.
 5. Read the endings of the last three scripts, so this verdict takes a new form.
-6. **Story first** (`references/story.md`). Before the first sentence of the draft, write the story plan into the
+6. **Read `references/craft.md` in full, every time**, also for a rewrite: the hook in 30 seconds, the depth pattern
+   for every idea, the spoken rhythm and the ending. Every draft follows it, and the check measures it.
+7. **Story first** (`references/story.md`). Before the first sentence of the draft, write the story plan into the
    script notes below `---`: one premise sentence (the through-line), the arc (hook, tension or problem, turning point,
    payoff, close) and the 3 to 5 beats that serve it. Brief items, chat notes and interview answers are a material
    pool: take what serves the arc and drop the rest. An example the user gives is a hint at the kind of moment, never
@@ -44,24 +48,31 @@ or proves the promise of title and thumbnail.
 Two forms. Use the **test form** for a tool or a claim; use the **story form** when something happened (details in
 `references/forms.md`).
 
-1. **Opening, 2 to 6 sentences.** The first seconds carry the promise and its number: sentence 1 names the tool or
-   topic and its claim. No greeting, no question, no "in this video". The first 30 seconds confirm the click: the viewer
-   sees they got the video the title and thumbnail promised. At most one open loop, resolved at the end.
+1. **Opening: the hook in 30 seconds** (`references/craft.md`, group 1). The first seconds carry the promise and its
+   number: sentence 1 names the tool or topic and its claim. No greeting, no question, no "in this video". By second
+   30: the result or claim, why it matters, one measured number, a roadmap with a count, and one open loop that the end
+   resolves. One honest limit by 0:45, the first demo of the real thing by 1:30. The first 30 seconds confirm the
+   click: the viewer sees they got the video the title and thumbnail promised.
 2. **The problem**, at a case the viewer knows. Explain an unknown tool the first time it comes up.
 3. **What it does**, in pictures, only what the viewer does not know yet.
 4. **The own test**, with real numbers, rounded the way people speak. Only tests of what the tool is built for.
 5. **One subscribe line**, right after the first strong result: what the viewer gets from the channel. If no vendor
    pays for the tests, say so in that line. Never at the start, never as a plea at the end.
-6. **Small stories with rising stakes.** Each block between opening and verdict has a goal, an obstacle and a solution;
-   from block to block the stakes rise (more data, more money, a harder test). The strongest test comes last, before
+6. **Small stories with rising stakes, each idea in the depth pattern** (`references/craft.md`, group 2). Each block
+   between opening and verdict has a goal, an obstacle and a solution; from block to block the stakes rise (more data,
+   more money, a harder test). Each idea runs 40 to 60 seconds: question, why, how on screen, failure or limit, number,
+   and "try this" (a small task the viewer can do without the product). Every technical word gets one plain sentence
+   the first time; examples, sums said aloud and contrast pairs make it concrete; the parts are counted aloud. The strongest test comes last, before
    the verdict; the opening may announce it but not give it away.
 7. **The critical side.** The vendor's number against the own or an independent measurement. A limit goes in only
    where leaving it out would mislead the viewer, in one sentence, never as a list of caveats. If the tool does not
    keep its promise, say it, and the title goes back to the title step.
 8. **The verdict, in its own form** each time: a task for the viewer, the one number that stays, what it means for the
    user's own work, a callback to the opening image. Not a fixed closing question.
-9. **The end.** If `channel.json` has an offer or must-mention (`script.end_mentions`), it comes in the last sentences,
-   in the user's words. The last sentence is the channel's `closing_line` when there is one.
+9. **The end, in at most 60 seconds** (`references/craft.md`, group 4): the parts as one list, what the human still
+   does, the verdict with its limit, and exactly one call to action. The hook's open loop is resolved before it. If
+   `channel.json` has an offer or must-mention (`script.end_mentions`), it comes in the last sentences, in the user's
+   words, without a second plea. The last sentence is the channel's `closing_line` when there is one.
 
 **Transitions.** Each beat ties to the one before with cause or contrast ("deshalb", "aber", "und dann"; "so", "but",
 "and then"), never with a new topic. A new topic needs a bridge sentence. A paragraph that could swap places with its
@@ -74,7 +85,12 @@ Each statement once. Cost and time of all candidates once, together on screen, n
 ## Words
 
 - The user's words from `voice.md`; never the words on its avoid list.
-- Short sentences: median about 10 to 12 words, never more than `script.sentence_max_words`.
+- **The spoken rhythm** (`references/craft.md`, group 3): connected sentences ("and so", "the reason is", "which
+  means"), then a short punch line; about one sentence in four is short. Questions as joints, asked and answered at
+  once (about 3 to 5 per 1,000 words). The viewer's objection said aloud. The key number repeated once. More "you"
+  than "I" where it explains; "I" for the story and the failures. Written to be spoken, not read.
+- Short sentences: median about 10 to 12 words, never more than `script.sentence_max_words` (22 in the neutral pack,
+  so a teleprompter line stays readable).
 - At most three product names in one sentence; longer lists go on screen.
 - Out: basic knowledge the audience has, details nobody cares about (test counts, internal switches), file names,
   commands, side topics, private people, why an example was chosen, costs that are not part of the promise.
@@ -102,32 +118,42 @@ The user reads from a phone next to the camera.
 
 ## Steps
 
-1. Fill the structure with the gathered facts and numbers.
-2. Cut: every sentence carries or proves the promise.
+The order: draft, check, the Critic's passes, **the Humanizer pass as the last step before the card**, the check once
+more, card.
+
+1. Fill the structure with the gathered facts and numbers, following `references/craft.md`.
+2. Cut: every sentence carries or proves the promise. Cutting removes repeats and side topics, never the depth the
+   brief asked for: examples, sums said aloud and "try this" lines stay.
 3. Bring it into the user's voice. Read every sentence in your head: would the user say this into the camera?
 4. Write the draft to `work/script-draft-vNNN.md` with the next free number; never overwrite a version.
-5. **Humanizer pass** (see below). Write the result to `brief/SCRIPT-vNNN.md` (same number), then record it:
-   `crewcut humanize record --draft work/script-draft-vNNN.md --final brief/SCRIPT-vNNN.md --why "<the patterns that
-   applied>"`.
-6. Check until 0 errors:
-   `python3 skills/script/scripts/script_check.py brief/SCRIPT-vNNN.md --title "<title>" --name "<tool>"
-   --facts work/material-vNNN.md`. Read every warning and hint; a hint you keep gets one sentence of reason below `---`.
-   If you change the script to pass the check, record the pass again: the card needs the record of the exact file.
+5. Check the draft until 0 errors:
+   `python3 skills/script/scripts/script_check.py work/script-draft-vNNN.md --title "<title>" --name "<tool>"
+   --facts work/material-vNNN.md` (add `--minutes 11-14` when the brief sets the length). Read every warning and hint,
+   the craft line (words per part, questions, "you" against "I", "try this" per depth part, the ending) and the "by
+   hand" list; a hint you keep gets one sentence of reason below `---`.
    A studio skill with its own check: run that one, and also `python3 $CREWCUT_APP/skills/script/scripts/script_check.py
-   brief/SCRIPT-vNNN.md --spoken` (only the speak and story checks).
-7. **Story pass and quiet claim check.** Have the Critic (subagent `crewcut:critic`) read the finished script twice.
-   First for the story (`references/story.md`, "The story pass"): does every paragraph push the premise, is there a
-   list smell (the check names the paragraphs without a bridge), an idea told twice, a staged run-up, a subscribe line
-   inside a beat or at the end? The Critic rewrites those parts or sends the draft back; a draft like that never
-   reaches the user. Then against `work/material-vNNN.md`: it marks only claims that are false or would mislead the
-   viewer, never a word of feeling or style. Fix those in the wording itself and run step 6 again; never add a caveat
-   because of a note. Nothing of this goes to the user.
-8. Card: `crewcut card propose --episode <id> --step script --kind script --title "Script, version N" --file
+   <file> --spoken` (only the speak and story checks) and, unless the studio's check measures the craft, `--craft`.
+6. **Story pass, craft pass and quiet claim check.** Have the Critic (subagent `crewcut:critic`) read the draft three
+   times. First for the story (`references/story.md`, "The story pass"): does every paragraph push the premise, is
+   there a list smell (the check names the paragraphs without a bridge), an idea told twice, a staged run-up, a
+   subscribe line inside a beat or at the end? Then for the craft (`references/craft.md`, "What the Critic reads"):
+   the hook's five parts and the limit by 0:45, every idea in the depth pattern, a plain sentence for every technical
+   word, questions at joints, the ending with exactly one call to action and the loop resolved. The Critic rewrites
+   those parts or sends the draft back; a draft like that never reaches the user. Then against
+   `work/material-vNNN.md`: it marks only claims that are false or would mislead the viewer, never a word of feeling or
+   style. Fix those in the wording itself and run step 5 again; never add a caveat because of a note. Nothing of this
+   goes to the user.
+7. **Humanizer pass, the last step before the card** (see below). Write the result to `brief/SCRIPT-vNNN.md` (same
+   number), then record it: `crewcut humanize record --draft work/script-draft-vNNN.md --final brief/SCRIPT-vNNN.md
+   --why "<the patterns that applied>"`.
+8. Run the check of step 5 once more, on `brief/SCRIPT-vNNN.md`, until 0 errors. If you change the script to pass it,
+   record the pass again: the card needs the record of the exact file.
+9. Card: `crewcut card propose --episode <id> --step script --kind script --title "Script, version N" --file
    brief/SCRIPT-vNNN.md --body "<words>, about <min> min, check: 0 errors"`, then `crewcut card wait`. The card shows
    "Humanized" with what changed; without the record it is refused and says what to run. It is also refused while
    the spoken text has a mark that does not read aloud, or a long script has no story plan or a strong list smell.
-9. After the yes: `crewcut prompter <id>` prints the phone link and a QR code. Tell the user in one message: the link,
-   how many parts, about how long. The teleprompter shows only the text above `---`.
+10. After the yes: `crewcut prompter <id>` prints the phone link and a QR code. Tell the user in one message: the link,
+    how many parts, about how long. The teleprompter shows only the text above `---`.
 
 ## Humanizer pass
 
@@ -143,12 +169,18 @@ shows the version.
   staged run-up before the point ("here's the thing"); lists of three; inflated meaning and advertising language.
 - **What stays:** the user's own words and turns of phrase (those in `brand/voice/`, the interview and `voice.md`) even when Humanizer
   would smooth them; every number, name, claim and the promise of the title. The pass changes how it sounds, never
-  what it says.
+  what it says. The craft devices stay too: questions with their answers, objections said aloud, the one repeat of
+  the key number, the examples, "try this", the roadmap and the ending's list. A contrast pair with two concrete
+  sides ("seven hours against 35 minutes") is not the "not X but Y" pattern.
 - **What is out of scope:** making text pass AI detectors. Humanizer edits for people, and so do we.
 - **The hook may keep a device.** In a dramatic opening a deliberate device, such as a short triad of parallel
   sentences, may stay. Everywhere else the rules above apply.
 
 ## What the check cannot see
+
+The craft check counts words; the Critic reads what it cannot see (the "by hand" list of the check and
+`references/craft.md`): whether the demo comes by 1:30, whether every technical word gets its plain sentence, whether a
+question is a real joint and a "try this" works without the product.
 
 The list-smell check only finds paragraphs without a connector or a shared word; it cannot tell whether a beat pushes
 the premise. Whether an example grows too broad, whether a part leaves the thread, whether a test fits the promise, whether the voice

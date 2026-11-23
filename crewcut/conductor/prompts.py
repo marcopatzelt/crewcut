@@ -195,9 +195,12 @@ STEP_TASKS = {
               "fact check, not script content; what the user said in the chat about the content wins. The newest "
               "brief/INTERVIEW-vNNN.md, when there is one, holds the user's own answers: their sentences carry the "
               "script and every wish to leave something out is a hard rule. Write the script "
-              "with the script skill in the user's voice (voice.md). Run its check until it has no errors. Have the "
-              "Critic check the finished script quietly: it marks only claims that are false or would mislead; fix "
-              "those in the wording and never add caveats. Then one card of kind script with the file.",
+              "with the script skill in the user's voice (voice.md), following its craft (references/craft.md: hook "
+              "in 30 seconds, each idea in the depth pattern, spoken rhythm, an ending of at most 60 seconds with "
+              "exactly one call to action); the length follows the brief. Run its check until it has no errors. Have "
+              "the Critic do the story and craft pass and check the claims quietly: it marks only claims that are "
+              "false or would mislead; fix those in the wording and never add caveats. The Humanizer pass comes last, "
+              "then the check once more. Then one card of kind script with the file.",
     "record": "The script is approved. Tell the user in one or two sentences that recording can start, with the "
               "teleprompter link from `crewcut prompter {episode}`, and where to drop the files (the chat, or the "
               "studio inbox folder). Then stop; the Editor starts when files arrive.",

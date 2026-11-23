@@ -191,13 +191,28 @@ A key under `checks` sets how strict one style check is: `"error"` (blocks the c
 | Key | Neutral default | Meaning |
 |---|---|---|
 | `words_per_minute` | 150 | speaking rate; with `length_minutes` it gives the target length in words |
-| `sentence_max_words`, `sentence_avg_words` | 25, 14 | ERROR above the maximum, hint above the average |
+| `sentence_max_words`, `sentence_avg_words` | 22, 14 | ERROR above the maximum (a teleprompter line; 25 before 23 Nov 2026), hint above the average |
 | `paragraph_max_sentences` | 3 | a teleprompter paragraph is one breath |
 | `hook_sentences` | 2 | the sentences that count as the hook |
 | `name_within_sentences` | 4 | the tool (`--name`) must be named this early |
 | `title_number_within_sentences` | 6 | the title's numbers must appear this early |
 | `end_mentions` | [] | words that must stand in the last four sentences (an offer, the channel name) |
 | `checks` | dash off, question_opening hint, hook_number off, title_number warn, paragraph warn | |
+| `craft` (new, 23 Nov 2026) | see below | the script craft (`crewcut/craft.py`, `skills/script/references/craft.md`) |
+
+`script.craft` sets the limits and levels of the craft check (hook in 30 seconds, depth pattern, spoken rhythm,
+ending). Missing keys take the default; seconds become words through `words_per_minute`.
+
+| Key | Neutral default | Meaning |
+|---|---|---|
+| `hook_seconds`, `limit_seconds` | 30, 45 | the hook's window and the latest place for an honest limit |
+| `start_rate` | 1.2 | the first minute is dense: its words per minute against the base rate |
+| `idea_seconds` | [40, 60] | one idea; reported in the stats as words |
+| `part_max_seconds` | 180 | a longer part holds several ideas (hint) |
+| `end_seconds` | 60 | the ending (the last part) |
+| `questions_per_1000` | [2.5, 6] | questions per 1,000 words (target 3 to 5) |
+| `short_share` | [15, 40] | percent of sentences of at most `short_words` (6) words |
+| `checks` | greeting error; hook_number, roadmap, open_loop, limit, takeaways, questions, ending_length, cta, subscribe_once, loop_resolved warn; the rest hint | one level per rule: `error`, `warn`, `hint` or `off`. Rules: greeting, hook_number, roadmap, open_loop, stakes, limit, part_length, takeaways, concrete, signposts, short_share, questions, answers, objections, repeat, you_i, ending_length, cta, subscribe_once, ending_parts, loop_resolved |
 
 `upload`:
 

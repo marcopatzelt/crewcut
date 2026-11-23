@@ -13,10 +13,19 @@ edit-style.json "length_minutes", and voice.md ("## Words to avoid", "## Words t
   python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --text-only     (the spoken part only)
   python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --short [--language de] [--facts F]
   python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --spoken    (speak and story checks only)
+  python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --craft     (the script craft only)
+  python3 skills/script/scripts/script_check.py brief/SCRIPT-v001.md --minutes 11-14   (the brief's length wins)
 
 Every mode checks that the spoken text reads aloud (crewcut.spoken): no colon, semicolon, bracket, slash, arrow, list
 mark or notes section above the line; a script card is refused otherwise. The long mode and --spoken also read the
 story: the plan below --- (premise, arc, 3 to 5 beats), list smell, staged run-ups, repeats, the subscribe line.
+
+The long mode and --craft measure the script craft (crewcut.craft, references/craft.md): the hook in 30 seconds (a
+number, a roadmap with a count, an open loop, why it matters, an honest limit by 0:45, no greeting), the depth pattern
+(words and seconds per part, "try this" per depth part, examples, sums said aloud, contrast pairs), the spoken rhythm
+(share of short sentences, questions per 1,000 words and their answers, objections, "you" against "I") and the ending
+(at most 60 seconds, exactly one call to action, list, the human's part, a verdict with its limit, the open loop
+resolved). Levels and limits: channel.json "script.craft". The longest sentence: "script.sentence_max_words".
 
 --short checks a Short's script with the reel rules instead (see check_short): word range from edit-style.json
 "shorts.words", more I-sentences than you-sentences, a turn (expectation, then the break), an uneven real number or a
@@ -93,6 +102,24 @@ def story_check(text: str, add, passed: list[str], lang: str | None = None) -> N
         add(f["level"], f["area"], f["text"])
     if not any(f["level"] == "error" for f in found):
         passed.append("story: plan below --- and no strong list smell")
+
+
+def _craft():
+    _brand()
+    from crewcut import craft
+    return craft
+
+
+def craft_check(text: str, pack, add, passed: list[str], stats: dict, lang: str | None = None) -> dict:
+    """The four craft groups (crewcut.craft): hook in 30 seconds, depth pattern, spoken rhythm, ending. The word lists
+    follow the script's language unless one is given."""
+    wpm = float(pack.value("channel.script.words_per_minute", 150))
+    r = _craft().check(text, lang, wpm, pack.value("channel.script.craft", {}) or {})
+    for f in r["findings"]:
+        add(f["level"], f["area"], f["text"])
+    passed.extend(r["passed"])
+    stats["craft"] = r["stats"]
+    return r
 
 
 def load_pack(pack_dir: str | None = None):
@@ -291,7 +318,8 @@ def form_check(raw: str, dash_lv: str, add, passed: list[str]) -> list[str]:
 
 
 def check_script(text: str, pack, title: str | None = None, names: list[str] | tuple = (),
-                 proof: str | None = None, interview: str | None = None) -> dict:
+                 proof: str | None = None, interview: str | None = None,
+                 minutes: tuple[float, float] | None = None) -> dict:
     raw = spoken_part(text)
     found: list[dict] = []
     passed: list[str] = []
@@ -421,9 +449,9 @@ def check_script(text: str, pack, title: str | None = None, names: list[str] | t
                 "Change the form of the third.")
             break
 
-    # 9. Length from edit-style.json length_minutes and the speaking rate.
+    # 9. Length from the brief (--minutes) or edit-style.json length_minutes, and the speaking rate.
     wpm = float(pack.value("channel.script.words_per_minute", 150))
-    lo_min, hi_min = (pack.value("edit_style.length_minutes", [3, 6]) or [3, 6])[:2]
+    lo_min, hi_min = minutes or (pack.value("edit_style.length_minutes", [3, 6]) or [3, 6])[:2]
     lo, hi = int(lo_min * wpm), int(hi_min * wpm)
     stats["minutes"] = round(n_words / wpm, 1)
     if n_words > hi * 1.25:
@@ -452,12 +480,15 @@ def check_script(text: str, pack, title: str | None = None, names: list[str] | t
     if interview is not None:
         check_interview(text, raw, interview, add, passed, stats)
 
+    # 13. The script craft: hook in 30 seconds, depth pattern, spoken rhythm, ending (references/craft.md).
+    manual = craft_check(text, pack, add, passed, stats)["manual"]
+
     order = {"error": 0, "warn": 1, "hint": 2}
     found.sort(key=lambda f: order[f["level"]])
     errors = sum(1 for f in found if f["level"] == "error")
     return {"stats": stats, "findings": found, "passed": passed, "errors": errors,
             "warnings": sum(1 for f in found if f["level"] == "warn"),
-            "hints": sum(1 for f in found if f["level"] == "hint"), "ready": errors == 0}
+            "hints": sum(1 for f in found if f["level"] == "hint"), "ready": errors == 0, "manual": manual}
 
 
 # ---------- Shorts (reel rules) ----------
@@ -661,6 +692,37 @@ def check_short(text: str, pack, lang: str | None = None, proof: str | None = No
             "manual": ["The user confirms the story really happened (\"This really happened\")."]}
 
 
+def check_craft(text: str, pack, lang: str | None = None) -> dict:
+    """Only the craft checks: for a studio whose own skill has its own script check."""
+    found: list[dict] = []
+    passed: list[str] = []
+    stats: dict = {}
+
+    def add(lv: str, area: str, msg: str):
+        if lv in LEVELS:
+            found.append({"level": lv, "area": area, "text": msg})
+
+    manual = craft_check(text, pack, add, passed, stats, lang)["manual"]
+    order = {"error": 0, "warn": 1, "hint": 2}
+    found.sort(key=lambda f: order[f["level"]])
+    errors = sum(1 for f in found if f["level"] == "error")
+    return {"mode": "craft", "stats": stats, "findings": found, "passed": passed, "errors": errors,
+            "warnings": sum(1 for f in found if f["level"] == "warn"),
+            "hints": sum(1 for f in found if f["level"] == "hint"), "ready": errors == 0, "manual": manual}
+
+
+def craft_line(c: dict) -> str:
+    """One line of the craft numbers for the printed report."""
+    if not c or "short_sentences_percent" not in c:
+        return ""
+    parts = ", ".join(f"{p['words']}" for p in c["parts"])
+    return (f"craft: parts (words) {parts}; {c['short_sentences_percent']} % short sentences; {c['questions']} "
+            f"questions ({c['questions_per_1000']} per 1,000); you {c['you']} / I {c['i']} (depth parts "
+            f"{c['you_depth']} / {c['i_depth']}); {c['takeaways']} try-this for {c['depth_parts']} depth parts; "
+            f"{c['objections']} objections; ending about {c['ending_seconds']} s, calls to action: "
+            f"{', '.join(c['ending_calls_to_action']) or 'none'}")
+
+
 def check_spoken(text: str, lang: str | None = None) -> dict:
     """Only the speak and story checks: for a studio whose own skill has its own script check."""
     found: list[dict] = []
@@ -696,7 +758,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--short", action="store_true", help="a Short's script: the reel rules instead of the long rules")
     ap.add_argument("--spoken", action="store_true",
                     help="only the speak and story checks (next to a studio's own script check, which stays as it is)")
-    ap.add_argument("--language", help="with --short: language of the word and phrase lists (default: the pack's)")
+    ap.add_argument("--craft", action="store_true",
+                    help="only the craft checks (hook in 30 s, depth pattern, spoken rhythm, ending)")
+    ap.add_argument("--minutes", metavar="MIN-MAX", help="target length from the brief, e.g. 11-14 (default: the "
+                    "pack's edit-style.json length_minutes)")
+    ap.add_argument("--language", help="with --short or --craft: language of the word lists (default: the pack's for "
+                    "--short, the script's for --craft)")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
     p = Path(a.file)
@@ -723,10 +790,18 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if r["ready"] else 1
     pack = load_pack(a.pack)
     proof = Path(a.proof).read_text(encoding="utf-8") if a.proof else None
+    minutes = None
+    if a.minutes:
+        m = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*", a.minutes)
+        if not m:
+            print(f"--minutes {a.minutes!r} is not a range like 11-14", file=sys.stderr)
+            return 2
+        minutes = (float(m.group(1)), float(m.group(2)))
     try:
         interview = Path(a.interview).read_text(encoding="utf-8") if a.interview else None
         r = (check_short(text, pack, a.language, proof) if a.short else
-             check_script(text, pack, a.title, a.name, proof, interview))
+             check_craft(text, pack, a.language) if a.craft else
+             check_script(text, pack, a.title, a.name, proof, interview, minutes))
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
@@ -739,15 +814,20 @@ def main(argv: list[str] | None = None) -> int:
         if a.short:
             print(f"{s['words']} words, {s['sentences']} sentences, about {s['seconds']} s, "
                   f"{s['i_sentences']} I-sentences, {s['you_sentences']} you-sentences ({s['language']})\n")
+        elif a.craft:
+            print(craft_line(s.get("craft", {})) + "\n")
         else:
             print(f"{s['words']} words, {s['sentences']} sentences, {s['words_per_sentence']} words per sentence, "
-                  f"longest {s['longest_sentence']}, about {s['minutes']} min, {s['parts']} parts\n")
+                  f"longest {s['longest_sentence']}, about {s['minutes']} min, {s['parts']} parts")
+            print(craft_line(s.get("craft", {})) + "\n")
         for f in r["findings"]:
             print(f"  {f['level']:<5} [{f['area']}] {f['text']}")
         if r["passed"]:
             print("\nPassed:")
             for x in r["passed"]:
                 print(f"  ok    {x}")
+        if r.get("manual") and not a.short:
+            print("\nBy hand (the Critic reads these):")
         for x in r.get("manual", []):
             print(f"  by hand {x}")
         print(f"\nResult: {r['errors']} errors, {r['warnings']} warnings, {r['hints']} hints. "
