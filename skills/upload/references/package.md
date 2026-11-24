@@ -71,6 +71,7 @@ Links
 <source>: <link>
 
 <The channel's fixed lines from channel.json upload.required_text, if any.>
+<The footer file from channel.json upload.description_footer, word for word, if the channel has one.>
 <Independence: who paid for the test, or that nobody did.>
 
 #<topic> #<tool> #<channel>

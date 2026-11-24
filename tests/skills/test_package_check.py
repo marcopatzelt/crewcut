@@ -107,3 +107,20 @@ def test_whole_package_without_video(tmp_path, neutral):
     assert rows(r, "thumbnail", "ok") and rows(r, "captions", "ok")
     (ep / "export" / "upload.json").write_text(json.dumps(up), encoding="utf-8")
     assert pc.main([str(ep), "--pack", "packs/neutral"]) == 1
+
+
+def test_description_footer(tmp_path):
+    from crewcut.brand import Pack
+    (tmp_path / "footer.md").write_text("About me\nJane Doe, video maker.\n\nWebsite: https://example.com\n", encoding="utf-8")
+    pack = Pack(dir=tmp_path, is_neutral=False, channel={"upload": {"description_footer": "footer.md"}})
+    body = "Hook.\nChapters\n0:00 Start\n\n"
+    r = pc.Report()
+    pc.check_description(r, body + "About me\nJane  Doe, video maker.\nWebsite: https://example.com\n#a", pack)
+    assert not rows(r, "description", "error")
+    r = pc.Report()
+    pc.check_description(r, body + "About me\nJane Doe, filmmaker.\nWebsite: https://example.com\n", pack)
+    assert any("footer" in x["text"] for x in rows(r, "description", "error"))
+    pack = Pack(dir=tmp_path, is_neutral=False, channel={"upload": {"description_footer": "gone.md"}})
+    r = pc.Report()
+    pc.check_description(r, body, pack)
+    assert any("gone.md" in x["text"] for x in rows(r, "description", "error"))

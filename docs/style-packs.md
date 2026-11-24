@@ -222,6 +222,7 @@ ending). Missing keys take the default; seconds become words through `words_per_
 | `hashtags_max` | 3 | hashtags in the description (above 15 YouTube ignores all) |
 | `main_link`, `link_within_lines` | null, 3 | a link (or its start) that must stand in the first lines of the description |
 | `required_text` | [] | fixed text every description contains |
+| `description_footer` | null | file in the pack folder that ends every description word for word (about the creator and the company); the check fails when it is missing or changed |
 | `publish_time`, `timezone` | null, null | the channel's fixed upload time, such as `"08:00"` and `"Europe/Berlin"` |
 | `playlist` | null | playlist every episode goes into (planned in the upload command) |
 | `checks` | dash off | |

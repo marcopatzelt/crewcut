@@ -26,7 +26,9 @@ measures it after 48 hours. Before this step: the final cut is approved (`skills
 - **Description:** under 5,000 bytes, no `<` or `>` (YouTube rejects them). The first two lines carry the hook with
   the number and, when the channel has one, the main link (`channel.json` `upload.main_link`); YouTube shows about 150
   characters before "more". Then the test in one sentence, the results as short points, chapters, links to the tool
-  and sources, the channel's fixed lines (`upload.required_text`), at most `upload.hashtags_max` hashtags.
+  and sources, the channel's fixed lines (`upload.required_text`), then the channel footer word for word (the file named
+  in `upload.description_footer`, in the style pack folder: who makes the channel and the company), at most
+  `upload.hashtags_max` hashtags. Never rewrite the footer in the description; change the file.
 - **Chapters:** measured from the final cut, never estimated. YouTube needs: first chapter at 0:00, at least 3, each at
   least 10 seconds.
 - **Tags:** the tool's name and its spellings first, then the topic words people search, the channel name last. At most
@@ -48,8 +50,8 @@ measures it after 48 hours. Before this step: the final cut is approved (`skills
 1. Build the package and run `python3 skills/upload/scripts/package_check.py <id>` until 0 errors. Read every warning.
    The description goes through the Humanizer pass first (skills/script, "Humanizer pass"): draft in
    `work/description-draft-vNNN.md`, result in `export/description-vNNN.md` and in the package, then
-   `crewcut humanize record --draft work/description-draft-vNNN.md --final export/description-vNNN.md`. Chapters, links
-   and the AI disclosure stay word for word.
+   `crewcut humanize record --draft work/description-draft-vNNN.md --final export/description-vNNN.md`. Chapters, links,
+   the AI disclosure and the channel footer stay word for word.
 2. Card: `crewcut card propose --episode <id> --step upload --kind publish --title "Publish <day> <time>" --file
    export/upload.json --body "<title> · <visibility> · AI question: <answer>, <why>"`, then `crewcut card wait`.
    Declined: change what the user says, check again, new card.

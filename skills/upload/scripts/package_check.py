@@ -108,6 +108,33 @@ def check_title(r: Report, title: str, pack, names: list[str]):
 
 
 # ---------- description and chapters ----------
+def _lines(text: str) -> list[str]:
+    return [" ".join(z.split()) for z in text.splitlines() if z.strip()]
+
+
+def check_footer(r: Report, text: str, pack):
+    """channel.json upload.description_footer: a file in the style pack folder (about the creator and the company)
+    that ends every description word for word. Blank lines and spaces may differ; words may not."""
+    name = pack.value("channel.upload.description_footer")
+    if not name:
+        return
+    p = Path(pack.dir) / name
+    if not p.is_file():
+        r.add("description", "error", f"The footer file {name} is missing in the style pack (channel.json "
+              "upload.description_footer).")
+        return
+    want, have = _lines(p.read_text(encoding="utf-8")), _lines(text)
+    if not want:
+        return
+    n = len(want)
+    if any(have[i:i + n] == want for i in range(len(have) - n + 1)):
+        r.add("description", "ok", f"Footer from {name} is complete.")
+    else:
+        miss = next((z for z in want if z not in have), want[0])
+        r.add("description", "error", f'The footer from {name} is missing or changed (first difference: "{miss[:60]}"). '
+              "Paste the file word for word near the end.")
+
+
 def check_description(r: Report, text: str, pack, duration: float | None = None):
     n = len((text or "").encode("utf-8"))
     if not text:
@@ -141,6 +168,7 @@ def check_description(r: Report, text: str, pack, duration: float | None = None)
     for req in pack.value("channel.upload.required_text", []) or []:
         if req.lower() not in text.lower():
             r.add("description", "warn", f'"{req}" is missing (channel.json upload.required_text).')
+    check_footer(r, text, pack)
     tags = re.findall(r"(?<!\S)#[^\W_][\w]*", text)
     hmax = int(pack.value("channel.upload.hashtags_max", 3))
     if len(tags) > MAX_HASHTAGS_HARD:
