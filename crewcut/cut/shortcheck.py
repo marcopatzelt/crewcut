@@ -116,6 +116,52 @@ def intervals_minus(a: float, b: float, cover: list[tuple[float, float]]) -> lis
     return [(p, q) for p, q in parts if q - p > 0.04]
 
 
+def insert_seconds(inserts: list[dict], plan_data: dict | None, ep_dir: Path) -> tuple[list[dict], list[str]]:
+    """The plan's inserts with start and end in seconds. A plan may give them as seconds, {"time": t, "offset": o} or
+    a word anchor {"word": "costs", "offset": -0.6, "after": 12.0} (as crewcut/render/plan.py reads them); an insert
+    whose time cannot be read is left out of the text and face checks, with a note for the manual list."""
+    from ..render.plan import PlanError, load_words, normalize
+
+    words: list[dict] = []
+    if plan_data and plan_data.get("words"):
+        try:
+            words = load_words(ep_dir / str(plan_data["words"]))
+        except PlanError:
+            words = []
+
+    def word_time(word: str, after: float) -> float:
+        want = [t for t in (normalize(x) for x in str(word).split()) if t]
+        for i, w in enumerate(words):
+            if w["s"] < after - 0.05:
+                continue
+            if want and all(i + k < len(words) and normalize(words[i + k]["w"]) == t for k, t in enumerate(want)):
+                return w["s"]
+        raise ValueError(f"word {word!r} not found after {after:.2f} s")
+
+    def seconds(v, after: float) -> float:
+        if isinstance(v, bool):
+            raise ValueError(f"bad time {v!r}")
+        if isinstance(v, dict):
+            off = float(v.get("offset") or 0.0)
+            if "word" in v:
+                return word_time(v["word"], float(v["after"]) if v.get("after") is not None else after) + off
+            if "time" in v:
+                return float(v["time"]) + off
+            raise ValueError(f"bad time {v!r}")
+        return float(v)
+
+    out, notes = [], []
+    for e in inserts:
+        try:
+            a = seconds(e["start"], 0.0)
+            b = seconds(e["end"], a)
+        except (TypeError, ValueError) as exc:
+            notes.append(f"insert {e.get('id')}: its time could not be read ({exc}); look at it on the contact sheet")
+            continue
+        out.append({**e, "start": a, "end": b})
+    return out, notes
+
+
 def full_frame(inserts: list[dict]) -> list[tuple[float, float]]:
     return [(float(e["start"]), float(e["end"])) for e in inserts if not e.get("transparent")]
 
@@ -367,10 +413,12 @@ def check(ep_dir: Path, video: Path, cut: Path | None = None, plan: Path | None 
     cut_path = cut or find_cut(ep_dir, video, plan_data)
     report = read_json(cut_path) if cut_path else None
     pieces = (report or {}).get("pieces") or []
-    inserts = [e for e in (plan_data or {}).get("inserts") or [] if "start" in e and "end" in e]
+    raw = [e for e in (plan_data or {}).get("inserts") or [] if "start" in e and "end" in e]
+    inserts, time_notes = insert_seconds(raw, plan_data, ep_dir)
     findings = format_findings(w, h, seconds, s)
     manual = ["Look at the contact sheet: every picture understood within two seconds, nothing important in the "
               f"right {s['right_free_frac'] * 100:.0f} % (YouTube's buttons) or the bottom 20 % (title and captions)."]
+    manual += time_notes
     if pieces:
         findings += face_findings(pieces, inserts, s)
     else:

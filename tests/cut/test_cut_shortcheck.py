@@ -118,3 +118,18 @@ def test_check_a_short(studio, capsys):
     with Image.open(ep / r["sheet"]) as im:
         assert im.size == (6 * 184 + 4, 4 * 324 + 4)
     assert (ep / "review" / "short-check-speaker-v001.json").is_file()
+
+
+def test_insert_times_in_every_plan_form(tmp_path):
+    (tmp_path / "work").mkdir()
+    (tmp_path / "work" / "words.json").write_text(json.dumps(
+        [{"w": "Das", "s": 1.0, "e": 1.2}, {"w": "kostet", "s": 1.2, "e": 1.6}, {"w": "kostet", "s": 5.0, "e": 5.4}]))
+    plan = {"words": "work/words.json"}
+    inserts = [{"id": "a", "start": 2.0, "end": 3.0},
+               {"id": "b", "start": {"time": 4.0}, "end": {"time": 6.0, "offset": -0.5}},
+               {"id": "c", "start": {"word": "kostet", "offset": -0.2}, "end": {"word": "kostet", "after": 2.0}},
+               {"id": "d", "start": {"word": "fehlt"}, "end": 9.0}]
+    out, notes = shortcheck.insert_seconds(inserts, plan, tmp_path)
+    assert [(e["id"], e["start"], e["end"]) for e in out] == [("a", 2.0, 3.0), ("b", 4.0, 5.5), ("c", 1.0, 5.0)]
+    assert len(notes) == 1 and "insert d" in notes[0]
+    assert shortcheck.full_frame(out) == [(2.0, 3.0), (4.0, 5.5), (1.0, 5.0)]
