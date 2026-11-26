@@ -167,7 +167,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--pack", help="a style pack folder (default: the active pack)")
     p.add_argument("--json", action="store_true")
     p = sub.add_parser("sfx-sheet", help="the effect layer's sound set as a listening page, with the id to approve")
-    p.add_argument("--out", help="folder (default: <studio>/library/sfx-set-<id>/)")
+    p.add_argument("--out", help="folder (default: <studio>/library/sfx-sets/<set id>/)")
     p.add_argument("--voice", help="a voice recording to hear the effects under (WAV or any sound file)")
     p.add_argument("--start", type=float, default=0.0, help="seconds into the voice (default 0)")
     p.add_argument("--seconds", type=float, default=19.0, help="length of the demo (default 19)")
@@ -253,7 +253,7 @@ def run(a: argparse.Namespace, out: dict) -> int:
         from .. import paths
         pack = brand.load(a.pack) if a.pack else brand.load()
         sid = sfx_events.set_info(pack)["id"]
-        dest = Path(a.out).expanduser() if a.out else paths.studio_root() / "library" / f"sfx-set-{sid}"
+        dest = Path(a.out).expanduser() if a.out else paths.studio_root() / "library" / "sfx-sets" / sid
         r = sfx_events.listening_sheet(dest, pack, Path(a.voice).expanduser() if a.voice else None, a.start,
                                        a.seconds)
         approved = pack.value("edit_style.sfx.approved_set") == r["id"]

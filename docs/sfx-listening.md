@@ -38,7 +38,7 @@ listened to exactly this set:
 crewcut render sfx-sheet --voice episodes/<id>/audio/voice-v001.wav --start 30
 ```
 
-writes `<studio>/library/sfx-set-<id>/` with each sound at its mix level, a demo under the voice with the six kinds of
+writes `<studio>/library/sfx-sets/<set id>/` with each sound at its mix level, a demo under the voice with the six kinds of
 moments, `index.html` to listen in a browser, and `set.json`. It prints the set id (`sfx-` and 12 hex characters, made
 from the files and the levels). After listening, the user approves it:
 
