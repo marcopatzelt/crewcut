@@ -152,6 +152,18 @@ Learned rules of the steps edit, cut, 3D and thumbnail (format: `- YYYY-MM-DD: r
 `rules/cut.md` as their manual list; `thumb_check.py` prints `rules/thumbnail.md`. The neutral pack ships a few general
 rules dated 2026-11-16 with the source "Crewcut default". `examples/striq/rules/` shows a real, dated set.
 
+`edit-style.json` `sfx` (new 26 Nov 2026, the effect layer on picture events, `crewcut/render/sfx_events.py`):
+
+| Key | Neutral default | Meaning |
+|---|---|---|
+| `approved_set` | not set | the effect set the user listened to and approved (`crewcut render sfx-approve`); without it the layer stays off |
+| `levels_db` | pop_soft -18, whoosh_soft -20, swoosh -22 | gain of each sound in the mix (a change needs a new yes) |
+| `per_minute_max`, `per_minute_min` | 6, 3 | at most this many effects in any minute; under the minimum the cut only says so |
+| `min_gap_s`, `pair_gap_s`, `peak_shift_s`, `dry_max` | 1.0, 0.22, 0.2, 2 | spacing, the pop after the whoosh of a part change, how far an effect moves off a speech peak, the quiet pops of a dry Short |
+
+`edit-style.json` `cut` takes the pause values of the speaker cut too (`pause_gap_open` 0.7, `pause_gap` 1.0,
+`pause_keep` 0.13, `open_seconds` 25, `beat_pause_min` 1.5, `beat_pause_max` 3.0; `docs/recording.md`).
+
 ## channel.json: idea, title, script, upload
 
 Read by the skills `idea`, `title`, `script`, `upload` and their scripts (`idea.py`, `title_check.py`,
@@ -184,6 +196,7 @@ A key under `checks` sets how strict one style check is: `"error"` (blocks the c
 | `acronyms` | [] | words in capitals that are not shouting (`"API"`) |
 | `exclamations_max` | 1 | more exclamation marks are a WARN |
 | `variants` | 3 | titles for the A/B test |
+| `candidates`, `formulas_min` | 10, 4 | the title step's gate (`title_check.py --set`): this many different candidates from this many different formulas (new 26 Nov 2026) |
 | `checks` | colon off, dash off, caps_words hint, factor off, question hint | `factor` is an "x times" number such as "10x" |
 
 `script`:
@@ -237,7 +250,7 @@ lists, so these checks then fall back to judgement by hand.
 |---|---|---|---|
 | `## Words to avoid` | `- phrase` | `script_check.py`, `title_check.py` | ERROR in a script, WARN in a title |
 | `## Words to use` | `- phrase` | `script_check.py` | hint when none of them appears |
-| `## Title hooks` | `- label: word, word` | `title_check.py` | each label found counts as a hook (+6 points) |
+| `## Title hooks` | `- label: word, word` | `title_check.py` | each label found is reported as a hook (information; the check is a gate, not a score) |
 | `## Title words to avoid` | `- label: word, word` | `title_check.py` | ERROR |
 
 ## voice/: your own spoken words

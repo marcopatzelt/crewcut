@@ -10,7 +10,9 @@ filtered noise, damped modes and gliding sines. Filters here are RBJ biquads (se
 sample by sample, and the moving noise band of the whoosh is shaped frame by frame with the FFT.
 
 The assembly uses ``hit``, ``typing`` and ``whoosh`` when neither the plan nor the style pack names a file
-(``crewcut.render.assemble``). Nobody has listened to these files yet: ``docs/sfx-listening.md``.
+(``crewcut.render.assemble``). The quiet set ``pop_soft``, ``whoosh_soft`` and ``swoosh`` belongs to the effect layer
+on picture events (``crewcut.render.sfx_events``), which stays off until the user has listened to it and approved it.
+Nobody has listened to these files yet: ``docs/sfx-listening.md``.
 """
 
 from __future__ import annotations
@@ -282,6 +284,27 @@ def bell(rng: np.random.Generator, note: str = "D6", dur: float = 1.2, bright: f
     return _norm(_fade(y, 0.0, 0.05))
 
 
+def pop_soft(rng: np.random.Generator) -> np.ndarray:
+    """A quiet, round pop for text or a number appearing: lower and shorter than `pop`, almost no noise, no click."""
+    t = _t(0.09)
+    f = 300 + (820 - 300) * (1 - np.exp(-t / 0.014))
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    env = (1 - np.exp(-t / 0.003)) * np.exp(-t / 0.022)
+    y = (np.sin(ph) + 0.10 * np.sin(2 * ph)) * env
+    y += 0.04 * _lp(_hp(_noise(rng, len(t)), 1500), 6000) * np.exp(-t / 0.003)
+    return _norm(_fade(_lp(y, 5000), 0.001, 0.015))
+
+
+def whoosh_soft(rng: np.random.Generator) -> np.ndarray:
+    """The quiet whoosh of a part change (chapter card): shorter, darker and narrower than `whoosh`."""
+    return whoosh(rng, dur=0.36, peak=0.55, f_lo=380, f_hi=1500, bw=1.1, rise=1.6, fall=0.35, width=0.45)
+
+
+def swoosh(rng: np.random.Generator) -> np.ndarray:
+    """A short swipe for a B-roll change: a quick falling band of air, lighter than the whoosh."""
+    return whoosh(rng, dur=0.24, peak=0.3, f_lo=700, f_hi=2200, bw=0.9, rise=1.2, fall=0.5, width=0.5)
+
+
 # name -> (recipe, length in seconds, what it is for)
 SOUNDS: dict[str, tuple[Callable[[np.random.Generator], np.ndarray], float, str]] = {
     "whoosh": (whoosh, 0.45, "a keyword or lower third moving in, a camera move"),
@@ -293,6 +316,9 @@ SOUNDS: dict[str, tuple[Callable[[np.random.Generator], np.ndarray], float, str]
     "riser": (riser, 1.0, "the build-up into a reveal (not in a talk segment)"),
     "reel_tick": (reel_tick, 0.05, "a word reel or digit wheel arriving on its next item"),
     "bell": (bell, 1.2, "a \"done\" moment"),
+    "pop_soft": (pop_soft, 0.09, "the effect layer: text or a number appears (quiet)"),
+    "whoosh_soft": (whoosh_soft, 0.36, "the effect layer: a part change, before the pop (quiet)"),
+    "swoosh": (swoosh, 0.24, "the effect layer: a B-roll or picture change (quiet)"),
 }
 
 

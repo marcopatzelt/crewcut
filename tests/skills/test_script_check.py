@@ -185,3 +185,21 @@ def test_spoken_mode_runs_only_speak_and_story(tmp_path, capsys):
     assert "a colon" in capsys.readouterr().out
     f.write_text("Here is the result. It cost 35 cents.\n")
     assert sc.main([str(f), "--spoken"]) == 0
+
+
+def test_first_content_and_key_sentence_marks_for_the_cut(neutral):
+    text = GOOD + '[[first content | "Here is the problem it tries to solve."]]\n[[key sentence | "Cloud models cost money"]]\n'
+    r = sc.check_script(text, neutral, title="Five models for 0 euros", names=["Ollama"])
+    assert r["errors"] == 0, r["findings"]
+    assert r["stats"]["cut_marks"] == {"first content": 1, "key sentence": 1}
+    assert any(p.startswith("cut marks:") for p in r["passed"])
+
+
+def test_cut_marks_wrong_place_twice_or_unspoken(neutral):
+    above = 'Ollama runs five local models. [[key sentence | "five local models"]]\n\n---\nnotes\n'
+    r = sc.check_script(above, neutral)
+    assert "cut-marks" in kinds(r, "error")
+    twice = GOOD + '[[key sentence | "I measured all five"]]\n[[key sentence | "Cloud models cost money"]]\n'
+    assert "cut-marks" in kinds(sc.check_script(twice, neutral, names=["Ollama"]), "error")
+    unspoken = GOOD + '[[first content | "words nobody says"]]\n'
+    assert "cut-marks" in kinds(sc.check_script(unspoken, neutral, names=["Ollama"]), "warn")

@@ -45,6 +45,13 @@ the episode folder. Exact arguments of every tool: `crewcut cut <tool> --help`.
 5. **Never start in the middle of the speech flow**, even when the content fits. A start with only a shallow dip
    leaves a word rest. Better: a whole sentence from the main recording as a bridge.
 6. **Probe every edge.** The text must match with the whole first and the whole last word.
+7. **Pauses: a dense opening, then room to breathe.** `crewcut cut plan` keeps the opening dense: until the first
+   content no pause over 0.7 s (`pause_gap_open`); a longer one shrinks to about 0.26 s. After it natural pauses up to
+   about 1 s stay (`pause_gap`), inside a select and between two selects that follow each other in one take (the cut
+   continues the take). Set `"first_content": "<select id>"` in the selects file to the select where the first real
+   content starts (the Writer's `[[first content | ...]]` mark); without it the opening is the first 25 s. One select
+   may carry `"pause_before": 2.0` (1.5 to 3 s): the deliberate pause before the key sentence (`[[key sentence | ...]]`).
+   It comes from the take's own silence when there is enough, else from a held tail of the sentence before.
 
 **Hint: the teleprompter's take log.** The speaker records in numbered speaking blocks (one paragraph of the script
 each) and may repeat a block several times. When `brief/prompter-log-<date>.jsonl` exists, each line is one jump on
@@ -65,7 +72,7 @@ repeats). Fix: let the select start at the second attempt.
 
 1. `crewcut cut plan <selects>` and `crewcut cut build <cut plan>`.
 2. `crewcut cut verify <edit decisions>`: `bad_joins` must be empty (the pause at each join is inside the allowed
-   range). Too short: give the select before it a tail, or move its end a little into the silence. Too long: start
+   range; a join that continues its take, or the one deliberate pause, is measured against its planned length). Too short: give the select before it a tail, or move its end a little into the silence. Too long: start
    the next select at the real speech onset (measure with dips). `edge_issues` must be empty, unless it is only spelling.
 3. Issues of type "replace" are almost always spelling. "insert" with several words is a double start: back to step 5.
 4. Speaker values from the pack: `speech_speed`, `zoom_base`, `zoom_punch`; format and fps from `edit-style.json`.

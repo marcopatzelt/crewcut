@@ -1,24 +1,27 @@
 #!/usr/bin/env python3
 """Check YouTube title candidates before they go to the user (skill: skills/title).
 
-Every limit comes from the active style pack (crewcut.brand): channel.json "title", thumbnail.json "max_words",
-and the optional word lists in voice.md ("## Title hooks", "## Title words to avoid", "## Words to avoid").
-The neutral pack has no word lists, so the hook check is then a hint to judge by hand.
+The check is a gate: a title passes or fails. It is not a score to raise. Every limit comes from the active style pack
+(crewcut.brand): channel.json "title", thumbnail.json "max_words", and the optional word lists in voice.md
+("## Title hooks", "## Title words to avoid", "## Words to avoid"). The neutral pack has no word lists, so the hook
+check is then a hint to judge by hand.
 
   python3 skills/title/scripts/title_check.py "Title one" "Title two" --name ToolName
   python3 skills/title/scripts/title_check.py "Title" --thumbnail "TWO WORDS" --json
   python3 skills/title/scripts/title_check.py --file candidates.txt        (one title per line, # for comments)
+  python3 skills/title/scripts/title_check.py --set work/title-candidates-v001.tsv --name ToolName
+
+--set is the candidate gate of the title step: one candidate per line, `<formula><TAB><title>` (or
+`<formula> | <title>`). It passes when there are at least channel.json title.candidates (10) different titles from at
+least title.formulas_min (4) different formulas of FORMULAS below, and every title passes on its own.
 
 Levels:
-  error   breaks a hard limit (YouTube or the style pack). The title does not go to the user.
+  error   breaks a hard limit (YouTube or the style pack). The title fails and does not go to the user.
   warn    allowed, but against the pack's target.
   hint    weak signal. Use only with a reason.
-  plus    a pattern the pack counts as a hook.
+  plus    a pattern the pack counts as a hook (information, not points).
 
-Points (0 to 100) rank candidates against each other; they are not a forecast.
-Start 50, +6 per hook (at most +30), -25 per error, -8 per warning, -3 per hint.
-
-Exit: 0 = no title with an error, 1 = at least one title with an error, 2 = wrong call.
+Exit: 0 = every title passes (and the set gate passes), 1 = a title or the set gate fails, 2 = wrong call.
 """
 
 from __future__ import annotations
@@ -32,6 +35,25 @@ from pathlib import Path
 YOUTUBE_MAX_CHARS = 100  # YouTube's hard limit for a title
 LEVELS = ("error", "warn", "hint")
 ORDER = {"error": 0, "warn": 1, "hint": 2, "plus": 3}
+
+# Title formulas for the candidate set (`--set`). The channel's rules say which come first; the gate only counts how
+# many different ones the candidates use. Measured on Alex Hormozi's channel (outlier views against the 30 uploads
+# around each video, 3,424 long videos, 26 Nov 2026): "How I'd ..." 2.7, "If I ..., I'd ..." 2.2, the viewer's time to
+# a result 2.1, "If you ..." 2.0, a year 1.8, knowledge condensed 1.8, "How to ..." 1.35; open questions 0.74.
+FORMULAS = {
+    "situation": 'the viewer\'s situation: "If you ...", "Wenn du ..."',
+    "howto": 'how-to: "How to ...", "So ..."',
+    "contrast": "a cost or risk contrast: cheap against expensive, safe against risky",
+    "flip": "the expectation flips: what the viewer believes turns out wrong",
+    "plan": 'my plan: "How I\'d ...", "So würde ich ..."',
+    "condition-plan": 'condition plus my plan: "If I ..., I\'d ...", "Wenn ich ..., würde ich ..."',
+    "condensed": 'knowledge condensed: "N years in M minutes", "everything I learned in ..."',
+    "year": "a year that frames a plan",
+    "time": "the viewer's time to the result: \"in one evening\", \"in 15 minutes\"",
+    "case": "a case: who, a number, the problem (Shorts), a quote or an I-sentence",
+}
+ALIASES = {"how-to": "howto", "how_to": "howto", "condition_plan": "condition-plan", "conditionplan": "condition-plan",
+           "if-you": "situation", "if-i": "condition-plan", "how-id": "plan"}
 
 
 def _brand():
@@ -135,13 +157,9 @@ def check_title(title: str, pack, names: list[str] | tuple = (), thumbnail: str 
     t = " ".join((title or "").split())
     n = len(t)
     findings: list[dict] = []
-    plus = 0
 
-    def add(level: str, rule: str, text: str, points: int = 0):
-        nonlocal plus
+    def add(level: str, rule: str, text: str):
         findings.append({"level": level, "rule": rule, "text": text})
-        if level == "plus":
-            plus += points
 
     max_chars = int(pack.value("channel.title.max_chars", 70))
     target = int(pack.value("channel.title.target_chars", 55))
@@ -170,7 +188,7 @@ def check_title(title: str, pack, names: list[str] | tuple = (), thumbnail: str 
         elif pos >= within:
             add("error", "name", f'"{name}" starts at character {pos + 1}. It must start within the first {within}.')
         else:
-            add("plus", "name", f'"{name}" starts within the first {within} characters.', 6)
+            add("plus", "name", f'"{name}" starts within the first {within} characters.')
 
     # Words the pack forbids in titles, and words the user never says.
     voice = getattr(pack, "voice", "") or ""
@@ -214,10 +232,10 @@ def check_title(title: str, pack, names: list[str] | tuple = (), thumbnail: str 
     for label, terms in hooks:
         hits = find_terms(t, terms)
         if hits:
-            add("plus", "hook", f'Hook "{label or hits[0]}": {", ".join(hits)}.', 6)
+            add("plus", "hook", f'Hook "{label or hits[0]}": {", ".join(hits)}.')
             found = True
     if AMOUNT.search(t):
-        add("plus", "hook", "Hook: an amount (money or percentage).", 6)
+        add("plus", "hook", "Hook: an amount (money or percentage).")
         found = True
     if not found:
         if hooks:
@@ -235,26 +253,84 @@ def check_title(title: str, pack, names: list[str] | tuple = (), thumbnail: str 
         if bw and bw == tw:
             add("warn", "thumbnail", "Thumbnail text repeats the whole title. Use one key word and the verdict.")
         elif tw & bw:
-            add("plus", "thumbnail", f"Thumbnail text repeats a title word ({', '.join(sorted(tw & bw))}).", 0)
+            add("plus", "thumbnail", f"Thumbnail text repeats a title word ({', '.join(sorted(tw & bw))}).")
         else:
             add("hint", "thumbnail", "Thumbnail text shares no word with the title. Take one key word into the image.")
 
-    plus = min(plus, 30)
     errors = sum(1 for f in findings if f["level"] == "error")
     warns = sum(1 for f in findings if f["level"] == "warn")
     hints = sum(1 for f in findings if f["level"] == "hint")
-    points = max(0, min(100, 50 + plus - 25 * errors - 8 * warns - 3 * hints))
     findings.sort(key=lambda f: ORDER[f["level"]])
-    return {"title": t, "chars": n, "words": len(WORD.findall(t)), "points": points,
-            "status": "fail" if errors else "ok", "errors": errors, "warnings": warns, "hints": hints,
-            "findings": findings}
+    return {"title": t, "chars": n, "words": len(WORD.findall(t)), "status": "fail" if errors else "ok",
+            "passed": not errors, "errors": errors, "warnings": warns, "hints": hints, "findings": findings}
 
 
 def print_result(i: int, r: dict) -> None:
-    print(f'[{i}] {r["title"]}')
-    print(f'    {r["chars"]} characters, {r["words"]} words, points {r["points"]}, {r["status"].upper()}')
+    head = f'[{i}] {r["title"]}' + (f'   (formula: {r["formula"]})' if r.get("formula") else "")
+    print(head)
+    print(f'    {r["chars"]} characters, {r["words"]} words, {"PASS" if r["passed"] else "FAIL"}')
     for f in r["findings"]:
         print(f'    {f["level"]:<6} {f["text"]}')
+
+
+# ---------- the candidate set (gate of the title step) ----------
+def formula_id(label: str) -> str | None:
+    key = re.sub(r"[\s_]+", "-", (label or "").strip().lower())
+    key = ALIASES.get(key, key)
+    return key if key in FORMULAS else None
+
+
+def parse_set(text: str) -> list[tuple[str, str]]:
+    """Lines `<formula><TAB><title>` or `<formula> | <title>`; # starts a comment. A line without a formula keeps an
+    empty label (the gate reports it)."""
+    rows = []
+    for line in (text or "").splitlines():
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        if "\t" in s:
+            label, title = s.split("\t", 1)
+        elif " | " in s:
+            label, title = s.split(" | ", 1)
+        else:
+            label, title = "", s
+        rows.append((label.strip(), title.strip()))
+    return rows
+
+
+def check_set(rows: list[tuple[str, str]], pack, names: list[str] | tuple = (), thumbnail: str | None = None) -> dict:
+    """The title step's gate: enough different candidates, from enough different formulas, each one passing."""
+    need = int(pack.value("channel.title.candidates", 10))
+    need_f = int(pack.value("channel.title.formulas_min", 4))
+    results, problems, seen = [], [], {}
+    for label, title in rows:
+        r = check_title(title, pack, names, thumbnail)
+        r["formula"] = formula_id(label)
+        r["label"] = label
+        if r["formula"] is None:
+            r["findings"].insert(0, {"level": "error", "rule": "formula", "text": (
+                f'No known formula ("{label}"). Use one of: {", ".join(FORMULAS)}.' if label else
+                f'No formula named. Write "<formula><TAB><title>"; formulas: {", ".join(FORMULAS)}.')})
+            r["errors"] += 1
+            r["status"], r["passed"] = "fail", False
+        key = r["title"].lower()
+        if key in seen:
+            problems.append(f'"{r["title"]}" is in the set twice (lines {seen[key]} and {len(results) + 1}).')
+        seen.setdefault(key, len(results) + 1)
+        results.append(r)
+    distinct = len(seen)
+    used = sorted({r["formula"] for r in results if r["formula"]})
+    if distinct < need:
+        problems.append(f"{distinct} different candidates; the title step writes at least {need} "
+                        "(channel.json title.candidates).")
+    if len(used) < need_f:
+        problems.append(f"{len(used)} different formulas ({', '.join(used) or 'none'}); at least {need_f} are needed "
+                        "(title.formulas_min). Write candidates from other formulas instead of variants of one.")
+    failed = [r["title"] for r in results if not r["passed"]]
+    if failed:
+        problems.append(f"{len(failed)} candidate(s) fail their own check; rewrite or drop them.")
+    return {"passed": not problems, "candidates": distinct, "formulas": used, "need_candidates": need,
+            "need_formulas": need_f, "problems": problems, "results": results}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -263,9 +339,24 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--name", action="append", default=[], help="a name that must start early (repeatable)")
     ap.add_argument("--thumbnail", help="planned thumbnail text; checks that it takes one word from the title")
     ap.add_argument("--file", help="text file with one title per line")
+    ap.add_argument("--set", dest="set_file", help="the candidate set: one `<formula><TAB><title>` per line (the gate)")
     ap.add_argument("--pack", help="style pack folder (default: the active pack)")
     ap.add_argument("--json", action="store_true", help="print JSON")
     a = ap.parse_args(argv)
+    if a.set_file:
+        pack = load_pack(a.pack)
+        rep = check_set(parse_set(Path(a.set_file).read_text(encoding="utf-8")), pack, a.name, a.thumbnail)
+        if a.json:
+            print(json.dumps(rep, ensure_ascii=False, indent=1))
+        else:
+            for i, r in enumerate(rep["results"], 1):
+                print_result(i, r)
+            print(f'\nSet: {rep["candidates"]} candidates, {len(rep["formulas"])} formulas '
+                  f'({", ".join(rep["formulas"]) or "none"}). Pack: {pack.dir.name}')
+            for p in rep["problems"]:
+                print("  - " + p)
+            print("GATE PASSED" if rep["passed"] else "GATE FAILED")
+        return 0 if rep["passed"] else 1
     titles = list(a.titles)
     if a.file:
         for line in Path(a.file).read_text(encoding="utf-8").splitlines():
@@ -281,8 +372,8 @@ def main(argv: list[str] | None = None) -> int:
     else:
         for i, r in enumerate(results, 1):
             print_result(i, r)
-        ok = sum(1 for r in results if r["status"] == "ok")
-        print(f"\n{len(results)} titles checked: {ok} ok, {len(results) - ok} failed. Pack: {pack.dir.name}")
+        ok = sum(1 for r in results if r["passed"])
+        print(f"\n{len(results)} titles checked: {ok} pass, {len(results) - ok} fail. Pack: {pack.dir.name}")
     return 1 if any(r["errors"] for r in results) else 0
 
 

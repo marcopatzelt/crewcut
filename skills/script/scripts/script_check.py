@@ -66,6 +66,9 @@ CAMEL = re.compile(r"\b[a-z]+[A-Z][A-Za-z]+\b")
 MOTION_MARK = re.compile(r"\[\[\s*motion\s*:(?P<body>[^\]]*)\]\]", re.I)
 MOTION_MARKS_MAX = 5
 INTERVIEW_MARK = re.compile(r"\[\[\s*interview\s*:(?P<body>[^\]]*)\]\]", re.I)
+# Notes for the cut (26 Nov 2026): where the first real content starts (the opening ends there: dense pauses before
+# it, music may end there) and the key sentence (one deliberate pause of 1.5 to 3 s before it). At most one each.
+CUT_MARK = re.compile(r"\[\[\s*(?P<kind>first content|key sentence)\s*\|(?P<words>[^\]]*)\]\]", re.I)
 
 
 def _brand():
@@ -176,6 +179,29 @@ def check_motion_marks(text: str, spoken: str, add, passed: list[str], stats: di
             f"(line {unheard[0]['line']}). Quote the words as they are said.")
     if not above and len(below) <= MOTION_MARKS_MAX and not loose:
         passed.append(f"motion marks: {len(below)} below the --- line (at most {MOTION_MARKS_MAX})")
+
+
+def check_cut_marks(text: str, spoken: str, add, passed: list[str], stats: dict) -> None:
+    """[[first content | "spoken words"]] and [[key sentence | "spoken words"]]: below ---, one each, words spoken."""
+    parts = re.split(r"(?m)^---[ \t]*$", text, maxsplit=1)
+    above, below = parts[0], (parts[1] if len(parts) > 1 else "")
+    if CUT_MARK.search(above):
+        add("error", "cut-marks", "a first-content or key-sentence mark above the --- line: marks are notes for the "
+            "cut, put them below ---.")
+    said = " " + " ".join(words(spoken.lower())) + " "
+    found: dict[str, list[str]] = {}
+    for m in CUT_MARK.finditer(below):
+        found.setdefault(m.group("kind").lower(), []).append(m.group("words").strip().strip('"“”„\'').strip())
+    stats["cut_marks"] = {k: len(v) for k, v in found.items()}
+    for kind, ws in found.items():
+        if len(ws) > 1:
+            add("error", "cut-marks", f"{len(ws)} [[{kind} | ...]] marks; there is one {kind}.")
+        for w in ws:
+            if not w or f" {' '.join(words(w.lower()))} " not in said:
+                add("warn", "cut-marks", f'[[{kind} | "{w[:50]}"]]: quote the words as they are spoken, so the Editor '
+                    "finds them in the recording.")
+    if found and all(len(v) == 1 for v in found.values()):
+        passed.append("cut marks: " + ", ".join(sorted(found)))
 
 
 def blocks(text: str) -> list[dict]:
@@ -463,6 +489,7 @@ def check_script(text: str, pack, title: str | None = None, names: list[str] | t
 
     # 10. The Writer's motion marks: at most five, below the --- line.
     check_motion_marks(text, body, add, passed, stats)
+    check_cut_marks(text, body, add, passed, stats)
 
     # 11. No number without a source (the facts the Writer gathered, or a proof file when that step is on).
     if proof is not None:

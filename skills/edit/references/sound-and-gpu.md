@@ -38,6 +38,28 @@ as a compute job):
   first use; no audio file in the repo). Nobody has heard the kit yet: put its sounds on the listening list
   (`docs/sfx-listening.md`). No riser in a talk segment, and no effect on top of a speech peak.
 
+## B2. Switches a channel's rules can ask for (per plan)
+
+The channel's rules (`brand/rules/cut.md`, `edit.md`) say when to use them; without them the cut keeps the old way.
+
+- **Music only in the opening** (`sound.music_until`): the bed stops at that moment instead of running to the end.
+  Give it as a word anchor on the first words of the first content (`{"word": "...", "offset": -0.3}`; the Writer marks
+  them below the script's `---` as `[[first content | "..."]]`), as an insert reference (`"ch1"`: the chapter card)
+  or in seconds. `sound.music_out` says how it stops: `"fade"` (default, `sound.music_fade` seconds, 1 to 2) or
+  `"whoosh"` (a hard stop with a whoosh on that moment, best on a chapter card). Ducking and gaps still work before the
+  stop. A later quiet bed under a picture-only stretch is a second plan entry only when the rules allow it.
+- **A dry Short** (`sound.bed: "dry"`): voice and room only. No music bed step, no `sound.music`, no
+  `music_source`; the cut leaves out hits, typing and whooshes and says so. With the approved effect layer it gets at
+  most two quiet pops on a number or the result.
+- **The effect layer on picture events** (`sound.events: "auto"`, module `crewcut/render/sfx_events.py`): a quiet
+  effect only where something appears: a pop for text and for a number (on its landing cue), the same whoosh-and-pop
+  pair on every part change (`"sfx": "part"` on the insert that shows the chapter card when it is not a
+  `chapter_card` template), a swoosh on a B-roll change. At most 6 a minute, at least 1 s apart, moved up to 0.2 s off
+  a loud syllable or left out, never a riser or a hit. `"sfx": false` silences one insert. While the layer is on, the
+  inserts' own template sounds are left out (no double effects); the plan's own `hits`, `typing` and `whooshes` stay.
+  It runs only when the user approved the exact effect set (`crewcut render sfx-sheet`, `docs/sfx-listening.md`);
+  until then the cut runs without it and its notes say so. Never approve it yourself.
+
 ## C. Rented GPUs
 
 Tools: `crewcut compute estimate|rent|run|fetch|destroy|guard|ledger`. `crewcut render 3d --rented` and `probe` use

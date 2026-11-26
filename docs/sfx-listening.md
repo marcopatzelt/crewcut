@@ -20,10 +20,34 @@ before anyone calls them good. Write the result into the last column.
 | `riser` | `riser.wav`, stereo | 1.0 s | the build-up into a reveal; ends hard. Not for talk segments | not used by the cut yet | |
 | `reel_tick` | `reel_tick.wav`, mono | 0.05 s | a word reel or digit wheel arriving on its next item | not used by the cut yet | |
 | `bell` | `bell.wav`, mono | 1.2 s | a "done" moment (D6 bell) | not used by the cut yet | |
+| `pop_soft` | `pop_soft.wav`, mono | 0.09 s | text or a number appears (quiet, no click on top) | the effect layer (`sound.events`), -18 dB | |
+| `whoosh_soft` | `whoosh_soft.wav`, stereo | 0.36 s | a part change, followed 0.22 s later by `pop_soft` | the effect layer, -20 dB | |
+| `swoosh` | `swoosh.wav`, stereo | 0.24 s | a B-roll or picture change | the effect layer, -22 dB | |
 
 What to listen for: clicks or pops at the start and the end of each file, a whoosh that hisses more than it moves, a
 hit that disappears on a phone speaker, a typing run that sounds like a machine gun, any sound that covers speech at
 the cut's levels (the voice at -14 LUFS, effects 10 to 14 dB under it).
+
+## The effect layer's set: listen first, then say yes
+
+The effect layer on picture events (`sound.events` in a plan, [rendering.md](rendering.md)) uses only `pop_soft`,
+`whoosh_soft` and `swoosh`, at the levels of `edit-style.json` `sfx.levels_db`. It stays off until the user has
+listened to exactly this set:
+
+```
+crewcut render sfx-sheet --voice episodes/<id>/audio/voice-v001.wav --start 30
+```
+
+writes `<studio>/library/sfx-set-<id>/` with each sound at its mix level, a demo under the voice with the six kinds of
+moments, `index.html` to listen in a browser, and `set.json`. It prints the set id (`sfx-` and 12 hex characters, made
+from the files and the levels). After listening, the user approves it:
+
+```
+crewcut render sfx-approve sfx-<id> --source "<name>, <date>, after listening"
+```
+
+which writes `sfx.approved_set` into the studio's `brand/edit-style.json`. A crew job cannot run it. A changed sound,
+level or pair gap is a new set with a new id, and the layer is off again until the next yes.
 
 To change a sound: edit its recipe in `crewcut/motion/sfx.py` and raise `KIT_VERSION`; every studio makes the kit again
 at its next cut. A pack's own files (`edit-style.json` `sounds`) and the plan's (`hit_file`, `typing_file`,

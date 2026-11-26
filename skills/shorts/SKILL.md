@@ -43,6 +43,9 @@ Clip first when material exists. New Short: `crewcut episode new "<title>" --sho
    understood within two seconds; symbols before text; calm motion (nothing that grows pixel by pixel).
 5. **Music.** Only music with clear rights and a source file (`crewcut render music-bed`): under the voice at
    `shorts.music_db`, ducking, a short hole before the punchline. Never the long video's music unless its licence says so.
+   When the channel's rules ask for a Short without a music bed (a dry Short), skip the bed: set `"sound": {"bed":
+   "dry"}` in the plan and use the plain voice. Voice and room only; with the approved effect layer
+   (`"events": "auto"`) at most two quiet pops on a number or the result.
 6. **Check (Critic).** `crewcut cut short-check`: the Short rule set (face in frame, no text over the face or the right
    edge where YouTube's buttons are, brightness, length and pace from the style pack, loudness with the limiter headroom,
    piece boundaries at the audio level). Look at the contact sheet; write the "please listen" list with time stamps for

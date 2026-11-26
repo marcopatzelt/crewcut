@@ -8,7 +8,9 @@ Also checked, each one fails the check (exit 2):
   - edges: the first and last word of every select must be the expected first and last word. Catches a clipped word
     end and a leaked next word.
   - joins (`bad_joins`): the pause at every cut, measured on the voice track against its own noise floor, must be
-    join_min..join_max (0.17-0.45 s). A natural sentence pause is about 0.25 s; 0.09 s sounds chopped.
+    join_min..join_max (0.17-0.45 s). A natural sentence pause is about 0.25 s; 0.09 s sounds chopped. A cut that
+    continues its take keeps the take's own pause (`join` in the cut, up to about 1 s), and the one deliberate pause
+    (`pause_before`, 1.5 to 3 s) is measured against its planned length.
   - channels: left and right voice level may differ by at most 10 dB (camera microphone on one side).
 Report: work/cut-verification-vNNN.json, next to the decisions (the cut-check skill reads it there).
 """
@@ -68,25 +70,41 @@ def level_track(x, rate: int = 16000):
     return 20 * np.log10(np.sqrt(power) + 1e-9)
 
 
+def planned(clip: dict) -> float | None:
+    """The pause a cut was planned with: the deliberate pause, or the take's own pause it continues."""
+    v = clip.get("pause_before", clip.get("join"))
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+
 def join_pauses(rms, clips: list[dict], fps: int, reach: float = 0.4) -> list[dict]:
-    """The longest quiet run within `reach` seconds of every cut, relative to the voice's own noise floor."""
+    """The longest quiet run within `reach` seconds of every cut, relative to the voice's own noise floor. A planned
+    longer pause is measured in a window that reaches over its whole length."""
     import numpy as np
     thr = float(np.percentile(rms, 8)) + 10 if len(rms) else 0.0
-    n = int(reach * 100)
     out = []
     for a, b in zip(clips, clips[1:], strict=False):
+        want = planned(b)
+        n = int((max(reach, want + 0.3) if want else reach) * 100)
         t = b["timeline_in_frame"] / fps
         i = int(t * 100)
         best = cur = 0
         for quiet in rms[max(0, i - n):i + n] < thr:
             cur = cur + 1 if quiet else 0
             best = max(best, cur)
-        out.append({"at": round(t, 2), "from": a["id"], "to": b["id"], "pause": best / 100})
+        row = {"at": round(t, 2), "from": a["id"], "to": b["id"], "pause": best / 100}
+        if want:
+            row["planned"] = want
+        out.append(row)
     return out
 
 
 def bad(joins: list[dict], lo: float, hi: float) -> list[dict]:
-    return [j for j in joins if not lo <= j["pause"] <= hi]
+    """Joins outside the range; a planned pause may lie 0.25 s around its plan (and never under the range)."""
+    def ok(j: dict) -> bool:
+        if j.get("planned"):
+            return max(lo, j["planned"] - 0.25) <= j["pause"] <= j["planned"] + 0.25
+        return lo <= j["pause"] <= hi
+    return [j for j in joins if not ok(j)]
 
 
 def status(issues: list, edges: list, bad_joins: list, one_sided: bool) -> str:

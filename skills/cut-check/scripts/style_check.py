@@ -8,7 +8,8 @@ General checks (any style):
   face        a face at the start and end of every speaker shot (skin share in the face window of the plan)
   waits       a full-screen insert that stands still until its first cue (1.5 s or more, 80 % still)
   empty       a full-screen insert that starts with an almost empty first frame
-  music       music at least as long as the video; its source and rights note exists (sound.music_source)
+  music       music at least as long as the video, or up to sound.music_until; its source and rights note exists
+              (sound.music_source); a dry Short (sound.bed "dry") has none
   grade       a measured colour grade for this episode (review/grade*)
   fresh       the video is newer than the plan
   shown       a shown file was not changed after it was shown (<output>.shown holds the sha256)
@@ -613,7 +614,12 @@ def check(plan_path: Path, video: Path | None, pack, rep: cl.Report, media: bool
         fix="crewcut cut grade (measure, then apply)",
     )
     snd = plan.get("sound") or {}
-    if snd.get("music"):
+    until = snd.get("music_until")
+    if snd.get("bed") == "dry":
+        rep.add(P, "OK" if not snd.get("music") else "ERROR", "music",
+                "Dry Short (sound.bed \"dry\"): voice and room only, at most two quiet pops"
+                + ("" if not snd.get("music") else "; but the plan names music"))
+    elif snd.get("music"):
         mp = ep / snd["music"]
         src = snd.get("music_source")
         rep.add(
@@ -623,11 +629,20 @@ def check(plan_path: Path, video: Path | None, pack, rep: cl.Report, media: bool
             f"Music source and rights note: {src or 'missing (sound.music_source)'}",
             fix="Write the source note (model or library, licence, prompts) and point sound.music_source at it",
         )
-        if media and mp.is_file():
+        if until is not None:
+            rep.add(P, "NOTE", "music", f"Music only up to sound.music_until ({until}), "
+                    f"then {snd.get('music_out') or 'fade'}: the rest of the video has no bed. Listen to the stop.")
+        elif media and mp.is_file():
             md = cl.duration(mp) or 0
             rep.add(P, "OK" if md >= total_s - 0.5 else "ERROR", "music", f"Music {md:.1f} s, video {total_s:.1f} s")
     elif L["music"] not in (None, "none"):
         rep.add(P, "CHECK", "music", f"The pack wants music ({L['music']}), the plan has none")
+    if snd.get("events") in (True, "auto", "on"):
+        approved = pack.value("edit_style.sfx.approved_set")
+        rep.add(P, "NOTE", "sfx-layer",
+                "Effect layer on picture events requested (sound.events). It sounds only when the pack approved the "
+                f"effect set (edit-style.json sfx.approved_set: {approved or 'not set'}); the cut's notes say whether "
+                "it ran. Listen to every effect with its picture.")
 
     # ---- picture from the video
     if have_video:

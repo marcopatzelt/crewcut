@@ -169,6 +169,7 @@ crewcut cut short <edit/pieces-vNNN.json> [--words new|carry] [--accept-soft] [-
 crewcut cut short-check <video> [--cut …] [--plan …]       the Critic's Short rules, contact sheet, listening list
 crewcut render capture <episode> --url URL | --html FILE | --terminal FILE [--seconds N] [--scroll …] [--size full|stage]
 crewcut render music-bed <voice.wav> --music TRACK --licence "…" [--start S] [--punch T,…] [--credit "…"]
+crewcut render sfx-sheet [--voice WAV --start S] | sfx-approve <set id>   the effect layer's set: listen, the user's yes
 crewcut shorts standing on|off|status | slot --episode ID | results --episode ID | table
 
 crewcut compute estimate --kind blender --frames N [--local-sec-per-frame S] [--gpu-sec-per-frame S] [--gpus N]
@@ -279,6 +280,10 @@ One plan builds one version of the video. Times are seconds; frames are at `fps`
   "crf": 17
 }
 ```
+
+Sound keys beyond the example (details in [rendering.md](rendering.md)): `music_until` with `music_out` ("fade" or
+"whoosh") and `music_fade` end the music at a moment; `bed: "dry"` makes a Short of voice and room only; `events:
+"auto"` turns on the effect layer on picture events, which runs only after the user approved its sound set.
 
 Portrait plans (Shorts) may set `"layout": "proof-top"` (else the pack's `shorts.layout`, default `full`): the proof
 on a top stage, the speaker below, the end on the face alone. Inserts then take `place` (`stage` or `full`), `fit`
