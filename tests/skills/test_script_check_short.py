@@ -13,7 +13,7 @@ It even caught a breath I had missed for months. That one hurt a little, if I am
 Now I only listen to the joins and the ends of sentences. That is my job now, and it takes me ten minutes.
 I still do not trust it with the music. Maybe that is the next test, in a week or two, on a real episode.
 The edit used to eat my whole Sunday. Last Sunday I went for a walk instead and came back to a finished cut.
-I keep the agent for the rough cut and the final listen for myself.
+The final listen stays mine.
 
 ---
 proof: screen recording of the cut report
@@ -43,7 +43,8 @@ def test_reel_rules_find_the_robot_script(neutral):
             "You should try it. Your videos will thank you.\n")
     r = sc.check_short(text, neutral)
     errors = kinds(r, "error")
-    assert {"length", "i-form", "phrases"} <= set(errors)
+    assert {"length", "phrases", "opening"} <= set(errors)      # no number in the first 12 words
+    assert "i-form" in kinds(r, "warn")                          # a warning since 26 Nov 2026
     msg = next(f["text"] for f in r["findings"] if f["area"] == "phrases")
     assert "Imagine" in msg and "game changer" in msg and "—" in msg and "It is not a tool, it is" in msg
     assert {"turn", "proof", "anchor"} <= set(kinds(r, "warn"))
@@ -99,3 +100,28 @@ def test_main_short(tmp_path, capsys):
     assert "I-sentences" in out and "This really happened" in out
     p.write_text("Imagine this.\n", encoding="utf-8")
     assert sc.main([str(p), "--short", "--pack", "packs/neutral", "--json"]) == 1
+
+
+def test_a_short_has_no_question_first_no_ask_and_a_short_last_line(neutral):
+    """The Short rules of 26 Nov 2026: sentence 1 no question, a number in the first 12 words, no ask, a last
+    sentence of at most 8 words, 2 to 3 counted steps (levels in channel.json script.short_checks)."""
+    bad = ("Did you know agents can cut video? I tried it last week on my own channel. "
+           "It found doubled starts and cut breaths. Subscribe for more tests like this one, and see the link below. "
+           "I think this is the start of something really big for every creator out there.\n")
+    r = sc.check_short(bad, neutral)
+    errs = [(f["area"], f["text"]) for f in r["findings"] if f["level"] == "error"]
+    assert any(a == "opening" and "is a question" in t for a, t in errs)
+    assert any(a == "opening" and "no number in the first 12 words" in t for a, t in errs)
+    assert {"ask", "ending"} <= {a for a, _ in errs}
+    assert "steps" in kinds(r, "warn")
+    good = ("I gave an agent 37 minutes of raw video last week. First, it read the transcript. "
+            "Second, it cut every doubled start. I thought it would miss the breaths. "
+            "But it found all 14 of them. One job stayed mine. The final listen.\n")
+    r = sc.check_short(good, neutral)
+    assert not {"opening", "ask", "ending", "steps"} & set(kinds(r, "error") + kinds(r, "warn")), r["findings"]
+    assert r["stats"]["counted_steps"] == 2
+    soft = {**neutral.channel, "script": {**neutral.channel["script"],
+                                          "short_checks": {"ask": "off", "last_sentence": "hint"}}}
+    pack = type(neutral)(**{**neutral.__dict__, "channel": soft})
+    r = sc.check_short(bad, pack)
+    assert "ask" not in kinds(r) and "ending" in kinds(r, "hint")

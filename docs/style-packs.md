@@ -197,35 +197,60 @@ A key under `checks` sets how strict one style check is: `"error"` (blocks the c
 | `exclamations_max` | 1 | more exclamation marks are a WARN |
 | `variants` | 3 | titles for the A/B test |
 | `candidates`, `formulas_min` | 10, 4 | the title step's gate (`title_check.py --set`): this many different candidates from this many different formulas (new 26 Nov 2026) |
-| `checks` | colon off, dash off, caps_words hint, factor off, question hint | `factor` is an "x times" number such as "10x" |
+| `checks` | colon off, dash off, caps_words hint, factor off, question hint | `factor` is an "x times" number such as "10x"; `quotes_long` (off) flags quotation marks in a long title (`--short` titles may quote), `series` (off) a part number or series name ("Teil 2", "#3") (new 26 Nov 2026) |
+| `banned` | [] | words a title never has (always an ERROR), e.g. `["krass"]` |
 
-`script`:
+`script` (opening and ending changed on 26 Nov 2026: no tool-first sentence, no number forced into the first two
+sentences, no forced goodbye; see `skills/script/references/craft.md`):
 
 | Key | Neutral default | Meaning |
 |---|---|---|
 | `words_per_minute` | 150 | speaking rate; with `length_minutes` it gives the target length in words |
-| `sentence_max_words`, `sentence_avg_words` | 22, 14 | ERROR above the maximum (a teleprompter line; 25 before 23 Nov 2026), hint above the average |
+| `sentence_max_words`, `sentence_avg_words` | 32, 14 | ERROR above the maximum (long sentences only as a chain with "and", "because", never nested; 22 from 23 to 26 Nov 2026), hint above the average |
 | `paragraph_max_sentences` | 3 | a teleprompter paragraph is one breath |
-| `hook_sentences` | 2 | the sentences that count as the hook |
-| `name_within_sentences` | 4 | the tool (`--name`) must be named this early |
+| `number_window_words` | [33, 67] | a number must stand in these words of the spoken text (0:10 to 0:20 at 200 words a minute); level `checks.number_window` (an old pack's `checks.hook_number` level counts for it; `hook_sentences` is gone) |
+| `name_within_sentences` | 0 | the tool (`--name`) must be named this early; 0 = no such check (sentence 1 carries the title instead) |
 | `title_number_within_sentences` | 6 | the title's numbers must appear this early |
-| `end_mentions` | [] | words that must stand in the last four sentences (an offer, the channel name) |
-| `checks` | dash off, question_opening hint, hook_number off, title_number warn, paragraph warn | |
-| `craft` (new, 23 Nov 2026) | see below | the script craft (`crewcut/craft.py`, `skills/script/references/craft.md`) |
+| `end_mentions`, `end_mentions_within_sentences` | [], 2 | words that must stand in the last sentences: the one link sentence after the verdict (an offer, the channel name) |
+| `checks` | dash off, question_opening hint, number_window warn, title_word_sentence_1 warn, title_number warn, paragraph warn | `title_word_sentence_1`: sentence 1 carries a core word (four letters or more, no stop word) or a number of the title |
+| `craft` | see below | the script craft (`crewcut/craft.py`, `skills/script/references/craft.md`) |
+| `short_checks` | see below | the Short rules of `script_check.py --short` |
+| `style_gate` | (from `config/crewcut.toml`) | `{"mode": "block" \| "warn" \| "off", "max_rounds": 3}`: the studio's own style checker as a hard gate (`crewcut/stylegate.py`, `docs/architecture.md`) |
 
-`script.craft` sets the limits and levels of the craft check (hook in 30 seconds, depth pattern, spoken rhythm,
-ending). Missing keys take the default; seconds become words through `words_per_minute`.
+`closing_line` (top level): a last sentence the channel always says. Empty or null (the default): no check. Nothing
+in the app asks for a goodbye.
+
+`script.craft` sets the limits and levels of the craft check (opening, counted units, spoken rhythm, ending).
+Missing keys take the default; seconds become words through `words_per_minute`. Changed on 26 Nov 2026 after a study
+of Alex Hormozi's long videos: the recap list and the goodbye at the end, "try this" in every part, the honest limit by
+0:45 and the number in the first 30 s are gone (`hook_number` and `ending_parts` in a pack change nothing now).
 
 | Key | Neutral default | Meaning |
 |---|---|---|
-| `hook_seconds`, `limit_seconds` | 30, 45 | the hook's window and the latest place for an honest limit |
+| `hook_seconds` | 30 | the plan with a count (and the one open loop) comes by then |
+| `limit_seconds` | 45 | only for a pack that switches the old `limit` rule back on |
 | `start_rate` | 1.2 | the first minute is dense: its words per minute against the base rate |
-| `idea_seconds` | [40, 60] | one idea; reported in the stats as words |
-| `part_max_seconds` | 180 | a longer part holds several ideas (hint) |
-| `end_seconds` | 60 | the ending (the last part) |
-| `questions_per_1000` | [2.5, 6] | questions per 1,000 words (target 3 to 5) |
-| `short_share` | [15, 40] | percent of sentences of at most `short_words` (6) words |
-| `checks` | greeting error; hook_number, roadmap, open_loop, limit, takeaways, questions, ending_length, cta, subscribe_once, loop_resolved warn; the rest hint | one level per rule: `error`, `warn`, `hint` or `off`. Rules: greeting, hook_number, roadmap, open_loop, stakes, limit, part_length, takeaways, concrete, signposts, short_share, questions, answers, objections, repeat, you_i, ending_length, cta, subscribe_once, ending_parts, loop_resolved |
+| `idea_seconds`, `part_max_seconds` | [45, 75], 180 | one counted unit; a part outside is reported (`part_length`) |
+| `end_seconds`, `end_min_words` | 25, 30 | the ending: from the `[[urteil \| "..."]]` mark below `---`, else the last part |
+| `end_window_seconds` | 60 | no goodbye or thanks (`greeting_end`) and no recap or list of the parts (`recap`) in this last stretch |
+| `questions_per_1000` | [7.5, 20] | questions per 1,000 words (1.5 to 4 a minute at 200 words a minute); each answered in the next sentence, never with "because" (`answers`) |
+| `short_words`, `short_share` | 5, [15, 40] | percent of sentences of at most `short_words` words |
+| `takeaways_max` | 1 | "try this" lines in the whole script |
+| `ask_share` | [0.15, 0.6] | the one fixed ask (subscribe) stands between these shares of the words; the ending has at most one link sentence and no other request (`cta`) |
+| `checks` | greeting, recap, greeting_end error; roadmap, limit_before_content, part_length, takeaways, questions, answers, you_i, ending_length, cta, subscribe_once, loop_resolved warn; the rest hint; limit off | one level per rule: `error`, `warn`, `hint` or `off`. Rules: greeting, roadmap, open_loop, stakes, limit, limit_before_content, part_length, takeaways, concrete, signposts, short_share, questions, answers, objections, repeat, you_i, ending_length, cta, subscribe_once, recap, greeting_end, loop_resolved |
+
+`script.short_checks` (`script_check.py --short`): a level per rule and a few numbers.
+
+| Key | Neutral default | Meaning |
+|---|---|---|
+| `length` | error | words outside `edit-style.json` `shorts.words` (+-25 %) |
+| `i_form` | warn | fewer I-sentences than you-sentences (an error before 26 Nov 2026) |
+| `question_first`, `number_first`, `number_first_words` | error, error, 12 | sentence 1 is no question; a number in the first words |
+| `ask` | error | an ask in the Short (subscribe, link, comment, follow): it goes into the pinned comment and the description |
+| `last_sentence`, `last_sentence_words` | error, 8 | the last sentence is the punch line |
+| `steps` | warn | 2 to 3 counted steps |
+| `sentence_max_words` | (`script.sentence_max_words`) | the longest sentence of a Short |
+| `turn`, `proof_number`, `time_anchor`, `phrases` | warn, warn, warn, error | as before |
 
 `upload`:
 
@@ -233,7 +258,7 @@ ending). Missing keys take the default; seconds become words through `words_per_
 |---|---|---|
 | `tags_min`, `tags_max` | 5, 15 | tag count the channel wants (YouTube's limit is 500 characters) |
 | `hashtags_max` | 3 | hashtags in the description (above 15 YouTube ignores all) |
-| `main_link`, `link_within_lines` | null, 3 | a link (or its start) that must stand in the first lines of the description |
+| `main_link`, `link_within_lines` | null, 3 | a link (or its start) that must stand in the first lines of the description (1 = the first line) |
 | `required_text` | [] | fixed text every description contains |
 | `description_footer` | null | file in the pack folder that ends every description word for word (about the creator and the company); the check fails when it is missing or changed |
 | `publish_time`, `timezone` | null, null | the channel's fixed upload time, such as `"08:00"` and `"Europe/Berlin"` |

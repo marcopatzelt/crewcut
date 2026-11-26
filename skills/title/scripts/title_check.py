@@ -2,9 +2,10 @@
 """Check YouTube title candidates before they go to the user (skill: skills/title).
 
 The check is a gate: a title passes or fails. It is not a score to raise. Every limit comes from the active style pack
-(crewcut.brand): channel.json "title", thumbnail.json "max_words", and the optional word lists in voice.md
-("## Title hooks", "## Title words to avoid", "## Words to avoid"). The neutral pack has no word lists, so the hook
-check is then a hint to judge by hand.
+(crewcut.brand): channel.json "title" (levels in "title.checks": colon, dash, factor, caps_words, question,
+quotes_long, series; the word list "title.banned" is always an error), thumbnail.json "max_words", and the optional
+word lists in voice.md ("## Title hooks", "## Title words to avoid", "## Words to avoid"). The neutral pack has no word
+lists, so the hook check is then a hint to judge by hand. --short checks Shorts titles, where a quote is a good form.
 
   python3 skills/title/scripts/title_check.py "Title one" "Title two" --name ToolName
   python3 skills/title/scripts/title_check.py "Title" --thumbnail "TWO WORDS" --json
@@ -119,6 +120,8 @@ COLON = re.compile(r"(?<!\d):|:(?!\d)")  # 8:00 is a time, not a colon
 DASH = re.compile(r"[–—]|\s-\s")
 FACTOR = re.compile(r"(?<![\w.,])\d+(?:[.,]\d+)?\s?[x×](?![^\W\d_])", re.I)
 AMOUNT = re.compile(r"[$€£¥]\s?\d|\d\s?(?:[$€£¥%])")
+QUOTES = re.compile(r"[\"„“”«»]|(?<![\w])['‘’‚][^'‘’‚]+['‘’](?![\w])")
+SERIES = re.compile(r"\b(?:teil|part|folge|episode|ep\.?|staffel|season)\s*\d+\b|#\s?\d+\b|\(\s*\d+\s*/\s*\d+\s*\)", re.I)
 WORD = re.compile(r"[^\W_]+(?:['’-][^\W_]+)*")
 
 
@@ -153,7 +156,9 @@ def level_of(pack, key: str, default: str = "off") -> str:
 
 
 # ---------- the check ----------
-def check_title(title: str, pack, names: list[str] | tuple = (), thumbnail: str | None = None) -> dict:
+def check_title(title: str, pack, names: list[str] | tuple = (), thumbnail: str | None = None,
+                short: bool = False) -> dict:
+    """One title. `short`: a Shorts title, where a quote is a good form (the long-title quote check is left out)."""
     t = " ".join((title or "").split())
     n = len(t)
     findings: list[dict] = []
@@ -218,7 +223,18 @@ def check_title(title: str, pack, names: list[str] | tuple = (), thumbnail: str 
             add(lv, "caps", f'"{w}" is written in capitals. Add it to title.acronyms if it is an acronym.')
     lv = level_of(pack, "question", "hint")
     if lv != "off" and "?" in t:
-        add(lv, "question", "Question mark. A statement usually promises more than a question.")
+        add(lv, "question", "Question mark. A statement usually promises more than a question; a question has to flip "
+            "an expectation, and the image shows the evidence.")
+    lv = level_of(pack, "quotes_long")
+    if lv != "off" and not short and QUOTES.search(t):
+        add(lv, "quotes", "Quotation marks in a long title (title.checks.quotes_long). A quote is a Shorts form.")
+    lv = level_of(pack, "series")
+    m = SERIES.search(t)
+    if lv != "off" and m:
+        add(lv, "series", f'"{m.group(0).strip()}": a part number or series name (title.checks.series). Each title stands '
+            "on its own.")
+    for hit in find_terms(t, [str(x) for x in pack.value("channel.title.banned", []) or [] if str(x).strip()]):
+        add("error", "banned", f'"{hit}" is on the list title.banned in channel.json.')
     max_ex = int(pack.value("channel.title.exclamations_max", 1))
     ex = t.count("!")
     if ex > max_ex:
@@ -298,13 +314,14 @@ def parse_set(text: str) -> list[tuple[str, str]]:
     return rows
 
 
-def check_set(rows: list[tuple[str, str]], pack, names: list[str] | tuple = (), thumbnail: str | None = None) -> dict:
+def check_set(rows: list[tuple[str, str]], pack, names: list[str] | tuple = (), thumbnail: str | None = None,
+              short: bool = False) -> dict:
     """The title step's gate: enough different candidates, from enough different formulas, each one passing."""
     need = int(pack.value("channel.title.candidates", 10))
     need_f = int(pack.value("channel.title.formulas_min", 4))
     results, problems, seen = [], [], {}
     for label, title in rows:
-        r = check_title(title, pack, names, thumbnail)
+        r = check_title(title, pack, names, thumbnail, short)
         r["formula"] = formula_id(label)
         r["label"] = label
         if r["formula"] is None:
@@ -341,11 +358,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--file", help="text file with one title per line")
     ap.add_argument("--set", dest="set_file", help="the candidate set: one `<formula><TAB><title>` per line (the gate)")
     ap.add_argument("--pack", help="style pack folder (default: the active pack)")
+    ap.add_argument("--short", action="store_true", help="Shorts titles: quotes are allowed")
     ap.add_argument("--json", action="store_true", help="print JSON")
     a = ap.parse_args(argv)
     if a.set_file:
         pack = load_pack(a.pack)
-        rep = check_set(parse_set(Path(a.set_file).read_text(encoding="utf-8")), pack, a.name, a.thumbnail)
+        rep = check_set(parse_set(Path(a.set_file).read_text(encoding="utf-8")), pack, a.name, a.thumbnail, a.short)
         if a.json:
             print(json.dumps(rep, ensure_ascii=False, indent=1))
         else:
@@ -366,7 +384,7 @@ def main(argv: list[str] | None = None) -> int:
         ap.print_usage(sys.stderr)
         return 2
     pack = load_pack(a.pack)
-    results = [check_title(t, pack, a.name, a.thumbnail) for t in titles]
+    results = [check_title(t, pack, a.name, a.thumbnail, a.short) for t in titles]
     if a.json:
         print(json.dumps(results, ensure_ascii=False, indent=1))
     else:

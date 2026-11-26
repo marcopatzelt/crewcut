@@ -141,6 +141,15 @@ def checks(ci: bool = False, probe: bool = False) -> list[dict]:
             f"steps {', '.join(s['steps']) or 'none'}" + (" (with adapter note)" if s["adapter"] else "")
             if s["ok"] else f"not usable: {s['problem']}",
             "" if s["ok"] else "Fix the folder or the [[skills.own]] entry in config/crewcut.toml.")
+    from . import stylegate
+    gate = stylegate.settings()
+    tool = stylegate.checker(gate) if gate["mode"] != "off" else None
+    add(OK if gate["mode"] == "off" or tool else NOTE, "style gate",
+        "off" if gate["mode"] == "off" else
+        f"{gate['mode']}, {tool} (at most {gate['max_rounds']} rounds)" if tool else
+        f"{gate['mode']}, but the studio has no {gate['skill']} skill with {gate['checker']}: skipped",
+        "" if tool or gate["mode"] == "off" else
+        "Only for a studio with its own style checker (docs/own-skills.md, \"A skill with a checker\").")
     if extskills.humanizer_enabled():
         n = len(voice.samples())
         add(OK if n else NOTE, "voice sample", f"{n} of your own videos in brand/voice/" if n else

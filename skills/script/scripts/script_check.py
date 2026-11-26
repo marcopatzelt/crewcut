@@ -20,17 +20,29 @@ Every mode checks that the spoken text reads aloud (crewcut.spoken): no colon, s
 mark or notes section above the line; a script card is refused otherwise. The long mode and --spoken also read the
 story: the plan below --- (premise, arc, 3 to 5 beats), list smell, staged run-ups, repeats, the subscribe line.
 
-The long mode and --craft measure the script craft (crewcut.craft, references/craft.md): the hook in 30 seconds (a
-number, a roadmap with a count, an open loop, why it matters, an honest limit by 0:45, no greeting), the depth pattern
-(words and seconds per part, "try this" per depth part, examples, sums said aloud, contrast pairs), the spoken rhythm
-(share of short sentences, questions per 1,000 words and their answers, objections, "you" against "I") and the ending
-(at most 60 seconds, exactly one call to action, list, the human's part, a verdict with its limit, the open loop
-resolved). Levels and limits: channel.json "script.craft". The longest sentence: "script.sentence_max_words".
+The opening (since 27 Nov 2026): sentence 1 carries a core word or a number of the title ("title_word_sentence_1"), a
+number stands in the window of words "script.number_window_words" (default 33 to 67: 0:10 to 0:20 at 200 words a
+minute, "number_window"); a tool named with --name must come within "script.name_within_sentences" (0 = no such
+check). There is no forced last sentence: "closing_line" is checked only when the pack sets one, and
+"script.end_mentions" must stand in the last "script.end_mentions_within_sentences" (default 2) sentences.
+
+The long mode and --craft measure the script craft (crewcut.craft, references/craft.md): the opening (no greeting, a
+plan with a count by 0:30, no limit or caveat before the first content), the counted units (45 to 75 seconds each, at
+most one "try this" line, examples, sums said aloud, contrast pairs), the spoken rhythm (short sentences, 1.5 to 4
+questions a minute, each answered in the next sentence and not with "because", objections, "you" at least as often as
+"I") and the ending (a verdict and at most one link sentence in 25 seconds, no goodbye and no recap in the last 60
+seconds, the one fixed ask between 15 and 60 % of the script, the open loop resolved). Levels and limits: channel.json
+"script.craft". The longest sentence: "script.sentence_max_words".
+
+A studio with the style gate (crewcut/stylegate.py, its own stil_check.py) gets the hard gate there; this check stays
+the Writer's quick signal and the app's generic check.
 
 --short checks a Short's script with the reel rules instead (see check_short): word range from edit-style.json
-"shorts.words", more I-sentences than you-sentences, a turn (expectation, then the break), an uneven real number or a
-visible proof, a time anchor or a number in a series, and the phrase list of the language
-(references/phrases-<language>.txt: phrases that sound written or like filler, "not X but Y" patterns, dashes).
+"shorts.words", sentence 1 is no question, a number in the first 12 words, no ask (subscribe, link, comment, follow),
+a last sentence of at most 8 words, 2 to 3 counted steps, more I-sentences than you-sentences, a turn (expectation,
+then the break), an uneven real number or a visible proof, a time anchor or a number in a series, and the phrase list
+of the language (references/phrases-<language>.txt: phrases that sound written or like filler, "not X but Y" patterns,
+dashes). Levels and limits: channel.json "script.short_checks".
 
 Motion marks: below the "---" line the Writer may mark up to five beats for motion graphics, as wishes for the
 Editor's motion pass: [[motion: number | "30 cents per million tokens"]] (the kind of picture | the spoken words it
@@ -114,10 +126,12 @@ def _craft():
 
 
 def craft_check(text: str, pack, add, passed: list[str], stats: dict, lang: str | None = None) -> dict:
-    """The four craft groups (crewcut.craft): hook in 30 seconds, depth pattern, spoken rhythm, ending. The word lists
+    """The four craft groups (crewcut.craft): opening, counted units, spoken rhythm, ending. The word lists
     follow the script's language unless one is given."""
     wpm = float(pack.value("channel.script.words_per_minute", 150))
-    r = _craft().check(text, lang, wpm, pack.value("channel.script.craft", {}) or {})
+    cfg = dict(pack.value("channel.script.craft", {}) or {})
+    cfg.setdefault("closing_line", pack.value("channel.closing_line"))
+    r = _craft().check(text, lang, wpm, cfg)
     for f in r["findings"]:
         add(f["level"], f["area"], f["text"])
     passed.extend(r["passed"])
@@ -243,6 +257,43 @@ def words(text: str) -> list[str]:
 
 def norm_number(x: str) -> str:
     return re.sub(r"[^\d]", "", x)
+
+
+NUMBER_WORD = re.compile(
+    r"\b(?:zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn|elf|zwölf|zwanzig|dreißig|vierzig|fünfzig|hundert|"
+    r"tausend|millionen?|milliarden?|prozent|hälfte|doppelt\w*|two|three|four|five|six|seven|eight|nine|ten|eleven|"
+    r"twelve|twenty|thirty|forty|fifty|hundred|thousand|million|billion|percent|half|double|twice)\b", re.I)
+TITLE_STOP = set("""der die das den dem des ein eine einen einem einer und oder aber ich du er sie es wir ihr mit für
+von auf aus bei nach vor zu zum zur im in ist sind war hat habe hast haben wird werden nicht nur auch noch schon so wie
+was wer wo dass mal jede jeder jedes alle mein dein sein uns euch diese dieser dieses hier da dann jetzt the a an and or
+but of to in on at for with from by is are was were be been it this that these those my your our how why what when who
+which you i we they he she not no yes can will just about into over than then""".split())
+
+
+def title_core(title: str) -> tuple[set[str], set[str]]:
+    """The title's core words (4 letters or more, no stop word) and its numbers, lower case."""
+    ws = [w.lower() for w in re.findall(r"[^\W_]+", title or "")]
+    nums = {w for w in ws if w.isdigit()}
+    return {w for w in ws if len(w) >= 4 and w not in TITLE_STOP and not w.isdigit()}, nums
+
+
+def title_hits(sentence: str, core: set[str], nums: set[str]) -> list[str]:
+    """Core words (the first five letters are enough: "Claude" finds "Claudes") and numbers of the title in a
+    sentence."""
+    parts = {p for w in re.findall(r"[^\W_]+", sentence.lower()) for p in w.split("-") if p}
+    hit = [k for k in sorted(core) if any((t.startswith(k[:5]) if len(k) >= 5 else t == k) for t in parts)]
+    return hit + [n for n in sorted(nums) if n in parts]
+
+
+def window_sentences(sents: list[str], a: int, b: int) -> list[str]:
+    """The sentences that overlap the words a to b of the spoken text (1-based)."""
+    out, pos = [], 0
+    for x in sents:
+        n = len(words(x))
+        if pos + n >= a and pos < b:
+            out.append(x)
+        pos += n
+    return out
 
 
 def voice_items(text: str, heading: str) -> list[str]:
@@ -384,7 +435,7 @@ def check_script(text: str, pack, title: str | None = None, names: list[str] | t
         add("hint", "form", "no part break (three empty lines). Parts are where the edit cuts and the prompter pages.")
 
     # 3. Sentence length.
-    max_w = int(pack.value("channel.script.sentence_max_words", 25))
+    max_w = int(pack.value("channel.script.sentence_max_words", 32))
     long_s = [(n, s) for n, s in zip(lens, all_s, strict=True) if n > max_w]
     if long_s:
         add("error", "sentences", f"{len(long_s)} sentence(s) over {max_w} words, e.g. ({long_s[0][0]}) "
@@ -424,19 +475,31 @@ def check_script(text: str, pack, title: str | None = None, names: list[str] | t
             add(lv, "opening", f'sentence 1 is a question ("{first[:60]}"). Open with the claim.')
         else:
             passed.append("opening: sentence 1 is a statement")
-        within = int(pack.value("channel.script.name_within_sentences", 4))
-        for name in [x for x in names if x]:
+        within = int(pack.value("channel.script.name_within_sentences", 0) or 0)
+        for name in [x for x in names if x] if within > 0 else []:
             if any(name.lower() in s.lower() for s in all_s[:within]):
                 passed.append(f"opening: {name} named in the first {within} sentence(s)")
             else:
                 add("error", "opening", f'"{name}" is not named in the first {within} sentence(s).')
-        lv = level(pack, "hook_number")
-        k = int(pack.value("channel.script.hook_sentences", 2))
-        if lv != "off":
-            if any(NUMBER.search(s) for s in all_s[:k]):
-                passed.append(f"opening: a number in the first {k} sentences")
+        lv = level(pack, "title_word_sentence_1")
+        if title and lv != "off":
+            core, nums = title_core(title)
+            hit = title_hits(first, core, nums)
+            if hit:
+                passed.append(f"opening: sentence 1 carries the title ({', '.join(hit[:3])})")
             else:
-                add(lv, "opening", f"no number in the first {k} sentences (the hook carries promise and number).")
+                add(lv, "opening", f'sentence 1 carries no core word or number of the title (one of '
+                    f'{", ".join(sorted(core | nums)[:8])}). Start with a claim or an own result on the title\'s topic.')
+        lv = level(pack, "number_window") if level(pack, "number_window") != "off" else level(pack, "hook_number")
+        if lv != "off":
+            a, b = (pack.value("channel.script.number_window_words", None) or [33, 67])[:2]
+            window = window_sentences(all_s, int(a), int(b))
+            hit = next((x for x in window if NUMBER.search(x) or NUMBER_WORD.search(x)), None)
+            if hit:
+                passed.append(f'opening: a number in words {a} to {b} ("{hit[:40]}")')
+            else:
+                add(lv, "opening", f"no number in words {a} to {b} (about 0:10 to 0:20 at 200 words a minute). Put the "
+                    "measured number or the announcement of the result there.")
         lv = level(pack, "title_number", "warn")
         if title and lv != "off":
             k = int(pack.value("channel.script.title_number_within_sentences", 6))
@@ -447,17 +510,21 @@ def check_script(text: str, pack, title: str | None = None, names: list[str] | t
             else:
                 passed.append("opening: the title's numbers are in the opening")
 
-    # 7. Ending: the channel's closing line and what the end must mention.
+    # 7. Ending: no forced goodbye. A closing line only when the channel sets one; what the end must mention.
     closing = pack.value("channel.closing_line")
     if closing and all_s:
         if " ".join(closing.lower().split()).rstrip(".!") in all_s[-1].lower():
             passed.append("ending: closing line")
         else:
             add("error", "ending", f'the last sentence is not the closing line from channel.json: "{closing}".')
-    last = " ".join(all_s[-4:]).lower()
+    k_end = max(1, int(pack.value("channel.script.end_mentions_within_sentences", 2) or 2))
+    last = " ".join(all_s[-k_end:]).lower()
     for term in pack.value("channel.script.end_mentions", []) or []:
         if term.lower() not in last:
-            add("error", "ending", f'"{term}" is not in the last 4 sentences (channel.json script.end_mentions).')
+            add("error", "ending", f'"{term}" is not in the last {k_end} sentence(s), the link sentence after the '
+                "verdict (channel.json script.end_mentions).")
+        else:
+            passed.append(f'ending: "{term}" in the link sentence')
 
     # 8. Every statement once; no three blocks in a row with the same start.
     seen, dups = set(), []
@@ -507,7 +574,7 @@ def check_script(text: str, pack, title: str | None = None, names: list[str] | t
     if interview is not None:
         check_interview(text, raw, interview, add, passed, stats)
 
-    # 13. The script craft: hook in 30 seconds, depth pattern, spoken rhythm, ending (references/craft.md).
+    # 13. The script craft: opening, counted units, spoken rhythm, ending (references/craft.md).
     manual = craft_check(text, pack, add, passed, stats)["manual"]
 
     order = {"error": 0, "warn": 1, "hint": 2}
@@ -565,6 +632,8 @@ ANCHOR = {
            r"\b(?:folge|teil|tag|woche|fehler|nummer|schritt|runde|platz|nr\.?|#)\s?\d+", r"\b\d+ von \d+\b",
            r"\bzum (?:ersten|zweiten|dritten|\d+\.) mal\b"],
 }
+ORDINAL_START = {"en": re.compile(r"^\W*(?:first|second|third|fourth|fifth)(?:ly)?\b", re.I),
+                 "de": re.compile(r"^\W*(?:erstens|zweitens|drittens|viertens|fünftens)\b", re.I)}
 PROOF_NOTE = re.compile(r"\b(?:proof|beweis|beleg|demo|screen ?recording|bildschirm|screenshot)\b", re.I)
 
 
@@ -647,10 +716,53 @@ def check_short(text: str, pack, lang: str | None = None, proof: str | None = No
         add("warn", "length", msg)
     else:
         passed.append(f"length: {n_words} words, about {stats['seconds']} s")
-    max_w = int(pack.value("channel.script.sentence_max_words", 25))
+    max_w = int(pack.value("channel.script.short_checks.sentence_max_words", 0) or
+                pack.value("channel.script.sentence_max_words", 32))
     long_s = [x for n, x in zip(lens, all_s, strict=True) if n > max_w]
     if long_s:
         add("error", "sentences", f"{len(long_s)} sentence(s) over {max_w} words, e.g. \"{long_s[0][:70]}\"")
+
+    # The opening: no question, a number at once.
+    if all_s and all_s[0].rstrip().endswith("?"):
+        add(short_level(pack, "question_first", "error"), "opening",
+            f'sentence 1 is a question ("{all_s[0][:60]}"). Start with what happened, in I-form, with a number.')
+    elif all_s:
+        passed.append("opening: sentence 1 is a statement")
+    n_first = int(pack.value("channel.script.short_checks.number_first_words", 12) or 12)
+    lead = " ".join(words(body)[:n_first])
+    if NUMBER.search(lead) or NUMBER_WORD.search(lead):
+        passed.append(f"opening: a number in the first {n_first} words")
+    else:
+        add(short_level(pack, "number_first", "error"), "opening",
+            f"no number in the first {n_first} words. The case starts with its number.")
+
+    # No ask in a Short: the ask goes into the pinned comment and the description.
+    cta = _craft().WORDS.get(lists, _craft().WORDS["en"])["cta"]
+    asks = [x for x in all_s if any(rx.search(x) for rx in cta.values())]
+    if asks:
+        add(short_level(pack, "ask", "error"), "ask", f'an ask in the Short ("{asks[0][:60]}"). Subscribe, link and '
+            "sign-up go into the pinned comment and the description.")
+    else:
+        passed.append("ask: none in the Short")
+
+    # A hard last line: the punch line, short.
+    n_last = int(pack.value("channel.script.short_checks.last_sentence_words", 8) or 8)
+    if all_s and len(words(all_s[-1])) > n_last:
+        add(short_level(pack, "last_sentence", "error"), "ending",
+            f"the last sentence has {len(words(all_s[-1]))} words; at most {n_last}. End on the punch line.")
+    elif all_s:
+        passed.append(f"ending: last sentence of {len(words(all_s[-1]))} words")
+
+    # Two to three counted steps carry the chain.
+    signpost = _craft().WORDS.get(lists, _craft().WORDS["en"])["signpost"]
+    steps = sum(len(signpost.findall(x)) or bool(ORDINAL_START.get(lists, ORDINAL_START["en"]).search(x))
+                for x in all_s)
+    stats["counted_steps"] = steps
+    if 2 <= steps <= 3:
+        passed.append(f"steps: {steps} counted steps")
+    else:
+        add(short_level(pack, "steps", "warn"), "steps", f"{steps} counted steps; 2 to 3 (\"erstens\", \"step two\") "
+            "carry the chain of a Short.")
 
     # I-sentences against you-sentences.
     def has(sentence: str, group: set[str]) -> bool:
@@ -661,7 +773,7 @@ def check_short(text: str, pack, lang: str | None = None, proof: str | None = No
     if i_n > you_n:
         passed.append(f"I-form: {i_n} I-sentences, {you_n} you-sentences")
     else:
-        add(short_level(pack, "i_form", "error"), "i-form",
+        add(short_level(pack, "i_form", "warn"), "i-form",
             f"{i_n} I-sentences, {you_n} you-sentences. Tell what you did, not what the viewer should do.")
 
     # The turn: an expectation, then the break (same or a later sentence).
@@ -743,11 +855,11 @@ def craft_line(c: dict) -> str:
     if not c or "short_sentences_percent" not in c:
         return ""
     parts = ", ".join(f"{p['words']}" for p in c["parts"])
+    ask = ", ".join(f"{round(100 * x)} %" for x in c.get("ask_at") or []) or "none"
     return (f"craft: parts (words) {parts}; {c['short_sentences_percent']} % short sentences; {c['questions']} "
-            f"questions ({c['questions_per_1000']} per 1,000); you {c['you']} / I {c['i']} (depth parts "
-            f"{c['you_depth']} / {c['i_depth']}); {c['takeaways']} try-this for {c['depth_parts']} depth parts; "
-            f"{c['objections']} objections; ending about {c['ending_seconds']} s, calls to action: "
-            f"{', '.join(c['ending_calls_to_action']) or 'none'}")
+            f"questions ({c['questions_per_1000']} per 1,000); you {c['you']} / I {c['i']}; {c['takeaways']} "
+            f"try-this line(s); {c['depth_parts']} units; {c['objections']} objections; fixed ask at {ask}; ending "
+            f"about {c['ending_seconds']} s, requests in it: {', '.join(c['ending_calls_to_action']) or 'none'}")
 
 
 def check_spoken(text: str, lang: str | None = None) -> dict:
@@ -786,7 +898,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--spoken", action="store_true",
                     help="only the speak and story checks (next to a studio's own script check, which stays as it is)")
     ap.add_argument("--craft", action="store_true",
-                    help="only the craft checks (hook in 30 s, depth pattern, spoken rhythm, ending)")
+                    help="only the craft checks (opening, counted units, spoken rhythm, ending)")
     ap.add_argument("--minutes", metavar="MIN-MAX", help="target length from the brief, e.g. 11-14 (default: the "
                     "pack's edit-style.json length_minutes)")
     ap.add_argument("--language", help="with --short or --craft: language of the word lists (default: the pack's for "

@@ -22,12 +22,16 @@ is too small, sound that jumps.
 
 For a finished script I first do the story pass (skills/script/references/story.md): every paragraph pushes the premise,
 no list smell, no idea told twice, no staged run-up, the subscribe line not inside a beat. Then the craft pass
-(skills/script/references/craft.md, "What the Critic reads"), with the craft line of `script_check.py` beside me: the
-hook carries the result or claim, why it matters, a measured number, a roadmap with a count and an open loop in 30
-seconds, an honest limit by 0:45 and the first demo by 1:30; every idea runs question, why, how, failure or limit,
-number, try this; every technical word gets one plain sentence; questions stand at joints and get their answer at once;
-"you" before "I" where it explains; the ending fits in 60 seconds with exactly one call to action and resolves the
-loop. I rewrite those parts or send the draft back before the user sees it. Then I do a quiet claim check against the
+(skills/script/references/craft.md, "What the Critic reads"), with the craft line of `script_check.py` beside me:
+sentence 1 is a claim or an own result that proves the title; the real result with its number comes by 0:15 and a
+number or the announcement at 0:10 to 0:20; before point one stands nothing but proof, plan and one open loop; every
+counted unit is a test step with its own evidence; every technical word gets one plain sentence; questions stand at
+joints and get their answer in the next sentence; "you" at least as often as "I"; the fixed ask stands in the middle;
+the ending is a verdict that picks up sentence 1 and at most one link sentence, with no goodbye and no recap; every
+open loop is resolved. When the studio has a style gate, I answer every question of its checker (kind kritik) with true or
+false and one sentence of reason in `<script>.kritik.json` next to the script; in doubt false, and an open or false
+answer keeps the script from the user and from recording. I rewrite those parts or send the draft back before the user
+sees it. Then I do a quiet claim check against the
 Writer's facts: I mark only claims that are false or would mislead the viewer, never a word of feeling or style. My
 notes go to the Writer, not to the user, and they never turn into caveats in the script. The Humanizer pass comes after
 me, as the last step before the card.

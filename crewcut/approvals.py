@@ -70,6 +70,13 @@ def propose(episode: str | None, step: str | None, kind: str, title: str, body: 
         tilt.gate(paths.episode_dir(episode), p)   # raises tilt.Tilted: the declared roll correction is not in it
     if kind == "script" and p is not None and p.suffix.lower() in (".md", ".txt"):
         _require_story(episode, p)  # raises spoken.Unspeakable: marks that do not read aloud, no story plan, a list
+    if kind == "script" and episode and not episode.startswith("_"):
+        from . import stylegate
+        script = p if p is not None and p.suffix.lower() in (".md", ".txt") else None
+        gate = stylegate.require(episode, script, what="go to the user")  # raises stylegate.Blocked: it fails
+        data = {**(data or {}), "style_gate": stylegate.summary(gate)}
+        if gate["mode"] == "warn" and not gate["pass"] and not gate.get("skipped"):
+            events.emit("log", episode=episode, text=stylegate.short_line(gate) + " (the gate only warns)")
     if episode and episode != "_onboarding":
         from . import humanize
         hz = humanize.for_card(paths.episode_dir(episode), kind, file)  # raises humanize.Missing for a script card
@@ -161,6 +168,8 @@ def decide(card_id: int, accepted: bool, choice: int | None = None, reason: str 
     if accepted and card["kind"] in ("preview", "final"):
         from .motion import quality
         quality.check_animations(card["episode"], card)
+    if accepted and card["kind"] == "script" and card.get("episode") and not card["episode"].startswith("_"):
+        _style_gate_at_yes(card)   # raises stylegate.Blocked; the card then goes back to the Writer
     db.update("cards", card_id, status="accepted" if accepted else "declined", choice=choice, reason=reason,
               decided_at=db.now())
     card = get(card_id)
@@ -183,6 +192,22 @@ def decide(card_id: int, accepted: bool, choice: int | None = None, reason: str 
     from .conductor import flow  # late import: the conductor reacts to the answer (next step, new version, ...)
     flow.on_card_decided(card)
     return card
+
+
+def _style_gate_at_yes(card: dict) -> None:
+    """A yes on a script card checks the style gate once more (the Critic's answers or the rules may have changed since
+    the card). A failing script does not move on: the card is declined with the findings, the Writer gets them, and
+    Blocked tells the caller."""
+    from . import stylegate
+    p = _resolve_file(card["episode"], card.get("file"))
+    script = p if p is not None and p.suffix.lower() in (".md", ".txt") else None
+    try:
+        stylegate.require(card["episode"], script, what="go to recording")
+    except stylegate.Blocked as e:
+        db.update("cards", card["id"], data={**(card.get("data") or {}),
+                                             "style_gate_refused": stylegate.summary(e.verdict)})
+        decide(card["id"], False, reason="The style check fails at the yes: " + stylegate.text(e.verdict))
+        raise stylegate.Blocked(f"{e} The card went back to the Writer with these findings.", e.verdict) from None
 
 
 def wait(card_id: int, timeout: float | None = None, every: float = 2.0) -> str:

@@ -235,6 +235,12 @@ def build_parser() -> argparse.ArgumentParser:
     bva.add_argument("source")
     bvsub.add_parser("list")
 
+    sg = sub.add_parser("style-gate", help="the studio's style checker on the newest scripts (crewcut/stylegate.py)")
+    sg.add_argument("episode")
+    sg.add_argument("--file", action="append", default=[], help="check this file instead (repeatable), e.g. "
+                    "brief/SCRIPT-v009.md or work/words-v012.json")
+    sg.add_argument("--json", action="store_true")
+
     hz = sub.add_parser("humanize", help="the Humanizer pass over a script draft (blader/humanizer)")
     hzsub = hz.add_subparsers(dest="hcmd", required=True)
     hzr = hzsub.add_parser("record", help="record what the pass changed, for the script card")
@@ -482,6 +488,15 @@ def _run(a) -> int:
             print("  steps: " + ", ".join(f"{k} {v['status']}" for k, v in p["steps"].items()))
             return 0
         if a.ecmd == "step":
+            gated = {("script", "done"): "script", ("script", "skipped"): "script", ("record", "working"): "record",
+                     ("record", "waiting"): "record", ("edit", "working"): "edit"}.get((a.step, a.status))
+            if gated:
+                from . import stylegate
+                try:
+                    stylegate.guard_advance(a.episode, gated)
+                except stylegate.Blocked as e:
+                    print(str(e), file=sys.stderr)
+                    return 3
             episodes.set_step(a.episode, a.step, a.status, next_action=a.next)
             print(f"{a.episode}: {a.step} {a.status}")
             return 0
@@ -609,12 +624,12 @@ def _run(a) -> int:
                 print("Motion cards come from their commands: crewcut motion plan --card, style-frame, promote, report.",
                       file=sys.stderr)
                 return 2
-            from . import humanize, spoken
+            from . import humanize, spoken, stylegate
             from .cut import tilt
             try:
                 card = approvals.propose(_env_episode(a), a.step, a.kind, a.title, body=a.body, file=a.file,
                                          options=a.option or None, data=data, identity=_identity(), preview=a.preview)
-            except (humanize.Missing, spoken.Unspeakable, tilt.Tilted) as e:
+            except (humanize.Missing, spoken.Unspeakable, tilt.Tilted, stylegate.Blocked) as e:
                 print(str(e), file=sys.stderr)
                 return 4
             _print(card if a.json else f"card #{card['id']} is open: {card['title']}", a.json)
@@ -637,8 +652,13 @@ def _run(a) -> int:
                 if not human and _identity() != "showrunner":
                     print("Only the Showrunner records a yes the user gave in words.", file=sys.stderr)
                     return 3
-                approvals.decide(a.card, True, choice=a.choice,
-                                 reason="accepted at the terminal" if human else "the user said so in the chat")
+                from . import stylegate
+                try:
+                    approvals.decide(a.card, True, choice=a.choice,
+                                     reason="accepted at the terminal" if human else "the user said so in the chat")
+                except stylegate.Blocked as e:
+                    print(str(e), file=sys.stderr)
+                    return 3
             else:
                 approvals.decide(a.card, False, reason=a.reason or None)
             print(f"card #{a.card} {a.ccmd}ed")
@@ -652,7 +672,10 @@ def _run(a) -> int:
         print(f"card #{card['id']} is open: {card['title']}")
         return 0
     if a.cmd == "job":
+        from . import stylegate
         try:
+            if a.step == "edit" and a.identity != "critic" and _env_episode(a):
+                stylegate.guard_advance(_env_episode(a), "edit")   # no cut of a failing script before a recording
             jid = queue.add(_env_episode(a), a.identity, a.step, a.task, heavy=a.heavy, parent=_job())
         except (ValueError, FileNotFoundError) as error:
             print(str(error), file=sys.stderr)
@@ -705,6 +728,27 @@ def _run(a) -> int:
                 return 1
             print(f"voice sample: {out.relative_to(paths.studio_root())}")
             return 0
+    if a.cmd == "style-gate":
+        from pathlib import Path
+
+        from . import stylegate
+        try:
+            episodes.read(a.episode)
+            files = [paths.inside(paths.episode_dir(a.episode), f) if not Path(f).is_absolute() else Path(f)
+                     for f in a.file] or None
+        except (FileNotFoundError, ValueError) as e:
+            print(f"crewcut style-gate: {e}", file=sys.stderr)
+            return 2
+        v = stylegate.check(a.episode, files=files)
+        if a.json:
+            _print(v, True)
+        else:
+            print(f"Style gate ({v['mode']}): {'PASS' if v['pass'] else 'BLOCK' if v['mode'] == 'block' else 'FAIL'}"
+                  + (f", checker {v['checker']}" if v.get("checker") else ""))
+            print(stylegate.text(v))
+        if v.get("skipped"):
+            print("warning: " + v["skipped"], file=sys.stderr)
+        return 0 if v["pass"] else 1
     if a.cmd == "humanize":
         from . import humanize
         eid = _env_episode(a)

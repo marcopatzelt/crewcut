@@ -37,6 +37,16 @@ generic skill and over the agent's own preferences. Crewcut keeps its tools, com
 and every safety rule: spending and publishing still need your card. A newer explicit correction from you (in chat, or
 a later dated rule in `brand/rules/`) still wins over an older rule in a skill.
 
+## A skill with a checker: the style gate
+
+A skill can bring its own checker, and Crewcut can make it a hard gate for scripts. By default the gate looks for the
+skill `deutscher-hormozi` with `scripts/stil_check.py` (`[style_gate]` in `config/crewcut.toml`: `skill`, `checker`,
+`mode` block, warn or off, `max_rounds`). With block, a script that fails the checker gets no card and never goes to
+recording; the Writer gets the failed checks back with their lines and fixes, and the Critic answers the checker's
+yes/no questions in `<script>.kritik.json`. The checker speaks a small JSON interface (version 1, in
+`docs/architecture.md`, "The style gate"). A studio without that skill skips the gate with a warning.
+`crewcut style-gate <episode>` shows what it says now.
+
 ## Skills written for another setup
 
 A skill can name paths or tools of the setup it was written for: an old folder layout, a script that is not in

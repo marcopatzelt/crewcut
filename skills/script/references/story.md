@@ -112,7 +112,7 @@ If you want more tests like this, subscribe. No company pays for them.
 
 And the drive? Every word on it is searchable now, for zero dollars.
 
-Thanks for watching.
+And the guest list I gave the model is in the description.
 
 ---
 Premise: A free local model turned forty hours of unsearchable audio into text overnight, once it knew the names.

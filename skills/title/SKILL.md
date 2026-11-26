@@ -54,7 +54,9 @@ Do not defer the first visual concept until the edit is done. The later thumbnai
 3. **The gate.** Write the candidates to `work/title-candidates-vNNN.tsv`, one per line: `<formula><TAB><title>`. Run
    `python3 skills/title/scripts/title_check.py --set work/title-candidates-vNNN.tsv --name "<tool>"`. It passes when
    there are enough different candidates from enough formulas and every title passes on its own (length, name early,
-   the pack's forbidden words and signs). A candidate that fails is rewritten or dropped; it never goes to the user.
+   the pack's forbidden words and signs, `title.banned`, and the levels in `title.checks`: a question mark, quotation
+   marks in a long title, a part number or series name). Shorts titles take `--short`: a quote is a good form there. A
+   candidate that fails is rewritten or dropped; it never goes to the user.
    The check is a gate, not a goal: there are no points to raise, and a passing title is not better because it has
    more hooks. Choose the recommendation by the promise the video keeps, the formula the channel's rules put first and
    the proof videos, and say why in one sentence.

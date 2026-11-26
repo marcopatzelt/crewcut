@@ -8,13 +8,14 @@ For a tool, a model or a claim. The order is in SKILL.md, section "Structure".
 
 For a video where something happened: the user found something, a run went wrong, a result surprised.
 
-1. **Start with a scene and a time**, not with a claim. The tool and the title's number still come in the first four
-   sentences.
+1. **Start with a scene and a time** that carries the title's core word or number in sentence 1; a number or the
+   announcement of the result comes by 0:20.
 2. **Present tense, short statements, concrete details.**
 3. **Every part ends open:** one sentence that leaves a question the next part answers. No part starts with "and then".
 4. **Puzzle, solution, consequence:** first what the user saw, then what really happened, then what it means for their
    work.
-5. **Own ending** (structure step 8), then the end mention and the closing line.
+5. **Own ending** (structure step 8): the verdict, then at most one link sentence with the end mention. No goodbye,
+   no recap.
 6. The subscribe line, the critical side and all word rules still hold.
 
 Lessons for this form: one time stamp is enough; no private side notes; no chat quotes in a cheering tone (tell the

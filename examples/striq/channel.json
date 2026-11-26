@@ -3,24 +3,36 @@
   "name": "STRIQ",
   "url": null,
   "niche": "Claude and AI agents tested on real work",
-  "audience": "business owners and managers who are not deeply technical",
+  "audience": "the broad German Claude and dev bubble; companies come in through the examples",
   "language": "de",
   "country": "DE",
   "tone": "plain and honest, real measurements, no sales tone; English technical words are fine",
   "reference_channels": [],
-  "topics_to_avoid": ["gaming", "lifestyle", "get rich quick with AI", "drama", "fear", "news on its own",
-                      "AI voices, voice cloning and phone assistants"],
-  "closing_line": "Und danke fürs Zuschauen.",
+  "topics_to_avoid": [
+    "gaming",
+    "lifestyle",
+    "get rich quick with AI",
+    "drama",
+    "fear",
+    "news on its own",
+    "AI voices, voice cloning and phone assistants"
+  ],
+  "closing_line": "",
   "category_id": 28,
   "default_privacy": "private",
-  "links": {"website": "https://striq.de"},
+  "links": {
+    "website": "https://striq.de"
+  },
   "idea": {
     "market_language": "en",
     "market_region": "US",
     "fresh_days": 14,
     "outlier_x_median": 2.0,
     "outlier_per_sub": 1.0,
-    "small_channel_subs": [1000, 100000],
+    "small_channel_subs": [
+      1000,
+      100000
+    ],
     "breakthrough_per_sub": 3.0,
     "gap_thin_views": 30000
   },
@@ -28,45 +40,144 @@
     "max_chars": 50,
     "target_chars": 45,
     "name_within": 40,
-    "names": ["Claude"],
-    "acronyms": ["AI", "API", "APIS", "CLI", "CPU", "CRM", "CSS", "CSV", "DSGVO", "GLM", "GPT", "GPU", "GPUS", "HTML",
-                 "HTTP", "HTTPS", "IHK", "JSON", "KI", "LLM", "LLMS", "MCP", "PDF", "SEO", "SQL", "STRIQ", "USA"],
+    "names": [
+      "Claude"
+    ],
+    "acronyms": [
+      "AI",
+      "API",
+      "APIS",
+      "CLI",
+      "CPU",
+      "CRM",
+      "CSS",
+      "CSV",
+      "DSGVO",
+      "GLM",
+      "GPT",
+      "GPU",
+      "GPUS",
+      "HTML",
+      "HTTP",
+      "HTTPS",
+      "IHK",
+      "JSON",
+      "KI",
+      "LLM",
+      "LLMS",
+      "MCP",
+      "PDF",
+      "SEO",
+      "SQL",
+      "STRIQ",
+      "USA"
+    ],
     "exclamations_max": 1,
     "variants": 3,
-    "checks": {"colon": "error", "dash": "error", "caps_words": "error", "factor": "error", "question": "hint"}
+    "checks": {
+      "colon": "error",
+      "dash": "error",
+      "caps_words": "error",
+      "factor": "error",
+      "question": "warn",
+      "quotes_long": "error",
+      "series": "error"
+    },
+    "banned": [
+      "krass"
+    ]
   },
   "script": {
     "words_per_minute": 175,
-    "sentence_max_words": 25,
+    "sentence_max_words": 32,
     "sentence_avg_words": 13,
     "paragraph_max_sentences": 3,
-    "hook_sentences": 2,
-    "name_within_sentences": 1,
+    "number_window_words": [
+      33,
+      67
+    ],
+    "name_within_sentences": 0,
     "title_number_within_sentences": 6,
-    "end_mentions": ["STRIQ"],
-    "checks": {"dash": "error", "question_opening": "error", "hook_number": "error", "title_number": "error",
-               "paragraph": "error"}
+    "end_mentions": [
+      "STRIQ"
+    ],
+    "end_mentions_within_sentences": 2,
+    "checks": {
+      "dash": "error",
+      "question_opening": "error",
+      "number_window": "error",
+      "title_word_sentence_1": "error",
+      "title_number": "error",
+      "paragraph": "error"
+    },
+    "craft": {
+      "hook_seconds": 30,
+      "idea_seconds": [
+        45,
+        75
+      ],
+      "end_seconds": 25,
+      "end_window_seconds": 60,
+      "questions_per_1000": [
+        7.5,
+        20
+      ],
+      "short_words": 5,
+      "takeaways_max": 1,
+      "ask_share": [
+        0.15,
+        0.6
+      ],
+      "checks": {
+        "limit": "off",
+        "limit_before_content": "error",
+        "roadmap": "warn",
+        "part_length": "warn",
+        "takeaways": "error",
+        "questions": "error",
+        "answers": "error",
+        "recap": "error",
+        "greeting_end": "error",
+        "ending_length": "error",
+        "cta": "warn",
+        "you_i": "error",
+        "open_loop": "hint",
+        "loop_resolved": "warn"
+      }
+    },
+    "short_checks": {
+      "length": "error",
+      "i_form": "warn",
+      "question_first": "error",
+      "ask": "error",
+      "last_sentence_words": 8,
+      "sentence_max_words": 22
+    }
   },
   "upload": {
     "tags_min": 10,
     "tags_max": 15,
     "hashtags_max": 3,
     "main_link": "https://striq.de/blog/",
-    "link_within_lines": 2,
-    "required_text": ["https://striq.de"],
+    "link_within_lines": 1,
+    "required_text": [
+      "https://striq.de"
+    ],
     "publish_time": "08:00",
     "timezone": "Europe/Berlin",
     "playlist": null,
-    "checks": {"dash": "error"}
+    "checks": {
+      "dash": "error"
+    }
   },
   "sources": {
     "niche": "Marco, 4 Nov 2026",
-    "audience": "Marco, 4 Nov 2026",
+    "audience": "Marco, 25 Nov 2026",
     "language": "Marco, 4 Nov 2026 (the channel stays German)",
     "country": "Marco, 4 Nov 2026",
     "tone": "Marco, 4 and 6 Nov 2026",
     "topics_to_avoid": "Marco, 4, 7 and 12 Nov 2026",
-    "closing_line": "approved episodes, 8 Nov 2026; Marco, 13 Nov 2026",
+    "closing_line": "Marco, 26 Nov 2026 (no goodbye at the end; before: approved episodes, 8 Nov 2026)",
     "category_id": "studio rule, 8 Nov 2026 (Science & Technology, never Gaming)",
     "idea.market_language": "Marco, 4 Nov 2026 (US formats without a German version)",
     "idea.outlier_x_median": "studio method, 8 Nov 2026",
@@ -80,15 +191,20 @@
     "title.checks.caps_words": "Marco, 8 Nov 2026",
     "title.checks.factor": "Marco, 7 Nov 2026",
     "script.words_per_minute": "measured on three approved episodes, 8 Nov 2026",
-    "script.name_within_sentences": "Marco, 6 Nov 2026 (the opening leads with the tool)",
-    "script.checks.hook_number": "Marco, 6 Nov 2026",
+    "script.name_within_sentences": "Marco, 26 Nov 2026 (sentence 1 carries the title, not the tool; before 6 Nov)",
     "script.checks.dash": "Marco, 7 Nov 2026",
     "script.checks.paragraph": "Marco, 7 Nov 2026",
     "script.end_mentions": "Marco, 13 Nov 2026",
     "upload.main_link": "Marco, 5 Nov 2026",
-    "upload.link_within_lines": "Marco, 5 Nov 2026",
+    "upload.link_within_lines": "Marco, 26 Nov 2026 (the link in line 1 with its reason; before 5 Nov)",
     "upload.tags_min": "Marco, 5 Nov 2026",
     "upload.publish_time": "Marco, 12 Nov 2026",
-    "upload.checks.dash": "studio writing rule, 8 Nov 2026"
+    "upload.checks.dash": "studio writing rule, 8 Nov 2026",
+    "script.number_window_words": "Marco, 26 Nov 2026 (a number or the announcement at 0:10 to 0:20)",
+    "script.sentence_max_words": "Marco, 26 Nov 2026 (up to 32 words as a chain, never nested)",
+    "script.craft": "Marco, 26 Nov 2026 (one rule set for long videos: verdict and link, no goodbye, no recap)",
+    "script.short_checks": "Marco, 26 Nov 2026 (Shorts: no question first, no ask, a short last line)",
+    "title.checks.question": "Marco, 26 Nov 2026",
+    "title.banned": "Marco, 26 Nov 2026"
   }
 }
