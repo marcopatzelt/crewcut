@@ -3,8 +3,10 @@
 Three stages, each its own ffmpeg run (one run with every piece as an input ran out of memory on long videos):
 1. every picture piece on its own into <output>.pieces/ (speaker with zoom held on the face, a full-frame insert, or a
    generated background; transparent overlays laid on top already here). Unchanged pieces are kept for the next run.
-2. the sound in its own run: voice, music bed (looped, ducked under the voice, gaps before strong moments), hits,
-   typing and whooshes, then a limiter.
+2. the sound in its own run: voice, music bed (looped, ducked under the voice, gaps before strong moments; with
+   `sound.music_until` only up to that moment, then a fade or a hard stop with a whoosh), hits, typing and whooshes,
+   the effect layer on picture events when it is on and approved (`sfx_events`), then a limiter. A dry Short
+   (`sound.bed` "dry") has no music and no effects beyond the layer's two quiet pops.
 3. loudness in two passes to the pack target, AAC encode, true peak measured after the encode (AAC raises it) and the
    limiter lowered until it holds, then picture and sound together.
 
@@ -30,7 +32,7 @@ from itertools import pairwise
 from pathlib import Path
 
 from ..motion import sfx
-from . import html, media
+from . import html, media, sfx_events
 from .plan import Insert, Plan, PlanError
 
 CARD_MARGIN = 48                 # proof-top, fit contain: space around the card on the stage (px)
@@ -43,6 +45,10 @@ SFX = (  # name, plan list key, default dB, default length (s), pre-roll (ms)
 # the sound kit's file for each SFX row when neither the plan nor the pack names one (crewcut.motion.sfx)
 KIT_SOUND = {"hit": "hit", "typing": "typing", "whoosh": "whoosh"}
 STEREO = "aformat=sample_rates=48000:channel_layouts=stereo"
+MUSIC_OUT = ("fade", "whoosh")   # how music that ends at sound.music_until stops: a fade, or a hard stop with a whoosh
+MUSIC_FADE_S = 1.5               # default fade length (the rule: 1 to 2 s)
+HARD_STOP_S = 0.06               # a hard stop still ramps this long, so it does not click
+BEDS = ("music", "dry")          # sound.bed: the default, or a Short with voice and room only
 
 
 class ShownError(RuntimeError):
@@ -304,6 +310,7 @@ class AudioGraph:
     filters: list[str]
     notes: list[str]
     seconds: float
+    events: list[dict] = field(default_factory=list)     # the effect layer's effects (time, class, sounds)
 
 
 def _sound_file(plan: Plan, rel: str | None, pack_key: str | None) -> Path | None:
@@ -350,9 +357,32 @@ def _sfx_file(plan: Plan, sound: dict, name: str, notes: list[str], count: int) 
     return f
 
 
-def audio_graph(plan: Plan, end: int) -> AudioGraph:
+def music_end(plan: Plan, sound: dict, T: float) -> tuple[float | None, str, float]:
+    """Where the music stops (seconds, None = it runs to the end), how ("fade" or "whoosh") and the fade length.
+    `sound.music_until` is seconds, an insert reference ("c1", "c1@cue") or a word anchor ({"word": "...", "offset": s}).
+    """
+    until = sound.get("music_until")
+    how = sound.get("music_out") or "fade"
+    if how not in MUSIC_OUT:
+        raise PlanError(f"sound.music_out must be one of {', '.join(MUSIC_OUT)}, got {how!r}")
+    fade = float(sound.get("music_fade") or MUSIC_FADE_S)
+    if not 0.05 <= fade <= 4.0:
+        raise PlanError("sound.music_fade must be between 0.05 and 4 seconds (the rule: 1 to 2 s)")
+    if until is None:
+        return None, how, fade
+    try:
+        u = plan.anchor_time(until) if isinstance(until, dict) else plan.ref_frame(until) / plan.fps
+    except ValueError as e:
+        raise PlanError(f"sound.music_until: {e}") from e
+    if u <= 0:
+        raise PlanError("sound.music_until must be after the start of the video")
+    return (None if u >= T else round(u, 3)), how, fade
+
+
+def audio_graph(plan: Plan, end: int, voice_levels=None) -> AudioGraph:
     """The ffmpeg inputs and filter graph of the sound. Pure apart from checking that files exist and making the
-    sound kit (crewcut.motion.sfx) at first use when a sound has no file of its own."""
+    sound kit (crewcut.motion.sfx) at first use when a sound has no file of its own. `voice_levels` (dB every 10 ms)
+    lets the effect layer stay off speech peaks; without it the layer decodes the voice itself when it runs."""
     fps = plan.fps
     T = end / fps
     sound = plan.p.get("sound") or {}
@@ -360,6 +390,13 @@ def audio_graph(plan: Plan, end: int) -> AudioGraph:
     idx: dict[str, int] = {}
     filters: list[str] = []
     notes: list[str] = []
+    bed = sound.get("bed") or "music"
+    if bed not in BEDS:
+        raise PlanError(f"sound.bed must be one of {', '.join(BEDS)}, got {bed!r}")
+    dry = bed == "dry"
+    if dry and (sound.get("music") or sound.get("music_source")):
+        raise PlanError("a dry Short (sound.bed \"dry\") has no music: remove sound.music and sound.music_source, "
+                        "and use the plain voice, not a music bed")
 
     def add(p: Path, loop: bool = False) -> int:
         key = f"{p}|{loop}"
@@ -370,12 +407,15 @@ def audio_graph(plan: Plan, end: int) -> AudioGraph:
 
     lufs = float(plan.value("lufs", "edit_style.loudness_lufs", -14.0, section=sound))
     tp = float(plan.pack.value("edit_style.true_peak_db", -1.5))
+    voice_file = None
     if plan.p.get("voice"):
-        k = add(plan.local(plan.p["voice"]))
+        voice_file = plan.local(plan.p["voice"])
+        k = add(voice_file)
         filters.append(f"[{k}:a]aresample=48000,{STEREO},volume={float(plan.p.get('voice_db') or 0.0):g}dB,"
                        f"apad=whole_dur={T:.3f}[voice]")
     elif plan.base_color() is None and plan.p.get("base"):
-        k = add(plan.local(plan.p["base"]))
+        voice_file = plan.local(plan.p["base"])
+        k = add(voice_file)
         filters.append(f"[{k}:a]highpass=f=70,loudnorm=I={lufs - 1:g}:TP={tp:g}:LRA=7,aresample=48000,{STEREO},"
                        f"apad=whole_dur={T:.3f}[voice]")
     else:
@@ -383,19 +423,50 @@ def audio_graph(plan: Plan, end: int) -> AudioGraph:
         notes.append("no voice: the sound starts from silence")
     mix = ["[voice]"]
 
+    # the effect layer first: it decides whether the inserts' own motion sounds still play
+    events: list[sfx_events.Event] = []
+    if sfx_events.requested(plan):
+        ok, _ = sfx_events.approved(plan.pack)
+        levels = voice_levels
+        if ok and levels is None and voice_file is not None and voice_file.is_file():
+            try:
+                levels = sfx_events.voice_levels(voice_file)
+            except Exception as e:          # no decoder: the layer runs without the speech-peak check, and says so
+                notes.append(f"effect layer: the voice could not be read for the speech-peak check ({e})")
+        events, ev_notes = sfx_events.layer(plan, end, levels, dry)
+        notes += ev_notes
+    layer_on = bool(events) or (sfx_events.requested(plan) and sfx_events.approved(plan.pack)[0])
+
     music = _sound_file(plan, sound.get("music"), None) if sound.get("music") else None
     if sound.get("music") and not music:
         notes.append(f"music file not found, skipped: {sound.get('music')}")
+    whoosh_at: list = []
     if music:
         k = add(music, loop=True)
         db = float(plan.value("music_db", "edit_style.music_db", -16.0, section=sound))
+        until, how, fade = music_end(plan, sound, T)
+        stop = T if until is None else until
         gaps = ""
         for g in sound.get("gaps") or []:
             f0 = plan.ref_frame(g["before"])
+            if f0 / fps >= stop:
+                continue
             n = int(g.get("frames", 15))
             gaps += f",volume=enable='between(t,{max(0, f0 - n) / fps:.3f},{max(0, f0 - 1) / fps:.3f})':volume=0.05"
-        filters.append(f"[{k}:a]atrim=0:{T:.3f},aresample=48000,{STEREO},volume={db:g}dB{gaps},afade=t=in:d=0.4,"
-                       f"afade=t=out:st={max(0.0, T - 1.2):.3f}:d=1.2[mu0]")
+        if until is None:
+            tail = f"afade=t=out:st={max(0.0, T - 1.2):.3f}:d=1.2"
+        else:
+            d = min(fade if how == "fade" else HARD_STOP_S, until)
+            tail = f"afade=t=out:st={max(0.0, until - d):.3f}:d={d:.3f},apad=whole_dur={T:.3f}"
+            notes.append(f"music ends at {until:.2f} s ({'a ' + format(d, 'g') + ' s fade' if how == 'fade' else 'hard stop with a whoosh'}); "
+                         "the rest of the video has no music bed")
+            if how == "whoosh":
+                if any(e.cls == "part" and abs(e.t - until) <= 0.4 for e in events):
+                    notes.append("music stop: the effect layer's part-change pair already sounds there; no extra whoosh")
+                else:
+                    whoosh_at.append(round(until, 3))
+        filters.append(f"[{k}:a]atrim=0:{stop:.3f},aresample=48000,{STEREO},volume={db:g}dB{gaps},afade=t=in:d=0.4,"
+                       f"{tail}[mu0]")
         if plan.value("duck", "edit_style.duck", True, section=sound):
             filters.append("[voice]asplit=2[vm][vk]")
             mix[0] = "[vm]"
@@ -404,11 +475,20 @@ def audio_graph(plan: Plan, end: int) -> AudioGraph:
         else:
             filters.append("[mu0]anull[mu]")
         mix.append("[mu]")
+    elif sound.get("music_until") is not None:
+        notes.append("sound.music_until is set, but the plan has no music")
 
-    _, motion_notes = plan.motion_sounds()
-    notes += motion_notes
+    if not layer_on:
+        _, motion_notes = plan.motion_sounds()
+        notes += motion_notes
     for name, key, db_default, length, preroll in SFX:
-        entries = plan.sound_entries(key)
+        entries = plan.sound_entries(key, motion=not layer_on)
+        if name == "whoosh":
+            entries = entries + whoosh_at
+        if dry and entries:
+            notes.append(f"{len(entries)} {name} sound(s) left out: a dry Short has voice and room only "
+                         "(at most two quiet pops from the effect layer)")
+            continue
         if not entries:
             continue
         f = _sfx_file(plan, sound, name, notes, len(entries))
@@ -430,8 +510,22 @@ def audio_graph(plan: Plan, end: int) -> AudioGraph:
             ms = max(0, int(round(at / fps * 1000)) - preroll)
             filters.append(f"[{name}{i}]atrim=0:{ln:.3f},volume={db:g}dB,adelay={ms}:all=1[{name}d{i}]")
             mix.append(f"[{name}d{i}]")
+
+    # the effect layer's sounds: one input per kit sound, split per use
+    uses: dict[str, list[tuple[float, float]]] = {}
+    for e in events:
+        for n, start, db in e.sounds:
+            uses.setdefault(n, []).append((start, db))
+    for n, lst in uses.items():
+        k = add(sfx.kit_path(n))
+        filters.append(f"[{k}:a]aresample=48000,{STEREO},asplit={len(lst)}" + "".join(f"[ev{n}{i}]" for i in range(len(lst))))
+        for i, (start, db) in enumerate(lst):
+            filters.append(f"[ev{n}{i}]volume={db:g}dB,adelay={max(0, int(round(start * 1000)))}:all=1[evd{n}{i}]")
+            mix.append(f"[evd{n}{i}]")
     filters.append("".join(mix) + f"amix=inputs={len(mix)}:normalize=0:duration=first,alimiter=limit=0.89[am]")
-    return AudioGraph(inputs, filters, notes, T)
+    g = AudioGraph(inputs, filters, notes, T)
+    g.events = sfx_events.summary(events)
+    return g
 
 
 def audio_cmd(g: AudioGraph, out: Path) -> list[str]:
@@ -550,6 +644,6 @@ def cut(plan: Plan, runner: media.Runner = media.run, log: Callable = print,
     info = {"plan": plan.path.name, "output": str(out), "frames": end, "seconds": round(end / fps, 2),
             "layout": plan.layout, "shots": shots(plan, base_end, end), "lufs_before": before, "lufs": after["lufs"],
             "true_peak": after["true_peak"], "target_lufs": target,
-            "music_source": (plan.p.get("sound") or {}).get("music_source"), "notes": notes}
+            "music_source": (plan.p.get("sound") or {}).get("music_source"), "sfx_events": g.events, "notes": notes}
     Path(f"{stem}.cut.json").write_text(json.dumps(info, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     return info

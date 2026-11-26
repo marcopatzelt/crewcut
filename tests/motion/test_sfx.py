@@ -16,7 +16,8 @@ from crewcut.motion import sfx
 
 ROOT = Path(__file__).resolve().parents[2]
 LIMIT = {"whoosh": 1.0, "tick": 0.12, "typing": 1.5, "pop": 0.2, "click": 0.2, "hit": 0.8, "riser": 1.5,
-         "reel_tick": 0.08, "bell": 1.6}                     # longest allowed file per sound, seconds
+         "reel_tick": 0.08, "bell": 1.6, "pop_soft": 0.12, "whoosh_soft": 0.5, "swoosh": 0.35}
+# longest allowed file per sound, seconds
 
 
 def read(path: Path) -> tuple[np.ndarray, int, int]:
@@ -103,3 +104,22 @@ def test_no_audio_file_is_tracked_in_git():
     out = subprocess.run(["git", "-C", str(ROOT), "ls-files"], capture_output=True, text=True, check=True).stdout
     audio = [f for f in out.splitlines() if f.lower().endswith((".wav", ".mp3", ".flac", ".ogg", ".m4a"))]
     assert audio == []
+
+
+def test_the_quiet_set_is_softer_and_shorter_than_its_loud_relatives(tmp_path):
+    kit = sfx.ensure_kit(tmp_path)
+
+    def energy_above(name: str, hz: float) -> float:
+        x, sr, _ = read(kit[name])
+        m = x.mean(axis=1)
+        spec = np.abs(np.fft.rfft(m)) ** 2
+        f = np.fft.rfftfreq(len(m), 1 / sr)
+        return float(spec[f > hz].sum() / spec.sum())
+
+    assert sfx.SOUNDS["pop_soft"][1] < sfx.SOUNDS["pop"][1]
+    assert energy_above("pop_soft", 3000) < energy_above("pop", 3000)        # no bright click on top
+    assert sfx.SOUNDS["whoosh_soft"][1] < sfx.SOUNDS["whoosh"][1]
+    assert energy_above("whoosh_soft", 3000) < energy_above("whoosh", 3000)  # darker air
+    for name in ("pop_soft", "whoosh_soft", "swoosh"):
+        x, _, _ = read(kit[name])
+        assert abs(x[0]).max() < 0.01 and abs(x[-1]).max() < 0.01, name      # no click at either end

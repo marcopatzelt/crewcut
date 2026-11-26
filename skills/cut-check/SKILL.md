@@ -47,7 +47,8 @@ CHECK, NOTE, OK per area, the listening list (every CHECK with a time), then the
 | `face:*` | No back of the head or turned-away head at a speaker start or end | skin share in the face window of the plan (`face`) under 60 % of the median |
 | `waits:*` | A full-screen insert does not wait still for its first cue | 1.5 s or more to the first cue and over 80 % of it without motion |
 | `empty:*` | A full-screen insert does not start with an empty frame | under 0.3 % content in its first frame (CHECK) |
-| `music`, `music-rights` | Music at least as long as the video; source and rights note exists | `sound.music_source` points at a file |
+| `music`, `music-rights` | Music at least as long as the video, or up to `sound.music_until` (then a NOTE: listen to the stop); a dry Short (`sound.bed` "dry") has none; source and rights note exists | `sound.music_source` points at a file |
+| `sfx-layer` | The effect layer on picture events was asked for (`sound.events`) | NOTE: it runs only with the approved set; the cut's `sfx_events` list every effect for the listening list |
 | `grade` | Each episode has its own measured grade | a grade measurement in `review/` (CHECK) |
 | `fresh`, `shown` | The video is newer than the plan; a shown file was not changed | `<output>.shown` holds the sha256 |
 | `loudness`, `channels` | Loudness around the target, true peak under the limit, sound on both sides | ffmpeg ebur128 and volumedetect |

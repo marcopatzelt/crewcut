@@ -133,7 +133,10 @@ crewcut cut srt work/edit-decisions-vNNN.json               subtitles for the fi
    select and compares the first two words. Recognition over the whole cut misses this ("so I built ... so I built"),
    so run it before every build. Fix: start the select at the time it names. `--fast` uses the words files only.
 4. **Plan.** `cut plan` applies the cut rules: edges reach 0.12 s / 0.16 s into real silence and never into the next
-   word; inner pauses over 0.30 s shrink to about 0.26 s; every second cut inside one take punches in to hide the jump;
+   word; until the first content (`first_content`, else the first 25 s) inner pauses over 0.7 s shrink to about
+   0.26 s, after it natural pauses up to 1.0 s stay, also between two selects that follow each other in one take
+   (before 26 Nov 2026: every inner pause over 0.30 s shrank); one select may ask for a deliberate pause of 1.5 to 3 s
+   before it (`pause_before`); every second cut inside one take punches in to hide the jump;
    a one-sided microphone goes on both ears; locked ranges and music length are checked (exit 2 with the problems).
    Selects can set `hard_end` (no pause after the last word), `tail` (picture after the last word, voice faded out),
    and per take `face`, `lock`, `zoom_factor` (a pickup filmed from further away) and `audio` (a separate recorder).
@@ -145,7 +148,8 @@ crewcut cut srt work/edit-decisions-vNNN.json               subtitles for the fi
 6. **Verify.** `cut verify` reads every clip on its own and writes `work/cut-verification-vNNN.json`:
    `issues` (missing, extra or changed words against the expected script; "replace" is often only spelling),
    `edge_issues` (first or last word of a select differs), `joins` and `bad_joins` (the pause at each cut must be
-   0.17-0.45 s; shorter sounds chopped, longer sounds like a gap), and the channel levels. A pause too short: give the
+   0.17-0.45 s; shorter sounds chopped, longer sounds like a gap; a join that continues its take and the deliberate
+   pause are measured against their planned length), and the channel levels. A pause too short: give the
    select before a `tail` of about 0.24 or move its end into the silence. Too long: start the next select at the real
    start of speech. Each fix is a new version: collect all findings first, then build once.
 7. **Grade.** `cut grade check` makes before/after stills, one sheet and numbers per still in `review/grade/`, with a
@@ -159,7 +163,8 @@ Nothing is overwritten: plans, builds, decisions and subtitles refuse an existin
 
 Taste values of the cut live in the style pack (`edit-style.json`, key `cut`): `speed` (default 1.0), `zoom_base`
 (1.0 = full frame), `zoom_punch` (1.12), `face_y` (0.40), `join_min`/`join_max`, `pad_in`/`pad_out`,
-`pause_gap`/`pause_keep`, `voice_filter`. The grade's base filter is `grade_filter`. A selects file can override each.
+`pause_gap_open` (0.7), `pause_gap` (1.0), `pause_keep` (0.13), `open_seconds` (25), `beat_pause_min`/`beat_pause_max`
+(1.5/3.0), `voice_filter`. The grade's base filter is `grade_filter`. A selects file can override each.
 
 ## Speed: CPU or rented GPU
 

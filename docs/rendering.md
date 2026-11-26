@@ -17,6 +17,8 @@ crewcut render measure <still.png>          a 3D still against the style pack
 crewcut render samples [--out DIR]          one frame of every 2D scene, both formats (screenshots, docs)
 crewcut render capture <episode> --url URL  a web page or terminal recorded upright, for a Short (broll/)
 crewcut render music-bed <voice.wav> --music TRACK   a licensed music bed under a Short's voice
+crewcut render sfx-sheet [--voice WAV]                the effect layer's sound set to listen to, and its id
+crewcut render sfx-approve <set id>                   the user's yes to that set (refused inside a crew job)
 crewcut brand preview [--out f.mp4]         10-second sample in the style pack
 ```
 
@@ -64,6 +66,22 @@ template's context, the engine pin and the pack's font files to it (see below).
 - `tail` (seconds after the base) needs a full-frame insert up to the end, such as an end card.
 - `sound.music_source` says where the music comes from and its rights; the workbench passes it into
   `<output>.cut.json` and the style check requires it whenever there is music.
+- `sound.music_until` (new 26 Nov 2026) ends the music bed at a moment instead of the end of the video: seconds, a
+  sound reference (`"ch1"`, `"ch1@cue"`) or a word anchor (`{"word": "first", "offset": -0.3}`). `sound.music_out` is
+  `"fade"` (default, over `sound.music_fade` seconds, default 1.5) or `"whoosh"` (a hard stop with a 60 ms ramp and a
+  whoosh at that moment, from the plan's, the pack's or the kit's whoosh file). Without `music_until` the music runs
+  to the end as before. Gaps after the stop are dropped.
+- `sound.bed` is `"music"` (default) or `"dry"`: a Short with voice and room only. A dry plan refuses `sound.music`
+  and `sound.music_source`; its `hits`, `typing` and `whooshes` are left out with a note; the effect layer, when on and
+  approved, gives it at most two quiet pops.
+- `sound.events: "auto"` turns on the effect layer on picture events (`crewcut/render/sfx_events.py`): a quiet pop when
+  text or a number appears (a number on its landing cue), the same quiet whoosh-and-pop pair on every part change, a
+  swoosh on a B-roll change; at most `sfx.per_minute_max` (6) in any minute and `sfx.min_gap_s` (1 s) apart; an effect
+  on a loud syllable of the voice moves up to 0.2 s to a quieter spot or is left out. An insert's `"sfx"` may be
+  `false` or a class (`"part"`, `"number"`, `"text"`, `"broll"`). While the layer runs, the motion templates' own
+  `@sounds` are left out. It runs only when the pack approved the exact effect set (`edit-style.json`
+  `sfx.approved_set`, see [sfx-listening.md](sfx-listening.md)); otherwise the cut runs without it and says why.
+  `<output>.cut.json` lists every effect (`sfx_events`).
 - `plan` warns about overlapping full-frame inserts, cues outside their insert and more text cards than the pack
   allows (`text_cards_max`); with motion graphics also about their lengths and density (see below).
 - `start` and `end` of any insert may be a word anchor too: `{"word": "costs", "offset": -0.6, "after": 10.0}`, the
@@ -238,8 +256,9 @@ depth of field suffer. Eevee as a draft renderer is planned.
 1. Picture pieces: the video is split at every cut and every overlay edge. Each piece is one ffmpeg run into
    `<output stem>.pieces/` (speaker with zoom held on `face`, a full-frame insert, a clip, or the generated
    background; overlays laid on top already here). Unchanged pieces are reused next time.
-2. Sound in its own run: the voice (or the base's sound), the music bed looped, ducked under the voice and with gaps
-   before strong moments, hits, typing and whooshes, then a limiter.
+2. Sound in its own run: the voice (or the base's sound), the music bed looped (or up to `sound.music_until`), ducked
+   under the voice and with gaps before strong moments, hits, typing and whooshes, the approved effect layer, then a
+   limiter.
 3. Loudness in two passes to the pack's target (`loudness_lufs`, neutral -14 LUFS). AAC raises the true peak by 0.5 to
    2 dB, so the sound is encoded, the true peak measured, and the limiter lowered until it stays under the pack's
    `true_peak_db`.

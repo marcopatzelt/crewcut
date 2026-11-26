@@ -101,7 +101,8 @@ def check_title(r: Report, title: str, pack, names: list[str]):
         return
     erg = load_title_check().check_title(title, pack, names)
     r.add("title", "ok" if erg["status"] == "ok" else "error",
-          f'"{title}": {erg["chars"]} characters, points {erg["points"]}, {erg["status"]} (skills/title).')
+          f'"{title}": {erg["chars"]} characters, {"passes" if erg["status"] == "ok" else "fails"} the title check '
+          '(skills/title).')
     for f in erg["findings"]:
         if f["level"] in ("error", "warn"):
             r.add("title", f["level"], f["text"])

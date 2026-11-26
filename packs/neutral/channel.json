@@ -1,73 +1,109 @@
 {
-  "schema": 1,
-  "name": null,
-  "url": null,
-  "niche": null,
-  "audience": null,
-  "language": "en",
-  "country": null,
-  "tone": "plain, friendly, specific",
-  "reference_channels": [],
-  "topics_to_avoid": [],
-  "closing_line": null,
-  "category_id": 28,
-  "default_privacy": "private",
-  "links": {},
-  "idea": {
-    "market_language": "en",
-    "market_region": "US",
-    "fresh_days": 14,
-    "long_min_seconds": 181,
-    "outlier_x_median": 2.0,
-    "outlier_per_sub": 1.0,
-    "small_channel_subs": [1000, 100000],
-    "breakthrough_per_sub": 3.0,
-    "gap_thin_views": 30000
+ "schema": 1,
+ "name": null,
+ "url": null,
+ "niche": null,
+ "audience": null,
+ "language": "en",
+ "country": null,
+ "tone": "plain, friendly, specific",
+ "reference_channels": [],
+ "topics_to_avoid": [],
+ "closing_line": null,
+ "category_id": 28,
+ "default_privacy": "private",
+ "links": {},
+ "idea": {
+  "market_language": "en",
+  "market_region": "US",
+  "fresh_days": 14,
+  "long_min_seconds": 181,
+  "outlier_x_median": 2.0,
+  "outlier_per_sub": 1.0,
+  "small_channel_subs": [
+   1000,
+   100000
+  ],
+  "breakthrough_per_sub": 3.0,
+  "gap_thin_views": 30000
+ },
+ "title": {
+  "max_chars": 70,
+  "target_chars": 55,
+  "name_within": 40,
+  "names": [],
+  "acronyms": [],
+  "exclamations_max": 1,
+  "variants": 3,
+  "candidates": 10,
+  "formulas_min": 4,
+  "checks": {
+   "colon": "off",
+   "dash": "off",
+   "caps_words": "hint",
+   "factor": "off",
+   "question": "hint"
+  }
+ },
+ "script": {
+  "words_per_minute": 150,
+  "sentence_max_words": 22,
+  "sentence_avg_words": 14,
+  "paragraph_max_sentences": 3,
+  "hook_sentences": 2,
+  "name_within_sentences": 4,
+  "title_number_within_sentences": 6,
+  "end_mentions": [],
+  "checks": {
+   "dash": "off",
+   "question_opening": "hint",
+   "hook_number": "off",
+   "title_number": "warn",
+   "paragraph": "warn"
   },
-  "title": {
-    "max_chars": 70,
-    "target_chars": 55,
-    "name_within": 40,
-    "names": [],
-    "acronyms": [],
-    "exclamations_max": 1,
-    "variants": 3,
-    "checks": {"colon": "off", "dash": "off", "caps_words": "hint", "factor": "off", "question": "hint"}
-  },
-  "script": {
-    "words_per_minute": 150,
-    "sentence_max_words": 22,
-    "sentence_avg_words": 14,
-    "paragraph_max_sentences": 3,
-    "hook_sentences": 2,
-    "name_within_sentences": 4,
-    "title_number_within_sentences": 6,
-    "end_mentions": [],
-    "checks": {"dash": "off", "question_opening": "hint", "hook_number": "off", "title_number": "warn",
-               "paragraph": "warn"},
-    "craft": {
-      "hook_seconds": 30,
-      "limit_seconds": 45,
-      "idea_seconds": [40, 60],
-      "end_seconds": 60,
-      "questions_per_1000": [2.5, 6],
-      "short_share": [15, 40],
-      "checks": {"greeting": "error", "hook_number": "warn", "roadmap": "warn", "open_loop": "warn",
-                 "limit": "warn", "takeaways": "warn", "questions": "warn", "ending_length": "warn", "cta": "warn",
-                 "loop_resolved": "warn"}
-    }
-  },
-  "upload": {
-    "tags_min": 5,
-    "tags_max": 15,
-    "hashtags_max": 3,
-    "main_link": null,
-    "link_within_lines": 3,
-    "required_text": [],
-    "publish_time": null,
-    "timezone": null,
-    "playlist": null,
-    "checks": {"dash": "off"}
-  },
-  "sources": {}
+  "craft": {
+   "hook_seconds": 30,
+   "limit_seconds": 45,
+   "idea_seconds": [
+    40,
+    60
+   ],
+   "end_seconds": 60,
+   "questions_per_1000": [
+    2.5,
+    6
+   ],
+   "short_share": [
+    15,
+    40
+   ],
+   "checks": {
+    "greeting": "error",
+    "hook_number": "warn",
+    "roadmap": "warn",
+    "open_loop": "warn",
+    "limit": "warn",
+    "takeaways": "warn",
+    "questions": "warn",
+    "ending_length": "warn",
+    "cta": "warn",
+    "loop_resolved": "warn"
+   }
+  }
+ },
+ "upload": {
+  "tags_min": 5,
+  "tags_max": 15,
+  "hashtags_max": 3,
+  "main_link": null,
+  "link_within_lines": 3,
+  "required_text": [],
+  "publish_time": null,
+  "timezone": null,
+  "playlist": null,
+  "checks": {
+   "dash": "off"
+  }
+ },
+ "sources": {}
 }

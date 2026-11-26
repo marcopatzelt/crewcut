@@ -115,6 +115,11 @@ The user reads from a phone next to the camera.
   `[[motion: number | "30 cents per million tokens"]]`: the kind of picture, then the words as they are spoken. They
   are wishes for the Editor's motion pass (skill `motion`), which may drop any of them. The check counts them; a mark
   above `---` or a sixth mark is an error.
+- **Cut marks** (optional, below `---`, at most one each): `[[first content | "the first spoken words of the first real
+  content"]]` (the opening ends there: the cut keeps it dense, and music may end there) and `[[key sentence | "the
+  words"]]` (the sentence that may get one deliberate pause of 1.5 to 3 s before it). Quote the words as spoken; the
+  Editor finds them in the recording. Set them when the channel's rules ask for a dense opening, music only in the
+  opening or a pause before the key sentence.
 
 ## Steps
 

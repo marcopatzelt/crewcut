@@ -25,14 +25,20 @@ class Waiting(Exception):
 
 VERSION = re.compile(r"v\d{3,}")
 
-# Technical defaults of the speaker cut. Taste values (speed, zoom) can be set in the style pack under
+# Technical defaults of the speaker cut. Taste values (speed, zoom, pauses) can be set in the style pack under
 # edit-style.json "cut": {...}, and per episode in the selects file. Values from real episodes are in docs/recording.md.
+# Pauses (26 Nov 2026, before: every inner pause over 0.30 s shrank to 0.26 s): the opening is dense, after the first
+# content natural pauses up to about 1 s stay, and one deliberate pause of 1.5 to 3 s may stand before the key sentence.
 CUT_DEFAULTS: dict[str, Any] = {
     "speed": 1.0,          # playback speed of the speech (1.1 = 10 % faster)
     "pad_in": 0.12,        # seconds of silence before the first word of a select
     "pad_out": 0.16,       # seconds of silence after the last word of a select
-    "pause_gap": 0.30,     # inner pauses longer than this are shortened ...
-    "pause_keep": 0.13,    # ... to this much on each side (about 0.26 s in all)
+    "pause_gap_open": 0.70,  # until the first content: no gap over this; longer inner pauses are shortened ...
+    "pause_gap": 1.00,     # after it: natural pauses up to this stay, between sentences of one take too; longer ...
+    "pause_keep": 0.13,    # ... ones shrink to this much on each side (about 0.26 s in all)
+    "open_seconds": 25.0,  # without a `first_content` select in the selects file, the opening is this long
+    "beat_pause_min": 1.5,  # one select may ask for a deliberate pause before it (`pause_before`), in this range
+    "beat_pause_max": 3.0,
     "zoom_base": 1.0,      # crop factor of the speaker picture (1.0 = full frame)
     "zoom_punch": 1.12,    # every second cut inside the same take punches in to hide the jump
     "face_y": 0.40,        # where the face centre sits in the crop, as a share of the height

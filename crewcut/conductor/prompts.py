@@ -177,7 +177,8 @@ STEP_TASKS = {
             "card of kind topic (the topic, the data reason, the gap) and stop.",
     "title": "Develop title AND thumbnail concept/draft together with the title and thumbnail skills before any script. "
              "Write brief/PACKAGING-vNNN.md with title promise, exact image text, visual idea, draft path, audience and "
-             "evidence plan. Have the Designer develop the draft and the Critic check the pair at 160px. Thumbnail drafts "
+             "evidence plan. Write ten title candidates from at least four title formulas; `title_check.py --set` is the gate "
+             "(pass or fail, not a score). Have the Designer develop the draft and the Critic check the pair at 160px. Thumbnail drafts "
              "are a set of three different formats from `crewcut thumbnail formats` (one house style, one pro format "
              "at least), each with its own hook, never one image in several near-identical versions. A number "
              "goes into a title only when it is measured; unmeasured results stay provisional, never fabricated. End with one "
@@ -222,7 +223,7 @@ STEP_TASKS = {
 
 def step_task(step: str, episode: str, seed: str = "") -> str:
     short_tasks = {
-        "title": "Use skills/title/SKILL.md and the channel title rules for this Short. Run title_check.py on five distinct titles. Revise and rescore under the title skill optimization loop before ranking. Report baseline, final best score and why optimization stopped. Show all five in ranked order with their actual points and a reason for the recommendation on the card. Use the best-known relevant name early; name Claude if the demonstration actually uses Claude. Include the opening hook. "
+        "title": "Use skills/title/SKILL.md and the channel title rules for this Short. Write ten candidates from at least four title formulas and pass them through the gate `title_check.py --set` (pass or fail, no points to raise). Put the five strongest from different formulas on the card with their formulas and one reason for the recommendation. Use the best-known relevant name early; name Claude if the demonstration actually uses Claude. Include the opening hook. "
                  "No thumbnail, packaging mockup, or Designer job at this step.",
         "script": "Write the spoken Short from the approved title and checked evidence. Use the requested CTA. "
                   "No thumbnail or packaging review is required. Offer the script card.",

@@ -119,7 +119,12 @@ has been looked at.
 - The speaker is never shorter than `speaker_min_seconds` between two full-screen parts, and at least
   `speaker_open_close_seconds` at the start and the end.
 - Sound: music bed at `music_db` with `duck`, a hit only at strong spots, typing under counters, a short gap in the
-  music before the most important number. Loudness `loudness_lufs`, true peak at most `true_peak_db`.
+  music before the most important number. Loudness `loudness_lufs`, true peak at most `true_peak_db`. When the
+  channel's rules ask for music only in the opening, a dry Short or effects only on picture events, set
+  `sound.music_until`, `sound.bed: "dry"` or `sound.events: "auto"` (`references/sound-and-gpu.md`, section B2).
+- Pauses: the cut keeps the opening dense and natural pauses after it (`references/record-to-cut.md`). Put the
+  Writer's `[[first content | ...]]` into the selects as `first_content` (the select where it starts) and its
+  `[[key sentence | ...]]` as `pause_before` (1.5 to 3 s) on that sentence's select, when the rules ask for it.
 - Sources honest: a headline card names the real source.
 - Never claim a viewing or listening check that did not happen. This session cannot hear: name the times.
 

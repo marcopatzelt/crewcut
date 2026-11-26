@@ -15,6 +15,8 @@
                            [--size full|stage] [--zoom 2.5] [--name NAME]
     crewcut render music-bed <voice.wav> --music TRACK [--start S] [--punch T,T] [--source INFO.json] [--licence L]
                            [--out FILE]
+    crewcut render sfx-sheet [--out DIR] [--voice WAV --start S --seconds N]   the effect set to listen to, its id
+    crewcut render sfx-approve <set id> [--source "who, when"]                the user's yes (never inside a crew job)
 
 Plain text by default, --json for machine output. Exit codes: 0 ok, 1 error, 2 usage, 3 waiting for or refused by the
 user (a card is open, the cap is reached), 4 missing login or key.
@@ -28,11 +30,11 @@ import sys
 from pathlib import Path
 
 from .. import brand
-from . import assemble, capture, measure, music, workbench
+from . import assemble, capture, measure, music, sfx_events, workbench
 from .plan import Plan, PlanError
 
 COMMANDS = ("plan", "2d", "motion", "3d", "probe", "cut", "shown", "all", "slides", "measure", "samples", "capture",
-            "music-bed")
+            "music-bed", "sfx-sheet", "sfx-approve")
 
 
 def _ids(s: str | None) -> list[str] | None:
@@ -164,6 +166,18 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--lufs", type=float, help="loudness target (default: pack shorts.loudness_lufs)")
     p.add_argument("--pack", help="a style pack folder (default: the active pack)")
     p.add_argument("--json", action="store_true")
+    p = sub.add_parser("sfx-sheet", help="the effect layer's sound set as a listening page, with the id to approve")
+    p.add_argument("--out", help="folder (default: <studio>/library/sfx-sets/<set id>/)")
+    p.add_argument("--voice", help="a voice recording to hear the effects under (WAV or any sound file)")
+    p.add_argument("--start", type=float, default=0.0, help="seconds into the voice (default 0)")
+    p.add_argument("--seconds", type=float, default=19.0, help="length of the demo (default 19)")
+    p.add_argument("--pack", help="a style pack folder (default: the active pack)")
+    p.add_argument("--json", action="store_true")
+    p = sub.add_parser("sfx-approve", help="the user's yes to one effect set (refused inside a crew job)")
+    p.add_argument("set_id", help="the id from `crewcut render sfx-sheet`")
+    p.add_argument("--source", default="the user, after listening", help="who said yes, and when")
+    p.add_argument("--pack", help="the style pack folder (default: the studio's brand/)")
+    p.add_argument("--json", action="store_true")
     return ap
 
 
@@ -234,6 +248,36 @@ def run(a: argparse.Namespace, out: dict) -> int:
             print(f"Source: {r['music_source']}  licence {r['licence']}" + (f"  credit: {r['credit']}" if r['credit'] else ""))
             for line in r["listen"]:
                 print(f"  listen: {line}")
+        return 0
+    if a.cmd == "sfx-sheet":
+        from .. import paths
+        pack = brand.load(a.pack) if a.pack else brand.load()
+        sid = sfx_events.set_info(pack)["id"]
+        dest = Path(a.out).expanduser() if a.out else paths.studio_root() / "library" / "sfx-sets" / sid
+        r = sfx_events.listening_sheet(dest, pack, Path(a.voice).expanduser() if a.voice else None, a.start,
+                                       a.seconds)
+        approved = pack.value("edit_style.sfx.approved_set") == r["id"]
+        out.update({**r, "approved": approved})
+        if not a.json:
+            print(f"Effect set {r['id']}: {r['sheet']}")
+            for n, lv in r["levels_db"].items():
+                print(f"  {n:<12} {lv:g} dB")
+            print("  approved: " + ("yes" if approved else f"no (the user listens, then `crewcut render sfx-approve "
+                                                          f"{r['id']}`)"))
+        return 0
+    if a.cmd == "sfx-approve":
+        from .. import paths
+        pack_dir = Path(a.pack).expanduser() if a.pack else paths.brand_dir()
+        try:
+            r = sfx_events.approve(a.set_id, pack_dir, a.source)
+        except PermissionError as e:
+            print(str(e), file=sys.stderr)
+            return 3
+        except ValueError as e:
+            raise PlanError(str(e)) from e
+        out.update(r)
+        if not a.json:
+            print(f"Approved effect set {r['approved_set']} in {r['file']}")
         return 0
     plan = Plan(a.plan)
     mode = "local" if getattr(a, "local", False) else ("rented" if getattr(a, "rented", False) else None)

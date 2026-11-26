@@ -33,7 +33,9 @@ The crew's know-how is in [`skills/shorts/SKILL.md`](../skills/shorts/SKILL.md);
    Outputs: `work/speaker-vNNN.mov`, `audio/voice-vNNN.wav`, `work/words-vNNN.json`, `work/short-cut-vNNN.json`.
 3. **Graphics and music.** 2D scenes again in portrait; screens and web pages recorded again in portrait
    (`crewcut render capture`); 3D of the episode as a card or layer. Music only with clear rights and a source file
-   (`crewcut render music-bed`), ducked under your voice with a short hole before the punchline.
+   (`crewcut render music-bed`), ducked under your voice with a short hole before the punchline. Or, when your rules say
+   so, a dry Short: `"sound": {"bed": "dry"}`, voice and room only, at most two quiet pops from the approved effect
+   layer.
 4. **Check.** The Critic runs the Short rule set (`crewcut cut short-check <video>`): face in frame, no text over the
    face or the right edge where YouTube's buttons are, brightness, length and pace, loudness with limiter headroom,
    piece boundaries at the audio level. It writes `review/short-check-<name>.json`, a 24-frame contact sheet and a

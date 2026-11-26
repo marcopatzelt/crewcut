@@ -887,10 +887,11 @@ class Plan:
         ref = entry.get("at") if isinstance(entry, dict) else (entry[0] if isinstance(entry, list) and entry else entry)
         return isinstance(ref, str) and ref.partition("@")[0] in self.dropped
 
-    def sound_entries(self, key: str) -> list:
-        """One list of plan["sound"][key] ("hits", "typing", "whooshes") plus the motion inserts' sound events."""
+    def sound_entries(self, key: str, motion: bool = True) -> list:
+        """One list of plan["sound"][key] ("hits", "typing", "whooshes") plus the motion inserts' sound events (left
+        out with motion=False: the effect layer then sounds for the inserts instead)."""
         own = [x for x in (self.p.get("sound") or {}).get(key) or [] if not self._refers_to_dropped(x)]
-        return own + self.motion_sounds()[0].get(key, [])
+        return own + (self.motion_sounds()[0].get(key, []) if motion else [])
 
     def length_s(self) -> float:
         """Length of the video as far as the plan knows without media: generated base, last word, last insert."""
