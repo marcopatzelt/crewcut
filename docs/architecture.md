@@ -106,6 +106,7 @@ A skill never hard-codes a colour, font, logo, loudness or mix limit. It reads t
 | `approvals.py` | cards: propose, decide, wait, `require_spend()`; checksum of the shown file | core |
 | `ledger.py` | cost book: add, totals for today / episode / month, cap | core |
 | `episodes.py` | create and read episodes, `project.json`, the ten steps | core |
+| `stylegate.py` | the studio's own style checker as a hard gate for scripts: rounds with the Writer, card and advance refusals | core |
 | `studio_import.py` | offline legacy studio copy, manifests and visible references; no jobs or publication | core |
 | `conductor/` | steps, job queue (one heavy job at a time; chat answers in their own reply lane, one per episode; a chat message that arrives while a crew member runs reaches it once at its next `crewcut doing`, `say`, `chat` or `card propose`, and the chat shows when, `conductor/deliver.py`), engine runner | core |
 | `engines/` | one interface (`base.py`: Task, Event, RunResult; start, stream, stop, resume), two engines on the user's own subscription (`claude_code.py` default, `codex.py` beta) and the version manager (`versions.py`: newest version, smoke test, way back); see [engine.md](engine.md) | core |
@@ -187,6 +188,7 @@ crewcut youtube connect [--episode ID] | auth | upload --episode ID [--schedule 
 crewcut youtube verify <episode> [--package export/upload.json]   read-only metadata/caption-track comparison
 crewcut youtube results <episode> --start YYYY-MM-DD --end YYYY-MM-DD [--video ID]  read-only calendar-day results
 crewcut humanize record --draft FILE --final FILE [--why "…"]       the Humanizer pass of a script, for its card
+crewcut style-gate <episode> [--file F …] [--json]               the studio's style checker on the newest scripts: 0 pass, 1 block
 crewcut brand voice add <video link | recording> | list          the user's own spoken words (brand/voice/)
 crewcut skills status | update [<name>]                           skills from other projects (Humanizer), newest
 crewcut skills own [--json]                                      your own skills from <studio>/skills and where they apply
@@ -235,6 +237,36 @@ keeps every leave-out wish as a hard rule, and marks the lines from the intervie
 or skips: crew members cannot do it for them (`crewcut interview skip|done` refuse inside an agent job). An episode
 that already has a script draft, or recorded an interview by hand (`project.json` `interview.status`), is not asked
 again; Shorts have no interview.
+
+### The style gate
+
+A studio may bring its own script style with a checker: an own skill (`[[skills.own]]`, default name
+`deutscher-hormozi`) with `scripts/stil_check.py`, which the studio owns and changes. `crewcut/stylegate.py` runs it as
+a hard gate (`[style_gate]` in `config/crewcut.toml`, `channel.json` `script.style_gate` wins; `mode` block by default,
+warn or off; `max_rounds` 3). The checker's interface is version 1: `stil_check.py FILE --json --format lang|short
+[--titel "…"] [--kritik ANSWERS.json]`, exit 0 pass, 1 a failed check or an open or negative Critic answer, 2
+unreadable; JSON `{"version": 1, "pass", "auto_pass", "kritik_offen", "checks": [{"id", "rule", "kind", "pass", "line",
+"fix", …}]}`.
+
+1. When the Writer's run in the script step ends (and no Critic or Writer job carries the script on and no script card
+   waits), the conductor checks the newest `brief/SCRIPT-vNNN*.md` (`--format short` in a Short episode) and the newest
+   `brief/SHORT-vNNN*.md`, each with its Critic's answers `<script>.kritik.json` (`--kritik`) and, when the script's
+   notes do not name a title, the approved episode title (`--titel`). Failed automatic checks and Critic questions
+   answered "no" go back to the Writer with id, line and fix (round N of `max_rounds`, same session); when only the
+   Critic's answers are missing, the Critic gets the script to answer its yes/no questions. After the last round a
+   card asks the user: yes gives the Writer more rounds, no keeps it stopped.
+2. `crewcut card propose --kind script` is refused (exit 4) while the card's file and the newest Short script fail; the
+   card keeps the verdict in `data.style_gate`. A yes on a script card checks again: when it fails by then (new Critic
+   answers, new rules), the card is declined with the findings, the Writer gets them, and the yes is refused (HTTP
+   409, exit 3).
+3. Nothing moves a failing script on: `flow.start_step` for record, and for edit while nothing is recorded, holds the
+   step and starts a Writer round instead; `crewcut episode step <id> script done|skipped`, `record working|waiting`,
+   `edit working` and `crewcut job add --step edit` before a recording are refused (exit 3).
+
+Without the skill in the studio the gate is skipped with a warning (the verdict says so); `mode = "off"` switches it
+off. The Writer and the Critic get the checker's path and the rules of the gate in their prompt for the script step.
+`crewcut style-gate <episode>` prints the verdict (`--file` checks given files, also a `work/words-vNNN.json` with real
+times).
 
 Episode folder: `brief/`, `originals/`, `work/`, `audio/`, `broll/`, `graphics/`, `edit/`, `render/`, `review/`,
 `export/`, plus `project.json`:

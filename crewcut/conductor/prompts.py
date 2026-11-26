@@ -149,6 +149,11 @@ def system_prompt(identity: dict, episode: str | None, step: str | None, with_id
         if identity.get("id") == "critic":
             step_line += ("Bundle all findings of one version into ONE message to the crew member who built it "
                           "(`--kind fix`).\n")
+    if episode and step == "script" and (identity.get("id") in ("critic", "writer", "showrunner")
+                                         or worker in ("critic", "writer")):
+        from .. import stylegate
+        note = stylegate.writer_note(episode).strip()   # the studio's style checker decides (crewcut/stylegate.py)
+        step_line += (note + "\n") if note else ""
     if episode and identity.get("id") == "critic":
         step_line += ("End every review report (review/critic-<version>.md) with two lines: `Verdict: back` (it goes "
                       "back to the builder) or `Verdict: show` (the user may see it), and `Round: N of M`. The conductor "
@@ -196,9 +201,12 @@ STEP_TASKS = {
               "fact check, not script content; what the user said in the chat about the content wins. The newest "
               "brief/INTERVIEW-vNNN.md, when there is one, holds the user's own answers: their sentences carry the "
               "script and every wish to leave something out is a hard rule. Write the script "
-              "with the script skill in the user's voice (voice.md), following its craft (references/craft.md: hook "
-              "in 30 seconds, each idea in the depth pattern, spoken rhythm, an ending of at most 60 seconds with "
-              "exactly one call to action); the length follows the brief. Run its check until it has no errors. Have "
+              "with the script skill in the user's voice (voice.md), following its craft (references/craft.md: sentence "
+              "1 a claim or an own result on the title's topic, a number or the announcement at 0:10 to 0:20, a plan "
+              "with a count by 0:30, counted units with their evidence, questions at the joints answered at once, one "
+              "fixed ask in the middle, and an ending that is a verdict picking up sentence 1, then at most one link "
+              "sentence; no goodbye, no thanks, no recap); the length follows the brief. Run its check until it has "
+              "no errors. Have "
               "the Critic do the story and craft pass and check the claims quietly: it marks only claims that are "
               "false or would mislead; fix those in the wording and never add caveats. The Humanizer pass comes last, "
               "then the check once more. Then one card of kind script with the file.",

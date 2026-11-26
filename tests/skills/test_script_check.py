@@ -40,28 +40,60 @@ def test_form_errors(neutral):
 
 
 def test_long_sentence_and_tech_words(neutral):
-    long = " ".join(["word"] * 30) + "."
+    long = " ".join(["word"] * 40) + "."
     r = sc.check_script(long + " Then run setup.py --force.", neutral)
     assert "sentences" in kinds(r, "error") and "words" in kinds(r, "error")
 
 
 def test_title_number_and_name_follow_the_pack(neutral, striq):
+    """Since 26 Nov 2026 the tool is no longer forced into sentence 1 (name_within_sentences 0 in both packs);
+    sentence 1 carries a core word or a number of the title instead."""
     text = "This tool is fast.\nIt helps.\n"
     r = sc.check_script(text, neutral, title="Ollama saves 90 %", names=["Ollama"])
-    assert any(f["area"] == "opening" and f["level"] == "warn" for f in r["findings"])
-    assert any(f["area"] == "opening" and f["level"] == "error" for f in r["findings"])
+    opening = [f for f in r["findings"] if f["area"] == "opening"]
+    assert opening and all(f["level"] == "warn" for f in opening), opening
+    assert not any("is not named" in f["text"] for f in opening)
+    assert any("core word or number of the title" in f["text"] for f in opening)
     s = sc.check_script(text, striq, title="Claude spart 90 %")
-    assert any(f["area"] == "opening" and f["level"] == "error" and "90" in f["text"] for f in s["findings"])
+    errors = [f["text"] for f in s["findings"] if f["area"] == "opening" and f["level"] == "error"]
+    assert any("90" in t and "missing" in t for t in errors) and any("core word" in t for t in errors)
+    ok = sc.check_script("Claude spart 90 Prozent bei meinem Test.\nDas habe ich gemessen.\n", striq,
+                         title="Claude spart 90 %")
+    assert not any("core word" in f["text"] for f in ok["findings"])
 
 
-def test_striq_closing_line_and_end_mention(striq):
-    text = "Claude spart 90 Prozent.\nDas Ganze habe ich getestet.\n\nDas war es.\n"
+def test_the_number_window_replaces_the_number_in_two_sentences(striq, neutral):
+    """A number at 0:10 to 0:20 (words 33 to 67), not in the first two sentences (the rule of 13 Nov 2026 is gone)."""
+    lead = " ".join(["Satz"] * 8) + ". "
+    early = "Claude spart 90 Prozent. " + lead * 3 + "Und das ist alles.\n"
+    r = sc.check_script(early, striq)
+    assert any("no number in words 33 to 67" in f["text"] and f["level"] == "error" for f in r["findings"])
+    window = "Claude spart Zeit. " + lead * 4 + "Neun von zehn Läufen hielten. " + lead + "\n"
+    r = sc.check_script(window, striq)
+    assert not any("words 33 to 67" in f["text"] for f in r["findings"])
+    assert any("a number in words 33 to 67" in x for x in r["passed"])
+    old = {**neutral.channel, "script": {**neutral.channel["script"],
+                                         "checks": {"number_window": "off", "hook_number": "error"}}}
+    legacy = type(neutral)(**{**neutral.__dict__, "channel": old})
+    r = sc.check_script(early, legacy)
+    assert any("no number in words 33 to 67" in f["text"] and f["level"] == "error" for f in r["findings"])
+
+
+def test_no_goodbye_is_forced_and_the_link_sentence_ends(striq, neutral):
+    """The STRIQ example has no closing line since 26 Nov 2026: the script ends on the verdict and the link sentence
+    with STRIQ (script.end_mentions in the last 2 sentences), never on a thanks."""
+    assert not striq.value("channel.closing_line")
+    text = "Claude spart 90 Prozent.\nDas Ganze habe ich getestet.\n\nMein Urteil steht.\nDas war es.\n"
     r = sc.check_script(text, striq, names=["Claude"])
     ending = [f for f in r["findings"] if f["area"] == "ending"]
-    assert len(ending) == 2
-    ok = text.replace("Das war es.", "Das baue ich mit STRIQ für Firmen. Und danke fürs Zuschauen.")
-    r = sc.check_script(ok, striq, names=["Claude"])
-    assert not [f for f in r["findings"] if f["area"] == "ending"]
+    assert len(ending) == 1 and "STRIQ" in ending[0]["text"] and "last 2 sentence" in ending[0]["text"]
+    ok = text.replace("Das war es.", "Wie ich das für Firmen baue, steht bei STRIQ.")
+    assert not [f for f in sc.check_script(ok, striq, names=["Claude"])["findings"] if f["area"] == "ending"]
+    # a channel that sets a closing line of its own still gets it checked; empty means no check
+    own = {**neutral.channel, "closing_line": "See you."}
+    pack = type(neutral)(**{**neutral.__dict__, "channel": own})
+    r = sc.check_script("It works.\nThat is my verdict.\n", pack)
+    assert any("closing line" in f["text"] for f in r["findings"] if f["area"] == "ending")
 
 
 def test_voice_words(neutral):

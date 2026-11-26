@@ -1,21 +1,27 @@
 """Script craft: the measurable part of how a long explainer is written (skill: skills/script, references/craft.md).
 
-Four groups, measured on 119 long videos of three successful English-language education channels (Nov 2026):
+Four groups. Since 27 Nov 2026 they follow a study of Alex Hormozi's long videos (54 best against 33 typical ones,
+443 openings, 542 endings) and the curves of one channel that applied it; the older rules from 119 videos of three
+English-language education channels that the study contradicted are gone (a recap list and a goodbye at the end, an
+honest limit by 0:45, "try this" in every part, a number in the first sentences):
 
-1. Hook in 30 seconds: a result or claim (no greeting before it), why it matters, one measured number, a roadmap with
-   a count, an open loop that the end resolves, and one honest limit by 0:45.
-2. Depth pattern: each idea 40 to 60 seconds (question, why, how on screen, failure or limit, number, "try this"),
-   concrete examples, numbers worked out aloud, contrast pairs, parts counted aloud.
-3. Spoken rhythm: connected sentences, then a short punch line; questions asked and answered at once; the viewer's
-   objection said aloud; the key number repeated once; more "you" than "I" where it explains.
-4. Ending in at most 60 seconds: the parts as one list, what the human still does, a verdict with its limit, exactly
-   one call to action, and the hook's open loop resolved.
+1. Opening: a result or claim first (no greeting), a plan with a count by 0:30, at most one open loop, and no limit,
+   caveat or background before the first content (the `[[first content | ...]]` mark below ---).
+2. Counted units: each 45 to 75 seconds, a test step with its own evidence; examples, sums said aloud, contrast pairs,
+   parts counted aloud; at most one "try this" line in the whole video, the advice belongs in the sentence.
+3. Spoken rhythm: connected sentences, then a short punch line; questions at the joints (1.5 to 4 a minute), each
+   answered in the next sentence and never with "because"; the viewer's objection said aloud; "you" at least as often
+   as "I".
+4. Ending: a verdict, then at most one link sentence, in at most 25 seconds; no goodbye, no recap and no list of the
+   parts in the last 60 seconds; the one fixed ask (subscribe) stands between 15 and 60 % of the script, never in the
+   ending; the hook's open loop is resolved.
 
 `check(text, lang, wpm, cfg)` measures a script (the spoken part above the first `---` line) and returns findings
 (error, warn, hint), the passed checks and the numbers. A program can only see words, so every rule here is a signal for
-the Writer and the Critic: what it cannot see (a demo by 1:30, one plain sentence per technical word, whether a question
-is a real joint) is listed in `MANUAL` for the Critic's craft pass. Levels and limits come from the style pack
-(`channel.json` `script.craft`, see docs/style-packs.md); German and English word lists are built in.
+the Writer and the Critic: what it cannot see is listed in `MANUAL` for the Critic's pass. Levels and limits come from
+the style pack (`channel.json` `script.craft`, see docs/style-packs.md); German and English word lists are built in.
+A studio with its own style checker (the style gate, crewcut/stylegate.py) gets its hard gate there; these checks stay
+the Writer's quick signal.
 """
 
 from __future__ import annotations
@@ -26,33 +32,45 @@ from . import spoken
 
 LEVELS = ("error", "warn", "hint", "off")
 DEFAULTS: dict = {
-    "hook_seconds": 30,          # the hook: everything of group 1 except the limit
-    "limit_seconds": 45,         # one honest limit by then
+    "hook_seconds": 30,          # the plan with a count comes by then
+    "limit_seconds": 45,         # only for a pack that switches the old "limit" check back on
     "start_rate": 1.2,           # the first minute is dense: about this much faster than the base rate
-    "idea_seconds": [40, 60],    # one idea, one concept
-    "part_max_seconds": 180,     # a longer part holds several ideas
-    "depth_min_words": 80,       # a shorter part between hook and ending is a bridge or a recap, not a depth part
-    "end_seconds": 60,
-    "end_min_words": 60,         # a very short last part (only the thanks) takes the parts before it
-    "short_words": 6,            # a sentence of at most this many words is a punch line
-    "short_share": [15, 40],     # percent of short sentences; about one in four
-    "questions_per_1000": [2.5, 6],  # target 3 to 5: about 7 to 11 in a script of 2,000 words
+    "idea_seconds": [45, 75],    # one counted unit
+    "part_max_seconds": 180,     # a longer part holds several units
+    "depth_min_words": 80,       # a shorter part between opening and ending is a bridge, not a unit
+    "end_seconds": 25,           # the verdict plus the link sentence
+    "end_min_words": 30,         # a very short last part takes the part before it
+    "end_window_seconds": 60,    # no goodbye and no recap in this last stretch
+    "short_words": 5,            # a sentence of at most this many words is a punch line
+    "short_share": [15, 40],     # percent of short sentences
+    "questions_per_1000": [7.5, 20],  # 1.5 to 4 questions a minute at 200 words a minute
+    "takeaways_max": 1,          # "try this" lines in the whole script
+    "ask_share": [0.15, 0.6],    # the one fixed ask (subscribe) stands between these shares of the words
     "min_words": 150,            # shorter texts get only the greeting check
     "checks": {
-        "greeting": "error", "hook_number": "warn", "roadmap": "warn", "open_loop": "warn", "stakes": "hint",
-        "limit": "warn", "part_length": "hint", "takeaways": "warn", "concrete": "hint", "signposts": "hint",
-        "short_share": "hint", "questions": "warn", "answers": "hint", "objections": "hint", "repeat": "hint",
-        "you_i": "hint", "ending_length": "warn", "cta": "warn", "subscribe_once": "warn", "ending_parts": "hint",
-        "loop_resolved": "warn",
+        "greeting": "error", "roadmap": "warn", "open_loop": "hint", "stakes": "hint", "limit": "off",
+        "limit_before_content": "warn", "part_length": "warn", "takeaways": "warn", "concrete": "hint",
+        "signposts": "hint", "short_share": "hint", "questions": "warn", "answers": "warn", "objections": "hint",
+        "repeat": "hint", "you_i": "warn", "ending_length": "warn", "cta": "warn", "subscribe_once": "warn",
+        "recap": "error", "greeting_end": "error", "loop_resolved": "warn",
     },
 }
+# Checks that existed before 27 Nov 2026 and contradict the rule set; a pack that still names them changes nothing.
+RETIRED = ("hook_number", "ending_parts")
 MANUAL = [
-    "Hook: are the five parts really there, or only their words? Is the number measured?",
-    "The first demo of the real thing comes by 1:30 (see the shot ideas below ---).",
-    "Every technical word gets one plain sentence the first time; at most one new word per 20 seconds.",
-    "Each idea runs question, why, how on screen, failure or limit, number, try this; the task works without the product.",
-    "Questions stand at joints, not as filler; objections sound like a real viewer's doubt.",
-    "It reads as spoken, not written: natural word order, contractions where the speaker uses them.",
+    "Sentence 1 is a claim or a result of the own test that proves the title's promise, not a run-up.",
+    "By 0:15 the viewer sees the real result with its exact number; 0:10 to 0:20 carry a number or the announcement.",
+    "The title's topic comes before any other; before point one only proof, number, announcement, the viewer's "
+    "situation, the plan or the one open loop.",
+    "Each counted unit is an action or a test step with its own evidence, and two units in a row never use the same "
+    "kind of evidence.",
+    "Before every lesson stands a test, a picture or a story from this video; every claim gets its evidence at once.",
+    "The end of each unit opens the question the next one answers.",
+    "A viewer who never saw the creator understands every name and every reference the first time.",
+    "Every open loop is resolved with exactly the promised thing (same number, same picture).",
+    "The end is a verdict that picks up sentence 1, not a summary of the parts; no goodbye.",
+    "It sounds spoken, in the creator's words, without translated phrases or nested clauses; every number is in the "
+    "episode's material.",
 ]
 
 _NUM = r"\d+(?:[.,]\d+)*"
@@ -114,8 +132,11 @@ WORDS: dict[str, dict] = {
                       r"\bonce more\b", r"\blet me repeat\b", r"\bagain\s*[,:]?\s*\d"),
         "joint": _rx(r"\band so\b", r"\bthe reason\b", r"\bwhich means\b", r"\bthat means\b", r"\bbecause\b",
                      r"\bthat'?s why\b", r"\bso\b"),
-        "recap": _rx(r"\bto recap\b", r"\bin one sentence\b", r"\bonce more\b", r"\bquick recap\b", r"\bto sum up\b",
-                     r"\bin short\b", r"\bone more time\b"),
+        "recap": _rx(r"\bto recap\b", r"\bin one sentence\b", r"\bquick recap\b", r"\bto sum up\b",
+                     r"\bin summary\b", r"\blet'?s recap\b", r"\bone more time,? the\b", r"\bonce more,? the\b"),
+        "greeting_end": _rx(r"\bthanks?(?: you)? (?:so much )?for watching\b", r"\bthank you\b", r"\bsee you\b",
+                            r"\bbye\b", r"\buntil next time\b", r"\btake care\b", r"\bcatch you\b"),
+        "because": _rx(r"^(?:because|'cause|cause)\b"),
         "human": _rx(r"\byourself\b", r"\bmyself\b", r"\bstill (?:do|does|decide|film|record|check|choose)\b",
                      r"\byou decide\b", r"\bI decide\b", r"\bstays with (?:you|me)\b", r"\bhumans?\b",
                      r"\byour (?:job|part)\b", r"\bmy (?:job|part)\b"),
@@ -168,8 +189,12 @@ WORDS: dict[str, dict] = {
         "repeat": _rx(r"\bich sag'?s (?:nochmal|noch einmal)\b", r"\banders gesagt\b", r"\bnoch einmal\b[^.!?]*\d"),
         "joint": _rx(r"\bdeshalb\b", r"\bdeswegen\b", r"\bdarum\b", r"\bdaher\b", r"\bdas heißt\b", r"\bder grund\b",
                      r"\bweil\b", r"\balso\b", r"\bdadurch\b", r"\bund dann\b"),
-        "recap": _rx(r"\bnoch einmal\b", r"\bin einem satz\b", r"\bzusammengefasst\b", r"\bkurz zusammen\b",
-                     r"\balso nochmal\b"),
+        "recap": _rx(r"\bnoch einmal (?:die|alle|kurz)\b", r"\bin einem satz\b", r"\bzusammengefasst\b",
+                     r"\bzusammenfassend\b", r"\bkurz zusammen\b", r"\balso nochmal\b", r"\bnoch mal kurz\b",
+                     r"\bfassen wir\b[^.!?]{0,20}\bzusammen\b"),
+        "greeting_end": _rx(r"\bdanke\b", r"\btschüss\b", r"\bbis zum nächsten mal\b", r"\bbis bald\b",
+                            r"\bmacht'?s gut\b", r"\bciao\b", r"\bwir sehen uns\b", r"\bbis dann\b"),
+        "because": _rx(r"^(?:weil)\b"),
         "human": _rx(r"\bselbst\b", r"\bselber\b", r"\bbleibt (?:bei )?(?:dir|mir|dem menschen)\b",
                      r"\bdu entscheidest\b", r"\bentscheide ich\b"),
         "verdict": _rx(r"\burteil\b", r"\bfazit\b", r"\bunterm strich\b", r"\bfür mich\b", r"\bmeiner meinung nach\b",
@@ -177,7 +202,7 @@ WORDS: dict[str, dict] = {
         "caveat": _rx(r"\bnicht\b", r"\bnoch\b", r"\baber\b", r"\bnur\b", r"\bkein"),
         "cta": {
             "link": _rx(r"\blink\b", r"\bbeschreibung\b", r"\bformular\b", r"\bmeld(?:e)? dich\b", r"\bherunterladen\b",
-                        r"\bhol dir\b"),
+                        r"\bhol dir\b", r"\btrag dich\b", r"\beintragen\b"),
             "subscribe": _rx(r"\babonnier", r"\bglocke\b"),
             "comment": _rx(r"\bkommentar", r"\bschreib (?:mir|es|das) (?:in|unten)\b"),
             "next video": _rx(r"\bnächste[ns]? (?:video|folge)\b", r"\bschau dir (?:[\wäöüß]+ ){0,3}(?:video|folge)\b"),
@@ -195,11 +220,12 @@ _NOUN_STOP = {"ende", "schluss", "anfang", "video", "folge", "sache", "teil", "h
 
 
 def settings(raw: dict | None = None) -> dict:
-    """DEFAULTS with a style pack's `script.craft` block on top (unknown keys are kept, bad levels turn "off")."""
+    """DEFAULTS with a style pack's `script.craft` block on top (unknown keys are kept, bad levels turn "off", retired
+    checks stay off)."""
     cfg = {k: (dict(v) if isinstance(v, dict) else v) for k, v in DEFAULTS.items()}
     for k, v in (raw or {}).items():
         if k == "checks" and isinstance(v, dict):
-            cfg["checks"].update({str(a): (b if b in LEVELS else "off") for a, b in v.items()})
+            cfg["checks"].update({str(a): (b if b in LEVELS else "off") for a, b in v.items() if a not in RETIRED})
         elif v is not None:
             cfg[k] = v
     return cfg
@@ -259,8 +285,33 @@ def _lead(sents: list[str], n_words: int) -> str:
     return " ".join(out)
 
 
+MARK = re.compile(r"\[\[\s*(?P<kind>first content|urteil|verdict)\s*\|(?P<words>[^\]]*)\]\]", re.I)
+
+
+def _mark(text: str, kinds: tuple[str, ...]) -> list[str] | None:
+    """The words of a mark below the --- line ([[first content | "..."]], [[urteil | "..."]]), lower case."""
+    _, notes = spoken.split(text)
+    for m in MARK.finditer(notes):
+        if m.group("kind").lower() in kinds:
+            ws = [w.lower() for w in words(m.group("words").strip().strip('"“”„\'').strip())]
+            return ws or None
+    return None
+
+
+def _find(alls: list[str], ws: list[str] | None) -> int | None:
+    """The index of the sentence where the marked words start, or None."""
+    if not ws:
+        return None
+    probe = " ".join(ws[:6])
+    for k, s in enumerate(alls):
+        if probe in " ".join(w.lower() for w in words(s)):
+            return k
+    return None
+
+
 def check(text: str, lang: str | None = None, wpm: float = 150, cfg: dict | None = None) -> dict:
-    """Measure the four craft groups. Returns {"findings": [...], "passed": [...], "stats": {...}, "manual": [...]}."""
+    """Measure the four craft groups. Returns {"findings": [...], "passed": [...], "stats": {...}, "manual": [...]}.
+    `cfg` may also carry `closing_line`: the channel's own last sentence, which the goodbye check leaves alone."""
     c = settings(cfg)
     lang = (lang or spoken.language(text)).lower()[:2]
     lists = lang if lang in WORDS else "en"
@@ -274,6 +325,9 @@ def check(text: str, lang: str | None = None, wpm: float = 150, cfg: dict | None
         if lv in ("error", "warn", "hint"):
             found.append({"level": lv, "area": area, "rule": rule, "text": msg})
 
+    def on(rule: str) -> bool:
+        return c["checks"].get(rule, "hint") in ("error", "warn", "hint")
+
     P = parts(text)
     S = [(s, pi) for pi, p in enumerate(P) for par in p for s in par]   # (sentence, part index)
     alls = [s for s, _ in S]
@@ -284,8 +338,12 @@ def check(text: str, lang: str | None = None, wpm: float = 150, cfg: dict | None
     out = {"findings": found, "passed": passed, "stats": stats, "manual": MANUAL}
     if not alls:
         return out
+    starts, acc = [], 0                 # word position of each sentence
+    for s in alls:
+        starts.append(acc)
+        acc += len(words(s))
 
-    # Group 1: hook in 30 seconds (no greeting first, at any length).
+    # Group 1: the opening (no greeting first, at any length).
     greet = [s for s in alls[:2] if W["greeting"].search(s)]
     if greet:
         add("greeting", "hook", f'greeting before the hook ("{greet[0][:60]}"). Open with the result or the claim.')
@@ -295,58 +353,66 @@ def check(text: str, lang: str | None = None, wpm: float = 150, cfg: dict | None
     start = wpm * float(c["start_rate"])
     hook_w, limit_w = round(start * c["hook_seconds"] / 60), round(start * c["limit_seconds"] / 60)
     hook, by_limit = _lead(alls, hook_w), _lead(alls, limit_w)
-    stats.update(hook_words=hook_w, limit_words=limit_w)
+    stats.update(hook_words=hook_w)
     where = f"in the first {hook_w} words (about {c['hook_seconds']} s)"
-    m = NUMBER.search(hook)
-    if m:
-        passed.append(f'hook: a number {where} ("{m.group(0)}")')
-    else:
-        add("hook_number", "hook", f"no number {where}. One measured number belongs in the hook.")
     roadmap = re.search(rf"\b{_COUNT[lists]}\s+(?:[^\W\d_][\w'-]*\s+){{0,2}}{_PARTS[lists]}\b", hook, re.I)
     if roadmap:
-        passed.append(f'hook: a roadmap with a count ("{roadmap.group(0)}")')
+        passed.append(f'opening: a plan with a count ("{roadmap.group(0)}")')
     else:
-        add("roadmap", "hook", f'no roadmap with a count {where} ("the six jobs", "three steps"). Tell the viewer how '
+        add("roadmap", "hook", f'no plan with a count {where} ("the four jobs", "three steps"). Tell the viewer how '
             "long the trip is.")
     loop = next((s for s in alls if W["open_loop"].search(s) and s in hook), None)
     if loop:
-        passed.append(f'hook: an open loop ("{loop[:50]}")')
+        passed.append(f'opening: an open loop ("{loop[:50]}")')
     else:
-        add("open_loop", "hook", f'no open loop {where} ("at the end I\'ll show you what it cost"). Promise one thing '
-            "that the end resolves.")
+        add("open_loop", "hook", f'no open loop {where} ("at the end I\'ll show you what it cost"). At most one, '
+            "resolved with exactly the promised thing.")
     if W["stakes"].search(hook):
-        passed.append("hook: why it matters")
+        passed.append("opening: why it matters")
     else:
         add("stakes", "hook", f"nothing {where} says why it matters to the viewer.")
-    lim = W["limit"].search(by_limit)
-    if lim:
-        passed.append(f'hook: an honest limit in the first {limit_w} words ("{lim.group(0)[:40]}")')
-    else:
-        add("limit", "hook", f"no honest limit in the first {limit_w} words (about {c['limit_seconds']} s), such as "
-            '"Is it perfect? No." It makes everything after it credible.')
+    if on("limit"):                     # the old rule (an honest limit by 0:45), only when a pack asks for it
+        lim = W["limit"].search(by_limit)
+        if lim:
+            passed.append(f'opening: an honest limit in the first {limit_w} words ("{lim.group(0)[:40]}")')
+        else:
+            add("limit", "hook", f"no honest limit in the first {limit_w} words (about {c['limit_seconds']} s).")
+    first = _find(alls, _mark(text, ("first content",)))
+    if first is None:                   # no mark: the first sentence that counts a part, else the second part
+        first = next((k for k, s in enumerate(alls) if W["signpost"].search(s)), None)
+        if first is None and len(P) > 1:
+            first = next(k for k, (_s, pi) in enumerate(S) if pi == 1)
+    stats["first_content_sentence"] = None if first is None else first + 1
+    if first is not None:
+        before = [s for s in alls[:first] if W["limit"].search(s)]
+        if before:
+            add("limit_before_content", "hook", f'a limit or caveat before the first content ("{before[0][:60]}"). '
+                "Before point one stand only proof, number, announcement, the viewer's situation, the plan or the "
+                "one open loop; a limit goes into the unit where it matters.")
+        else:
+            passed.append(f"opening: no limit or caveat before the first content (sentence {first + 1})")
 
-    # Group 2: the depth pattern.
+    # Group 2: the counted units.
     depth = [i for i in range(1, len(P) - 1) if part_words[i] >= c["depth_min_words"]]
     stats["depth_parts"] = len(depth)
     lo_s, hi_s = c["idea_seconds"]
     stats["idea_words"] = [round(wpm * lo_s / 60), round(wpm * hi_s / 60)]
-    long_parts = [f"part {i + 1} ({part_words[i]} words, about {sec(part_words[i])} s)" for i in depth
-                  if sec(part_words[i]) > c["part_max_seconds"]]
-    if long_parts:
-        add("part_length", "depth", "part longer than "
-            f"{c['part_max_seconds']} s: {', '.join(long_parts[:3])}. One idea takes {lo_s} to {hi_s} s; split the "
-            "ideas with three empty lines, each with question, why, how, limit, number, try this.")
+    off = [f"part {i + 1} ({part_words[i]} words, about {sec(part_words[i])} s)" for i in depth
+           if not lo_s <= sec(part_words[i]) <= min(hi_s, c["part_max_seconds"])
+           or sec(part_words[i]) > c["part_max_seconds"]]
+    if off:
+        add("part_length", "depth", f"unit outside {lo_s} to {hi_s} s: {', '.join(off[:3])}. One counted unit, one "
+            "test step with its evidence; split a longer one with three empty lines, join a shorter one.")
+    elif depth:
+        passed.append(f"units: {len(depth)} parts of {lo_s} to {hi_s} s")
     take = [pi for s, pi in S if W["takeaway"].search(s)]
     stats["takeaways"] = len(take)
-    if depth:
-        without = [i + 1 for i in depth if i not in take]
-        msg = f"{len(take)} \"try this\" line(s) for {len(depth)} depth part(s)"
-        if not take:
-            add("takeaways", "depth", msg + ". After each idea, one small task the viewer can do without the product.")
-        elif without:
-            add("takeaways", "depth", msg + f"; none in part {', '.join(map(str, without[:6]))}.", "hint")
-        else:
-            passed.append("depth: " + msg)
+    most = int(c.get("takeaways_max", 1))
+    if len(take) > most:
+        add("takeaways", "depth", f'{len(take)} "try this" lines; at most {most}. The advice belongs in the sentence '
+            '("if you ..., do ..."), not in an added line.')
+    else:
+        passed.append(f'units: {len(take)} "try this" line(s), at most {most}')
     nums = re.compile(rf"(?<![\w.,]){_NUM}|\b{_NUMWORDS[lists]}\b", re.I)
     ex = sum(1 for s in alls if W["example"].search(s))
     math = sum(1 for s in alls if W["math"].search(s) and len(nums.findall(s)) >= 2)
@@ -359,9 +425,9 @@ def check(text: str, lang: str | None = None, wpm: float = 150, cfg: dict | None
         add("concrete", "depth", "; ".join(missing) + ". Abstract turns concrete through an example, a sum said aloud "
             "and a comparison.")
     else:
-        passed.append(f"depth: {ex} examples, {math} sums aloud, {con} contrast pairs")
+        passed.append(f"units: {ex} examples, {math} sums aloud, {con} contrast pairs")
     if roadmap and not sign:
-        add("signposts", "depth", 'a roadmap with a count, but no part is counted aloud ("step three", "the fourth '
+        add("signposts", "depth", 'a plan with a count, but no part is counted aloud ("step three", "the fourth '
             'job").')
 
     # Group 3: the spoken rhythm.
@@ -372,24 +438,28 @@ def check(text: str, lang: str | None = None, wpm: float = 150, cfg: dict | None
     if lo <= short <= hi:
         passed.append(f"rhythm: {short} % short sentences")
     else:
-        add("short_share", "rhythm", f"{short} % short sentences (up to {c['short_words']} words); about one in four: "
-            "connected sentences, then a short punch line.")
+        add("short_share", "rhythm", f"{short} % short sentences (up to {c['short_words']} words); target {lo} to "
+            f"{hi} %: connected sentences, then a short punch line.")
     qs = [k for k, s in enumerate(alls) if s.rstrip().endswith("?")]
     per_k = round(1000 * len(qs) / max(1, n_words), 1)
     stats.update(questions=len(qs), questions_per_1000=per_k)
     qlo, qhi = c["questions_per_1000"]
-    if not qs:
-        add("questions", "rhythm", "no question. Ask at the joints and answer at once: about 3 to 5 per 1,000 words.")
-    elif not qlo <= per_k <= qhi:
-        add("questions", "rhythm", f"{len(qs)} questions, {per_k} per 1,000 words; target about 3 to 5, each at a "
-            "joint.", "hint")
+    if not qlo <= per_k <= qhi:
+        add("questions", "rhythm", (f"{len(qs)} questions, {per_k} per 1,000 words" if qs else "no question") +
+            f"; target {qlo:g} to {qhi:g} per 1,000 words, each at a joint (a transition or an objection).")
     else:
         passed.append(f"rhythm: {len(qs)} questions, {per_k} per 1,000 words")
     open_q = [alls[k] for k in qs if not any(S[j][1] == S[k][1] and not alls[j].rstrip().endswith("?")
-                                             for j in range(k + 1, min(k + 3, len(S))))]
+                                             for j in range(k + 1, min(k + 2, len(S))))]
+    weil = [alls[k + 1] for k in qs if k + 1 < len(alls) and W["because"].search(alls[k + 1].strip())]
     if open_q:
-        add("answers", "rhythm", f'{len(open_q)} question(s) without an answer in the next two sentences, e.g. '
+        add("answers", "rhythm", f'{len(open_q)} question(s) without an answer in the next sentence, e.g. '
             f'"{open_q[0][:60]}". Answer it at once.')
+    if weil:
+        add("answers", "rhythm", f'{len(weil)} answer(s) that start with "because", e.g. "{weil[0][:60]}". Answer '
+            "with the point itself.")
+    if qs and not open_q and not weil:
+        passed.append("rhythm: every question answered in the next sentence")
     obj = sum(1 for s in alls if W["objection"].search(s))
     stats["objections"] = obj
     if not obj:
@@ -405,54 +475,69 @@ def check(text: str, lang: str | None = None, wpm: float = 150, cfg: dict | None
     stats.update(you=you_n, i=i_n, you_per_1000=round(1000 * you_n / max(1, n_words)),
                  i_per_1000=round(1000 * i_n / max(1, n_words)), you_depth=you_d, i_depth=i_d,
                  joints_per_1000=round(1000 * sum(len(W["joint"].findall(s)) for s in alls) / max(1, n_words), 1))
-    if depth_s and you_d < i_d:
-        add("you_i", "rhythm", f'{you_d} "you" against {i_d} "I" in the depth parts. Explain to the viewer; keep "I" '
-            "for the story and the failures.")
-    elif depth_s:
-        passed.append(f'rhythm: {you_d} "you" against {i_d} "I" in the depth parts')
-
-    # Group 4: the ending.
-    if len(P) > 1:
-        first = len(P) - 1
-        while first > 1 and sum(part_words[first:]) < c["end_min_words"]:
-            first -= 1
-        end_s = [s for s, pi in S if pi >= first]
+    if you_n < i_n:
+        add("you_i", "rhythm", f'{you_n} "you" against {i_n} "I". Say "you" at least as often as "I": "if you ..., '
+            'then ...", "you see ..."; keep "I" for the test, the finding and the verdict.')
     else:
-        end_s = alls[-8:]
+        passed.append(f'rhythm: {you_n} "you" against {i_n} "I"')
+
+    # Group 4: the ending: a verdict, then at most one link sentence.
+    v_at = _find(alls, _mark(text, ("urteil", "verdict")))
+    if v_at is not None:
+        end_s = alls[v_at:]
+    elif len(P) > 1:
+        last = len(P) - 1
+        while last > 1 and sum(part_words[last:]) < c["end_min_words"]:
+            last -= 1
+        end_s = [s for s, pi in S if pi >= last]
+    else:
+        end_s = alls[-3:]
     end_w = sum(len(words(s)) for s in end_s)
     end = " ".join(end_s)
     stats["ending_seconds"] = sec(end_w)
     if sec(end_w) > c["end_seconds"] * 1.1:
-        add("ending_length", "ending", f"the ending (last part) has {end_w} words, about {sec(end_w)} s; at most "
-            f"{c['end_seconds']} s: the parts as one list, what the human still does, a verdict with its limit, one "
-            "call to action. Set it apart with three empty lines.")
+        add("ending_length", "ending", f"the ending has {end_w} words, about {sec(end_w)} s; at most "
+            f"{c['end_seconds']} s: the verdict that picks up sentence 1, then one link sentence, then the cut. "
+            "Mark the verdict below --- ([[urteil | \"...\"]]) or set the ending apart with three empty lines.")
     else:
         passed.append(f"ending: {end_w} words, about {sec(end_w)} s")
     kinds = [k for k, rx in W["cta"].items() if rx.search(end)]
+    links = sum(1 for s in end_s if W["cta"]["link"].search(s))
     stats["ending_calls_to_action"] = kinds
-    if len(kinds) == 1:
-        passed.append(f"ending: exactly one call to action ({kinds[0]})")
+    other = [k for k in kinds if k != "link"]
+    if other or links > 1:
+        add("cta", "ending", (f"a request in the ending ({', '.join(other)})" if other else
+                              f"{links} link sentences in the ending") +
+            ". After the verdict comes at most one link sentence; the fixed ask stands in the middle.")
     else:
-        add("cta", "ending", (f"{len(kinds)} calls to action in the ending ({', '.join(kinds)}). Exactly one."
-                              if kinds else "no call to action in the ending. Exactly one."))
-    subs = sum(1 for s in alls if W["cta"]["subscribe"].search(s))
-    if subs > 1:
-        add("subscribe_once", "ending", f"{subs} subscribe lines. One, right after the first strong result.")
-    noun = roadmap.group(0).split()[-1].lower() if roadmap else None
-    gaps = []
-    if not (W["recap"].search(end) or (noun and noun in end.lower())):
-        gaps.append('the parts as one list ("the six jobs in one sentence")')
-    if not W["human"].search(end):
-        gaps.append("what the human still does")
-    v = [k for k, s in enumerate(end_s) if W["verdict"].search(s)]
-    if not v:
-        gaps.append("a verdict")
-    elif not any(W["caveat"].search(" ".join(end_s[k:k + 2])) for k in v):
-        gaps.append("the limit of the verdict")
-    if gaps:
-        add("ending_parts", "ending", "the ending lacks " + ", ".join(gaps) + ".")
+        passed.append("ending: " + ("one link sentence" if links else "no request after the verdict"))
+    subs = [k for k, s in enumerate(alls) if W["cta"]["subscribe"].search(s)]
+    if len(subs) > 1:
+        add("subscribe_once", "ending", f"{len(subs)} subscribe lines. One, as the fixed ask in the middle.")
+    a_lo, a_hi = c["ask_share"]
+    stats["ask_at"] = [round(starts[k] / max(1, n_words), 2) for k in subs]
+    if not subs:
+        add("cta", "ending", f"no fixed ask (subscribe) between {round(a_lo * 100)} and {round(a_hi * 100)} % of the "
+            "script. One sentence, word for word the same in every video, after the first strong result.")
+    elif not a_lo <= starts[subs[0]] / max(1, n_words) <= a_hi:
+        add("cta", "ending", f"the fixed ask stands at {round(100 * starts[subs[0]] / max(1, n_words))} % of the script; "
+            f"it belongs between {round(a_lo * 100)} and {round(a_hi * 100)} %.")
     else:
-        passed.append("ending: list, the human's part and a verdict with its limit")
+        passed.append(f"ask: the fixed ask at {round(100 * starts[subs[0]] / max(1, n_words))} % of the script")
+    window = round(wpm * float(c["end_window_seconds"]) / 60)
+    tail = [s for k, s in enumerate(alls) if starts[k] + len(words(s)) > n_words - window]
+    closing = " ".join(str(c.get("closing_line") or "").lower().split()).rstrip(".!")
+    bye = [s for s in tail if W["greeting_end"].search(s) and not (closing and closing in s.lower())]
+    noun = roadmap.group(0).lower() if roadmap else None
+    recap = [s for s in tail if W["recap"].search(s) or (noun and noun in s.lower())]
+    if bye:
+        add("greeting_end", "ending", f'goodbye or thanks in the last {c["end_window_seconds"]} s ("{bye[0][:60]}"). '
+            "The video ends after the verdict and the link sentence.")
+    if recap:
+        add("recap", "ending", f'a recap or the list of the parts in the last {c["end_window_seconds"]} s '
+            f'("{recap[0][:60]}"). End on the verdict, not on a summary.')
+    if not bye and not recap:
+        passed.append(f"ending: no goodbye and no recap in the last {c['end_window_seconds']} s")
     if loop:
         late = " ".join(alls[int(len(alls) * 0.6):])
         keys = [w for w in words(loop) if len(w) >= 4 and w.lower() not in _NOUN_STOP
@@ -465,4 +550,4 @@ def check(text: str, lang: str | None = None, wpm: float = 150, cfg: dict | None
     return out
 
 
-__all__ = ["DEFAULTS", "MANUAL", "check", "parts", "settings", "sentences", "words"]
+__all__ = ["DEFAULTS", "MANUAL", "RETIRED", "check", "parts", "settings", "sentences", "words"]

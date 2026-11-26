@@ -61,6 +61,18 @@ location = "local"         # where motion graphics render: "local" (this compute
                            # it) or "rented" (one rented machine after a spend card: $2 a video, $0.50 a Short at most).
                            # `crewcut render motion --local / --rented` wins for one run. See docs/motion.md.
 
+[style_gate]
+# A studio's own style checker as a hard gate for scripts (crewcut/stylegate.py). It runs the checker of the own skill
+# `skill` (its `checker` script, JSON interface version 1) on the newest brief/SCRIPT-vNNN.md and SHORT-vNNN.md with
+# the Critic's answers (<script>.kritik.json). block: a failing script gets no card, no yes and no recording, and the
+# Writer gets the failed checks back (at most max_rounds rounds, then a card asks you); warn: only a note in the chat;
+# off: no gate. A studio without that skill skips the gate with a warning. channel.json script.style_gate wins.
+mode = "block"
+max_rounds = 3
+skill = "deutscher-hormozi"
+checker = "scripts/stil_check.py"
+timeout_seconds = 120
+
 [humanizer]
 # Every script draft goes through Humanizer (blader/humanizer, MIT) before its card, in the "Embedded" mode with your
 # own spoken words from brand/voice/ as the sample. Say "no humanizer" to switch it off.

@@ -47,48 +47,75 @@
  },
  "script": {
   "words_per_minute": 150,
-  "sentence_max_words": 22,
+  "sentence_max_words": 32,
   "sentence_avg_words": 14,
   "paragraph_max_sentences": 3,
-  "hook_sentences": 2,
-  "name_within_sentences": 4,
+  "number_window_words": [
+   33,
+   67
+  ],
+  "name_within_sentences": 0,
   "title_number_within_sentences": 6,
   "end_mentions": [],
+  "end_mentions_within_sentences": 2,
   "checks": {
    "dash": "off",
    "question_opening": "hint",
-   "hook_number": "off",
+   "number_window": "warn",
+   "title_word_sentence_1": "warn",
    "title_number": "warn",
    "paragraph": "warn"
   },
   "craft": {
    "hook_seconds": 30,
-   "limit_seconds": 45,
    "idea_seconds": [
-    40,
-    60
+    45,
+    75
    ],
-   "end_seconds": 60,
+   "end_seconds": 25,
+   "end_window_seconds": 60,
    "questions_per_1000": [
-    2.5,
-    6
+    7.5,
+    20
    ],
+   "short_words": 5,
    "short_share": [
     15,
     40
    ],
+   "takeaways_max": 1,
+   "ask_share": [
+    0.15,
+    0.6
+   ],
    "checks": {
     "greeting": "error",
-    "hook_number": "warn",
     "roadmap": "warn",
-    "open_loop": "warn",
-    "limit": "warn",
+    "open_loop": "hint",
+    "limit": "off",
+    "limit_before_content": "warn",
+    "part_length": "warn",
     "takeaways": "warn",
     "questions": "warn",
+    "answers": "warn",
+    "you_i": "warn",
     "ending_length": "warn",
     "cta": "warn",
+    "recap": "error",
+    "greeting_end": "error",
     "loop_resolved": "warn"
    }
+  },
+  "short_checks": {
+   "length": "error",
+   "i_form": "warn",
+   "question_first": "error",
+   "ask": "error",
+   "number_first": "error",
+   "number_first_words": 12,
+   "last_sentence": "error",
+   "last_sentence_words": 8,
+   "steps": "warn"
   }
  },
  "upload": {

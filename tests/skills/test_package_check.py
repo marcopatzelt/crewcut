@@ -72,11 +72,14 @@ def test_settings_and_schedule(neutral):
 
 
 def test_description_main_link(striq):
+    """The STRIQ example puts the link in line 1 with its reason (upload.link_within_lines 1, since 26 Nov 2026)."""
     r = pc.Report()
-    pc.check_description(r, "Hook line.\nMore.\nRead: https://striq.de/blog/x\nhttps://striq.de\n", striq)
-    assert rows(r, "description", "error")
+    pc.check_description(r, "Hook line.\nAll numbers: https://striq.de/blog/x\nhttps://striq.de\n", striq)
+    errors = rows(r, "description", "error")
+    assert errors and "line 2" in errors[0]["text"] and "first 1 lines" in errors[0]["text"]
     r = pc.Report()
-    pc.check_description(r, "Hook line.\nAll numbers: https://striq.de/blog/x\nhttps://striq.de\n#a #b\n", striq)
+    pc.check_description(r, "All numbers of the test: https://striq.de/blog/x\nMore.\nhttps://striq.de\n#a #b\n",
+                         striq)
     assert not rows(r, "description", "error")
 
 

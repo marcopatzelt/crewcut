@@ -67,7 +67,15 @@ def _first_open_step(project: dict) -> str | None:
 
 
 def start_step(episode: str, step: str, seed: str = "") -> int | None:
-    """Give a step to its owner. Returns the job id, or None when the step needs no agent run (record)."""
+    """Give a step to its owner. Returns the job id, or None when the step needs no agent run (record). Recording and a
+    cut before any recording wait while the newest script fails the style gate (crewcut/stylegate.py): the script
+    step goes back to the Writer with the findings instead."""
+    if step in ("record", "edit"):
+        from .. import stylegate
+        try:
+            stylegate.guard_advance(episode, step)
+        except stylegate.Blocked as e:
+            return _held(episode, step, e.verdict)
     episodes.set_step(episode, step, "working")
     if step == "record":
         return start_record(episode)
@@ -79,6 +87,16 @@ def start_step(episode: str, step: str, seed: str = "") -> int | None:
     if step == "script" and interview.needed(episode):   # the creator's own story first (crewcut/interview.py)
         return interview.start(episode)
     return queue.add(episode, owner["id"], step, prompts.step_task(step, episode, seed))
+
+
+def _held(episode: str, step: str, verdict: dict) -> int | None:
+    """The newest script fails the style gate: the step does not start, the script step works again."""
+    from .. import stylegate
+    episodes.set_step(episode, "script", "working",
+                      next_action=f"The style check fails; {step} waits until the script passes.")
+    post(episode, f"{step.capitalize()} waits: {stylegate.short_line(verdict)}", step="script")
+    r = stylegate.writer_round(episode, verdict, why=f"The {step} step did not start. ")
+    return r.get("job")
 
 
 def start_record(episode: str) -> None:
@@ -176,6 +194,9 @@ def on_card_decided(card: dict) -> None:
     from . import review
     if review.on_limit_card(card):   # the Critic's last round still said back; the user decides
         return
+    from .. import stylegate
+    if stylegate.on_limit_card(card):   # the style check still failed after the last round; the user decides
+        return
     tl = (card.get("data") or {}).get("time_limit")
     if tl:   # a run hit the time limit twice
         if accepted:
@@ -215,6 +236,13 @@ def on_card_decided(card: dict) -> None:
                   "episode: carry on with the local way (`--local`), and do not ask about renting again in this "
                   f"episode. Their words: {card.get('reason') or 'none'}.", data=_resume_of(card))
         post(episode, "Rendering on this machine. No more GPU questions in this episode.", card=card["id"])
+        return
+    if not accepted and (card.get("data") or {}).get("style_gate_refused"):
+        queue.add(episode, card.get("identity") or "writer", card.get("step") or "script",
+                  f"The yes on card #{card['id']} ({card['title']}) was refused: the style check fails now. "
+                  f"{card.get('reason') or ''}\nFix every failed check at its line, as its fix says, run the checker "
+                  "until it passes, let the Critic answer its questions again, then propose a new script card.",
+                  data={**(_resume_of(card) or {}), "style_gate_round": 1})
         return
     if not accepted:
         who = card.get("identity") or (prompts.owner(card["step"]) or {}).get("id") or "showrunner"
@@ -338,6 +366,8 @@ def after_job(job: dict, res) -> None:
     if episode and not channel_child:
         from . import review
         review.after_review(job, res.text)   # the Critic's verdict starts the next round or asks the user
+        from .. import stylegate
+        stylegate.after_writer(job, res)     # the Writer's newest script against the studio's style checker
         if job["identity"] in ("editor", "designer"):
             from ..cut import prune
             prune.after_write(paths.episode_dir(episode))   # older intermediate renders go (the newest two stay)
