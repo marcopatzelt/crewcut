@@ -798,6 +798,8 @@ def run(episode: str, a, api=None, today: date | None = None) -> dict:
     (out_dir / "retention-units.md").write_text(render_md(res), encoding="utf-8")
     if not getattr(a, "no_learnings", False):
         res["learnings"] = str(add_learnings(res))
+        from .. import lernstand  # the learning file ranks the units of every episode (crewcut/lernstand.py)
+        lernstand.safe_refresh()
     return res
 
 

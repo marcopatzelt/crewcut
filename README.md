@@ -142,6 +142,12 @@ yourself. One card per Short, or your own standing approval for Shorts. See [doc
 from your library, says why, and the Writer writes the full script from its template. Ideas from a scout ranking or
 saved links wait as cards; a scoreboard shows which formats win. See [docs/formats.md](docs/formats.md).
 
+**A voice to learn from.** Measure a reference speaker from transcripts on your computer: sentence length, numbers,
+"you" against "I", the first number, unit length. The style gate checks every script against your target bands and
+the speaker's structure, the Writer models hooks and punch lines on real passages, and a learning file collects what
+the critics found and which units held viewers, so the next script starts there. See
+[docs/hormozi-voice.md](docs/hormozi-voice.md).
+
 Every correction is one sentence, typed or spoken ("keep the part where I laugh", "no captions"). A correction that should
 last becomes a proposed rule with the date and your words; one yes adds it to your style pack.
 
@@ -403,6 +409,7 @@ straight to the Editor, with hard limits. See [docs/crew-talk.md](docs/crew-talk
 [Crew talk](docs/crew-talk.md) ·
 [Shorts](docs/shorts.md) ·
 [Show formats and ideas](docs/formats.md) ·
+[Voice profile and learning loop](docs/hormozi-voice.md) ·
 [HTTP API](docs/api.md) ·
 [First real episode](docs/first-real-episode.md) ·
 [Integration tests](docs/integration-test.md)
