@@ -65,6 +65,7 @@ The token is stored in `studio/.crewcut/youtube-token.json` (owner-only permissi
 | "Altered or synthetic content" answer | `status.containsSyntheticMedia` | shown on the publish card with a reason |
 | Retention around the motion moments (`crewcut youtube retention <episode>`) | YouTube Analytics API, read-only | none (unproven: see below) |
 | Video results for a calendar-day period (`crewcut youtube results`) | YouTube Analytics API, read-only | none |
+| Retention per content unit (`crewcut retention units <episode>`) | YouTube Analytics API and `videos.list`, read-only | none |
 | A/B test "Test & compare" | no public API | Crewcut builds the variants and links you to the right page in YouTube Studio |
 
 `crewcut youtube upload` refuses to run unless there is an accepted **publish** card whose file checksum matches the
@@ -123,6 +124,45 @@ own slope around it. Code: `crewcut/youtube/analytics.py`.
   retention data" and writes nothing.
 - **Unproven:** built and tested against a recorded answer of the API (`tests/core/data/`), never against a real
   channel. It stays marked unproven here until a published video has returned data.
+
+## Retention per content unit
+
+`crewcut retention units <episode>` measures a published video unit by unit. A long video is a chain of content units
+(hook, retain, reward), each one standing alone like a Short, so the useful question after publishing is which unit
+lost the viewers. Code: `crewcut/youtube/units.py`.
+
+- **Curve.** `reports.query` with the dimension `elapsedVideoTimeRatio` and the metrics `audienceWatchRatio` (share of
+  the viewers who see that moment) and `relativeRetentionPerformance` (rank against similar YouTube videos at the
+  same moment, 0.5 = middle), plus views and mean view duration per day (the sample) and `videos.list` for the length.
+  The data are two to three days behind; until then the command prints "no retention data yet" and writes nothing.
+- **Units.** From the newest Drehzettel (`brief/DREHZETTEL-vNNN.md`: "Punkt eins." hooks, the type from the `Beleg:`
+  head, the redemption and the outro from their fixed lines), else from counted signposts in the transcript ("Punkt
+  eins", "Rolle 3", "1 ist der ...", "Erstens", "step two"), else from chapters (`0:00 Title` lines, from the
+  `chapters` file of a version or the description in `export/upload.json`), else from the parts of the newest script
+  (`brief/SCRIPT-vNNN.md`, three empty lines between parts), found in the transcript by their first words. Before the
+  first unit is the intro; the outro starts at the first link or goodbye sentence after the last unit.
+- **Per unit:** start and end, retention at both, points lost and points lost per minute, the mean rank and its
+  change, the hook sentence and its type (number, question, objection, label, claim; first person), and the sentence
+  where the steepest drop starts (the 6-second window that loses most, widened while the curve keeps falling at half
+  that pace). Verdict: holds at most 5 points per minute, loses from 15; the intro by its rank (holds from 0.5, loses
+  under 0.3); units under 15 s are "too short".
+- **Versions.** A video trimmed in YouTube Studio after publication has two lengths, and the API reports positions as
+  a share of the length the viewer saw. `analytics/versions.json` lists each version with `label`, `words`, `since`
+  and `until` (inclusive calendar days of YouTube), and `duration_s` or a local `file`; each is measured only with its
+  own days. Leave out the day of the trim: it holds both versions. Without the file the command measures the newest
+  edit plan's words from the upload day on (`--words`, `--duration`, `--since`, `--until` set one version by hand).
+- **Output.** `analytics/retention-units.json` (with the curve, so `--saved` can measure again without the API) and
+  `analytics/retention-units.md` in the episode, and one block per episode and data day in
+  `<studio>/library/learnings/retention-units.md` for the script critic. The file describes its own format at the top;
+  its overall section counts every hook and unit type over the newest block of each episode and calls a group a
+  "lesson" only when it holds (or loses) in three episodes.
+- **Watching the drops.** `--clips N` cuts the N steepest drops of the content units (8 s before to 4 s after) from the
+  local export of that length into `analytics/drops/`. Whoever watches them (a person or a video model) writes the
+  reason to `analytics/retention-units-why.json` as `[{"version", "unit", "at", "by", "text"}]`; the next run (or
+  `--saved`) puts it into the report and the learnings block.
+- **A hint, not proof.** A curve of a few dozen viewers moves in steps of one person (the report warns under 100 views),
+  and the transcript times must belong to the published version (the report warns when the words and the video length
+  disagree).
 
 ## Honest limits
 
