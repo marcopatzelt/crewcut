@@ -42,6 +42,13 @@ checks.append({"id": "K-HZ", "kind": "kritik", "titel": "every line gives value"
                "measured": "open" if hz is None else ("pass" if hz else f"{len(pts)} points"), "target": "pass",
                "points": pts, "instructions": "/studio/brand/REVIEW.md", "frage": "Review every line.",
                "notes": [f"Open for the user: {q}" for q in (rv or {}).get("for_user", [])]})
+fr = (json.loads(kp.read_text()) if kp.is_file() else {}).get("fresh")
+fp = None if not hz else (None if fr is None else fr == "pass")
+checks.append({"id": "K-FR", "kind": "kritik", "titel": "fresh review", "pass": fp, "measured": "open" if fp is None
+               else str(fp), "target": "pass", "fresh_context": True, "answer_key": "fresh",
+               "instructions": "/studio/brand/REVIEW.md", "frage": "Review it again with a fresh context.",
+               "points": [] if fp is not False else [{"text": "Line Z", "neu": "a fresher line"}]})
+hz = hz and fp is True
 so = f.with_suffix(".second.json")
 if hz:
     a = json.loads(so.read_text()) if so.is_file() else None
@@ -116,11 +123,11 @@ def episode(studio, crew):
     return ep
 
 
-def sheet(ep: str, n: int, review: dict | None = None) -> str:
+def sheet(ep: str, n: int, review: dict | None = None, fresh: str | None = "pass") -> str:
     p = paths.episode_dir(ep) / "brief" / f"CUES-v{n:03d}.md"
     p.write_text(SHEET, encoding="utf-8")
     if review is not None:
-        p.with_suffix(".kritik.json").write_text(json.dumps({"review": review}))
+        p.with_suffix(".kritik.json").write_text(json.dumps({"review": review, **({"fresh": fresh} if fresh else {})}))
     return f"brief/{p.name}"
 
 
@@ -150,7 +157,7 @@ def test_a_cue_sheet_is_the_long_script_once_there_is_one(skill, episode):
     assert stylegate.latest(episode)["SCRIPT"].name == "CUES-v001.md"
     v = stylegate.check(episode)
     r = v["results"][0]
-    assert r["file"] == "brief/CUES-v001.md" and r["open"] == ["K-HZ", "K-SO"]
+    assert r["file"] == "brief/CUES-v001.md" and r["open"] == ["K-HZ", "K-FR", "K-SO"]
     assert r["instructions"] == ["/studio/brand/REVIEW.md"] and r["hints"] == 1
 
 
@@ -159,7 +166,7 @@ def test_the_critic_gets_the_instructions_and_not_the_second_opinion(skill, epis
     w = ends(episode, "writer")
     [c] = jobs(episode, "critic")
     assert c["data"]["style_gate_kritik"] == 1 and "K-HZ" in c["task"] and "K-SO" not in c["task"]
-    assert "/studio/brand/REVIEW.md" in c["task"] and "kind hinweis" in c["task"]
+    assert "/studio/brand/REVIEW.md" in c["task"] and "kind hinweis" in c["task"] and "K-FR" not in c["task"]
     assert not jobs(episode, "writer", w["id"])
 
 
@@ -284,3 +291,22 @@ def test_doctor_names_the_loop_and_why_there_is_no_second_opinion(skill, until_p
     rows = {r["name"]: r for r in doctor.checks(ci=True) if r["name"] in ("style gate", "second opinion")}
     assert "rounds until the Critic passes, emergency stop after 6" in rows["style gate"]["detail"]
     assert rows["second opinion"]["detail"].startswith("not available: the host helper")
+
+
+def test_after_the_critic_approves_a_second_critic_reads_with_a_fresh_context(skill, episode, until_pass):
+    sheet(episode, 1, {"verdict": "pass", "marked": []}, fresh=None)
+    c = ends(episode, "critic", {"style_gate_kritik": 1})
+    [f] = jobs(episode, "critic", c["id"])
+    assert f["data"]["fresh_context"] is True and not f["data"].get("resume") and f["parent"] is None
+    assert "fresh context" in f["task"] and "Do not read the notes below `---`" in f["task"]
+    assert "under `fresh`" in f["task"] and "/studio/brand/REVIEW.md" in f["task"]
+    task = queue.build_task(f, engines.get("claude"), f["data"])
+    assert task.resume is None and "fresh review" in task.name
+    assert not (paths.episode_dir(episode) / "brief" / "CUES-v001.second.json").exists()   # no second opinion yet
+
+
+def test_a_fresh_review_that_disagrees_goes_back_to_the_writer(skill, episode, until_pass):
+    sheet(episode, 1, {"verdict": "pass", "marked": []}, fresh="back")
+    ends(episode, "critic", {"style_gate_kritik": 2, "fresh_context": True})
+    [r] = [j for j in jobs(episode, "writer") if (j.get("data") or {}).get("style_gate_round")]
+    assert "Line Z" in r["task"] and "a fresher line" in r["task"]

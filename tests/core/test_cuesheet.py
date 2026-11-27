@@ -71,7 +71,9 @@ def test_structure_errors_name_the_unit_and_the_fix():
     broken = EN.replace("PUNCH: Helpers beat thinking time.\n", "").replace("BRIDGE: So where did the time go?\n", "")
     errors = " ".join(cuesheet.parse(broken).errors)
     assert "unit 1: exactly one PUNCH line" in errors
-    assert "unit 1: one BRIDGE line" in errors
+    assert "BRIDGE" not in errors          # a bridge is optional: the count word is enough
+    two = EN.replace("BRIDGE: So where did the time go?", "BRIDGE: So where did the time go?\nBRIDGE: Again?")
+    assert "at most one BRIDGE line" in " ".join(cuesheet.parse(two).errors)
     assert "a line without a marker" in " ".join(cuesheet.parse(EN.replace("• Number:", "Number:")).errors)
     two_asks = EN.replace("PUNCH: One test frame saves hours.", "PUNCH: One test frame saves hours.\nASK: Subscribe.")
     assert "2 ask lines" in " ".join(cuesheet.parse(two_asks).errors)
