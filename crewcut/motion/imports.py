@@ -13,8 +13,8 @@ on. So they live only in the studio's private folder, never in the app or its re
 The conversion (``convert_lottie``) is pure Python and needs no engine:
 
 - colours: every colour of fills, strokes, gradients, solids, text and colour effects goes to a palette role
-  (``studio_style.role_of``: greys to ink or paper, the most used saturated colour to the accent, other saturated
-  colours to the highlight); alpha stays;
+  (``studio_style.role_of``: the colour that paints the most area is the surface, paper or ink; other saturated
+  colours the accent, or the highlight when they are text on a dark surface; greys ink or paper); alpha stays;
 - fonts: every font goes to the pack's display font (bold styles) or body font (the rest); embedded glyph outlines
   (``chars``) and web font links are dropped, so the engine sets the text in the pack's font files;
 - frame rate: ``fr`` becomes the pack's fps (25); every time given in frames (in and out points, start times,
@@ -219,15 +219,35 @@ def colors(doc: dict, weighted: bool = False) -> Counter:
     return c
 
 
+def text_colors(doc: dict) -> set[str]:
+    """Colours used by text (fill or stroke of a text document)."""
+    out: set[str] = set()
+
+    def visit(d: dict, _key: str | None) -> None:
+        if "t" in d and "f" in d and isinstance(d.get("t"), str):
+            for key in ("fc", "sc"):
+                h = _rgb_hex(d[key]) if isinstance(d.get(key), list) else None
+                if h:
+                    out.add(h)
+
+    _walk(doc, visit)
+    return out
+
+
 def color_map(doc: dict, pal: dict[str, str]) -> dict[str, dict]:
-    """Old colour -> {"role", "to", "uses"} for every colour in the file: the saturated colour that paints the most
-    area becomes the accent, other saturated colours the highlight, greys ink or paper."""
+    """Old colour -> {"role", "to", "uses"} for every colour in the file, in the channel's grammar
+    (``studio_style.role_of``): the colour that paints the most area is the surface (paper when light, ink when
+    dark); other saturated colours become the accent (lines, edges, small shapes), or the highlight when they are
+    text on a dark surface; greys go to ink or paper by lightness."""
     used = colors(doc)
     area = colors(doc, weighted=True)
-    chromatic = [h for h, _ in area.most_common() if brand.hex_to_oklch(h)[1] >= 0.045]
+    order = [h for h, _ in area.most_common()]
+    surface = order[0] if order else None
+    dark = brand.hex_to_oklch(surface)[0] < 0.6 if surface else False
+    texts = text_colors(doc)
     out = {}
     for h in used:
-        role = studio_style.role_of(h, chromatic)
+        role = studio_style.role_of(h, surface=h == surface, text=h in texts, on_dark=dark)
         out[h] = {"role": role, "to": pal[role], "uses": used[h]}
     return out
 

@@ -150,13 +150,17 @@ def resolve(pack: brand.Pack | None = None) -> dict:
 
 
 # ---- colour roles for imported files ------------------------------------------------------------------------------
-def role_of(color: str, ranked_chromatic: list[str]) -> str:
-    """The palette role an imported colour takes: grey or near-grey goes to ink (dark) or paper (light); the most used
-    saturated colour becomes the accent, every other saturated colour the highlight."""
+def role_of(color: str, surface: bool = False, text: bool = False, on_dark: bool = False) -> str:
+    """The palette role an imported colour takes, in the channel's grammar: the colour that paints the most area (the
+    surface) becomes paper when light and ink when dark; another saturated colour becomes the accent (lines, edges,
+    small shapes), or the highlight when it is text on a dark surface (the highlight is never a surface and never type
+    on paper); a grey goes to ink (dark) or paper (light)."""
     L, C, _ = brand.hex_to_oklch(color)
+    if surface:
+        return "paper" if L >= 0.6 else "ink"
     if C < 0.045:
         return "paper" if L >= 0.62 else "ink"
-    return "accent" if ranked_chromatic and color.upper() == ranked_chromatic[0].upper() else "highlight"
+    return "highlight" if text and on_dark else "accent"
 
 
 def css(pack: brand.Pack | None = None, font_urls: dict[str, str] | None = None) -> str:

@@ -59,8 +59,8 @@ def test_lottie_imports_and_renders_in_the_palette(tmp_path):
     assert px, "the preview is empty"
     foreign = [p for p in px if near(p[:3], ["#F2994A", "#2E9CDB"], 30)]
     assert len(foreign) < 0.01 * len(px), "the sample's own orange or blue is still there"
-    accent = [p for p in px if near(p[:3], [PALETTE["accent"]], 40)]
-    assert len(accent) > 0.2 * len(px), "the plate is not in the accent"
+    plate = [p for p in px if near(p[:3], [PALETTE["paper"]], 12)]
+    assert len(plate) > 0.2 * len(px), "the plate is not the channel's paper"
     prev.replace(out_dir(tmp_path) / "lottie-preview.png")
 
 

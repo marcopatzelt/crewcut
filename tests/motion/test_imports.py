@@ -47,9 +47,11 @@ def test_sample_converts_to_the_pack(tmp_path):
     left = set(im.colors(out))
     assert left <= {"#141413", "#FAF9F5", "#2320D6", "#FFE600"}, left
     roles = {v["role"] for v in rep["colors"].values()}
-    assert {"accent", "highlight", "ink", "paper"} <= roles
-    # the most used saturated colour (the orange plate and its stroke) became the accent
-    assert rep["colors"]["#F2994A"]["role"] == "accent" and rep["colors"]["#2E9CDB"]["role"] == "highlight"
+    assert {"accent", "ink", "paper"} <= roles
+    # the colour that paints the most area (the orange plate) is the surface: light, so paper; the blue bar is an
+    # edge, so the accent; the dark text stays readable as ink on the paper card
+    assert rep["colors"]["#F2994A"]["role"] == "paper" and rep["colors"]["#2E9CDB"]["role"] == "accent"
+    assert rep["colors"]["#1A1A1F"]["role"] == "ink"
     # fonts: bold styles to the display font, the rest to the body font; glyph outlines and web links dropped
     fl = out["fonts"]["list"]
     assert {f["fName"] for f in fl} == {"Manrope-ExtraBold", "Manrope-Medium"} and all("fPath" not in f for f in fl)
@@ -71,14 +73,24 @@ def test_texts_by_layer_name(tmp_path):
 
 def test_gradient_and_solid_colours(tmp_path):
     doc = {"v": "5.7", "fr": 50, "ip": 0, "op": 50, "w": 100, "h": 100, "layers": [
-        {"ty": 1, "nm": "bg", "sc": "#ff0000", "ip": 0, "op": 50, "st": 0, "ks": {}},
+        {"ty": 1, "nm": "bg", "sc": "#ff0000", "sw": 100, "sh": 100, "ip": 0, "op": 50, "st": 0, "ks": {}},
         {"ty": 4, "nm": "g", "ip": 0, "op": 50, "st": 0, "ks": {}, "shapes": [
-            {"ty": "gf", "g": {"p": 2, "k": {"a": 0, "k": [0, 1, 0, 0, 1, 0.98, 0.98, 0.98]}}}]}]}
-    out, _ = im.convert_lottie(doc, pack(tmp_path))
-    assert out["layers"][0]["sc"] == "#2320d6"
-    g = out["layers"][1]["shapes"][0]["g"]["k"]["k"]
+            {"ty": "rc", "s": {"a": 0, "k": [20, 20]}},
+            {"ty": "gf", "g": {"p": 2, "k": {"a": 0, "k": [0, 0, 0.8, 0, 1, 0.98, 0.98, 0.98]}}}]}]}
+    out, rep = im.convert_lottie(doc, pack(tmp_path))
+    assert out["layers"][0]["sc"] == "#faf9f5"          # the red solid paints the most: the (light) surface, paper
+    g = out["layers"][1]["shapes"][1]["g"]["k"]["k"]
     assert [round(x, 3) for x in g[1:4]] == [round(0x23 / 255, 3), round(0x20 / 255, 3), round(0xD6 / 255, 3)]
     assert [round(x, 3) for x in g[5:8]] == [round(0xFA / 255, 3), round(0xF9 / 255, 3), round(0xF5 / 255, 3)]
+    assert rep["colors"]["#00CC00"]["role"] == "accent"
+
+
+def test_text_on_a_dark_surface_takes_the_highlight(tmp_path):
+    from crewcut.motion import studio_style
+    assert studio_style.role_of("#0B1B3A", surface=True) == "ink"
+    assert studio_style.role_of("#FF7A00", text=True, on_dark=True) == "highlight"
+    assert studio_style.role_of("#FF7A00", text=True, on_dark=False) == "accent"
+    assert studio_style.role_of("#EEEEEE") == "paper" and studio_style.role_of("#333333") == "ink"
 
 
 def test_import_into_the_private_folder_and_use_it(tmp_path, studio):
