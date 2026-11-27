@@ -100,9 +100,13 @@ function stackConfig(): stack.StackConfig {
 
 /** The host helper for the studio the stack runs, with the second opinion from the environment or settings.json. */
 function startHelper(): void {
-  const cfg = stackConfig();
-  hostHelper.start({ script: HELPER, studioDir: cfg.studioDir, token: cfg.hostToken ?? "", parentPid: process.pid,
-    secondOpinion: secondOpinionConfig(settings.get().secondOpinion, process.env, app.getPath("userData")) });
+  try {
+    const cfg = stackConfig();
+    hostHelper.start({ script: HELPER, studioDir: cfg.studioDir, token: cfg.hostToken ?? "", parentPid: process.pid,
+      secondOpinion: secondOpinionConfig(settings.get().secondOpinion, process.env, app.getPath("userData")) });
+  } catch (e) { // the helper is an extra: Crewcut itself runs without it
+    log(`host helper: ${e instanceof Error ? e.message : String(e)}`);
+  }
 }
 
 function send(channel: string, data: unknown): void {

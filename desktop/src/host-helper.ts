@@ -14,7 +14,7 @@ import { extraPaths } from "./docker";
 export const TOKEN_KEY = "CREWCUT_HOST_TOKEN";
 
 /** The host key from `<dir>/.env`, made once (32 random bytes as hex, file mode 600) when there is none. The value
- *  is never logged or shown. */
+ *  is never logged or shown. "" when the folder cannot be written: the stack then starts without the helper. */
 export function hostToken(dir: string): string {
   const file = join(dir, ".env");
   let lines: string[] = [];
@@ -26,12 +26,16 @@ export function hostToken(dir: string): string {
   const found = lines.find((l) => l.startsWith(`${TOKEN_KEY}=`))?.slice(TOKEN_KEY.length + 1).trim() ?? "";
   if (found.length >= 32) return found;
   const token = randomBytes(32).toString("hex");
-  mkdirSync(dir, { recursive: true });
   const kept = lines.filter((l) => l.trim() && !l.startsWith(`${TOKEN_KEY}=`));
   const tmp = `${file}.tmp`;
-  writeFileSync(tmp, [...kept, `${TOKEN_KEY}=${token}`].join("\n") + "\n", { mode: 0o600 });
-  renameSync(tmp, file);
-  chmodSync(file, 0o600);
+  try {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(tmp, [...kept, `${TOKEN_KEY}=${token}`].join("\n") + "\n", { mode: 0o600 });
+    renameSync(tmp, file);
+    chmodSync(file, 0o600);
+  } catch {
+    return "";
+  }
   return token;
 }
 
@@ -150,6 +154,15 @@ export class HostHelper {
   }
 
   private spawn(c: HelperConfig): void {
+    try {
+      this.launch(c);
+    } catch (e) { // a studio that cannot be written, no bash: say so, never stop the app
+      this.child = null;
+      this.log(`host helper: could not start (${e instanceof Error ? e.message : String(e)})`);
+    }
+  }
+
+  private launch(c: HelperConfig): void {
     const files = helperFiles(c.studioDir);
     mkdirSync(join(c.studioDir, ".crewcut", "host"), { recursive: true });
     mkdirSync(join(c.studioDir, ".crewcut", "logs"), { recursive: true });
@@ -172,7 +185,11 @@ export class HostHelper {
     }
     this.child = child;
     child.on("error", (e) => this.log(`host helper: ${e.message}`));
-    if (child.pid) writeFileSync(files.pid, `${child.pid}\n`);
+    try {
+      if (child.pid) writeFileSync(files.pid, `${child.pid}\n`);
+    } catch {
+      // without the pid file a later ./start.sh does not find this helper; the app still stops it on Quit
+    }
     this.log(`host helper: started for ${c.studioDir}` + (c.secondOpinion.command
       ? `, second opinion in ${c.secondOpinion.dir}, at most ${c.secondOpinion.parallel} at a time`
       : ", no second-opinion command"));
