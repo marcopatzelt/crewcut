@@ -439,12 +439,44 @@ export interface PrompterBlock {
   section?: number;
   /** The block's length on the shared timeline: its characters plus a breath. */
   weight?: number;
+  /** Cue sheets only: a fixed line (said word for word) or a bullet (said freely). */
+  kind?: "fixed" | "bullet";
+  /** Cue sheets only. A fixed line's role (hook, punch, ask, bridge, line1, …) or a bullet's tag ("" if none). */
+  role?: string;
+  /** Cue sheets only: the page (part) the block is on: "opening", "unit 1", …, "payoff", "close". */
+  page?: string;
+  /** Cue sheets only: the unit's number, null outside the units. */
+  unit?: number | null;
+  /** Cue sheets only: what is on screen (a picture cue, not spoken). */
+  picture?: string | null;
+  /** Cue sheets only: a bullet's leading question, said as written. */
+  question?: string | null;
+  /** Cue sheets only: a bullet's cue word groups. */
+  groups?: string[];
+  /** Cue sheets only: hook, punch and the opening's first line, shown in the full text size. */
+  big?: boolean;
+}
+
+/** One page of a cue sheet: a part of the sheet (the opening, a unit, the payoff, the close). */
+export interface PrompterPage {
+  /** The key of the take count: "opening", "unit 1", …, "payoff", "close". */
+  page: string;
+  /** The part's heading as written, without its notes ("Unit 1"). */
+  label: string;
+  /** The index of the page's first block. */
+  first: number;
+  /** The unit is built to be cut as a Short too. */
+  short: boolean;
 }
 
 export interface PrompterScript {
   title: string;
   note?: string | null;
   mode: "full" | "points";
+  /** "cuesheet": fixed lines and bullets in pages. "script" (or missing): paragraphs. */
+  format?: "script" | "cuesheet";
+  /** Cue sheets only: the pages in order. */
+  pages?: PrompterPage[];
   blocks: PrompterBlock[];
   /** Characters per second at speed 1.0. */
   cps?: number;
@@ -470,6 +502,8 @@ export interface PrompterControl {
   by?: string;
   /** Raised on every jump, so every screen marks the block it jumped to. */
   cue?: number;
+  /** Cue sheets: takes started per page (a command that lands at the start of a page counts one). */
+  takes?: Record<string, number>;
   /** Server time of the answer (ms) and how long the server waited for a change (ms). */
   now?: number;
   waited?: number;

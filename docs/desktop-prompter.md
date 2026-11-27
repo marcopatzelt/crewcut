@@ -8,6 +8,10 @@ each computes the place from the shared anchor, the server time and the speed, s
 playing window cannot undo a command from the phone (the cause of the sync bug of
 23 Nov 2026). The window hides its controls while the text plays.
 
+A cue sheet appears in pages on the window too. **Previous**, **Repeat** and **Next** (phone, keys or clicker) move by
+page, each page start counts as a new take, and playing stops at the end of every page
+([recording from a cue sheet](recording.md#recording-from-a-cue-sheet)).
+
 For recording pauses, place `SCRIPT-v001.prompter.json` beside `SCRIPT-v001.md`.
 It contains `source_sha256` (the script's SHA-256) and a `paragraphs` array of strings.
 The prompter accepts this layout only when the source hash and the full sequence

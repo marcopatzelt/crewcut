@@ -5,7 +5,13 @@ screen (phones and the desktop window on the prompter glass) follows one shared 
 inside it), the server time the anchor was set, and the speed. A screen computes where the text is now from that
 timeline, so no screen reports its scroll position back and none can undo another screen's command. Every write gets
 a newer sequence number, and screens apply only newer states. Jumps, repeats, play and pause are written to the
-episode's take log, brief/prompter-log-<UTC date>.jsonl, so the editor can line takes up with the camera files."""
+episode's take log, brief/prompter-log-<UTC date>.jsonl, so the editor can line takes up with the camera files.
+
+A cue sheet (crewcut.cuesheet) is shown in pages: one page per part (opening, each unit, payoff, close), one block per
+fixed line and per bullet. Previous, Next and Repeat move by page, and every command that lands at the start of a page
+counts a new take of that page; the count is in the shared state and in every line of the take log. Playing stops at
+the end of every page (the last block of a page is an end on the timeline, like the end of the script): the speaker
+talks freely on a unit page, and Next starts the next one, paused until Play."""
 
 from __future__ import annotations
 
@@ -20,10 +26,11 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-from . import config, db, episodes, paths
+from . import config, cuesheet, db, episodes, paths
 
 DEFAULT_CONTROL = {"playing": False, "speed": 1.0, "position": 0.0, "mirror": False, "size": 1.0, "mode": "full",
-                   "guide": 33.0, "block": 0, "offset": 0.0, "at": 0.0, "seq": 0, "by": "", "cue": 0}
+                   "guide": 33.0, "block": 0, "offset": 0.0, "at": 0.0, "seq": 0, "by": "", "cue": 0,
+                   "takes": {}}
 # The reading pace at speed 1.0, in characters per second. 17 keeps the pace the desktop prompter had at speed 1.0
 # and text size 1.0 (about 0.55 lines per second at 30 characters per line), now the same on every screen.
 CHARS_PER_SECOND = 17.0
@@ -54,8 +61,15 @@ def qr_svg(text: str) -> str:
     return img.to_string(encoding="unicode")
 
 
+def _sheet_order(p: Path) -> tuple:
+    """Cue sheets by version number; the plain name before a suffixed one of the same number."""
+    m = cuesheet.NAME.match(p.name)
+    return (int(m["n"]), not m["rest"], p.name) if m else (-1, False, p.name)
+
+
 def script_file(episode: str) -> Path | None:
-    """The approved script if there is one, else the newest script draft."""
+    """The approved script if there is one, else the selected recording script, else the newest cue sheet
+    (brief/CUES-vNNN.md or brief/DREHZETTEL-vNNN.md, the script format), else the newest script draft."""
     d = paths.episode_dir(episode)
     with db.conn() as c:
         r = c.execute("SELECT file FROM cards WHERE episode = ? AND kind = 'script' AND status = 'accepted' "
@@ -70,6 +84,9 @@ def script_file(episode: str) -> Path | None:
         if not selected_path.is_file():
             raise FileNotFoundError("The selected recording script is missing. Select another script explicitly.")
         return selected_path
+    sheets = [p for p in (d / "brief").glob("*.md") if cuesheet.is_name(p.name) and p.is_file()]
+    if sheets:
+        return max(sheets, key=_sheet_order)
     drafts = sorted((d / "brief").glob("SCRIPT-v*.md"))
     return drafts[-1] if drafts else None
 
@@ -180,25 +197,75 @@ def reading_blocks(p: Path) -> list[dict]:
         return blocks
 
 
-_BLOCKS: dict[tuple, list[dict]] = {}
+BIG_ROLES = ("hook", "punch")  # with the opening's first line: said word for word in the full text size
 
 
-def _blocks(episode: str) -> tuple[str | None, list[dict]]:
-    """The shown script (episode-relative path) and its blocks, cached while the file stays the same."""
+def cue_sheet_blocks(text: str) -> dict:
+    """A cue sheet as speaking blocks in pages: one page per part, one block per fixed line and per bullet, in order.
+
+    Each block has `kind` (fixed or bullet), `role` (fixed: hook, punch, ask, bridge, line1, …; bullet: its tag, "" if
+    none), `page` (the part: "opening", "unit 1", …, "payoff", "close"), `unit` (the unit's number or None),
+    `picture`, `question` (a bullet's leading question), `groups` (a bullet's cue word groups), `big` (hook, punch and
+    the opening's first line), `text` (fixed: the spoken words without picture cues; bullet: the cue words joined with
+    " · "), `points`, `section` (one per page), `n` and `weight`. Returns {"blocks", "pages", "errors"}; each page is
+    {"page", "label", "first" (index of its first block), "short"}."""
+    sheet = cuesheet.parse(text)
+    blocks: list[dict] = []
+    pages: list[dict] = []
+    for part in sheet.parts:
+        if not part.lines:
+            continue
+        page, copy = part.label, 1
+        while any(p["page"] == page for p in pages):  # a doubled heading (the parser reports it): its own take count
+            copy += 1
+            page = f"{part.label} ({copy})"
+        pages.append({"page": page, "label": part.heading.split("|")[0].strip() or part.label, "first": len(blocks),
+                      "short": part.short})
+        for x in part.lines:
+            if x.kind == "fixed":
+                spoken, groups = x.spoken, []
+                points = [spoken] if spoken else []
+            else:
+                groups = x.groups
+                spoken = " · ".join(groups) or (x.question or "")
+                points = list(groups)
+            blocks.append({"text": spoken, "points": points, "section": len(pages), "kind": x.kind, "role": x.role,
+                           "page": page, "unit": part.number, "picture": x.picture,
+                           "question": x.question if x.kind == "bullet" else None, "groups": groups,
+                           "big": x.kind == "fixed" and (x.role in BIG_ROLES or (part.kind == "opening" and
+                                                                                 x.role == "line1"))})
+    return {"blocks": _finish(blocks), "pages": pages, "errors": list(sheet.errors)}
+
+
+def shown_view(p: Path) -> dict:
+    """What the screens show for one file: {"format": "cuesheet" | "script", "blocks", "pages", "errors"}. A normal
+    script keeps its paragraphs (and its optional .prompter.json layout) and has no pages."""
+    text = p.read_text(encoding="utf-8")
+    if cuesheet.is_cue_sheet(p, text):
+        return {"format": "cuesheet", **cue_sheet_blocks(text)}
+    return {"format": "script", "blocks": reading_blocks(p), "pages": [], "errors": []}
+
+
+_EMPTY_VIEW = {"format": "script", "blocks": [], "pages": [], "errors": []}
+_BLOCKS: dict[tuple, dict] = {}
+
+
+def _shown(episode: str) -> tuple[str | None, dict]:
+    """The shown script (episode-relative path) and its view, cached while the file stays the same."""
     try:
         p = script_file(episode)
         if p is None:
-            return None, []
+            return None, _EMPTY_VIEW
         stat = p.stat()
         layout = p.with_suffix(".prompter.json")
         key = (str(p), stat.st_mtime_ns, stat.st_size, layout.stat().st_mtime_ns if layout.is_file() else 0)
         if key not in _BLOCKS:
             if len(_BLOCKS) > 16:
                 _BLOCKS.clear()
-            _BLOCKS[key] = reading_blocks(p)
+            _BLOCKS[key] = shown_view(p)
         return p.relative_to(paths.episode_dir(episode)).as_posix(), _BLOCKS[key]
     except (OSError, ValueError):
-        return None, []
+        return None, _EMPTY_VIEW
 
 
 def _version(episode: str) -> str:
@@ -217,14 +284,19 @@ def script(episode: str) -> dict:
     p = script_file(episode)
     project = episodes.read(episode)
     if p is None:
-        return {"title": project.get("title"), "mode": "full", "blocks": [], "cps": CHARS_PER_SECOND, "version": "",
-                "note": "No script yet. The Writer makes one in step 4."}
+        return {"title": project.get("title"), "mode": "full", "format": "script", "blocks": [], "pages": [],
+                "cps": CHARS_PER_SECOND, "version": "", "note": "No script yet. The Writer makes one in step 4."}
     relative = str(p.relative_to(paths.episode_dir(episode)))
     selected = project.get("recording_script") or {}
     partial = selected.get("file") == relative and selected.get("partial", False)
-    return {"title": project.get("title"), "mode": control(episode).get("mode", "full"),
-            "blocks": _blocks(episode)[1], "file": relative, "cps": CHARS_PER_SECOND, "version": _version(episode),
-            "note": "Partial script. The remaining sections are not ready." if partial else None}
+    view = _shown(episode)[1]
+    notes = ["Partial script. The remaining sections are not ready."] if partial else []
+    if view["errors"]:
+        more = len(view["errors"]) - 1
+        notes.append(f"Check the cue sheet: {view['errors'][0]}" + (f" ({more} more)." if more else "."))
+    return {"title": project.get("title"), "mode": control(episode).get("mode", "full"), "format": view["format"],
+            "blocks": view["blocks"], "pages": view["pages"], "file": relative, "cps": CHARS_PER_SECOND,
+            "version": _version(episode), "note": " ".join(notes) or None}
 
 
 def _now_ms() -> float:
@@ -243,7 +315,16 @@ def _stored(episode: str) -> dict:
             d.update({k: v for k, v in saved.items() if k in DEFAULT_CONTROL})
             if "seq" not in saved:
                 d["playing"] = False  # a state from before the shared timeline has no anchor to play from
+    d["takes"] = _takes(d.get("takes"))
     return d
+
+
+def _takes(value) -> dict[str, int]:
+    """The take count per page, as a new dict (a state from before the take count has none)."""
+    if not isinstance(value, dict):
+        return {}
+    return {k: int(v) for k, v in value.items()
+            if isinstance(k, str) and isinstance(v, int) and not isinstance(v, bool) and v > 0}
 
 
 def control(episode: str) -> dict:
@@ -254,9 +335,11 @@ def control(episode: str) -> dict:
     return d
 
 
-def advance(weights: list[float], block: int, offset: float, units: float) -> tuple[int, float, bool]:
-    """Move `units` characters forward from (block, offset). Returns the block, the offset in it and whether the end of
-    the script is reached. The web page has the same function (web/src/prompter/timeline.ts)."""
+def advance(weights: list[float], block: int, offset: float, units: float,
+            stops: frozenset[int] | set[int] | tuple = ()) -> tuple[int, float, bool]:
+    """Move `units` characters forward from (block, offset). Returns the block, the offset in it and whether an end is
+    reached: the end of the script, or the end of a block in `stops` (a cue sheet's page ends). The web page has the same
+    function (web/src/prompter/timeline.ts)."""
     if not weights:
         return 0, 0.0, True
     i = min(max(0, int(block)), len(weights) - 1)
@@ -267,18 +350,38 @@ def advance(weights: list[float], block: int, offset: float, units: float) -> tu
         rest = (1.0 - f) * weight
         if left < rest:
             return i, f + left / weight, False
-        if i == len(weights) - 1:
+        if i == len(weights) - 1 or i in stops:
             return i, 1.0, True
         left -= rest
         i, f = i + 1, 0.0
 
 
-def where(d: dict, weights: list[float], now_ms: float) -> tuple[int, float, bool]:
+def where(d: dict, weights: list[float], now_ms: float,
+          stops: frozenset[int] | set[int] | tuple = ()) -> tuple[int, float, bool]:
     """Where the shared timeline is at server time now_ms."""
     units = 0.0
     if d["playing"]:
         units = max(0.0, now_ms - float(d["at"])) / 1000.0 * CHARS_PER_SECOND * float(d["speed"])
-    return advance(weights, d["block"], d["offset"], units)
+    return advance(weights, d["block"], d["offset"], units, stops)
+
+
+def stops_of(pages: list[dict], count: int) -> frozenset[int]:
+    """The last block of every page of a cue sheet: playing stops there. Empty for a normal script (no pages)."""
+    firsts = [int(p["first"]) for p in pages]
+    return frozenset(nxt - 1 for nxt in firsts[1:] + [count] if nxt > 0) if pages and count else frozenset()
+
+
+def _ended_at(d: dict, weights: list[float], stops: frozenset[int], now_ms: float) -> float:
+    """The server time at which a playing timeline reached its end (a page end or the end of the script)."""
+    i = min(max(0, int(d["block"])), len(weights) - 1)
+    f = min(max(0.0, float(d["offset"])), 1.0)
+    units = 0.0
+    while True:
+        units += (1.0 - f) * max(1.0, float(weights[i]))
+        if i == len(weights) - 1 or i in stops:
+            break
+        i, f = i + 1, 0.0
+    return min(now_ms, float(d["at"]) + units / (CHARS_PER_SECOND * float(d["speed"])) * 1000.0)
 
 
 def _index(value, count: int) -> int | None:
@@ -293,18 +396,53 @@ def _fraction(value) -> float | None:
     return min(max(0.0, float(value)), 1.0)
 
 
+def _page_at(firsts: list[int], block: int) -> int:
+    """The index of the page that holds `block` (firsts: each page's first block, ascending, the first one 0)."""
+    return max((k for k, first in enumerate(firsts) if first <= block), default=0)
+
+
+def _page_target(pages: list[dict], action: str, requested, here: int, count: int) -> int | None:
+    """Where next/prev/repeat go on a cue sheet: always the first block of a page. With a `block` from the screen (the
+    target it computed): next goes to the page that starts at or after it, prev and repeat to the start of its page.
+    Without one: the page after, before or of the block on the reading line now. None at either end."""
+    firsts = [int(p["first"]) for p in pages]
+    ref = _index(requested, count)
+    if ref is None:
+        if requested is not None:
+            return None  # a bad value never moves the text
+        i = _page_at(firsts, here)
+        j: int | None = {"next": i + 1, "prev": i - 1, "repeat": i}[action]
+    elif action == "next":
+        j = next((k for k, first in enumerate(firsts) if first >= ref), None)
+    else:
+        j = _page_at(firsts, ref)
+    return firsts[j] if j is not None and 0 <= j < len(firsts) else None
+
+
 def set_control(episode: str, values: dict) -> dict:
     """Apply one screen's command. `action` moves the anchor: jump/next/prev/repeat (`block` = list index, to its start),
     start (the beginning, paused), scroll/scrolled (`block` and `offset`, a hand scroll; scrolled ends it), end (the
-    timeline reached the end). Every write gets a newer `seq`; `client` names the screen that wrote it."""
+    timeline reached the end). Every write gets a newer `seq`; `client` names the screen that wrote it.
+
+    On a cue sheet next, prev and repeat move by page (_page_target), and every jump, next, prev, repeat or start that
+    lands at the first block of a page counts a new take of that page (`takes`, {page: count}). Playing ends at the
+    end of every page (stops_of). A command that arrives after a page ended but before any screen sent `end` first
+    ends it there (logged as "end" at the time the page ended), so Next or Repeat never play on by themselves."""
     old = _stored(episode)
-    d = dict(old)
     now = _now_ms()
-    file, blocks = _blocks(episode)
+    file, view = _shown(episode)
+    blocks, pages = view["blocks"], view["pages"]
     weights = [b["weight"] for b in blocks]
-    block, offset, at_end = where(old, weights, now)
+    stops = stops_of(pages, len(blocks))
+    block, offset, at_end = where(old, weights, now, stops)
+    if stops and old["playing"] and at_end and values.get("action") != "end":
+        ended = _ended_at(old, weights, stops, now)
+        old = {**old, "playing": False, "block": block, "offset": offset, "at": ended}
+        _log(episode, file, blocks, "end", block, offset, False, ended, old["takes"])
+    d = dict(old)
+    d["takes"] = dict(old["takes"])
     for k, v in values.items():
-        if k not in DEFAULT_CONTROL or k in ("block", "offset", "at", "seq", "by", "cue"):
+        if k not in DEFAULT_CONTROL or k in ("block", "offset", "at", "seq", "by", "cue", "takes"):
             continue
         if k in ("playing", "mirror"):
             d[k] = bool(v)
@@ -321,13 +459,21 @@ def set_control(episode: str, values: dict) -> dict:
     action = values.get("action")
     moved = hold = False
     if action in JUMPS:
-        target = 0 if action == "start" else _index(values.get("block"), len(blocks))
+        if action == "start":
+            target = 0
+        elif pages and action in ("next", "prev", "repeat"):
+            target = _page_target(pages, action, values.get("block"), block, len(blocks))
+        else:
+            target = _index(values.get("block"), len(blocks))
         if target is not None:
             block, offset, moved = target, 0.0, True
             if action == "start":
                 d["playing"] = False
             d["cue"] = int(old["cue"]) + 1
             hold = bool(d["playing"])
+            page = next((p["page"] for p in pages if p["first"] == target), None)
+            if page is not None:
+                d["takes"][page] = d["takes"].get(page, 0) + 1
     elif action in ("scroll", "scrolled"):
         target, fraction = _index(values.get("block"), len(blocks)), _fraction(values.get("offset"))
         if target is not None and fraction is not None:
@@ -352,10 +498,11 @@ def set_control(episode: str, values: dict) -> dict:
     db.kv_set(f"prompter:{episode}", json.dumps(d))
     _LATEST[_key(episode)] = d["seq"]
     if moved and action != "scroll":
-        _log(episode, file, blocks, "scroll" if action == "scrolled" else action, block, offset, d["playing"], now)
+        _log(episode, file, blocks, "scroll" if action == "scrolled" else action, block, offset, d["playing"], now,
+             d["takes"])
     elif d["playing"] != old["playing"]:
         _log(episode, file, blocks, "end" if action == "end" else ("play" if d["playing"] else "pause"), block,
-             offset, d["playing"], now)
+             offset, d["playing"], now, d["takes"])
     d["now"] = now
     d["version"] = _version(episode)
     return d
@@ -368,14 +515,17 @@ def log_file(episode: str, when_ms: float | None = None) -> Path:
 
 
 def _log(episode: str, file: str | None, blocks: list[dict], action: str, index: int, offset: float, playing: bool,
-         now: float) -> None:
+         now: float, takes: dict | None = None) -> None:
     """One line per jump, repeat, hand scroll, play or pause: UTC time with milliseconds and the block number on the
-    screens. A failure to write never stops the prompter."""
+    screens. On a cue sheet also the page, the unit and the page's take number (the count after this line; None for a
+    normal script, or for a page no command has started yet). A failure to write never stops the prompter."""
     b = blocks[index] if 0 <= index < len(blocks) else {}
+    page = b.get("page")
     when = datetime.fromtimestamp(now / 1000.0, UTC)
     entry = {"time": when.isoformat(timespec="milliseconds").replace("+00:00", "Z"), "unix_ms": int(now),
              "action": action, "block": b.get("n"), "section": b.get("section"), "offset": round(offset, 3),
-             "playing": playing, "script": file, "words": " ".join(str(b.get("text", "")).split()[:10])}
+             "playing": playing, "script": file, "words": " ".join(str(b.get("text", "")).split()[:10]),
+             "page": page, "unit": b.get("unit"), "take": ((takes or {}).get(page) or None) if page else None}
     try:
         target = log_file(episode, now)
         target.parent.mkdir(parents=True, exist_ok=True)
