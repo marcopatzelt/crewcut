@@ -1,6 +1,7 @@
 // The app's own settings, a small JSON file in its data folder. No secret ever goes here (secrets.ts).
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import type { SecondOpinionSetting } from "./host-helper";
 
 export interface Bounds {
   x: number;
@@ -25,6 +26,9 @@ export interface Settings {
   codex?: { at: string };
   /** The image the stack ran last, so a new app version pulls its own image once. */
   image?: string;
+  /** The host helper's second opinion: the command it runs, its work folder, how many at a time. Only here or in
+   *  the environment (CREWCUT_SECOND_OPINION_CMD wins), never from a page: the command runs on this computer. */
+  secondOpinion?: SecondOpinionSetting;
 }
 
 export function defaults(home: string): Settings {

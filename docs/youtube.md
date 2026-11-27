@@ -17,7 +17,7 @@ the old callback. Successful sign-in clears both pending values. Tests use a syn
 
 Say "connect YouTube" (or run `crewcut youtube connect`). One card: **Set it up in my Chrome**. On your yes:
 
-1. The host helper (`host/crewcut-host.sh`, started by `./start.sh` next to Docker) starts **your own Claude Code on
+1. The host helper (`host/crewcut-host.sh`, started by `./start.sh` or the desktop app next to Docker) starts **your own Claude Code on
    your computer** with `--chrome`, in a visible window, on one fixed prompt (`host/prompts/youtube-setup.md`).
 2. Claude opens the Google Cloud console in your Chrome, creates the project "Crewcut uploads", enables YouTube Data API
    v3 and YouTube Analytics API, sets up the consent screen (External, Testing, you as test user), creates a Desktop
@@ -32,7 +32,8 @@ extension signed in to the same claude.ai account. `crewcut doctor` and the card
 
 How the helper stays safe: it runs one job only. The container writes a request file into
 `studio/.crewcut/host/requests/` with the job name, the time, a one-time value and the checksum of the setup prompt,
-signed with HMAC-SHA256 and `CREWCUT_HOST_TOKEN` (in `.env`; `./start.sh` creates it). Only Crewcut's server knows the
+signed with HMAC-SHA256 and `CREWCUT_HOST_TOKEN` (in `.env`, which `./start.sh` creates; the desktop app keeps it in
+`stack/.env` in its data folder). Only Crewcut's server knows the
 key: the crew's runs never get it in their environment. The helper deletes and reports requests that are unsigned,
 older than two minutes, used before, for another job, or for a prompt whose checksum differs from its own. It never
 runs a command or a prompt it is sent, and it opens no network port. Claude's run may use only the Chrome tools (no

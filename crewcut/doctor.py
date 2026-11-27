@@ -155,7 +155,7 @@ def checks(ci: bool = False, probe: bool = False) -> list[dict]:
     if tool and gate["mode"] != "off":
         from . import second_opinion
         why = second_opinion.why_not()
-        add(OK if why is None else NOTE, "second opinion", "the host helper can ask a second model" if why is None
+        add(OK if why is None else NOTE, "second opinion", second_opinion.ready() if why is None
             else f"not available: {why}",
             "" if why is None else "Only when the studio's checker asks for one; the card then says it is missing "
             "(docs/cue-sheets.md, \"The second opinion\").")

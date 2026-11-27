@@ -59,17 +59,27 @@ def why_not() -> str | None:
     """Why no second opinion can be asked now, in one sentence; None when it can."""
     from .youtube import connect
     if not connect.token():
-        return "the host helper has no key (CREWCUT_HOST_TOKEN; start Crewcut with ./start.sh once)"
+        return ("the host helper has no key (CREWCUT_HOST_TOKEN): quit the desktop app and open it again, or run "
+                "./start.sh once; the container gets the key when it starts")
     h = connect.helper()
     if not h:
-        return "the host helper is not running (./start.sh starts it next to Docker)"
+        return "the host helper is not running (the desktop app or ./start.sh starts it next to Docker)"
     if not h.get("second_opinion"):
-        return "the host helper has no second-opinion command (CREWCUT_SECOND_OPINION_CMD on the host)"
+        return (f"the host helper ({h.get('by') or 'start.sh'}) runs, but has no second-opinion command: set "
+                "CREWCUT_SECOND_OPINION_CMD on the host, or secondOpinion.command in the desktop app's settings.json")
     try:
         prompt_sha256()
     except OSError:
         return "the second-opinion prompt is missing (host/prompts/second-opinion.md)"
     return None
+
+
+def ready() -> str:
+    """What the doctor says when a second opinion can be had: who runs the helper and how many runs at a time."""
+    from .youtube import connect
+    h = connect.helper() or {}
+    return (f"the host helper ({h.get('by') or 'start.sh'}) can ask a second model, at most "
+            f"{h.get('second_opinion_parallel') or 2} at a time")
 
 
 def _studio_rel(p: Path) -> str:
@@ -215,4 +225,4 @@ def tick(force: bool = False) -> list[dict]:
     return done
 
 
-__all__ = ["KIND", "parse", "request", "tick", "why_not"]
+__all__ = ["KIND", "parse", "ready", "request", "tick", "why_not"]

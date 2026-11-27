@@ -67,6 +67,24 @@ like this:
    (`CREWCUT_SECOND_OPINION_DIR`), at most `CREWCUT_SECOND_OPINION_PARALLEL` (default 2) at a time. Without the helper
    or the command, the answer is "unavailable" with the reason, and the card shows it. A disagreeing second opinion
    sends its points to the Writer.
+
+   Who starts the helper: `./start.sh`, or the **desktop app** (macOS and Linux), which runs it as its own child
+   process next to the stack and stops it on Quit. The app makes the key once (`CREWCUT_HOST_TOKEN` in `stack/.env`
+   in its data folder, owner-only) and gives it to the container; a container that was started before has no key
+   until the next start (quit the app and open it again). The app takes the command from the environment
+   (`CREWCUT_SECOND_OPINION_CMD`, `_DIR`, `_PARALLEL`) or, since an app started from the menu has no terminal
+   environment, from its `settings.json` (never from a page, since the command runs on your computer):
+
+   ```json
+   "secondOpinion": { "command": "/path/to/your-wrapper", "parallel": 2 }
+   ```
+
+   Its work folder is `second-opinion/` in the app's data folder unless you name another (never your home folder);
+   with `./start.sh` it is `.host/second-opinion/` in the repository. Both lie outside the studio, so a command with
+   tools finds no files the crew put there. Feed the script to the model as text and do not let it run tools without
+   asking: the script was written by the crew. `crewcut doctor` names who runs the helper and how many runs it allows
+   (`second opinion: the host helper (desktop app) can ask a second model, at most 2 at a time`). A refused request
+   (another key, an old prompt, no command) gets its answer at once, with the reason.
 5. **The card.** Only a sheet that passes all of this gets a script card.
 
 ## After the recording
