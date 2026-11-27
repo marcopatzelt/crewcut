@@ -19,7 +19,8 @@ All paths are relative to the episode folder `studio/episodes/<id>/`. Every comm
   screen jumps to the start of that block at once. Say a block as often as you like: the editor cuts between blocks
   and picks the take (the last complete one, unless you say otherwise).
   Every jump, repeat, play and pause is written with its UTC time to `brief/prompter-log-<date>.jsonl`, so the editor
-  can find where each block's takes start.
+  can find where each block's takes start. A cue sheet is shown in pages instead (see
+  [recording from a cue sheet](#recording-from-a-cue-sheet)).
 - **Focus.** Fix the focus on your face (manual focus or face tracking). Record ten seconds and look at them sharp on a
   big screen before the real take.
 - **Microphone.** A clip-on radio microphone into the camera is the safe default. Most receivers put the voice on one
@@ -39,6 +40,29 @@ All paths are relative to the episode folder `studio/episodes/<id>/`. Every comm
   | "I'll just read on" | nothing; the script goes on |
 
   The instruction itself never goes into the video.
+
+## Recording from a cue sheet
+
+A cue sheet (`brief/CUES-vNNN.md`, or `brief/DREHZETTEL-vNNN.md` in German) fixes only the lines you say word for word;
+everything else is bullets you say in your own words. The teleprompter shows the newest cue sheet before any
+`SCRIPT-vNNN.md` draft. An approved or selected script still comes first.
+
+- **Pages.** The screen shows one page for the opening, one for each unit, one for the payoff and one for the close.
+  Each page starts with its name and the take in progress.
+- **What is bright and what is dimmed.** Hook and punch line are full size. The other fixed lines are a little smaller,
+  the ask and the bridge medium. Bullets are about two thirds of the size and dimmed, with their tag in small grey
+  capitals and the picture cue as a small tag. Numbers are bold. A thin line stands above the punch line. Bright lines:
+  say them as written. Dimmed lines: say them freely.
+- **One take per unit is enough.** Say the hook into the camera as written. Then speak the bullets freely, in their
+  order, with all their numbers. Then say the punch line, the ask and the bridge as written.
+- **Something went wrong?** Press **Repeat** (or R) and start again at the hook. Repeat starts a new take of the unit.
+  **Next** and **Previous** go to the start of the next or previous page and start a new take there. Tapping a page on
+  the remote does the same.
+- **The remote** shows one row per page with its take count. It has no switch to key points: the bullets are the points.
+- **Take log.** Every jump, Next, Previous, Repeat or Back to the start that lands at the start of a page counts a new
+  take of that page (`takes` in the shared state, kept per episode). Every line of `brief/prompter-log-<date>.jsonl`
+  also has `page` (`opening`, `unit 1`, ..., `payoff`, `close`), `unit` (its number, or null) and `take` (the page's
+  take number). `take` is null for a normal script and for a page reached only by scrolling or playing.
 
 ## Ingest
 

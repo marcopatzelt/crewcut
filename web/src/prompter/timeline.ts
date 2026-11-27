@@ -2,7 +2,7 @@
 // the anchor was set, and the speed (crewcut/prompter.py has the same rules). Every screen computes where the text is
 // from these and its own estimate of the server clock, so no screen reports a scroll position back, and a screen that
 // slept or opened late is at the right place at once.
-import type { PrompterBlock, PrompterControl } from "../api/types";
+import type { PrompterBlock, PrompterControl, PrompterPage } from "../api/types";
 
 export const DEFAULT_CPS = 17;
 export const PAUSE_CHARS = 8;
@@ -24,6 +24,20 @@ export interface Block {
   n: number | null;
   section: number;
   weight: number;
+  /** Cue sheets only (see PrompterBlock). */
+  kind?: "fixed" | "bullet";
+  role?: string;
+  page?: string;
+  unit?: number | null;
+  picture?: string | null;
+  question?: string | null;
+  groups?: string[];
+  big?: boolean;
+}
+
+/** A page of a cue sheet, with the unit's number (null outside the units). */
+export interface Page extends PrompterPage {
+  unit: number | null;
 }
 
 export interface Place {
@@ -38,8 +52,13 @@ export function normalizeBlocks(raw: PrompterBlock[]): Block[] {
   const blocks = raw.map((b) => {
     const heading = Boolean(b.heading);
     if (!heading) n += 1;
-    return { text: b.text, points: b.points ?? [], heading, n: b.n === undefined ? (heading ? null : n) : b.n,
+    const block: Block = { text: b.text, points: b.points ?? [], heading, n: b.n === undefined ? (heading ? null : n) : b.n,
       section: b.section ?? 1, weight: b.weight ?? 0 };
+    if (b.kind) {
+      Object.assign(block, { kind: b.kind, role: b.role ?? "", page: b.page, unit: b.unit ?? null,
+        picture: b.picture ?? null, question: b.question ?? null, groups: b.groups ?? [], big: Boolean(b.big) });
+    }
+    return block;
   });
   blocks.forEach((b, i) => {
     if (b.weight > 0) return;
@@ -80,6 +99,40 @@ export function stepTarget(blocks: Block[], from: number, step: 1 | -1): number 
     if (!blocks[i]?.heading) return i;
   }
   return null;
+}
+
+/** A cue sheet's pages: the server's list (pages that start inside the script, in order), or else one page for each
+ * run of blocks with the same `page`. */
+export function normalizePages(raw: PrompterPage[] | undefined, blocks: Block[]): Page[] {
+  const unit = (first: number) => blocks[first]?.unit ?? null;
+  if (raw?.length) {
+    return raw
+      .filter((p, i) => Number.isInteger(p.first) && p.first >= 0 && p.first < blocks.length && (i === 0 || p.first > raw[i - 1]!.first))
+      .map((p) => ({ page: p.page, label: p.label || p.page, first: p.first, short: Boolean(p.short), unit: unit(p.first) }));
+  }
+  const pages: Page[] = [];
+  blocks.forEach((b, i) => {
+    if (b.page && b.page !== blocks[i - 1]?.page) pages.push({ page: b.page, label: b.page, first: i, short: false, unit: unit(i) });
+  });
+  return pages;
+}
+
+/** The index of the page that holds `block` (-1 without pages). */
+export function pageAt(pages: Page[], block: number): number {
+  let k = -1;
+  pages.forEach((p, i) => {
+    if (p.first <= block) k = i;
+  });
+  return pages.length ? Math.max(0, k) : -1;
+}
+
+/** Where Previous, Next and Repeat go on a cue sheet: the first block of the page before, after or of `from`. null at
+ * either end (crewcut/prompter.py has the same rule). */
+export function pageStep(pages: Page[], from: number, kind: "prev" | "next" | "repeat"): number | null {
+  const k = pageAt(pages, from);
+  if (k < 0) return null;
+  const target = pages[kind === "next" ? k + 1 : kind === "prev" ? k - 1 : k];
+  return target ? target.first : null;
 }
 
 /** The same change the server makes, so this screen shows a command at once (and a screen without a server works). */
