@@ -150,6 +150,13 @@ def after_review(job: dict, res_text: str) -> dict | None:
     """Act on a finished Critic review. Returns what happened, or None when this run was no review to act on."""
     if not is_review(job):
         return None
+    d = job.get("data") or {}
+    if "transcript_review" in d:
+        return None   # a review of what was said: stylegate.after_transcript_review hands its cut list to the edit
+    if "style_gate_kritik" in d:
+        from .. import stylegate
+        if stylegate.settings()["mode"] != "off":
+            return None   # the style gate asked for this review and routes it itself (stylegate.after_critic)
     builder = builder_of(job)
     if not builder or team.get(builder) is None:
         return None

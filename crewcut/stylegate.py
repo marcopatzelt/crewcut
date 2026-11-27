@@ -15,6 +15,17 @@ app moves a failing script on:
    is recorded), `crewcut episode step <id> script done|skipped`, `... record working|waiting`, `crewcut job add
    --step edit` before a recording.
 
+Cue sheets (`crewcut/cuesheet.py`, brief/CUES-vNNN.md or DREHZETTEL-vNNN.md) are long scripts too; when an episode has
+one, its newest cue sheet is the long script the gate checks. A checker may add three things to a check, and the gate
+acts on them: `points` (the open findings, each with `text`), `instructions` (a file the Critic follows for that
+check, for example a sentence-by-sentence review) and `second_opinion: true` with `answer_file` (the gate asks a
+second model on the host computer once everything else passes; crewcut/second_opinion.py).
+
+Rounds (`loop`): "rounds" sends the Writer back at most `max_rounds` times, then a card asks the user. "until_pass"
+goes on while each round changes what is open, and stops with a card "Not approved: <point>" ("Nicht freigegeben" in a
+German studio) as soon as the same open point stays unchanged for two rounds in a row, or after `safety_rounds`. A
+script that the checker does not pass never goes to the user as approved.
+
 Settings (`config/crewcut.toml` `[style_gate]`, the style pack's `channel.json` `script.style_gate` wins): `mode`
 block (default), warn (the findings go to the chat and the card, nothing is refused) or off; `max_rounds` (3); `skill`
 and `checker` (the script inside the skill folder); `timeout_seconds`. Without the skill in the studio the gate is
@@ -35,9 +46,11 @@ from . import config, db, paths
 
 MODES = ("block", "warn", "off")
 DEFAULTS = {"mode": "block", "max_rounds": 3, "skill": "deutscher-hormozi", "checker": "scripts/stil_check.py",
-            "timeout_seconds": 120}
+            "timeout_seconds": 120, "loop": "rounds", "safety_rounds": 10}
+LOOPS = ("rounds", "until_pass")
 INTERFACE = 1
-NAME = re.compile(r"^(?P<kind>SCRIPT|SHORT)-v(?P<n>\d+)(?P<rest>[^/]*)\.(?:md|txt)$", re.I)
+NAME = re.compile(r"^(?P<kind>SCRIPT|SHORT|CUES|DREHZETTEL)-v(?P<n>\d+)(?P<rest>[^/]*)\.(?:md|txt)$", re.I)
+CUE_KINDS = ("CUES", "DREHZETTEL")
 TITLE_LINE = re.compile(r"(?im)^\W*(?:titel|title)\b")
 
 
@@ -67,6 +80,11 @@ def settings() -> dict:
         out["max_rounds"] = max(1, int(out.get("max_rounds") or DEFAULTS["max_rounds"]))
     except (TypeError, ValueError):
         out["max_rounds"] = DEFAULTS["max_rounds"]
+    try:
+        out["safety_rounds"] = max(1, int(out.get("safety_rounds") or DEFAULTS["safety_rounds"]))
+    except (TypeError, ValueError):
+        out["safety_rounds"] = DEFAULTS["safety_rounds"]
+    out["loop"] = out["loop"] if out.get("loop") in LOOPS else "rounds"
     return out
 
 
@@ -112,15 +130,20 @@ def _approved(episode: str) -> Path | None:
 
 def latest(episode: str) -> dict[str, Path]:
     """The newest long script and the newest Short script in brief/ ({"SCRIPT": path, "SHORT": path}). Newest is the
-    highest version number; at the same number the approved script, else the newer file."""
+    highest version number; at the same number the approved script, else the newer file. Once an episode has a cue
+    sheet, its newest cue sheet is the long script (cue sheets replace full texts)."""
     brief = paths.episode_dir(episode) / "brief"
     out: dict[str, Path] = {}
     approved = _approved(episode)
-    for p in (sorted(brief.iterdir()) if brief.is_dir() else []):
+    files = [p for p in (sorted(brief.iterdir()) if brief.is_dir() else []) if NAME.match(p.name) and p.is_file()]
+    cues = any(NAME.match(p.name).group("kind").upper() in CUE_KINDS for p in files)
+    for p in files:
         m = NAME.match(p.name)
-        if not m or not p.is_file():
-            continue
         kind = m.group("kind").upper()
+        if kind in CUE_KINDS:
+            kind = "SCRIPT"
+        elif kind == "SCRIPT" and cues:
+            continue
         cur = out.get(kind)
         if cur is None:
             out[kind] = p
@@ -154,7 +177,7 @@ def subjects(episode: str, file: str | Path | None = None) -> list[Path]:
         p = p if p.is_absolute() else paths.inside(paths.episode_dir(episode), str(file))
         m = NAME.match(p.name)
         kind = m.group("kind").upper() if m else ("SHORT" if re.match(r"(?i)^short", p.name) else "SCRIPT")
-        found[kind] = p
+        found["SCRIPT" if kind in CUE_KINDS else kind] = p
     return [found[k] for k in ("SCRIPT", "SHORT") if k in found]
 
 
@@ -187,7 +210,8 @@ def _rel(episode: str, p: Path) -> str:
         return str(p)
 
 
-def run(p: Path, fmt: str, title: str | None = None, cfg: dict | None = None, tool: Path | None = None) -> dict:
+def run(p: Path, fmt: str, title: str | None = None, cfg: dict | None = None, tool: Path | None = None,
+        extra: list[str] | None = None) -> dict:
     """Run the checker on one file. Returns {"pass", "auto_pass", "failed", "open", "error", ...}."""
     cfg = cfg or settings()
     tool = tool or checker(cfg)
@@ -199,7 +223,7 @@ def run(p: Path, fmt: str, title: str | None = None, cfg: dict | None = None, to
     if not p.is_file():
         out["error"] = f"{p.name} not found"
         return out
-    cmd = [sys.executable, str(tool), str(p), "--json", "--format", fmt]
+    cmd = [sys.executable, str(tool), str(p), "--json", "--format", fmt] + list(extra or [])
     if title:
         cmd += ["--titel", title]
     kritik = p.with_suffix(".kritik.json")
@@ -225,9 +249,17 @@ def run(p: Path, fmt: str, title: str | None = None, cfg: dict | None = None, to
         out["error"] = f"the checker speaks interface version {data.get('version')!r}; the gate reads {INTERFACE}"
         return out
     checks = data.get("checks") or []
-    out["failed"] = [{k: c.get(k) for k in ("id", "alt", "rule", "kind", "titel", "measured", "target", "line", "fix")
-                      if c.get(k) is not None} for c in checks if c.get("pass") is False]
+    keep = ("id", "alt", "rule", "kind", "titel", "measured", "target", "line", "fix", "points", "instructions")
+    out["failed"] = [{k: c.get(k) for k in keep if c.get(k) is not None} for c in checks if c.get("pass") is False]
     out["open"] = [c.get("id") for c in checks if c.get("kind") == "kritik" and c.get("pass") is None]
+    out["second_opinion"] = [{"id": c.get("id"), "answer_file": c.get("answer_file"), "measured": c.get("measured")}
+                             for c in checks if c.get("second_opinion") and c.get("pass") is None and c.get("answer_file")]
+    out["instructions"] = sorted({str(c["instructions"]) for c in checks if c.get("instructions")})
+    out["hints"] = sum(1 for c in checks if c.get("kind") == "hinweis")
+    out["notes"] = [f"Second opinion: {c.get('measured')}" for c in checks
+                    if c.get("second_opinion") and c.get("pass") is True]
+    out["instructions_used"] = out["instructions"]
+    out["pruefstuecke"] = len(data.get("pruefstuecke") or [])
     out["auto_pass"] = bool(data.get("auto_pass"))
     out["pass"] = bool(data.get("pass")) and r.returncode == 0 and not out["failed"] and not out["open"]
     out["words"], out["seconds"], out["times"] = data.get("woerter"), data.get("dauer_s"), data.get("zeiten")
@@ -393,48 +425,193 @@ def _resume(job: dict | None) -> dict:
     return {}
 
 
+def _german() -> bool:
+    try:
+        from . import brand
+        return str(brand.load().value("channel.language", "") or "").lower().startswith("de")
+    except Exception:  # noqa: BLE001 - a broken pack must not stop the gate
+        return False
+
+
+def _norm(text: str) -> str:
+    return " ".join(re.sub(r"[^\w]+", " ", str(text or "").lower()).split())
+
+
+def points(verdict: dict) -> list[dict]:
+    """The open findings of a verdict, each with a stable key: the check id and the text of the point (the sentence a
+    Critic marked, or the measured value of an automatic check). Rounds compare these keys."""
+    out = []
+    for r in verdict.get("results", []):
+        if r.get("error"):
+            out.append({"key": f"{r.get('format')}::error::{_norm(r['error'])}", "text": r["error"], "id": "error"})
+        for x in r.get("failed", []):
+            pts = [p for p in (x.get("points") or []) if isinstance(p, dict) and p.get("text")]
+            if pts:
+                for p in pts:
+                    out.append({"key": f"{r.get('format')}::{x.get('id')}::{_norm(p['text'])}", "id": x.get("id"),
+                                "text": str(p["text"]), "why": p.get("grund") or p.get("why"),
+                                "rewrite": p.get("neu") or p.get("rewrite")})
+            else:
+                out.append({"key": f"{r.get('format')}::{x.get('id')}::{_norm(x.get('measured'))}", "id": x.get("id"),
+                            "text": f"{x.get('titel') or x.get('id')}: {x.get('measured')}", "why": x.get("fix")})
+    return out
+
+
+def _previous_points(episode: str) -> list[dict] | None:
+    """The open points the gate sent back last time in this script round (None before the first round)."""
+    with db.conn() as c:
+        rs = db.rows(c.execute("SELECT data FROM jobs WHERE episode = ? AND step = 'script' AND created > ? "
+                               "ORDER BY id DESC", (episode, _since(episode))))
+    for r in rs:
+        d = r.get("data") or {}
+        if "style_gate_points" in d:
+            return d["style_gate_points"]
+    return None
+
+
+def stuck(episode: str, verdict: dict) -> dict | None:
+    """In until_pass mode: the first open point that was open, unchanged, in the round before too."""
+    before = _previous_points(episode)
+    if not before:
+        return None
+    old = {p["key"] for p in before}
+    return next((p for p in points(verdict) if p["key"] in old), None)
+
+
+def _too_many(episode: str, cfg: dict, n: int) -> bool:
+    return n > (cfg["safety_rounds"] if cfg["loop"] == "until_pass" else cfg["max_rounds"])
+
+
 def writer_round(episode: str, verdict: dict, job: dict | None = None, why: str = "") -> dict:
-    """Send the failed checks back to the Writer (bounded), or ask the user after the last round."""
+    """Send the open findings back to the Writer, or put them on a card: after max_rounds rounds ("rounds"), or, in
+    "until_pass", as soon as the same point stayed open for two rounds in a row (or after safety_rounds)."""
     from .conductor import flow, queue
     cfg = settings()
     n = _count(episode, "style_gate_round") + 1
-    most = cfg["max_rounds"]
-    if n > most:
-        return {"action": "card", "card": limit_card(episode, verdict, most)}
-    task = (f"{why}The style check (the studio's {cfg['skill']} checker) fails on your newest script; round {n} of "
-            f"{most}. Fix every failed check at its line, as its fix says, and keep what passes:\n{text(verdict)}\n\n"
+    if cfg["loop"] == "until_pass":
+        same = stuck(episode, verdict)
+        if same:
+            return {"action": "card", "card": stuck_card(episode, verdict, same)}
+    if _too_many(episode, cfg, n):
+        return {"action": "card", "card": limit_card(episode, verdict, n - 1)}
+    most = cfg["max_rounds"] if cfg["loop"] == "rounds" else None
+    of = f"round {n} of {most}" if most else f"round {n} (until the checker and the Critic pass)"
+    pts = points(verdict)
+    rewrites = "\n".join(f"- \"{p['text'][:160]}\"" + (f" -> {p['rewrite']}" if p.get("rewrite") else "")
+                          + (f" ({p['why']})" if p.get("why") else "") for p in pts if p.get("id") not in (None,)
+                          and (p.get("rewrite") or p.get("why")))[:6000]
+    task = (f"{why}The style check (the studio's {cfg['skill']} checker) fails on your newest script; {of}. Fix every "
+            f"open point, as its fix or the Critic's rewrite says, and keep what passes:\n{text(verdict)}\n"
+            + (f"\nThe points one by one (sentence -> rewrite):\n{rewrites}\n" if rewrites else "") +
+            "\nRun the checker yourself until its automatic part passes "
+            f"(`python3 {verdict.get('checker')} <file> --nur-auto`), write a new version (the next number of the same "
+            "kind of file), then ask the Critic again for its review and answers in `<script>.kritik.json` "
+            "(`crewcut job add --identity critic --step script \"…\"`) and stop. A script card is refused while the "
+            "full check fails. A point that stays the same for two rounds stops the loop and goes to the user as not "
+            "approved." if cfg["loop"] == "until_pass" else
+            f"{why}The style check (the studio's {cfg['skill']} checker) fails on your newest script; {of}. Fix every "
+            f"failed check at its line, as its fix says, and keep what passes:\n{text(verdict)}\n\n"
             "Run the checker yourself until its automatic part passes "
             f"(`python3 {verdict.get('checker')} <file> --nur-auto`), write a new version (SCRIPT-vNNN with the next "
             "number), then ask the Critic again for the answers to its questions in `<script>.kritik.json` and its "
             "review (`crewcut job add --identity critic --step script \"…\"`) and stop. A script card is refused while "
             "the full check fails.")
     jid = queue.add(episode, "writer", "script", task,
-                    data={**_resume(job), "style_gate_round": n, "style_gate": summary(verdict)})
-    db.update("jobs", jid, doing=f"Style check round {n} of {most}"[:200])
-    flow.post(episode, f"{short_line(verdict)} The Writer works on round {n} of {most}.", step="script")
+                    data={**_resume(job), "style_gate_round": n, "style_gate": summary(verdict),
+                          "style_gate_points": pts})
+    db.update("jobs", jid, doing=f"Style check {of}"[:200])
+    flow.post(episode, f"{short_line(verdict)} The Writer works on {of}.", step="script")
     return {"action": "writer", "job": jid, "round": n}
 
 
+def _open_for_critic(r: dict) -> list[str]:
+    so = {s["id"] for s in r.get("second_opinion", [])}
+    return [o for o in r.get("open", []) if o not in so]
+
+
 def critic_round(episode: str, verdict: dict, job: dict | None = None) -> dict:
-    """The automatic checks pass and only the Critic's answers are missing: the Critic answers its questions."""
+    """The automatic checks pass and the Critic's answers or review are missing (or out of date): the Critic does
+    them, following the checker's instructions file where a check names one."""
     from .conductor import flow, queue
     cfg = settings()
     n = _count(episode, "style_gate_kritik") + 1
-    if n > cfg["max_rounds"]:
-        return {"action": "card", "card": limit_card(episode, verdict, cfg["max_rounds"])}
-    files = [r for r in verdict["results"] if r["open"] and not r["failed"]]
-    lines = "\n".join(f"- {r['file']}: answer {', '.join(r['open'])} in "
+    if _too_many(episode, cfg, n):
+        return {"action": "card", "card": limit_card(episode, verdict, n - 1)}
+    files = [r for r in verdict["results"] if _open_for_critic(r) and not r["failed"]]
+    lines = "\n".join(f"- {r['file']}: answer {', '.join(_open_for_critic(r))} in "
                       f"{str(Path(r['file']).with_suffix('.kritik.json'))}" for r in files)
-    task = ("The style check's automatic part passes; your answers to its Critic questions are missing:\n" + lines +
+    guides = sorted({g for r in files for g in r.get("instructions", [])})
+    guide = ("\nFor checks that name instructions, follow them exactly; they say what to read, which questions to ask "
+             "of every sentence and unit, how to cite, and what to write: " + ", ".join(f"`{g}`" for g in guides) + "."
+             if guides else "")
+    task = ("The style check's automatic part passes; your review and answers are missing or out of date:\n" + lines +
             f"\nRun `python3 {verdict.get('checker')} <file> --json`: every check of kind kritik has its question "
-            "(frage). Answer each with true or false and one sentence of reason, as JSON next to the script, "
-            '{"K-…": {"antwort": true, "grund": "…"}}. In doubt: false. Then write your review report '
+            "(frage), and checks of kind hinweis are measurements that point you to places to look (never rules)." +
+            guide + " Answer each plain question with true or false and one sentence of reason, as JSON next to the "
+            'script, {"K-…": {"antwort": true, "grund": "…"}}. In doubt: false. Then write your review report '
             "review/critic-<version>.md as usual, ending with the Verdict and Round lines. Never change the script.")
     jid = queue.add(episode, "critic", "script", task, parent=(job or {}).get("id"),
                     data={"style_gate_kritik": n, "style_gate": summary(verdict)})
-    db.update("jobs", jid, doing="Answering the style check's Critic questions")
-    flow.post(episode, f"{short_line(verdict)} The Critic answers its questions now.", step="script")
+    db.update("jobs", jid, doing="Reviewing the script for the style check")
+    flow.post(episode, f"{short_line(verdict)} The Critic reviews it now.", step="script")
     return {"action": "critic", "job": jid}
+
+
+def second_opinion_round(episode: str, verdict: dict) -> dict:
+    """Everything passes but the second opinion: ask it (or note why it cannot be had) and go on."""
+    from . import second_opinion
+    from .conductor import flow
+    asked = []
+    for r in verdict.get("results", []):
+        for s in r.get("second_opinion", []):
+            script = paths.inside(paths.episode_dir(episode), r["file"])
+            res = second_opinion.request(episode, script, Path(s["answer_file"]),
+                                         script.with_suffix(".kritik.json"))
+            asked.append(res)
+    if any(a.get("status") == "requested" for a in asked):
+        flow.post(episode, "The Critic approves. A second opinion from another model is asked now; the card waits "
+                  "for it.", step="script")
+        return {"action": "second_opinion", "asked": asked}
+    return after_second_opinion(episode)
+
+
+def ready(episode: str, verdict: dict, why: str) -> dict:
+    """The checker passes: the Writer proposes the card with exactly this version."""
+    from .conductor import flow, queue
+    notes = [s for r in verdict.get("results", []) for s in r.get("notes", [])]
+    jid = queue.add(episode, "writer", "script", f"{why} The style check passes now ({short_line(verdict)}). Propose "
+                    "your script card with exactly the version that was checked" + (", and put this in its body: "
+                    + "; ".join(notes) if notes else "") + ".")
+    flow.post(episode, short_line(verdict) + " The Writer proposes the card.", step="script")
+    return {"action": "ready", "job": jid}
+
+
+def after_second_opinion(episode: str) -> dict:
+    v = check(episode)
+    if v.get("skipped") or v["pass"]:
+        return ready(episode, v, "The Critic approved and the second opinion is in.")
+    if any(r["failed"] or r.get("error") for r in v["results"]):
+        return writer_round(episode, v, why="The second opinion found open points. ")
+    return {"action": "waiting"}
+
+
+def stuck_card(episode: str, verdict: dict, point: dict) -> int:
+    from . import approvals
+    de = _german()
+    head = ("Nicht freigegeben: " if de else "Not approved: ") + point["text"]
+    body = ((f"Derselbe Punkt war zwei Runden hintereinander offen und ist unverändert:\n\n\"{point['text']}\""
+             + (f"\nGrund: {point['why']}" if point.get("why") else "")
+             + (f"\nVorschlag des Critic: {point['rewrite']}" if point.get("rewrite") else "")
+             + f"\n\n{short_line(verdict)}\n\nDas Skript geht so nicht in die Aufnahme. Ja: der Writer bekommt weitere "
+             "Runden, mit deinen Worten. Nein: es bleibt stehen; sag im Chat, was sich ändern soll.") if de else
+            (f"The same point stayed open, unchanged, for two rounds in a row:\n\n\"{point['text']}\""
+             + (f"\nWhy: {point['why']}" if point.get("why") else "")
+             + (f"\nThe Critic's rewrite: {point['rewrite']}" if point.get("rewrite") else "")
+             + f"\n\n{short_line(verdict)}\n\nThe script does not go to recording like this. Yes: the Writer gets "
+             "more rounds, with your words. No: it stays stopped; say in the chat what should change."))
+    card = approvals.propose(episode, "script", "other", head[:160], body=body, identity="showrunner", job=None,
+                             data={"style_gate_limit": summary(verdict), "style_gate_stuck": point})
+    return card["id"]
 
 
 def limit_card(episode: str, verdict: dict, rounds: int) -> int:
@@ -492,10 +669,113 @@ def after_writer(job: dict, res) -> dict | None:
         from .conductor import flow
         flow.post(episode, short_line(v) + " (The gate only warns in this studio.)", step="script")
         return {"action": "warned"}
-    auto_or_no = any(r["failed"] or r.get("error") for r in v["results"])
-    if auto_or_no or v.get("error"):
-        return writer_round(episode, v, job)
-    return critic_round(episode, v, job)
+    return route(episode, v, job)
+
+
+def route(episode: str, v: dict, job: dict | None = None, why: str = "") -> dict:
+    """What a failing verdict needs next: the Writer (a finding), the Critic (its review is missing or out of date),
+    or the second opinion (everything else passes)."""
+    if any(r["failed"] or r.get("error") for r in v["results"]) or v.get("error"):
+        return writer_round(episode, v, job, why=why)
+    if any(_open_for_critic(r) for r in v["results"]):
+        return critic_round(episode, v, job)
+    if any(r.get("second_opinion") for r in v["results"]):
+        return second_opinion_round(episode, v)
+    return writer_round(episode, v, job, why=why)
+
+
+def after_critic(job: dict, res) -> dict | None:
+    """After a Critic run that the gate asked for (data style_gate_kritik): check again and route. The review routing in
+    conductor/review.py leaves these runs to the gate."""
+    d = job.get("data") or {}
+    episode = job.get("episode")
+    if (not episode or job.get("identity") != "critic" or job.get("step") != "script" or "style_gate_kritik" not in d
+            or not getattr(res, "ok", False)):
+        return None
+    cfg = settings()
+    if cfg["mode"] == "off":
+        return None
+    v = check(episode)
+    db.update("jobs", job["id"], data={**d, "style_gate_after": summary(v)})
+    if v.get("skipped"):
+        return None
+    if v["pass"]:
+        return ready(episode, v, "The Critic approves.")
+    if cfg["mode"] == "warn":
+        from .conductor import flow
+        flow.post(episode, short_line(v) + " (The gate only warns in this studio.)", step="script")
+        return {"action": "warned"}
+    return route(episode, v, job, why="The Critic reviewed your script. ")
+
+
+# ---- after the recording: the same review on what was said -------------------------------------------------------
+WORDS = re.compile(r"^words-(v\d{3,})\.json$")
+
+
+def plan_of(episode: str) -> Path | None:
+    """The cue sheet the recording followed: the approved script card's file if it is a cue sheet, else the newest."""
+    from . import cuesheet
+    a = _approved(episode)
+    if a is not None and cuesheet.is_cue_sheet(a):
+        return a
+    s = latest(episode).get("SCRIPT")
+    return s if s is not None and cuesheet.is_cue_sheet(s) else None
+
+
+def after_transcript(episode: str, words: Path) -> dict | None:
+    """The words of a finished voice cut (work/words-vNNN.json) are in: the Critic reviews what was said against the
+    cue sheet, so the edit gets a list of sentences without value (edit/<cut list>). Nothing is blocked."""
+    cfg = settings()
+    if cfg["mode"] == "off" or not WORDS.match(words.name):
+        return None
+    plan = plan_of(episode)
+    tool = checker(cfg)
+    if plan is None or tool is None:
+        return None
+    from .conductor import flow, queue
+    ep = paths.episode_dir(episode)
+    version = WORDS.match(words.name).group(1)
+    cut = ep / "edit" / f"cutlist-{version}.json"
+    material = sorted((ep / "work").glob("material-v*.md"))
+    mat = f" --material {_rel(episode, material[-1])}" if material else ""
+    cmd = (f"python3 {tool} {_rel(episode, words)} --drehzettel {_rel(episode, plan)}{mat} --json")
+    v = run(words, "lang", cfg=cfg, tool=tool, extra=["--drehzettel", str(plan)] + (
+        ["--material", str(material[-1])] if material else []))
+    guides = ", ".join(f"`{g}`" for g in v.get("instructions", [])) or "the checker's questions"
+    task = (f"Review what was said in the finished voice cut {version} against the cue sheet {_rel(episode, plan)}. "
+            f"Run `{cmd}` (from the episode folder): its pruefstuecke are the spoken sentences. Follow {guides} for "
+            f"the review and write it to {_rel(episode, words.with_suffix('.kritik.json'))}. Every sentence that gives "
+            "the viewer nothing is marked; a broken hook or punch line is a blocker (that unit is recorded again). "
+            "Then run the same command with `--schnittliste "
+            f"{_rel(episode, cut)}` so the Editor gets the cut list with times, and write your report "
+            f"review/critic-transcript-{version}.md. Never change the recording or the plan.")
+    jid = queue.add(episode, "critic", "edit", task, data={"transcript_review": _rel(episode, words),
+                                                           "cut_list": _rel(episode, cut), "plan": _rel(episode, plan)})
+    db.update("jobs", jid, doing=f"Reviewing what was said in {version}")
+    flow.post(episode, f"The words of {version} are in. The Critic reviews what was said against the cue sheet and "
+              "writes a cut list for the edit.", step="edit")
+    return {"action": "critic", "job": jid}
+
+
+def after_transcript_review(job: dict, res) -> dict | None:
+    d = job.get("data") or {}
+    if job.get("identity") != "critic" or "transcript_review" not in d or not getattr(res, "ok", False):
+        return None
+    from .conductor import flow
+    episode = job["episode"]
+    cut = paths.inside(paths.episode_dir(episode), d["cut_list"])
+    if cut.is_file():
+        try:
+            n = len(json.loads(cut.read_text(encoding="utf-8")).get("saetze") or [])
+        except (OSError, ValueError):
+            n = None
+        flow.post(episode, f"Cut list for the edit: {d['cut_list']} ({n if n is not None else '?'} sentences without "
+                  "value, with times). The Editor listens to each one and cuts at islands, never at word times.",
+                  step="edit", relay_for=["editor"])
+        return {"action": "cut_list", "file": d["cut_list"], "sentences": n}
+    flow.post(episode, f"The Critic's review of {d['transcript_review']} wrote no cut list ({d['cut_list']}).",
+              step="edit")
+    return {"action": "none"}
 
 
 def writer_note(episode: str | None) -> str:
@@ -511,10 +791,17 @@ def writer_note(episode: str | None) -> str:
             "[--json]` decides. Write every draft to pass it: run it with --nur-auto until no automatic check fails, "
             "then the Critic answers every question of kind kritik in `<script>.kritik.json` next to the script "
             '({"K-…": {"antwort": true|false, "grund": "…"}}). While the full run fails, ' + strict +
-            f" and the script does not go to recording; the conductor sends the failed checks back (at most "
-            f"{cfg['max_rounds']} rounds). The checker's rules win over the generic craft where they differ.")
+            " and the script does not go to recording; the conductor sends the failed checks back ("
+            + (f"at most {cfg['max_rounds']} rounds)" if cfg["loop"] == "rounds" else "rounds go on until the checker and the "
+               "Critic pass; a point that stays the same for two rounds goes to the user as not approved)")
+            + ". The checker's rules win over the generic craft where they differ. When the studio writes cue sheets "
+            "(brief/CUES-vNNN.md or DREHZETTEL-vNNN.md, see docs/cue-sheets.md), the long script is a cue sheet: fixed "
+            "opening, per unit a fixed hook and punch line, bullets in between, and the checker says so if a full text "
+            "is not allowed.")
 
 
-__all__ = ["Blocked", "DEFAULTS", "MODES", "after_writer", "check", "checker", "failed_ids", "guard_advance",
-           "latest", "limit_card", "needs_gate", "on_limit_card", "require", "run", "settings", "short_line",
-           "subjects", "summary", "text", "writer_note"]
+__all__ = ["Blocked", "DEFAULTS", "LOOPS", "MODES", "after_critic", "after_second_opinion", "after_transcript",
+           "after_transcript_review", "after_writer", "check", "checker", "critic_round", "failed_ids", "guard_advance",
+           "latest", "limit_card", "needs_gate", "on_limit_card", "plan_of", "points", "require", "route", "run",
+           "second_opinion_round", "settings", "short_line", "stuck", "stuck_card", "subjects", "summary", "text",
+           "writer_note", "writer_round"]

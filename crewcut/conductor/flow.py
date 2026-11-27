@@ -368,6 +368,8 @@ def after_job(job: dict, res) -> None:
         review.after_review(job, res.text)   # the Critic's verdict starts the next round or asks the user
         from .. import stylegate
         stylegate.after_writer(job, res)     # the Writer's newest script against the studio's style checker
+        stylegate.after_critic(job, res)     # a review the gate asked for: check again, next round or the card
+        stylegate.after_transcript_review(job, res)   # a review of what was said: the cut list goes to the edit
         if job["identity"] in ("editor", "designer"):
             from ..cut import prune
             prune.after_write(paths.episode_dir(episode))   # older intermediate renders go (the newest two stay)

@@ -67,8 +67,15 @@ location = "local"         # where motion graphics render: "local" (this compute
 # the Critic's answers (<script>.kritik.json). block: a failing script gets no card, no yes and no recording, and the
 # Writer gets the failed checks back (at most max_rounds rounds, then a card asks you); warn: only a note in the chat;
 # off: no gate. A studio without that skill skips the gate with a warning. channel.json script.style_gate wins.
+# loop: "rounds" stops after max_rounds Writer rounds and asks you; "until_pass" goes on while each round changes what
+# is open, and puts the first point that stayed unchanged for two rounds on a card ("Not approved: …"), or stops after
+# safety_rounds. Cue sheets (brief/CUES-vNNN.md, DREHZETTEL-vNNN.md; docs/cue-sheets.md) are checked as long scripts.
+# A checker may ask for a second opinion: the host helper runs CREWCUT_SECOND_OPINION_CMD (set on the host); without it
+# the card says why there is none.
 mode = "block"
 max_rounds = 3
+loop = "rounds"
+safety_rounds = 10
 skill = "deutscher-hormozi"
 checker = "scripts/stil_check.py"
 timeout_seconds = 120

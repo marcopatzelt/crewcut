@@ -402,6 +402,11 @@ class Worker:
             youtube_upload.comments_tick()
         except Exception:  # noqa: BLE001 - a waiting comment must never stop the queue
             traceback.print_exc()
+        from .. import second_opinion
+        try:
+            second_opinion.tick()
+        except Exception:  # noqa: BLE001 - a waiting second opinion must never stop the queue
+            traceback.print_exc()
         try:
             self.maybe_update_engine()
         except Exception:  # noqa: BLE001 - updates must never stop the queue
