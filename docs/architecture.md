@@ -187,6 +187,8 @@ crewcut thumbnail make --episode ID --prompt FILE [--ref IMG …] [--way codex|a
 crewcut youtube connect [--episode ID] | auth | upload --episode ID [--schedule ISO] | status
 crewcut youtube verify <episode> [--package export/upload.json]   read-only metadata/caption-track comparison
 crewcut youtube results <episode> --start YYYY-MM-DD --end YYYY-MM-DD [--video ID]  read-only calendar-day results
+crewcut retention units <episode> [--clips N] [--saved] [--words F --since D --until D]  read-only retention per
+        content unit: analytics/retention-units.json/.md, a block in library/learnings/retention-units.md
 crewcut humanize record --draft FILE --final FILE [--why "…"]       the Humanizer pass of a script, for its card
 crewcut style-gate <episode> [--file F …] [--json]               the studio's style checker on the newest scripts: 0 pass, 1 block
 crewcut brand voice add <video link | recording> | list          the user's own spoken words (brand/voice/)
@@ -269,7 +271,8 @@ off. The Writer and the Critic get the checker's path and the rules of the gate 
 times).
 
 Episode folder: `brief/`, `originals/`, `work/`, `audio/`, `broll/`, `graphics/`, `edit/`, `render/`, `review/`,
-`export/`, plus `project.json`:
+`export/`, `analytics/` (after publishing: `versions.json`, `retention-units.json`/`.md`, `retention-units-why.json`,
+`drops/`), plus `project.json`:
 
 Imported episodes may also contain `legacy/`, `legacy-import.json` and `legacy-visible.json`. These preserve earlier
 files and provenance without making old plans executable or old approvals current. Shared historical material lives

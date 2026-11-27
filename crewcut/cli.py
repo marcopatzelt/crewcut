@@ -337,6 +337,24 @@ def build_parser() -> argparse.ArgumentParser:
     yr.add_argument("--video", help="video id (default: export/upload-result.json)")
     yr.add_argument("--json", action="store_true")
 
+    rt = sub.add_parser("retention", help="audience retention of a published video per content unit (read-only)")
+    rtsub = rt.add_subparsers(dest="rtcmd", required=True)
+    ru = rtsub.add_parser("units", help="retention per content unit (hook, retain, reward), the sentence where each "
+                          "steepest drop starts, and one lesson block in library/learnings/retention-units.md")
+    ru.add_argument("episode")
+    ru.add_argument("--video", help="video id (default: analytics/versions.json or export/upload-result.json)")
+    ru.add_argument("--words", help="words file of the published edit (default: analytics/versions.json, else the "
+                    "newest edit plan's words)")
+    ru.add_argument("--duration", type=float, help="length of that version in seconds (default: from YouTube)")
+    ru.add_argument("--since", help="first day YYYY-MM-DD (default: the upload day)")
+    ru.add_argument("--until", help="last day YYYY-MM-DD (default: today)")
+    ru.add_argument("--clips", type=int, default=0, metavar="N",
+                    help="cut the N steepest drops from the local export into analytics/drops/")
+    ru.add_argument("--saved", action="store_true",
+                    help="measure again from the curve in analytics/retention-units.json, without the API")
+    ru.add_argument("--no-learnings", action="store_true", help="do not add the block to the learnings file")
+    ru.add_argument("--json", action="store_true")
+
     en = sub.add_parser("engine", help="the engine: Claude Code (default) or Codex (beta), both on your subscription")
     ensub = en.add_subparsers(dest="encmd", required=True)
     ens = ensub.add_parser("status")
@@ -857,6 +875,9 @@ def _run(a) -> int:
     if a.cmd == "youtube":
         from .youtube import cli as ycli
         return ycli.main(a)
+    if a.cmd == "retention":
+        from .youtube import units
+        return units.main(a)
     if a.cmd == "engine":
         from . import engines
         if a.encmd == "status":
