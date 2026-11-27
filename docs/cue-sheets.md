@@ -24,7 +24,7 @@ HOOK: Point one. My best clip took 40 minutes, the worst one 90.
 • Example: [the run log] three helpers · street, flat, edit
 PUNCH: Helpers beat thinking time.
 ASK: If you like tests like this, subscribe.            (BITTE:)
-BRIDGE: So where did the time go?                       (BRÜCKE:)
+BRIDGE: So where did the time go?                (optional)                       (BRÜCKE:)
 
 ## Unit 2 | Proof: Number | Short: no
 …
@@ -39,8 +39,9 @@ LINK: If you want this system, the link is in the description.
 - A bullet names what is on screen first (`[both clocks side by side]`), then cue words separated by ` · `. It is not
   a sentence: the speaker makes the sentences.
 - Opening markers: `LINE1`, `PROOF`, `SITUATION`, `PROMISE`, `LOOP`, `PLAN` (German `SATZ1`, `BEWEIS`, `LAGE`, `ANSAGE`,
-  `SCHLEIFE`, `PLAN`). Unit: `HOOK` first, bullets, `PUNCH`, then only `ASK` and `BRIDGE`; every unit but the last has a
-  bridge. An optional `## Payoff` (`EINLÖSUNG`) between the last unit and the close keeps a promise from the opening.
+  `SCHLEIFE`, `PLAN`). Unit: `HOOK` first, bullets, `PUNCH`, then only `ASK` and `BRIDGE`. A bridge is optional: a real
+  question that comes out of the unit, or nothing (the next hook's count word is enough). Hook and punch line may also
+  be cue words; a full short sentence is the default. An optional `## Payoff` (`EINLÖSUNG`) between the last unit and the close keeps a promise from the opening.
   The close has a `VERDICT` and, as its last line, one `LINK`.
 - The unit heading carries the kind of proof and whether the unit can go out as a Short on its own.
 
@@ -56,18 +57,20 @@ like this:
 2. **The Critic.** A check may name an `instructions` file. The gate gives the Critic that file: it reads every
    sentence and every unit, asks the questions the file lists, cites its sources, and writes a rewrite for every line
    that gives the viewer nothing. Its verdict carries a checksum of the text, so it is only valid for the version it read.
-3. **The loop.** With `loop = "until_pass"` the Writer and the Critic take turns until the Critic approves. If the same
+3. **The fresh review.** A check may set `fresh_context` (with an `answer_key`): once the Critic approves, a second
+   Critic reads the script again in a new session, without chat and crew notes, told not to read the notes below `---`
+   or earlier reviews. Only when both approve does the gate go on.
+4. **The loop.** With `loop = "until_pass"` the Writer and the Critic take turns until the Critic approves. If the same
    point stays open, unchanged, for two rounds in a row, the gate stops and puts exactly that point on a card
    ("Not approved: …"). `safety_rounds` is only an emergency stop. A script that does not pass never goes to the user
    as approved.
-4. **The second opinion.** When everything else passes and the checker asks for one (`second_opinion: true`), the gate
+5. **The second opinion.** When everything else passes and the checker asks for one (`second_opinion: true`), the gate
    asks a second model through the host helper (`crewcut/second_opinion.py`, job `second-opinion` in
    `host/crewcut-host.sh`). Set `CREWCUT_SECOND_OPINION_CMD` on the host; the command reads its prompt from
    `$INPUT_FILE` and prints a JSON answer (`{"agree": …, "points": […]}`). It runs in its own folder
    (`CREWCUT_SECOND_OPINION_DIR`), at most `CREWCUT_SECOND_OPINION_PARALLEL` (default 2) at a time. Without the helper
    or the command, the answer is "unavailable" with the reason, and the card shows it. A disagreeing second opinion
    sends its points to the Writer.
-
    Who starts the helper: `./start.sh`, or the **desktop app** (macOS and Linux), which runs it as its own child
    process next to the stack and stops it on Quit. The app makes the key once (`CREWCUT_HOST_TOKEN` in `stack/.env`
    in its data folder, owner-only) and gives it to the container; a container that was started before has no key
@@ -85,7 +88,7 @@ like this:
    asking: the script was written by the crew. `crewcut doctor` names who runs the helper and how many runs it allows
    (`second opinion: the host helper (desktop app) can ask a second model, at most 2 at a time`). A refused request
    (another key, an old prompt, no command) gets its answer at once, with the reason.
-5. **The card.** Only a sheet that passes all of this gets a script card.
+6. **The card.** Only a sheet that passes all of this gets a script card.
 
 ## After the recording
 

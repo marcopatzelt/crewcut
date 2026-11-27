@@ -179,7 +179,8 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
     # step work loads the user's own skill of that step, whoever started the run: the step, the chat or a card answer
     task_text = j["task"] + (ownskills.run_line(ownskills.for_job(j["identity"], j["step"])) if j["step"] else "")
     from . import deliver
-    if deliver.receives({**j, "status": "running", "started": j.get("started") or db.now()}):
+    fresh = bool(data.get("fresh_context"))   # a review that must not see earlier talk: no chat, no crew notes
+    if not fresh and deliver.receives({**j, "status": "running", "started": j.get("started") or db.now()}):
         task_text += "\n\n" + deliver.prompt_line()   # the user's later chat messages reach this run (deliver.py)
     prompt, agent, with_identity = task_text, None, True
     ident_for_prompt = ident
@@ -248,7 +249,10 @@ def build_task(j: dict, eng, data: dict) -> engines.Task:
                         f"Episode root: {paths.episode_dir(j['episode'])}.")
     if channel_job:
         task.name = f"crewcut-channel-{j['identity']}"
-    if eng.name == "claude" and j["episode"] and crewtalk.settings()["enabled"]:
+    if fresh:
+        task.resume = None
+        task.name = f"{j['identity']} · fresh review"
+    if eng.name == "claude" and j["episode"] and crewtalk.settings()["enabled"] and not fresh:
         # reachable for Claude Code's own cross-session messages while it runs; notes kept for this start come along
         opts["settings"] = {"crossSessionInbound": "accept"}
         notes = crewtalk.collected_for(j["episode"], j["identity"])

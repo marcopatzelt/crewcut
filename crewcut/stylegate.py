@@ -252,6 +252,8 @@ def run(p: Path, fmt: str, title: str | None = None, cfg: dict | None = None, to
     keep = ("id", "alt", "rule", "kind", "titel", "measured", "target", "line", "fix", "points", "instructions")
     out["failed"] = [{k: c.get(k) for k in keep if c.get(k) is not None} for c in checks if c.get("pass") is False]
     out["open"] = [c.get("id") for c in checks if c.get("kind") == "kritik" and c.get("pass") is None]
+    out["fresh"] = [{"id": c.get("id"), "answer_key": c.get("answer_key"), "frage": c.get("frage")}
+                    for c in checks if c.get("fresh_context") and c.get("kind") == "kritik" and c.get("pass") is None]
     out["second_opinion"] = [{"id": c.get("id"), "answer_file": c.get("answer_file"), "measured": c.get("measured"),
                               "checksum": c.get("pruefsumme") or c.get("checksum")}
                              for c in checks if c.get("second_opinion") and c.get("pass") is None and c.get("answer_file")]
@@ -527,8 +529,9 @@ def writer_round(episode: str, verdict: dict, job: dict | None = None, why: str 
 
 
 def _open_for_critic(r: dict) -> list[str]:
-    so = {s["id"] for s in r.get("second_opinion", [])}
-    return [o for o in r.get("open", []) if o not in so]
+    """Open Critic checks for the Critic's own review: not the second opinion, not the fresh second review."""
+    skip = {s["id"] for s in r.get("second_opinion", [])} | {f["id"] for f in r.get("fresh", [])}
+    return [o for o in r.get("open", []) if o not in skip]
 
 
 def critic_round(episode: str, verdict: dict, job: dict | None = None) -> dict:
@@ -557,6 +560,34 @@ def critic_round(episode: str, verdict: dict, job: dict | None = None) -> dict:
     db.update("jobs", jid, doing="Reviewing the script for the style check")
     flow.post(episode, f"{short_line(verdict)} The Critic reviews it now.", step="script")
     return {"action": "critic", "job": jid}
+
+
+def fresh_round(episode: str, verdict: dict) -> dict:
+    """The Critic approved; a second Critic reads the script again with a fresh context: a new session, no chat, no
+    crew notes, told not to read the notes below `---` or earlier reviews (checks with `fresh_context`)."""
+    from .conductor import flow, queue
+    cfg = settings()
+    n = _count(episode, "style_gate_kritik") + 1
+    if _too_many(episode, cfg, n):
+        return {"action": "card", "card": limit_card(episode, verdict, n - 1)}
+    rs = [r for r in verdict["results"] if r.get("fresh")]
+    lines = "\n".join(f"- {r['file']}: {f.get('frage') or f['id']}" + (f" Write it under `{f['answer_key']}` in "
+                      f"{str(Path(r['file']).with_suffix('.kritik.json'))}." if f.get("answer_key") else "")
+                      for r in rs for f in r["fresh"])
+    guides = sorted({g for r in rs for g in r.get("instructions", [])})
+    task = ("A second review with a fresh context. Read only the script above its line `---`, the instructions "
+            + (", ".join(f"`{g}`" for g in guides) if guides else "of the studio's checker")
+            + " and the episode's material. Do not read the notes below `---`, earlier reviews (review/critic-*.md, "
+            "other keys in the .kritik.json) or the chat; judge as if you saw this script for the first time. Run "
+            f"`python3 {verdict.get('checker')} <file> --json` for the checksum and the pieces to judge.\n" + lines +
+            "\nThen write your report review/critic-fresh-<version>.md, ending with the Verdict and Round lines. Never "
+            "change the script.")
+    jid = queue.add(episode, "critic", "script", task, data={"style_gate_kritik": n, "fresh_context": True,
+                                                            "style_gate": summary(verdict)})
+    db.update("jobs", jid, doing="Second review with a fresh context")
+    flow.post(episode, "The Critic approves. A second Critic reads the script once more, with a fresh context.",
+              step="script")
+    return {"action": "fresh", "job": jid}
 
 
 def second_opinion_round(episode: str, verdict: dict) -> dict:
@@ -681,6 +712,8 @@ def route(episode: str, v: dict, job: dict | None = None, why: str = "") -> dict
         return writer_round(episode, v, job, why=why)
     if any(_open_for_critic(r) for r in v["results"]):
         return critic_round(episode, v, job)
+    if any(r.get("fresh") for r in v["results"]):
+        return fresh_round(episode, v)
     if any(r.get("second_opinion") for r in v["results"]):
         return second_opinion_round(episode, v)
     return writer_round(episode, v, job, why=why)

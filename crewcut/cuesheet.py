@@ -17,7 +17,7 @@ line that is only `---` stands the sheet, below it notes. Format (English and Ge
     • Proof: [what is on screen] cue words · more cue words
     PUNCH: …
     ASK: … (the channel's fixed ask)   BITTE: …
-    BRIDGE: …                          BRÜCKE: …
+    BRIDGE: … (optional)               BRÜCKE: … (freiwillig)
     ## Payoff                          ## Einlösung
     PAYOFF: …                          EINLÖSUNG: …
     ## Close                           ## Schluss
@@ -247,8 +247,8 @@ def _structure(sheet: CueSheet) -> None:
             before = roles[1:roles.index("punch")]
             if any(r != "bullet" for r in before):
                 e.append(f"unit {u.number}: between HOOK and PUNCH only bullets")
-        if u is not units[-1] and len(u.fixed("bridge")) != 1:
-            e.append(f"unit {u.number}: one BRIDGE line into the next unit")
+        if len(u.fixed("bridge")) > 1:
+            e.append(f"unit {u.number}: at most one BRIDGE line (a bridge is optional; the count word is enough)")
     close = sheet.part("close")
     if close is not None:
         if len(close.fixed("verdict")) < 1 or len(close.fixed("link")) != 1:
