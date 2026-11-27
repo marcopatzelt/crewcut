@@ -1,0 +1,103 @@
+/* The format system: New episode's choices, the format pick in an episode, idea cards and the scoreboard. */
+.new-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 16px 0 4px;
+}
+
+.format-hint {
+  max-width: 60ch;
+}
+
+.format-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--r-card);
+  background: var(--sunken);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.format-pick p {
+  margin: 0;
+}
+
+.format-reason {
+  color: var(--ink-2);
+  max-width: 72ch;
+}
+
+.ideas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.idea {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border-radius: var(--r-card);
+  background: var(--card);
+  box-shadow: var(--shadow-1);
+}
+
+.idea p,
+.idea h3 {
+  margin: 0;
+}
+
+.idea-title {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.idea-title a {
+  color: var(--ink);
+}
+
+.idea-summary {
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.idea-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.scoreboard {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.scoreboard th,
+.scoreboard td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+
+.scoreboard thead th {
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+.scoreboard .verdict.more {
+  color: var(--ok);
+  font-weight: 600;
+}

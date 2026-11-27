@@ -29,6 +29,7 @@ function speechCtor(): RecognitionCtor | null {
 
 const LINE = 23;
 const MAX_LINES = 6;
+const MAX_LINES_NEW = 14; // New episode: room for a pasted post or README excerpt
 const BARS = 5;
 
 /**
@@ -115,8 +116,8 @@ function ScopedComposer({ target }: { target: string | null }) {
     const el = area.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, LINE * MAX_LINES)}px`;
-  }, [text]);
+    el.style.height = `${Math.min(el.scrollHeight, LINE * (target === null ? MAX_LINES_NEW : MAX_LINES))}px`;
+  }, [text, target]);
 
   useEffect(() => () => recognition.current?.stop(), []);
 
@@ -172,7 +173,11 @@ function ScopedComposer({ target }: { target: string | null }) {
     setListening(true);
   }
 
-  const placeholder = onboarding ? "Paste your links." : "Tell the crew what you want";
+  const placeholder = onboarding
+    ? "Paste your links."
+    : target === null
+      ? "Paste a tool, a link, a tweet or an idea"
+      : "Tell the crew what you want";
   const hasText = text.trim().length > 0;
 
   return (
@@ -206,7 +211,7 @@ function ScopedComposer({ target }: { target: string | null }) {
           id="composer"
           aria-describedby="composer-scope"
           ref={area}
-          rows={1}
+          rows={target === null ? 3 : 1}
           value={text}
           placeholder={placeholder}
           onChange={(e) => setText(e.target.value)}

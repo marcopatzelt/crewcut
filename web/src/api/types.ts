@@ -72,6 +72,79 @@ export interface Episode {
   seconds?: number | null;
   /** the interview before the first script draft; "waiting" means the episode needs the creator's answers */
   interview?: EpisodeInterview | null;
+  /** what the user asked for at New episode: long, short or auto (the Scout decides) */
+  length?: Length | null;
+  /** the show format the episode is built from, with the Scout's reason once brief/FORMAT-v001.md exists */
+  show_format?: EpisodeFormat | null;
+}
+
+export type Length = "long" | "short" | "auto";
+
+export interface EpisodeFormat {
+  id: string;
+  name: string;
+  length?: "long" | "short" | null;
+  topic_type?: string | null;
+  reason?: string | null;
+  runner_up?: string | null;
+  file?: string | null;
+}
+
+/** One show format of the library (GET /api/formats, docs/formats.md). */
+export interface ShowFormat {
+  id: string;
+  name: string;
+  length: "long" | "short";
+  when: string;
+  topic_types: string[];
+  kinds?: Array<{ id: string; name: string; when: string }>;
+  cadence?: string | null;
+  strong?: string | null;
+  source: "neutral" | "studio";
+}
+
+export interface FormatLibrary {
+  formats: ShowFormat[];
+  problems: string[];
+  enabled: boolean;
+}
+
+/** An idea card from the scout or saved links (GET /api/ideas). */
+export interface Idea {
+  id: string;
+  source: string;
+  url?: string | null;
+  title: string;
+  summary?: string | null;
+  signals?: Record<string, unknown>;
+  topic_type?: string | null;
+  suggested_format?: string | null;
+  reason?: string | null;
+  /** "rule": the loader's keyword guess; "exporter": named by the source */
+  suggestion?: "rule" | "exporter" | null;
+  status: "open" | "started" | "dismissed";
+  episode?: string | null;
+  created?: string | null;
+}
+
+export interface FormatScore {
+  format: string;
+  name: string;
+  length?: "long" | "short" | null;
+  episodes: number;
+  measured: number;
+  median_views: number | null;
+  median_avg_view_pct: number | null;
+  subs_per_1000: number | null;
+  retention_drop_per_min: number | null;
+  ctr: number | null;
+  verdict: "more" | "watch" | "thin";
+  verdict_text: string;
+}
+
+export interface Scoreboard {
+  channel: { median_views: number | null; median_avg_view_pct: number | null; subs_per_1000: number | null; episodes: number };
+  formats: FormatScore[];
 }
 
 export interface EpisodeInterview {

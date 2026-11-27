@@ -1,6 +1,6 @@
 // A small store: one state object, setUi() to change it, useUi() to read a slice in a component.
 import { useSyncExternalStore } from "react";
-import type { Card, EpisodeDetail, Message, State } from "../api/types";
+import type { Card, EpisodeDetail, Length, Message, State } from "../api/types";
 
 export type View =
   | { kind: "channel" }
@@ -60,6 +60,8 @@ export interface UiState {
   /** Cmd+B folds the Episodes panel, Cmd+Alt+B the Crew panel. */
   sideHidden: boolean;
   crewHidden: boolean;
+  /** New episode: long, short or auto, and a show format id (null: Crewcut picks). */
+  newEpisode: { length: Length; format: string | null };
 }
 
 export function initialUi(): UiState {
@@ -84,6 +86,7 @@ export function initialUi(): UiState {
     prompterOpen: false,
     sideHidden: false,
     crewHidden: false,
+    newEpisode: { length: "auto", format: null },
   };
 }
 

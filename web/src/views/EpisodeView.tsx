@@ -11,6 +11,7 @@ import { DocumentLink, documentTarget } from "../components/DocumentLink";
 import { Composer } from "../components/Composer";
 import { MoneyLine, WorkingHint, WorkingList } from "../components/Crew";
 import { ConnectEngine } from "../components/ConnectEngine";
+import { FormatPick, NewEpisodeChoices } from "../components/Formats";
 import { FullAuto } from "../components/FullAuto";
 import { InterviewBar } from "../components/InterviewBar";
 import { ago, clock, episodeNumber } from "../lib/format";
@@ -158,6 +159,7 @@ function EpisodeHead({ id }: { id: string }) {
         </span>
       ) : null}
     </header>
+    <FormatPick pick={episode?.show_format ?? detail?.show_format} />
     <InterviewBar episode={id} interview={episode?.interview ?? detail?.interview} />
     <FullAuto episode={id} />
     </>
@@ -338,7 +340,8 @@ export function NewEpisodeView() {
         <div className="thread">
           <div className="page-head">
             <h1 className="one-line">New episode</h1>
-            <p className="sub">One sentence is enough. The Showrunner starts from it.</p>
+            <p className="sub">Paste a tool, a link, a tweet or an idea below. Crewcut finds the format, says why, and writes the full script.</p>
+            <NewEpisodeChoices />
           </div>
           <div className="chat">
             <div className="chat-empty">
