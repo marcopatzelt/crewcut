@@ -316,7 +316,9 @@ the idea needs one (with a style-frame card first). Every video gets one named u
 Critic writes the lessons the next video reads. Comps render with [EffectCraft](https://github.com/storytold/effectcraft)
 (open source, built from a pinned commit), heavy 3D words with Blender, graphics can sit behind you through a person
 matte with its own edge check (it falls back to beside you when the edges are not clean), and every sound effect is
-made by code. [Motion graphics](docs/motion.md) · [The workflow](docs/motion-workflow.md) ·
+made by code. Ready-made blocks come first: HyperFrames templates, your private imported templates and CC0 3D assets,
+all in your style. [Motion graphics](docs/motion.md) · [The workflow](docs/motion-workflow.md) ·
+[Libraries](docs/motion-libraries.md) ·
 [Behind the speaker](docs/motion-matte.md) · [Templates](templates/motion/README.md)
 
 ## Under the hood

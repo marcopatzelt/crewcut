@@ -90,6 +90,12 @@ Do not lock onto a barrier or any other literal prop just because an earlier dra
 
 ## Shelf or custom
 
+- **Libraries first** (`crewcut motion libraries`, docs/motion-libraries.md): before anything is built from scratch,
+  look for a ready-made block that shows the picture: a HyperFrames template (2D insert `hf-keyword`, `hf-card`,
+  `hf-chapter`, `hf-snippet`, `hf-diagram`; the studio style is fixed, only params change), a private imported
+  template (Lottie or After Effects, converted to the pack: `crewcut motion imports use`), and for Blender a CC0 HDRI
+  or material from Poly Haven or ambientCG (`import crewcut_assets` in a plate). When none fits, say why in the motion
+  plan row.
 - **The shelf** (`crewcut motion library`): the app's templates (`templates/motion/`), the pack's own
   (`brand/templates/motion/`, they win over the app's), and earlier custom pieces. Use a shelf piece when it shows the
   picture you described. Change its params, never its `.jsx` for one video.

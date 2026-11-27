@@ -99,8 +99,9 @@ motion graphics (EffectCraft comps, `templates/motion/`, skill `motion`). Data k
 | 2D sources and real material | `headline`, `post`, `clip-card`, `cards`, `swap` |
 | 2D drawn ideas | `area`, `flow`, `untangle` |
 | 2D over the speaker (transparent) | `keyword` |
+| HyperFrames building blocks (2D, `"scene": "hf-<name>"`) | `hf-keyword`, `hf-card`, `hf-snippet` (overlays, `"transparent": true`), `hf-chapter`, `hf-diagram` (full frame); look fixed by the studio style, params only (`crewcut motion libraries`, docs/motion-libraries.md) |
 | 3D | `object-word`, `row`, `grid3d`, `stack`, `slide`, `box`, `scale` (shared kit `templates/3d/stage.py`) |
-| motion | `"kind": "motion"`: a shelf template as `scene` (`crewcut motion library`) or a comp made for this video as `source`; full frame or overlay over the speaker. Chosen in the motion pass, never per sentence from the list (skill `motion`) |
+| motion | `"kind": "motion"`: a shelf template as `scene` (`crewcut motion library`) or a comp made for this video as `source`; full frame or overlay over the speaker; a private imported template through `lottie_clip` (`crewcut motion imports use`). Chosen in the motion pass, never per sentence from the list (skill `motion`) |
 | recording | `"kind": "clip"` with `file`, `at`, `speed`: a finished recording full screen |
 
 One statement gets one form: never the same number as `counter` and as a motion `number_roll`. With the motion

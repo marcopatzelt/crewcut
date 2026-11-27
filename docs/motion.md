@@ -96,6 +96,12 @@ Without `effectcraft-cli`, `crewcut render motion` stops with one sentence and s
 or set `location = "rented"`). Everything else still works. A plan with `"motion_without_engine": "skip"` lets
 `render all` finish without the motion graphics; the cut's notes name them. The demo episode does this.
 
+## Ready-made libraries
+
+Before a graphic is built from scratch, the crew looks at three free libraries: HyperFrames templates (overlays and
+UI inserts as 2D scenes `hf-*`), private imported templates (Lottie and After Effects, converted to your style) and
+CC0 HDRIs and materials for Blender. See [motion-libraries.md](motion-libraries.md).
+
 ## Behind the speaker
 
 See [motion-matte.md](motion-matte.md).
