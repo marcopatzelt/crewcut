@@ -1,0 +1,20 @@
+{
+ "title": "Chapter card for a counted point",
+ "type": "c",
+ "kind": "full",
+ "formats": ["landscape", "portrait"],
+ "length_s": [3.0, 4.0],
+ "description": "Full frame on ink: the point's number large in the highlight colour (440 px) in the middle, the word in paper under it (150 px), and the pack's stored background shapes (brand.json motion_graphics.background.layouts) in the accent at the edges, standing still; the only card that carries them. The cut lands on a frame where the number already rises out of its baseline, the word follows 2 frames later; at the end both sink back. Every chapter card of a video looks the same; only number and word change.",
+ "params": {
+  "number": "2",
+  "word": "Recherche",
+  "ground": "ink",
+  "shapes": true,
+  "size": null,
+  "number_size": null,
+  "outAt": null
+ },
+ "cues": {},
+ "example_cues": {},
+ "notes": "word: the counted point in one or two words (\"Recherche\", \"Punkt zwei\"). ground: ink (default) or paper (the accent then takes the number). shapes: false for a plain ground. Use it with \"transparent\": false (full frame)."
+}

@@ -25,6 +25,8 @@ from . import blender, media
 from .plan import Insert, Plan, PlanError
 
 REMOTE = "/work/plates"
+REMOTE_LIB = f"{REMOTE}/_lib"        # crewcut_assets.py on the rented machine
+REMOTE_ASSETS = "/work/assets"       # its asset cache there (setup.sh makes the folder)
 
 
 @dataclass
@@ -146,9 +148,13 @@ def arg_list(args: dict) -> list[str]:
 
 
 def blender_cmd(binary: str, script: str, out: str, frames: str, args: dict, half: bool = False,
-                quality: dict | None = None, gpu: bool = False) -> list[str]:
+                quality: dict | None = None, gpu: bool = False, lib: str | None = None,
+                cache: str | None = None) -> list[str]:
+    """Blender for one plate. With a quality profile the bootstrap runs first; ``lib`` and ``cache`` give the plate
+    ``import crewcut_assets`` (CC0 HDRIs and materials, render/assets3d.py) and where it keeps the files."""
     from . import plate_quality
-    setup = ["--python-exit-code", "23", "--python-expr", plate_quality.bootstrap(quality, out, half, gpu)] if quality else []
+    setup = (["--python-exit-code", "23", "--python-expr", plate_quality.bootstrap(quality, out, half, gpu, lib, cache)]
+             if quality else [])
     return [binary, "-b", "--factory-startup", *setup, "--python", script, "--", "--out", out, "--frames", frames,
             *arg_list(args), *(["--half"] if half else [])]
 
@@ -162,8 +168,10 @@ def render_local(plan: Plan, plates: list[Plate], probe: bool = False, runner: m
         target = pl.out_dir / "probe" if probe else pl.out_dir
         target.mkdir(parents=True, exist_ok=True)
         frames = f"{max(1, pl.frames // 2)}-{max(1, pl.frames // 2)}" if probe else f"1-{pl.frames}"
+        from . import assets3d
         rc, out = runner(blender_cmd(blender.blender_bin(), str(pl.script), str(target), frames, pl.args,
-                                     half=probe, quality=pl.quality, gpu=gpu), timeout=24 * 3600)
+                                     half=probe, quality=pl.quality, gpu=gpu, lib=str(assets3d.LIB_DIR),
+                                     cache=str(assets3d.cache_dir())), timeout=24 * 3600)
         ok, reason = plate_quality.verify(target, pl.frames, pl.quality, probe=probe, gpu=gpu) if rc == 0 else (False, out)
         log(f"plate {pl.insert_id}/{pl.id}: {'ok' if ok else 'failed: ' + media.tail(out, 300)}")
         rows.append({"insert": pl.insert_id, "plate": pl.id, "ok": ok, "dir": str(target), "where": "local", "quality": reason})
@@ -175,7 +183,7 @@ def remote_script(pl: Plate, probe: bool) -> str:
     d = f"{REMOTE}/{pl.insert_id}-{pl.id}"
     script = pl.script.relative_to(pl.source_root or pl.script.parent).as_posix()
     cmd = blender_cmd(blender.REMOTE_BLENDER, f"{d}/{script}", f"{d}/out", frames, pl.args, half=probe,
-                      quality=pl.quality, gpu=True)
+                      quality=pl.quality, gpu=True, lib=REMOTE_LIB, cache=REMOTE_ASSETS)
     return f"mkdir -p {d}/out && cd {d} && " + " ".join(shlex.quote(c) for c in cmd)
 
 
@@ -198,6 +206,11 @@ def render_rented(plan: Plan, plates: list[Plate], compute, cap_usd: float, prob
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(source.read_bytes())
         uploads.append(d)
+    from . import assets3d
+    lib = stage / "_lib"
+    lib.mkdir()
+    (lib / "crewcut_assets.py").write_bytes((assets3d.LIB_DIR / "crewcut_assets.py").read_bytes())
+    uploads.append(lib)
     fonts = _fonts(plan)
     rows = []
     from . import plate_quality

@@ -1,0 +1,19 @@
+{
+ "title": "Calm diagram: two to four steps",
+ "type": "d",
+ "kind": "full",
+ "formats": ["landscape", "portrait"],
+ "length_s": [3.0, 6.0],
+ "description": "Full frame on a calm paper ground (no shapes, no gradient): an optional title, then two to four boxes in a row (upright: in a column), each with a label in the body font (64 px) and an optional value in the display font in the accent (150 px), joined by ink arrows that draw like a pen. Everything is built within about a second and the cut lands on a frame that already moves; the highlighted box fills with the accent at the cue 'land'. No icons, no decoration: the boxes and the words carry it.",
+ "params": {
+  "title": "So arbeitet der Agent",
+  "nodes": [{"label": "Aufgabe"}, {"label": "Plan"}, {"label": "Prüfung", "value": "3×"}, {"label": "Ergebnis"}],
+  "highlight": 2,
+  "step": 0.26,
+  "size": null,
+  "outAt": null
+ },
+ "cues": {"land": "the highlighted box is filled here"},
+ "example_cues": {"land": 1.6},
+ "notes": "nodes: 2 to 4 (more are dropped), each a text or {\"label\", \"value\"}. highlight: index of the box that matters (-1 for none). step: seconds between boxes (the whole build stays within about a second). Use it with \"transparent\": false (full frame)."
+}

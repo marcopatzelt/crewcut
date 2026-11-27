@@ -17,6 +17,8 @@
                            [--out FILE]
     crewcut render sfx-sheet [--out DIR] [--voice WAV --start S --seconds N]   the effect set to listen to, its id
     crewcut render sfx-approve <set id> [--source "who, when"]                the user's yes (never inside a crew job)
+    crewcut render assets fetch <spec> [<spec> ...] [--res 2k]   CC0 HDRIs and materials (polyhaven:hdri/<id>,
+                           polyhaven:tex/<id>, ambientcg:<id>) into the cache; `assets list` shows it
 
 Plain text by default, --json for machine output. Exit codes: 0 ok, 1 error, 2 usage, 3 waiting for or refused by the
 user (a card is open, the cap is reached), 4 missing login or key.
@@ -34,7 +36,7 @@ from . import assemble, capture, measure, music, sfx_events, workbench
 from .plan import Plan, PlanError
 
 COMMANDS = ("plan", "2d", "motion", "3d", "probe", "cut", "shown", "all", "slides", "measure", "samples", "capture",
-            "music-bed", "sfx-sheet", "sfx-approve")
+            "music-bed", "sfx-sheet", "sfx-approve", "assets")
 
 
 def _ids(s: str | None) -> list[str] | None:
@@ -178,6 +180,11 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--source", default="the user, after listening", help="who said yes, and when")
     p.add_argument("--pack", help="the style pack folder (default: the studio's brand/)")
     p.add_argument("--json", action="store_true")
+    p = sub.add_parser("assets", help="CC0 3D assets: Poly Haven HDRIs and textures, ambientCG materials (cached)")
+    p.add_argument("action", choices=("fetch", "list"))
+    p.add_argument("specs", nargs="*", help="polyhaven:hdri/<id>, polyhaven:tex/<id> or ambientcg:<id>")
+    p.add_argument("--res", default="2k", help="1k, 2k, 4k or 8k (default 2k)")
+    p.add_argument("--json", action="store_true")
     return ap
 
 
@@ -264,6 +271,32 @@ def run(a: argparse.Namespace, out: dict) -> int:
                 print(f"  {n:<12} {lv:g} dB")
             print("  approved: " + ("yes" if approved else f"no (the user listens, then `crewcut render sfx-approve "
                                                           f"{r['id']}`)"))
+        return 0
+    if a.cmd == "assets":
+        from . import assets3d
+        if a.action == "list":
+            rows = assets3d.cached()
+            out["cache"], out["assets"] = str(assets3d.cache_dir()), rows
+            if not a.json:
+                print(f"Cache {assets3d.cache_dir()}")
+                for r in rows:
+                    print(f"  {r.get('spec'):<36} {r.get('resolution'):<4} {', '.join(r.get('files') or {})}  "
+                          f"{r.get('licence')}  {r.get('source')}")
+                if not rows:
+                    print("  empty")
+            return 0
+        if not a.specs:
+            raise PlanError("name at least one asset, e.g. polyhaven:hdri/studio_small_09")
+        got = []
+        for spec in a.specs:
+            try:
+                got.append(assets3d.fetch(spec, a.res))
+            except assets3d.lib().AssetError as e:
+                raise PlanError(str(e)) from e
+        out["assets"] = got
+        if not a.json:
+            for r in got:
+                print(f"{r['spec']} {r['resolution']}: {', '.join(f'{k} {v}' for k, v in r['paths'].items())}")
         return 0
     if a.cmd == "sfx-approve":
         from .. import paths

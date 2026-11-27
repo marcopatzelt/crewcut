@@ -1,0 +1,23 @@
+{
+ "title": "Card: a definition, a lower third or a name tag",
+ "type": "b",
+ "kind": "overlay",
+ "formats": ["landscape", "portrait"],
+ "length_s": [3.0, 6.0],
+ "description": "The channel's one box form: 24 px rounding, paper at 96 % with a soft ink shadow and a 10 px accent edge on the left; line 1 in the display font (the name or the term, 72 px), line 2 in the body font (role, source or a short explanation, 54 to 60 px). It sits in the lower third on the free side, right-aligned at the safe edge, its lower edge 86 px above the frame. mark: a thin highlight band behind line 1 (a definition). variant \"tag\": the name tag of a proof film (ink at 90 %, no shadow, one paper line, low on the left). The card pushes in from the speaker's side, each line 2 frames later.",
+ "params": {
+  "title": "Kontextfenster",
+  "line": "was das Modell auf einmal liest",
+  "mark": false,
+  "variant": "card",
+  "side": "auto",
+  "size": null,
+  "x": null,
+  "y": null,
+  "inAt": 0.1,
+  "outAt": null
+ },
+ "cues": {"land": "the last line is complete here"},
+ "example_cues": {},
+ "notes": "line may be null. variant: card or tag (tag shows title, else line). x, y: centre as a share of the frame (null: placed in the lower third). Never a whole sentence."
+}

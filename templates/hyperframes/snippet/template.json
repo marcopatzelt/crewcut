@@ -1,0 +1,30 @@
+{
+ "title": "Chat or code snippet",
+ "type": "e",
+ "kind": "overlay",
+ "formats": ["landscape", "portrait"],
+ "length_s": [3.0, 6.0],
+ "description": "A short excerpt in the channel's one box form, dark (ink at 90 %, 24 px rounding), never a whole screen and never chat bubbles: mode \"chat\" shows at most three messages as name and text (the assistant's name in the highlight colour, its text typed out); mode \"code\" shows at most max_lines lines with line numbers, a marked line gets a thin highlight band with ink type at the cue. Body font throughout (mono: true for a monospace code font). On an overlay the box sits on the free side next to the face; with \"transparent\": false it is centred on the paper ground.",
+ "params": {
+  "mode": "chat",
+  "title": "Claude Code",
+  "user": "Du",
+  "assistant": "Claude",
+  "messages": [
+   {"who": "user", "text": "Prüf die Rechnung von gestern."},
+   {"who": "assistant", "text": "Zwei Posten fehlen: 14,90 € und 3,20 €."}
+  ],
+  "code": "def kosten(tokens):\n    preis = 0.30 / 1_000_000\n    return tokens * preis",
+  "highlight": [],
+  "mono": false,
+  "max_lines": 7,
+  "cps": 38,
+  "side": "auto",
+  "size": null,
+  "inAt": 0.0,
+  "outAt": null
+ },
+ "cues": {"land": "typed text is complete here; a marked code line gets its band"},
+ "example_cues": {},
+ "notes": "messages: [{\"who\": \"user\" | \"assistant\", \"text\": ...}], at most 3, short. highlight: line numbers (from 1) of code lines to mark. cps: characters per second of typed text (raised so typing is done by the cue)."
+}

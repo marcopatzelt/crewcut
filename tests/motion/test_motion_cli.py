@@ -28,6 +28,9 @@ COMMANDS = {
 # the motion workflow (motion plan 3.1, 3.3, 3.6, 3.8): no engine needed
 WORKFLOW = {"plan", "library", "new", "style-frame", "promote", "report", "lessons", "reference add",
             "reference from-chat", "reference list", "benchmark add", "benchmark list", "craft-compare", "reuse", "import-source-kit"}
+# the ready-made libraries (docs/motion-libraries.md)
+LIBRARIES = {"libraries", "style", "hf list", "hf show", "hf sample", "hf lint", "imports list", "imports add",
+             "imports use", "imports convert"}
 
 
 def _leaves(group: click.Group, prefix: str = "") -> set[str]:
@@ -62,7 +65,7 @@ def test_crewcut_help_lists_motion(capsys):
 
 def test_all_52_commands_exist():
     assert len(COMMANDS) == 52
-    assert _leaves(mcli.cli) == COMMANDS | WORKFLOW
+    assert _leaves(mcli.cli) == COMMANDS | WORKFLOW | LIBRARIES
 
 
 def test_usage_error_is_exit_2(capsys):

@@ -1,0 +1,10 @@
+asset:        crewcut-card.json
+title:        Lottie sample: a card with a plate, an accent bar and two text layers (30 fps, 2.4 s)
+author:       Crewcut contributors
+source:       original work
+license:      MIT
+added:        2026-11-27
+notes:        Hand-written from the public Lottie format description; not exported from any Adobe product or
+              third-party file. Its colours (orange, blue, greys) and font (Montserrat) are deliberately foreign, so the
+              converter's palette, font and frame-rate changes can be seen and tested. The default file of the motion
+              template lottie_clip.

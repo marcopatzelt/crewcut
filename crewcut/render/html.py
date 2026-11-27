@@ -89,7 +89,11 @@ def write_data(ins: Insert) -> Path:
 
 
 def render_insert(plan: Plan, ins: Insert, runner: media.Runner = media.run, log: Callable = print) -> bool:
-    """Render the missing frames of one 2D insert. True when no frame is missing afterwards."""
+    """Render the missing frames of one 2D insert. True when no frame is missing afterwards. A HyperFrames template
+    (scene ``hf-<name>``) renders through crewcut/render/hyperframes.py."""
+    from . import hyperframes
+    if hyperframes.is_hf(ins):
+        return hyperframes.render_insert(plan, ins, runner, log)
     miss = plan.missing(ins)
     if not miss:
         return True
@@ -120,6 +124,9 @@ def render_2d(plan: Plan, ids: list[str] | None = None, images_only: bool = Fals
 def still(plan: Plan, ins: Insert, frame: int, out_dir: Path, runner: media.Runner = media.run,
           scale: float = 0.5) -> Path | None:
     """One 2D frame into out_dir as <id>-<frame>.png (probe), rendered full size and scaled down with Pillow."""
+    from . import hyperframes
+    if hyperframes.is_hf(ins):
+        return hyperframes.still(plan, ins, frame, out_dir, runner, scale)
     tmp = out_dir / f".{ins.id}-{frame:04d}"
     tmp.mkdir(parents=True, exist_ok=True)
     cmd = render_cmd(ins.template, tmp, write_data(ins), tokens_file(plan), frames=ins.render_frames,

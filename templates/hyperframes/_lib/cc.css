@@ -1,0 +1,16 @@
+/* cc.css: shared base of Crewcut's HyperFrames templates (part of Crewcut, MIT). Inlined after the studio theme. */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { background: transparent; overflow: hidden; }
+body { width: 100vw; height: 100vh; -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision; }
+#root { position: relative; overflow: hidden; }
+.cc-ground { position: absolute; inset: 0; }
+.cc-layer { position: absolute; inset: 0; }
+.cc-display { font-family: var(--cc-font-display); font-weight: var(--cc-weight-display); font-style: normal; }
+.cc-body { font-family: var(--cc-font-body); font-weight: var(--cc-weight-body); font-style: normal; }
+.cc-mono { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-weight: 500; font-style: normal; }
+/* a word that rises out of its own baseline: the mask keeps descenders and the shadow whole */
+.cc-mask { display: inline-block; overflow: hidden; vertical-align: bottom; padding: 0.06em 0.08em 0.16em;
+           margin: -0.06em -0.08em -0.16em; }
+.cc-rise { display: inline-block; white-space: pre; }
+.cc-scrim { position: absolute; inset: 0; }
+.cc-halo { position: absolute; }
