@@ -121,7 +121,7 @@ run_second_opinion() {
   ( cd "$SO_DIR" && INPUT_FILE="$BOX/runs/$id.input" bash -c "$CREWCUT_SECOND_OPINION_CMD" \
       > "$BOX/runs/$id.out" 2> "$BOX/runs/$id.err" || true
     mv "$BOX/runs/$id.out" "$BOX/runs/$id.json"; rm -f "$BOX/runs/$id.running"
-    say "$id" done "The second opinion is in." ) &
+    say "$id" "done" "The second opinion is in." ) &
   say "$id" running "A second opinion on the script runs on this computer."
 }
 
