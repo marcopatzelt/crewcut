@@ -61,6 +61,7 @@ The token is stored in `studio/.crewcut/youtube-token.json` (owner-only permissi
 | Schedule (`publishAt`), private / unlisted / public | `videos.insert` status | publish |
 | Thumbnail | `thumbnails.set` | the thumbnail card before |
 | Captions (SRT) | `captions.insert` | part of the publish card |
+| A Short's link comment to the long video (`crewcut youtube comment`), after YouTube has processed it | `commentThreads.insert` (`youtube.force-ssl`) | part of the publish card; pinning has no API |
 | "Altered or synthetic content" answer | `status.containsSyntheticMedia` | shown on the publish card with a reason |
 | Retention around the motion moments (`crewcut youtube retention <episode>`) | YouTube Analytics API, read-only | none (unproven: see below) |
 | Video results for a calendar-day period (`crewcut youtube results`) | YouTube Analytics API, read-only | none |

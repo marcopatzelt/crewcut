@@ -317,6 +317,11 @@ def build_parser() -> argparse.ArgumentParser:
     yu.add_argument("--package", help="upload package JSON, default export/upload.json")
     yu.add_argument("--schedule", help="ISO time to publish; without it the video stays private")
     yu.add_argument("--dry-run", action="store_true")
+    ycm = ysub.add_parser("comment", help="post the Short's approved link comment once YouTube has processed it "
+                          "(never twice; pinning has no API)")
+    ycm.add_argument("episode")
+    ycm.add_argument("--package", help="upload package JSON, default: the one of the upload")
+    ycm.add_argument("--wait", type=float, default=0, help="seconds to wait for YouTube's processing")
     ysub.add_parser("status")
     yv = ysub.add_parser("verify", help="compare uploaded metadata with the package (read-only)")
     yv.add_argument("episode")

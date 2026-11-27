@@ -5,12 +5,25 @@ from __future__ import annotations
 import json
 import os
 import re
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 
-from .. import approvals, db, paths
+from .. import approvals, config, db, paths
 
 REQUIRED = ("video", "title", "description")
+# The Short's link comment. YouTube refused it every time it came right after the upload, while the video was still
+# processing (four Shorts on 24.11.2026); the same call worked once the video was processed. So the comment waits for
+# uploadStatus "processed": up to COMMENT_WAIT_S inside the upload, after that the worker tries again (comments_tick).
+COMMENT_WAIT_S = 45
+COMMENT_POLL_S = 5
+COMMENT_RETRY_S = 60
+COMMENT_RETRY_MAX_S = 900
+COMMENT_GIVE_UP_S = 24 * 3600
+PENDING = "youtube_comment_pending:"
+GONE = ("failed", "rejected", "deleted")
+PIN_NOTE = "pin it in YouTube Studio and set \"Related video\" in the YouTube app (no API for either)"
 
 
 def load_package(episode: str, rel: str = "export/upload.json") -> tuple[Path, dict]:
@@ -145,7 +158,8 @@ def upload(episode: str, rel: str = "export/upload.json", publish_at: str | None
     vid = resp["id"]
     result = {"video_id": vid, "url": f"https://youtu.be/{vid}", "at": db.now(), "card": card["id"],
               "privacy": body["status"]["privacyStatus"], "publish_at": body["status"].get("publishAt"),
-              "standing": bool((card.get("data") or {}).get("standing")), "notes": []}
+              "standing": bool((card.get("data") or {}).get("standing")), "package": rel, "notes": []}
+    _write_result(ep, result)   # the video is up: its id is on disk before anything else can fail or wait
     if short:
         result.update(finish_short(yt, vid, pkg, final_status))
     if pkg.get("thumbnail"):
@@ -160,8 +174,19 @@ def upload(episode: str, rel: str = "export/upload.json", publish_at: str | None
                                  media_body=MediaFileUpload(str(paths.inside(ep, c["file"])))).execute()
         except Exception as e:  # noqa: BLE001
             result["notes"].append(f"captions {c.get('file')} not uploaded: {type(e).__name__}")
-    (ep / "export" / "upload-result.json").write_text(json.dumps(result, indent=1), encoding="utf-8")
+    _write_result(ep, result)
+    if short and result.get("read_back") and comment_text(pkg):
+        wait_s = float(config.get("crewcut", "youtube.comment_wait_s", COMMENT_WAIT_S))
+        _hold_comment(episode, vid, rel, wait_s + COMMENT_RETRY_S)   # a stopped upload still leaves the retry
+        result.update(_record_comment(episode, result, post_comment(yt, vid, pkg, wait_s=wait_s), rel))
     return result
+
+
+def _write_result(ep: Path, result: dict) -> None:
+    destination = ep / "export" / "upload-result.json"
+    temporary = destination.with_suffix(".json.tmp")
+    temporary.write_text(json.dumps(result, indent=1), encoding="utf-8")
+    temporary.replace(destination)
 
 
 def _is_short(episode: str) -> bool:
@@ -174,7 +199,7 @@ def _is_short(episode: str) -> bool:
 
 def finish_short(yt, vid: str, pkg: dict, final_status: dict) -> dict:
     """Read the private Short back; only when title and description match, set the planned visibility or time.
-    Then add the link to the long video as a comment (the API cannot pin it or set "Related video")."""
+    The link comment comes after this (post_comment), once YouTube has processed the video."""
     out: dict = {"read_back": False, "notes": []}
     items = yt.videos().list(part="snippet,status", id=vid).execute().get("items") or []
     if not items:
@@ -194,20 +219,221 @@ def finish_short(yt, vid: str, pkg: dict, final_status: dict) -> dict:
             status["containsSyntheticMedia"] = final_status["containsSyntheticMedia"]
         yt.videos().update(part="status", body={"id": vid, "status": status}).execute()
         out.update(privacy=status["privacyStatus"], publish_at=status.get("publishAt"))
-    if pkg.get("related_url"):
-        try:
-            yt.commentThreads().insert(part="snippet", body={"snippet": {"videoId": vid, "topLevelComment": {
-                "snippet": {"textOriginal": pkg.get("related_comment") or f"The whole video: {pkg['related_url']}"}}}}
-            ).execute()
-            out["notes"].append("comment with the link to the long video added; pin it and set \"Related video\" in "
-                                "YouTube Studio (no API for either)")
-        except Exception as e:  # noqa: BLE001 - the Short is up; report and go on
-            out["notes"].append(f"comment not added: {type(e).__name__}")
     return out
+
+
+# ---- the link comment under a Short ---------------------------------------------------------------------------------
+def comment_text(pkg: dict) -> str | None:
+    """The comment the publish card showed: the package's related_comment, or a default line with related_url."""
+    if not pkg.get("related_url"):
+        return None
+    return pkg.get("related_comment") or f"The whole video: {pkg['related_url']}"
+
+
+def error_text(e: Exception) -> str:
+    """Status, reason and message of an API error. The class name alone ("HttpError") hid the cause."""
+    status = getattr(getattr(e, "resp", None), "status", None)
+    message, reasons = "", []
+    try:
+        err = json.loads(getattr(e, "content", None) or b"{}").get("error") or {}
+        message = str(err.get("message") or "")
+        reasons = [str(x["reason"]) for x in err.get("errors") or [] if isinstance(x, dict) and x.get("reason")]
+    except (ValueError, TypeError, AttributeError):
+        pass
+    head = " ".join([type(e).__name__] + ([f"HTTP {status}"] if status else []) + reasons)
+    return f"{head}: {message}" if message else head if status else f"{head}: {e}"
+
+
+def _processing(yt, vid: str) -> tuple[str | None, str | None]:
+    """YouTube's uploadStatus ("uploaded" while it processes, then "processed") and the video's channel id."""
+    items = yt.videos().list(part="snippet,status", id=vid).execute().get("items") or []
+    if not items:
+        return None, None
+    return (items[0].get("status") or {}).get("uploadStatus"), (items[0].get("snippet") or {}).get("channelId")
+
+
+def _existing(yt, vid: str, channel: str | None, url: str) -> str | None:
+    """The id of the channel's own top-level comment that already carries the link, so a retry never posts twice."""
+    res = yt.commentThreads().list(part="snippet", videoId=vid, maxResults=100, order="time").execute()
+    for thread in res.get("items") or []:
+        sn = ((thread.get("snippet") or {}).get("topLevelComment") or {}).get("snippet") or {}
+        author = (sn.get("authorChannelId") or {}).get("value")
+        if url in (sn.get("textOriginal") or sn.get("textDisplay") or "") and (not channel or author == channel):
+            return thread.get("id")
+    return None
+
+
+def post_comment(yt, vid: str, pkg: dict, wait_s: float = 0, sleep=time.sleep, clock=time.monotonic) -> dict:
+    """Post the link comment once the video is processed, as the channel (commentThreads.insert), never twice.
+
+    Returns {"status": "added" | "exists" | "pending" | "failed", "text", "at", and "id" or "error"}. "pending" means
+    try again later: YouTube still processes the video, or the request failed on the network or on YouTube's side."""
+    text = comment_text(pkg)
+    out: dict = {"text": text, "at": db.now()}
+    try:
+        deadline = clock() + wait_s
+        state, channel = _processing(yt, vid)
+        while state not in ("processed", *GONE) and clock() < deadline:
+            sleep(COMMENT_POLL_S)
+            state, channel = _processing(yt, vid)
+        if state in GONE:
+            return {**out, "status": "failed", "error": f"the video is {state} on YouTube"}
+        if state != "processed":
+            return {**out, "status": "pending", "error": f"YouTube is still processing the video ({state or 'not found'})"}
+        found = _existing(yt, vid, channel, pkg["related_url"])
+        if found:
+            return {**out, "status": "exists", "id": found}
+        res = yt.commentThreads().insert(part="snippet", body={"snippet": {"videoId": vid, "topLevelComment": {
+            "snippet": {"textOriginal": text}}}}).execute()
+        return {**out, "status": "added", "id": res.get("id")}
+    except Exception as e:  # noqa: BLE001 - the Short is up; report and go on
+        status = getattr(getattr(e, "resp", None), "status", None)
+        again = status is None or int(status) >= 500 or int(status) == 429
+        return {**out, "status": "pending" if again else "failed", "error": error_text(e)}
+
+
+def _note(episode: str, res: dict) -> str:
+    if res["status"] == "added":
+        return f"comment with the link to the long video added ({res.get('id')}); {PIN_NOTE}"
+    if res["status"] == "exists":
+        return f"the comment with the link to the long video is there ({res.get('id')}); {PIN_NOTE}"
+    if res["status"] == "pending":
+        return (f"comment not added yet: {res.get('error')}; Crewcut tries again on its own "
+                f"(now: crewcut youtube comment {episode})")
+    return f"comment not added: {res.get('error')}"
+
+
+def _pending(episode: str) -> dict:
+    try:
+        return json.loads(db.kv_get(PENDING + episode) or "{}")
+    except ValueError:
+        return {}
+
+
+def _hold_comment(episode: str, vid: str, rel: str, delay_s: float, now: float | None = None) -> None:
+    """Note the comment as waiting before trying it, so the worker takes over if the upload is stopped meanwhile."""
+    now = time.time() if now is None else now
+    db.kv_set(PENDING + episode, json.dumps({"video_id": vid, "package": rel, "since": now, "tries": 0,
+                                             "next": now + delay_s}))
+
+
+def _clear(episode: str) -> None:
+    with db.conn() as c:
+        c.execute("DELETE FROM kv WHERE k = ?", (PENDING + episode,))
+
+
+def _record_comment(episode: str, result: dict, res: dict, rel: str, now: float | None = None) -> dict:
+    """Write the comment's outcome into upload-result.json and keep or clear the worker's retry."""
+    now = time.time() if now is None else now
+    if res["status"] == "pending":
+        p = _pending(episode)
+        since, tries = float(p.get("since", now)), int(p.get("tries", 0)) + 1
+        if now - since >= COMMENT_GIVE_UP_S:
+            res = {**res, "status": "failed", "error": f"{res.get('error')}; gave up after {tries} tries"}
+        else:
+            db.kv_set(PENDING + episode, json.dumps({"video_id": result.get("video_id"), "package": rel,
+                                                     "since": since, "tries": tries,
+                                                     "next": now + min(COMMENT_RETRY_S * 2 ** (tries - 1),
+                                                                       COMMENT_RETRY_MAX_S)}))
+    if res["status"] != "pending":
+        _clear(episode)
+    notes = [n for n in result.get("notes") or [] if not n.startswith(("comment ", "the comment "))]
+    update = {"comment": res, "notes": notes + [_note(episode, res)]}
+    result.update(update)
+    _write_result(paths.episode_dir(episode), result)
+    return update
+
+
+def comment(episode: str, rel: str | None = None, youtube=None, wait_s: float = 0, sleep=time.sleep,
+            clock=time.monotonic, now: float | None = None) -> dict:
+    """Post (or find) the Short's link comment under the recorded video. The text is the one of the package that the
+    accepted publish card covers; a package changed after the card is refused."""
+    approvals.require_right("publish")
+    ep = paths.episode_dir(episode)
+    path = ep / "export" / "upload-result.json"
+    if not path.is_file():
+        raise FileNotFoundError("The episode has no upload result (export/upload-result.json): nothing to comment on.")
+    result = json.loads(path.read_text(encoding="utf-8"))
+    if not result.get("video_id"):
+        raise ValueError("The episode has no recorded YouTube video ID.")
+    rel = rel or _pending(episode).get("package") or result.get("package") or "export/upload.json"
+    pkg_path, pkg = load_package(episode, rel)
+    if not comment_text(pkg):
+        raise ValueError("The package has no related_url: there is no link comment to post.")
+    if approved_card(episode, pkg_path) is None:
+        raise PermissionError("The package differs from every accepted publish card: the comment text must be the "
+                              "one the user approved. Propose a publish card for the package first.")
+    done = result.get("comment") or {}
+    if done.get("status") in ("added", "exists") and done.get("text") == comment_text(pkg):
+        _clear(episode)
+        return done
+    if youtube is None:
+        from googleapiclient.discovery import build
+
+        from .auth import credentials
+        youtube = build("youtube", "v3", credentials=credentials(), cache_discovery=False)
+    res = post_comment(youtube, result["video_id"], pkg, wait_s=wait_s, sleep=sleep, clock=clock)
+    return _record_comment(episode, result, res, rel, now)["comment"]
+
+
+_tick_lock = threading.Lock()
+
+
+def due_comments(now: float | None = None) -> list[str]:
+    """Episodes whose link comment waits and is due for the next try."""
+    now = time.time() if now is None else now
+    with db.conn() as c:
+        rows = list(c.execute("SELECT k, v FROM kv WHERE k LIKE ?", (PENDING + "%",)))
+    due = []
+    for row in rows:
+        try:
+            nxt = float(json.loads(row["v"] or "{}").get("next", 0))
+        except (ValueError, TypeError):
+            nxt = 0
+        if nxt <= now:
+            due.append(row["k"].removeprefix(PENDING))
+    return due
+
+
+def comments_tick(now: float | None = None, youtube=None, background: bool = True) -> None:
+    """Runs in the worker: try the waiting link comments that are due, one batch at a time, off the queue thread."""
+    episodes = due_comments(now)
+    if not episodes or not _tick_lock.acquire(blocking=False):
+        return
+
+    def go() -> None:
+        from ..conductor import flow
+        try:
+            for episode in episodes:
+                try:
+                    res = comment(episode, youtube=youtube, now=now)
+                except (FileNotFoundError, ValueError, PermissionError) as e:
+                    _clear(episode)
+                    flow.post(episode, f"The link comment was not posted: {e}", author="publisher")
+                    continue
+                except Exception:  # noqa: BLE001 - e.g. an expired login: try again later, not on every tick
+                    p = _pending(episode)
+                    if p:
+                        p["next"] = (time.time() if now is None else now) + COMMENT_RETRY_MAX_S
+                        db.kv_set(PENDING + episode, json.dumps(p))
+                    continue
+                if res["status"] == "added":
+                    flow.post(episode, f"Link comment posted under the Short: \"{res['text']}\". Pin it in YouTube "
+                              "Studio (the API cannot pin comments).", author="publisher")
+                elif res["status"] == "failed":
+                    flow.post(episode, f"The link comment was not posted: {res.get('error')}", author="publisher")
+        finally:
+            _tick_lock.release()
+
+    if background:
+        threading.Thread(target=go, daemon=True, name="youtube-comments").start()
+    else:
+        go()
 
 
 def safe_name(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "-", s)[:60]
 
 
-__all__ = ["upload", "validate", "load_package", "approved_card", "body_of", "safe_name", "os"]
+__all__ = ["upload", "validate", "load_package", "approved_card", "body_of", "safe_name", "comment",
+           "post_comment", "comments_tick", "os"]

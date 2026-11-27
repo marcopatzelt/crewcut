@@ -80,7 +80,10 @@ Clip first when material exists. New Short: `crewcut episode new "<title>" --sho
 - **Title** with the usual title checks, shorter. The first sentence and the title say the same.
 - **Thumbnail (Designer):** portrait with a free lower edge.
 - **Link:** the package gets `related_url` (the long video) for clips; the upload adds it to the description and as a
-  comment. "Related video" and pinning have no API: tell the user in one line to set them in YouTube Studio.
+  comment (`related_comment`), once YouTube has processed the Short. `export/upload-result.json` → `comment.status`:
+  `added` or `exists` (done), `pending` (Crewcut tries again on its own; `crewcut youtube comment <episode>` tries now),
+  `failed` (the note has YouTube's reason: tell the user). "Related video" and pinning have no API: tell the user in one
+  line to set them in YouTube Studio.
 
 ## Publishing
 

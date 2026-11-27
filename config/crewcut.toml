@@ -96,6 +96,7 @@ steps = ["script", "title", "upload"]
 
 [youtube]
 chrome_setup = true        # "Connect YouTube" lets Claude in Chrome set up the API once; uploads always use the API
+comment_wait_s = 45        # a Short's link comment waits this long for YouTube's processing, then the worker retries
 
 [money]
 cap_month_usd = 20.0       # real money per month (rented GPUs, paid APIs); renting stops at the cap

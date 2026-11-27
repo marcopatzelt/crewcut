@@ -1,4 +1,4 @@
-"""`crewcut youtube connect | auth | upload | status | retention`."""
+"""`crewcut youtube connect | auth | upload | comment | status | verify | results | retention`."""
 
 from __future__ import annotations
 
@@ -56,6 +56,21 @@ def main(a) -> int:
             return 1
         print(json.dumps(result, indent=1, ensure_ascii=False))
         return 0 if result["matches"] else 1
+    if a.ycmd == "comment":
+        from . import upload
+        try:
+            res = upload.comment(a.episode, a.package, wait_s=a.wait)
+        except PermissionError as e:
+            print(str(e))
+            return 3
+        except FileNotFoundError as e:
+            print(str(e))
+            return 4
+        except ValueError as e:
+            print(str(e))
+            return 1
+        print(json.dumps(res, indent=1, ensure_ascii=False))
+        return 0 if res["status"] in ("added", "exists") else 1
     if a.ycmd == "retention":
         from . import analytics
         try:

@@ -110,7 +110,7 @@ def test_a_short_goes_public_only_after_reading_it_back():
     yt = FakeYT("Five models")
     out = upload.finish_short(yt, "vid", pkg, {"privacyStatus": "public"})
     assert out["read_back"] and out["privacy"] == "public"
-    assert [c[0] for c in yt.calls] == ["list", "update", "comment"]
+    assert [c[0] for c in yt.calls] == ["list", "update"]   # the link comment waits for processing
     wrong = FakeYT("Something else")
     out = upload.finish_short(wrong, "vid", pkg, {"privacyStatus": "public"})
     assert not out["read_back"] and [c[0] for c in wrong.calls] == ["list"]
