@@ -216,6 +216,17 @@ def summary(episode: str, project: dict | None = None) -> dict:
         out["lifecycle"] = p["lifecycle"]
     if out["kind"] == "short":
         out.update(mode=p.get("mode"), source_episode=p.get("source_episode"))
+    if p.get("show_format") or p.get("length"):
+        from . import showformats  # the format system (docs/formats.md): the pick and its reason, once written
+        out["length"] = p.get("length")
+        choice = showformats.read_choice(p["id"]) if p.get("show_format") else None
+        if p.get("show_format"):
+            f = showformats.get(p["show_format"]) or {}
+            out["show_format"] = {"id": p["show_format"], "name": f.get("name") or p["show_format"],
+                                  "length": f.get("length"), "topic_type": p.get("topic_type"),
+                                  "reason": (choice or {}).get("reason") or None,
+                                  "runner_up": (choice or {}).get("runner_up") or None,
+                                  "file": (choice or {}).get("file")}
     out["cover"] = cover(p["id"])
     from . import media  # late import: media reads episodes for the cut's style facts
     out["needs"] = media.needs(p["id"])        # the first open card with small pictures, for "Needs you"

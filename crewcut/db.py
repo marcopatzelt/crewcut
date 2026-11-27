@@ -65,6 +65,16 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 CREATE INDEX IF NOT EXISTS messages_episode ON messages(episode, id);
 CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT);
+CREATE TABLE IF NOT EXISTS ideas (
+  id TEXT PRIMARY KEY,
+  source TEXT NOT NULL,                         -- scout | braindump | other
+  url TEXT, title TEXT NOT NULL, summary TEXT, signals TEXT,
+  topic_type TEXT, suggested_format TEXT, reason TEXT, suggestion TEXT,   -- suggestion: exporter | rule
+  length TEXT,
+  status TEXT NOT NULL DEFAULT 'open',          -- open | started | dismissed
+  episode TEXT, created TEXT, imported TEXT NOT NULL, decided_at TEXT, file TEXT
+);
+CREATE INDEX IF NOT EXISTS ideas_status ON ideas(status);
 """
 
 _ready: set[str] = set()

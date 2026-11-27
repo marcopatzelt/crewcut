@@ -610,7 +610,13 @@ def second_opinion_round(episode: str, verdict: dict) -> dict:
 
 def ready(episode: str, verdict: dict, why: str) -> dict:
     """The checker passes: the Writer proposes the card with exactly this version."""
-    from .conductor import flow, queue
+    from .conductor import flow, prompts, queue
+    derive = prompts.cue_sheet_task(episode)   # a show format with a cue template: the cue sheet first, then the card
+    if derive:
+        jid = queue.add(episode, "writer", "script", derive, data={"format_cues": 1})
+        flow.post(episode, short_line(verdict) + " The Writer derives the cue sheet from the script; the gate checks "
+                  "it too.", step="script")
+        return {"action": "cue_sheet", "job": jid}
     notes = [s for r in verdict.get("results", []) for s in r.get("notes", [])]
     jid = queue.add(episode, "writer", "script", f"{why} The style check passes now ({short_line(verdict)}). Propose "
                     "your script card with exactly the version that was checked" + (", and put this in its body: "
@@ -696,6 +702,8 @@ def after_writer(job: dict, res) -> dict | None:
         return None
     v = check(episode)
     db.update("jobs", job["id"], data={**d, "style_gate_after": summary(v)})
+    if v["pass"] and not v.get("skipped") and (d.get("format_script") or d.get("format_cues")):
+        return ready(episode, v, "The style check passes.")   # a format draft ends without a card: the gate goes on
     if v.get("skipped") or v["pass"]:
         return None
     if cfg["mode"] == "warn":
