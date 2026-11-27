@@ -48,7 +48,8 @@ everything else is bullets you say in your own words. The teleprompter shows the
 `SCRIPT-vNNN.md` draft. An approved or selected script still comes first.
 
 - **Pages.** The screen shows one page for the opening, one for each unit, one for the payoff and one for the close.
-  Each page starts with its name and the take in progress.
+  Each page starts with its name and the take in progress. Playing stops at the end of every page. **Next** shows the
+  next page paused; press **Play** if you want its text to move.
 - **What is bright and what is dimmed.** Hook and punch line are full size. The other fixed lines are a little smaller,
   the ask and the bridge medium. Bullets are about two thirds of the size and dimmed, with their tag in small grey
   capitals and the picture cue as a small tag. Numbers are bold. A thin line stands above the punch line. Bright lines:

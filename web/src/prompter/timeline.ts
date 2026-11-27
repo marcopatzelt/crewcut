@@ -1,7 +1,8 @@
 // The teleprompter's shared timeline. The server keeps one anchor (a block and the offset in it), the server time `at`
 // the anchor was set, and the speed (crewcut/prompter.py has the same rules). Every screen computes where the text is
 // from these and its own estimate of the server clock, so no screen reports a scroll position back, and a screen that
-// slept or opened late is at the right place at once.
+// slept or opened late is at the right place at once. On a cue sheet the last block of every page is an end too
+// (`stops`): playing stops there, and Next or Repeat start the next take paused.
 import type { PrompterBlock, PrompterControl, PrompterPage } from "../api/types";
 
 export const DEFAULT_CPS = 17;
@@ -70,8 +71,23 @@ export function normalizeBlocks(raw: PrompterBlock[]): Block[] {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-/** Moves `units` characters forward from (block, offset). */
-export function advance(weights: number[], block: number, offset: number, units: number): Place {
+/** The block lengths of a script; a cue sheet's also carry its page ends (`stops`), so the sync, which only keeps the
+ * weights, stops at the same places as the screen. */
+export type Weights = number[] & { stops?: readonly number[] };
+
+/** The weights with the blocks where playing stops attached. */
+export function withStops(weights: number[], stops: readonly number[]): Weights {
+  return Object.assign(weights, { stops });
+}
+
+/** The last block of every page of a cue sheet (none without pages). */
+export function stopsOf(pages: Page[], count: number): number[] {
+  return pages.map((_, k) => (pages[k + 1]?.first ?? count) - 1).filter((i) => i >= 0);
+}
+
+/** Moves `units` characters forward from (block, offset); the end is the end of the script or of a block in `stops`. */
+export function advance(weights: Weights, block: number, offset: number, units: number,
+  stops: readonly number[] = weights.stops ?? []): Place {
   if (!weights.length) return { block: 0, offset: 0, end: true };
   let i = clamp(Math.trunc(block) || 0, 0, weights.length - 1);
   let f = clamp(Number.isFinite(offset) ? offset : 0, 0, 1);
@@ -80,7 +96,7 @@ export function advance(weights: number[], block: number, offset: number, units:
     const weight = Math.max(1, weights[i] ?? 1);
     const rest = (1 - f) * weight;
     if (left < rest) return { block: i, offset: f + left / weight, end: false };
-    if (i === weights.length - 1) return { block: i, offset: 1, end: true };
+    if (i === weights.length - 1 || stops.includes(i)) return { block: i, offset: 1, end: true };
     left -= rest;
     i += 1;
     f = 0;
@@ -88,7 +104,7 @@ export function advance(weights: number[], block: number, offset: number, units:
 }
 
 /** Where the shared timeline is at server time `serverNow` (ms). */
-export function placeAt(c: PrompterControl, weights: number[], cps: number, serverNow: number): Place {
+export function placeAt(c: PrompterControl, weights: Weights, cps: number, serverNow: number): Place {
   const units = c.playing ? (Math.max(0, serverNow - (c.at ?? serverNow)) / 1000) * cps * c.speed : 0;
   return advance(weights, c.block ?? 0, c.offset ?? 0, units);
 }
@@ -135,8 +151,14 @@ export function pageStep(pages: Page[], from: number, kind: "prev" | "next" | "r
   return target ? target.first : null;
 }
 
-/** The same change the server makes, so this screen shows a command at once (and a screen without a server works). */
-export function reduce(c: PrompterControl, patch: ControlPatch, weights: number[], cps: number, now: number): PrompterControl {
+/** The same change the server makes, so this screen shows a command at once (and a screen without a server works). On a
+ * cue sheet a command that comes after a page ended, before the "end" was sent, first ends the page there. */
+export function reduce(before: PrompterControl, patch: ControlPatch, weights: Weights, cps: number, now: number): PrompterControl {
+  let c = before;
+  if (weights.stops?.length && c.playing && patch.action !== "end") {
+    const ended = placeAt(c, weights, cps, now);
+    if (ended.end) c = { ...c, playing: false, block: ended.block, offset: ended.offset, at: now };
+  }
   const here = placeAt(c, weights, cps, now);
   const next: PrompterControl = { ...c };
   for (const key of ["playing", "mirror"] as const) if (patch[key] !== undefined) next[key] = Boolean(patch[key]);

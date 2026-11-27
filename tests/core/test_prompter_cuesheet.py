@@ -2,6 +2,7 @@
 
 import json
 
+import pytest
 from fastapi.testclient import TestClient
 
 from crewcut import db, episodes, paths, prompter
@@ -234,3 +235,87 @@ def test_a_normal_script_keeps_its_blocks_steps_and_log(crew, monkeypatch):
     lines = log_lines(eid, clock[0])
     assert [(e["action"], e["block"], e["page"], e["unit"], e["take"]) for e in lines] == [
         ("next", 2, None, None, None), ("prev", 1, None, None, None), ("repeat", 3, None, None, None)]
+
+
+def timeline(eid: str) -> tuple[list[float], frozenset[int]]:
+    s = prompter.script(eid)
+    return [b["weight"] for b in s["blocks"]], prompter.stops_of(s["pages"], len(s["blocks"]))
+
+
+def test_the_last_block_of_every_page_is_an_end_on_the_timeline():
+    w = [10.0, 20.0, 30.0]
+    assert prompter.advance(w, 0, 0.0, 15, frozenset({0})) == (0, 1.0, True)
+    assert prompter.advance(w, 0, 0.5, 4, frozenset({0}))[:2] == (0, pytest.approx(0.9))
+    assert prompter.advance(w, 1, 0.0, 100, frozenset({0})) == (2, 1.0, True)  # a page end behind is no stop
+    assert prompter.advance(w, 0, 1.0, 5, frozenset({0})) == (0, 1.0, True)  # at a page end nothing moves on
+    assert prompter.advance(w, 0, 0.0, 15) == (1, 0.25, False)  # no stops: as before
+    view = prompter.cue_sheet_blocks(SHEET)
+    assert prompter.stops_of(view["pages"], len(view["blocks"])) == {2, 8, 11, 13, 15}
+    assert prompter.stops_of([], 5) == frozenset()
+
+
+def test_playing_stops_at_the_end_of_each_page_and_next_waits_for_play(crew, monkeypatch):
+    eid = make_episode({"brief/CUES-v001.md": SHEET})
+    clock = [1_795_000_000_000.0]
+    monkeypatch.setattr(prompter, "_now_ms", lambda: clock[0])
+    w, stops = timeline(eid)
+    prompter.set_control(eid, {"action": "next", "block": 3})
+    prompter.set_control(eid, {"playing": True})
+    clock[0] += 600_000  # long enough for the whole sheet
+    # every screen computes the same place: the last block of unit 1, not the end of the sheet
+    assert prompter.where(prompter.control(eid), w, clock[0], stops) == (8, 1.0, True)
+    early = prompter.set_control(eid, {"action": "end"})
+    assert (early["playing"], early["block"], early["offset"]) == (False, 8, 1.0)
+    # Next starts the next page paused, without the hold of a jump while playing
+    nxt = prompter.set_control(eid, {"action": "next"})
+    assert (nxt["block"], nxt["offset"], nxt["playing"], nxt["at"]) == (9, 0.0, False, clock[0])
+    assert nxt["takes"] == {"unit 1": 1, "unit 2": 1}
+    clock[0] += 60_000
+    assert prompter.where(prompter.control(eid), w, clock[0], stops)[:2] == (9, 0.0)
+    prompter.set_control(eid, {"playing": True})
+    clock[0] += 600_000
+    assert prompter.where(prompter.control(eid), w, clock[0], stops) == (11, 1.0, True)
+    lines = log_lines(eid, clock[0])
+    assert [(e["action"], e["block"], e["page"], e["take"], e["playing"]) for e in lines] == [
+        ("next", 4, "unit 1", 1, False), ("play", 4, "unit 1", 1, True), ("end", 9, "unit 1", 1, False),
+        ("next", 10, "unit 2", 1, False), ("play", 10, "unit 2", 1, True)]
+
+
+def test_a_command_after_a_page_ended_ends_it_there_first(crew, monkeypatch):
+    eid = make_episode({"brief/CUES-v001.md": SHEET})
+    clock = [1_795_000_000_000.0]
+    monkeypatch.setattr(prompter, "_now_ms", lambda: clock[0])
+    w, _ = timeline(eid)
+    prompter.set_control(eid, {"action": "next", "block": 3})
+    clock[0] += 1000
+    started = clock[0]
+    prompter.set_control(eid, {"playing": True})
+    clock[0] += 600_000
+    # no screen sent "end" (all asleep): Repeat still starts the new take paused
+    state = prompter.set_control(eid, {"action": "repeat"})
+    assert (state["block"], state["offset"], state["playing"], state["at"]) == (3, 0.0, False, clock[0])
+    assert state["takes"] == {"unit 1": 2}
+    # a setting in the same moment: the page ends, nothing plays on
+    prompter.set_control(eid, {"playing": True})
+    clock[0] += 600_000
+    assert prompter.set_control(eid, {"speed": 1.5})["playing"] is False
+    lines = log_lines(eid, clock[0])
+    assert [(e["action"], e["block"], e["take"]) for e in lines] == [
+        ("next", 4, 1), ("play", 4, 1), ("end", 9, 1), ("repeat", 4, 2), ("play", 4, 2), ("end", 9, 2)]
+    # the end is logged at the time the page really ended
+    assert lines[2]["unix_ms"] == int(started + sum(w[3:9]) / prompter.CHARS_PER_SECOND * 1000)
+
+
+def test_a_normal_script_plays_through_its_sections_as_before(crew, monkeypatch):
+    eid = make_episode({"brief/SCRIPT-v001.md": SCRIPT})
+    clock = [1_795_000_000_000.0]
+    monkeypatch.setattr(prompter, "_now_ms", lambda: clock[0])
+    w, stops = timeline(eid)
+    assert stops == frozenset()
+    prompter.set_control(eid, {"playing": True})
+    clock[0] += 600_000
+    assert prompter.where(prompter.control(eid), w, clock[0], stops) == (len(w) - 1, 1.0, True)
+    # a jump right after the end, before the screens sent "end": it holds and plays on, as it always did
+    state = prompter.set_control(eid, {"action": "repeat", "block": 1})
+    assert state["playing"] is True and state["at"] == clock[0] + prompter.JUMP_HOLD_MS
+    assert [e["action"] for e in log_lines(eid, clock[0])] == ["play", "repeat"]

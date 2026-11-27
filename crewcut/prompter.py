@@ -9,7 +9,9 @@ episode's take log, brief/prompter-log-<UTC date>.jsonl, so the editor can line 
 
 A cue sheet (crewcut.cuesheet) is shown in pages: one page per part (opening, each unit, payoff, close), one block per
 fixed line and per bullet. Previous, Next and Repeat move by page, and every command that lands at the start of a page
-counts a new take of that page; the count is in the shared state and in every line of the take log."""
+counts a new take of that page; the count is in the shared state and in every line of the take log. Playing stops at
+the end of every page (the last block of a page is an end on the timeline, like the end of the script): the speaker
+talks freely on a unit page, and Next starts the next one, paused until Play."""
 
 from __future__ import annotations
 
@@ -333,9 +335,11 @@ def control(episode: str) -> dict:
     return d
 
 
-def advance(weights: list[float], block: int, offset: float, units: float) -> tuple[int, float, bool]:
-    """Move `units` characters forward from (block, offset). Returns the block, the offset in it and whether the end of
-    the script is reached. The web page has the same function (web/src/prompter/timeline.ts)."""
+def advance(weights: list[float], block: int, offset: float, units: float,
+            stops: frozenset[int] | set[int] | tuple = ()) -> tuple[int, float, bool]:
+    """Move `units` characters forward from (block, offset). Returns the block, the offset in it and whether an end is
+    reached: the end of the script, or the end of a block in `stops` (a cue sheet's page ends). The web page has the same
+    function (web/src/prompter/timeline.ts)."""
     if not weights:
         return 0, 0.0, True
     i = min(max(0, int(block)), len(weights) - 1)
@@ -346,18 +350,38 @@ def advance(weights: list[float], block: int, offset: float, units: float) -> tu
         rest = (1.0 - f) * weight
         if left < rest:
             return i, f + left / weight, False
-        if i == len(weights) - 1:
+        if i == len(weights) - 1 or i in stops:
             return i, 1.0, True
         left -= rest
         i, f = i + 1, 0.0
 
 
-def where(d: dict, weights: list[float], now_ms: float) -> tuple[int, float, bool]:
+def where(d: dict, weights: list[float], now_ms: float,
+          stops: frozenset[int] | set[int] | tuple = ()) -> tuple[int, float, bool]:
     """Where the shared timeline is at server time now_ms."""
     units = 0.0
     if d["playing"]:
         units = max(0.0, now_ms - float(d["at"])) / 1000.0 * CHARS_PER_SECOND * float(d["speed"])
-    return advance(weights, d["block"], d["offset"], units)
+    return advance(weights, d["block"], d["offset"], units, stops)
+
+
+def stops_of(pages: list[dict], count: int) -> frozenset[int]:
+    """The last block of every page of a cue sheet: playing stops there. Empty for a normal script (no pages)."""
+    firsts = [int(p["first"]) for p in pages]
+    return frozenset(nxt - 1 for nxt in firsts[1:] + [count] if nxt > 0) if pages and count else frozenset()
+
+
+def _ended_at(d: dict, weights: list[float], stops: frozenset[int], now_ms: float) -> float:
+    """The server time at which a playing timeline reached its end (a page end or the end of the script)."""
+    i = min(max(0, int(d["block"])), len(weights) - 1)
+    f = min(max(0.0, float(d["offset"])), 1.0)
+    units = 0.0
+    while True:
+        units += (1.0 - f) * max(1.0, float(weights[i]))
+        if i == len(weights) - 1 or i in stops:
+            break
+        i, f = i + 1, 0.0
+    return min(now_ms, float(d["at"]) + units / (CHARS_PER_SECOND * float(d["speed"])) * 1000.0)
 
 
 def _index(value, count: int) -> int | None:
@@ -401,15 +425,22 @@ def set_control(episode: str, values: dict) -> dict:
     timeline reached the end). Every write gets a newer `seq`; `client` names the screen that wrote it.
 
     On a cue sheet next, prev and repeat move by page (_page_target), and every jump, next, prev, repeat or start that
-    lands at the first block of a page counts a new take of that page (`takes`, {page: count})."""
+    lands at the first block of a page counts a new take of that page (`takes`, {page: count}). Playing ends at the
+    end of every page (stops_of). A command that arrives after a page ended but before any screen sent `end` first
+    ends it there (logged as "end" at the time the page ended), so Next or Repeat never play on by themselves."""
     old = _stored(episode)
-    d = dict(old)
-    d["takes"] = dict(old["takes"])
     now = _now_ms()
     file, view = _shown(episode)
     blocks, pages = view["blocks"], view["pages"]
     weights = [b["weight"] for b in blocks]
-    block, offset, at_end = where(old, weights, now)
+    stops = stops_of(pages, len(blocks))
+    block, offset, at_end = where(old, weights, now, stops)
+    if stops and old["playing"] and at_end and values.get("action") != "end":
+        ended = _ended_at(old, weights, stops, now)
+        old = {**old, "playing": False, "block": block, "offset": offset, "at": ended}
+        _log(episode, file, blocks, "end", block, offset, False, ended, old["takes"])
+    d = dict(old)
+    d["takes"] = dict(old["takes"])
     for k, v in values.items():
         if k not in DEFAULT_CONTROL or k in ("block", "offset", "at", "seq", "by", "cue", "takes"):
             continue

@@ -33,8 +33,11 @@ import {
   pageStep,
   placeAt,
   stepTarget,
+  stopsOf,
+  withStops,
   type Block,
   type ControlPatch,
+  type Weights,
 } from "./timeline";
 
 export { DEFAULT_CONTROL, httpSource, type PrompterSource };
@@ -177,8 +180,9 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
   const pagesRef = useRef(pages);
   pagesRef.current = pages;
   const paged = pages.length > 0;
-  const pace = useRef({ weights: [] as number[], cps: DEFAULT_CPS });
-  const weights = useMemo(() => blocks.map((b) => b.weight), [blocks]);
+  const pace = useRef({ weights: [] as Weights, cps: DEFAULT_CPS });
+  // A cue sheet's weights carry its page ends: playing stops at the end of every page, on every screen.
+  const weights = useMemo(() => withStops(blocks.map((b) => b.weight), stopsOf(pages, blocks.length)), [blocks, pages]);
   pace.current = { weights, cps: script?.cps ?? DEFAULT_CPS };
   const currentRef = useRef(0);
   const layout = useRef<Layout | null>(null);

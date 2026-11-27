@@ -5,7 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 import type { PrompterControl, PrompterScript } from "../api/types";
 import { withNumbers } from "../prompter/CueSheet";
 import { DEFAULT_CONTROL, Prompter, type PrompterSource } from "../prompter/Prompter";
-import { normalizeBlocks, normalizePages, pageAt, pageStep } from "../prompter/timeline";
+import {
+  advance, JUMP_HOLD_MS, normalizeBlocks, normalizePages, pageAt, pageStep, reduce, stopsOf, withStops,
+} from "../prompter/timeline";
 
 const sheet: PrompterScript = {
   title: "Synthetic cue sheet",
@@ -133,5 +135,41 @@ describe("cue sheet pages", () => {
     expect(posted).toHaveBeenLastCalledWith(expect.objectContaining({ action: "next", block: 6 }));
     fireEvent.click(screen.getByRole("button", { name: "Opening, No take yet" }));
     expect(posted).toHaveBeenLastCalledWith(expect.objectContaining({ action: "jump", block: 0 }));
+  });
+
+  it("ends playing at the last block of every page, on the same rule as the server", () => {
+    const pages = normalizePages(sheet.pages, normalizeBlocks(sheet.blocks));
+    expect(stopsOf(pages, 8)).toEqual([1, 5, 7]);
+    expect(stopsOf([], 8)).toEqual([]);
+    const w = withStops([10, 20, 30], [0]);
+    expect(advance(w, 0, 0, 15)).toEqual({ block: 0, offset: 1, end: true });
+    expect(advance(w, 1, 0, 100)).toEqual({ block: 2, offset: 1, end: true }); // a page end behind is no stop
+    expect(advance(w, 0, 1, 5)).toEqual({ block: 0, offset: 1, end: true }); // at a page end nothing moves on
+    expect(advance([10, 20, 30], 0, 0, 15)).toEqual({ block: 1, offset: 0.25, end: false });
+    expect(advance([10, 20, 30], 0, 0, 15, [0])).toEqual({ block: 0, offset: 1, end: true });
+  });
+
+  it("makes the same change as the server at a page end: end pauses, and Next after it waits for Play", () => {
+    const w = withStops([100, 100, 100], [0]);
+    const playing: PrompterControl = { ...DEFAULT_CONTROL, playing: true, speed: 1, block: 0, offset: 0, at: 0, cue: 0 };
+    const ended = reduce(playing, { action: "end" }, w, 10, 60_000);
+    expect([ended.playing, ended.block, ended.offset]).toEqual([false, 0, 1]);
+    // the page ended before the end reached this screen: Next starts the next page paused, without a hold
+    const next = reduce(playing, { action: "next", block: 1 }, w, 10, 60_000);
+    expect([next.block, next.offset, next.playing, next.at]).toEqual([1, 0, false, 60_000]);
+    // a normal script (no stops) plays on after the jump, as before
+    const plain = reduce(playing, { action: "next", block: 1 }, [100, 100, 100], 10, 60_000);
+    expect([plain.block, plain.playing, plain.at]).toEqual([1, true, 60_000 + JUMP_HOLD_MS]);
+  });
+
+  it("stops at the end of the page on the screen and tells the others", async () => {
+    const theirs: PrompterControl = { ...DEFAULT_CONTROL, playing: true, speed: 1, block: 2, offset: 0,
+      at: Date.now() - 600_000, seq: 3 };
+    const posted = vi.fn().mockResolvedValue(undefined);
+    const { container } = render(
+      <Prompter source={source({ shared: true, getControl: async () => theirs, setControl: posted })} remote={false} />);
+    await waitFor(() => expect(posted).toHaveBeenCalledWith(expect.objectContaining({ action: "end" })));
+    expect(marked(container)).toBe("5"); // the bridge, the last block of unit 1, not the end of the sheet
+    expect(screen.getByRole("button", { name: "Play" })).toBeTruthy();
   });
 });
