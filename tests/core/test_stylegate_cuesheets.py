@@ -277,3 +277,10 @@ def test_after_the_cut_the_critic_reviews_what_was_said_and_the_edit_gets_a_cut_
     out = stylegate.after_transcript_review(queue.get(c["id"]), engines.RunResult(ok=True, exit_code=0, text="ok"))
     assert out == {"action": "cut_list", "file": "edit/cutlist-v003.json", "sentences": 1}
     assert review.after_review(queue.get(c["id"]), "Verdict: show") is None
+
+
+def test_doctor_names_the_loop_and_why_there_is_no_second_opinion(skill, until_pass):
+    from crewcut import doctor
+    rows = {r["name"]: r for r in doctor.checks(ci=True) if r["name"] in ("style gate", "second opinion")}
+    assert "rounds until the Critic passes, emergency stop after 6" in rows["style gate"]["detail"]
+    assert rows["second opinion"]["detail"].startswith("not available: the host helper")
