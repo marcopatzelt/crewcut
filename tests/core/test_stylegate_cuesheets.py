@@ -178,14 +178,14 @@ def test_until_pass_goes_on_while_the_points_change(skill, episode, until_pass):
 
 
 def test_the_same_point_twice_stops_with_exactly_that_point(skill, episode, until_pass):
-    sheet(episode, 1, {"verdict": "back", "marked": ["Das stand übrigens so in meinem Prompt."]})
+    sheet(episode, 1, {"verdict": "back", "marked": ["By the way, that was in my prompt."]})
     ends(episode, "writer")
     finish_all(episode)
-    sheet(episode, 2, {"verdict": "back", "marked": ["Das stand übrigens so in meinem Prompt."]})
+    sheet(episode, 2, {"verdict": "back", "marked": ["By the way, that was in my prompt."]})
     w = ends(episode, "writer")
     assert not [j for j in jobs(episode, "writer", w["id"]) if (j.get("data") or {}).get("style_gate_round")]
     [card] = [c for c in approvals.list_cards(episode=episode) if c["status"] == "open"]
-    assert card["title"].split(": ", 1)[1] == "Das stand übrigens so in meinem Prompt."
+    assert card["title"].split(": ", 1)[1] == "By the way, that was in my prompt."
     assert card["title"].startswith(("Not approved: ", "Nicht freigegeben: "))
     assert card["data"]["style_gate_stuck"]["rewrite"] == "a better line"
 
