@@ -258,6 +258,7 @@ def run(p: Path, fmt: str, title: str | None = None, cfg: dict | None = None, to
     out["hints"] = sum(1 for c in checks if c.get("kind") == "hinweis")
     out["notes"] = [f"Second opinion: {c.get('measured')}" for c in checks
                     if c.get("second_opinion") and c.get("pass") is True]
+    out["notes"] += [str(n) for c in checks for n in (c.get("notes") or [])]   # what only the user decides
     out["instructions_used"] = out["instructions"]
     out["pruefstuecke"] = len(data.get("pruefstuecke") or [])
     out["auto_pass"] = bool(data.get("auto_pass"))

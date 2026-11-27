@@ -40,7 +40,8 @@ else:
     hz = rv.get("verdict") == "pass" and not pts
 checks.append({"id": "K-HZ", "kind": "kritik", "titel": "every line gives value", "pass": hz,
                "measured": "open" if hz is None else ("pass" if hz else f"{len(pts)} points"), "target": "pass",
-               "points": pts, "instructions": "/studio/brand/REVIEW.md", "frage": "Review every line."})
+               "points": pts, "instructions": "/studio/brand/REVIEW.md", "frage": "Review every line.",
+               "notes": [f"Open for the user: {q}" for q in (rv or {}).get("for_user", [])]})
 so = f.with_suffix(".second.json")
 if hz:
     a = json.loads(so.read_text()) if so.is_file() else None
@@ -199,12 +200,13 @@ def test_a_critic_run_the_gate_asked_for_is_routed_by_the_gate_not_by_the_review
 
 
 def test_without_a_host_helper_the_second_opinion_is_unavailable_and_the_card_says_so(skill, episode, until_pass):
-    sheet(episode, 1, {"verdict": "pass", "marked": []})
+    sheet(episode, 1, {"verdict": "pass", "marked": [], "for_user": ["unit 3 advises Medium, the verdict says High"]})
     c = ends(episode, "critic", {"style_gate_kritik": 1})
     answer = json.loads((paths.episode_dir(episode) / "brief" / "CUES-v001.second.json").read_text())
     assert answer["status"] == "unavailable" and "host helper" in answer["reason"]
     [w] = jobs(episode, "writer", c["id"])
     assert "Propose your script card" in w["task"] and "Second opinion: unavailable" in w["task"]
+    assert "Open for the user: unit 3 advises Medium, the verdict says High" in w["task"]
     v = stylegate.check(episode)
     assert v["pass"]
 
