@@ -114,7 +114,7 @@ def tokens_for_hash(tokens: dict, kind: str) -> dict:
     if kind == "3d":
         keys = ("stage3d", "colors", "fonts", "motion")
     elif kind == "motion":
-        keys = ("colors", "fonts", "shape", "motion_graphics")
+        keys = ("colors", "fonts", "shape", "motion_graphics", "graphics")
     else:
         keys = ("colors", "fonts", "logo", "shape", "motion", "css")
     return {k: tokens.get(k) for k in keys}
@@ -175,7 +175,7 @@ def brand_context(tokens: dict) -> dict:
     fonts = {role: {"family": (spec or {}).get("family"), "weight": (spec or {}).get("weight")}
              for role, spec in (tokens.get("fonts") or {}).items()}
     return {"colors": tokens.get("colors") or {}, "fonts": fonts, "shape": tokens.get("shape") or {},
-            "mg": tokens.get("motion_graphics") or {}}
+            "mg": tokens.get("motion_graphics") or {}, "graphics": tokens.get("graphics")}
 
 
 @dataclass

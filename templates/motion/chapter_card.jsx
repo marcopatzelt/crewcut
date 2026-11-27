@@ -14,7 +14,10 @@ function chapter_card(P) {
   var c = P.comp, F = CC.frame(), u = F.u, D = F.duration, W = F.W, H = F.H, f1 = 1 / (F.fps || 25);
   var enter = CC.enterS(), exit = CC.exitS(), ink = CC.ink();
   var idx = P.index !== null && P.index !== undefined ? P.index : Math.max(0, (Number(P.number) || 1) - 1);
-  var next = CC.pastel(idx), px = P.point[0] * W, py = P.point[1] * H;
+  // with the channel's graphic system (brand.graphics): an ink surface for every chapter, the number large in the
+  // highlight, the word in paper, and the pack's stored shapes at the edges when shapes_only_on names this card
+  var g = CC.gfx(), sys = !!(g && g.highlight);
+  var next = sys ? (g.ink || ink) : CC.pastel(idx), px = P.point[0] * W, py = P.point[1] * H;
 
   // the old ground (the pack's), then the next ground (a pastel with its own light, in a precomp) revealed by a disc
   // that grows from the point and covers the farthest corner
@@ -23,6 +26,15 @@ function chapter_card(P) {
   EC.comp({ name: NG, width: W, height: H, fps: EC.compItem(c) ? EC.compItem(c).frameRate : 60, duration: D, bg: next });
   // no pool in the ground's own hue: on a pastel ground it turned the whole frame one hue (hue check, image CI)
   CC.groundLayer(NG, { color: next, strength: 0.22, skip: idx, name: P.layer + " next" });
+  var bgs = (CC.mg().background || {}), layout = ((bgs.layouts || {})[F.format]) || [];
+  if (sys && (g.shapes_only_on || []).indexOf("chapter_card") >= 0 && layout.length && bgs.mode !== "shapes") {
+    var still = [];                                             // the shapes stand still on this card
+    for (var si = 0; si < layout.length; si++) {
+      var sh = {}; for (var sk in layout[si]) if (Object.prototype.hasOwnProperty.call(layout[si], sk)) sh[sk] = layout[si][sk];
+      sh.vx = 0; sh.vy = 0; sh.spin = 0; still.push(sh);
+    }
+    CC.backgroundShapes(NG, still);
+  }
   var far = 0; var cs = [[0, 0], [W, 0], [0, H], [W, H]];
   for (var q = 0; q < 4; q++) far = Math.max(far, Math.sqrt(Math.pow(cs[q][0] - px, 2) + Math.pow(cs[q][1] - py, 2)));
   var dEnd = 2 * far * 1.04, t0 = P.growAt, tg = t0 + 0.3;
@@ -51,7 +63,7 @@ function chapter_card(P) {
   EC.trim(c, fl, 0, t0 + 0.3);
 
   // type: the number (accent) over the title; the title wraps to two lines when it must
-  var area = F.safe, margin = 40 * u, maxW = area.w - 2 * margin, size = P.size * u;
+  var area = F.safe, margin = 40 * u, maxW = area.w - 2 * margin, size = (sys && P.size === 140 ? 150 : P.size) * u;
   var words = String(P.title).split(/\s+/), grow = CC.driftAt(D);
   function lines(sz) {
     var one = CC.measure(c, String(P.title), sz).advance;
@@ -68,20 +80,21 @@ function chapter_card(P) {
   for (var i = 0; i < ls.length; i++) widest = Math.max(widest, CC.measure(c, ls[i], size).advance);
   var fit = CC.fit(size, widest * grow, maxW, P.minSize * u);
   if (fit !== size) { size = fit; ls = lines(size); }
-  var num = (Number(P.number) < 10 ? "0" : "") + String(P.number), ns = 0.5 * size;
+  var num = sys ? String(P.number) : (Number(P.number) < 10 ? "0" : "") + String(P.number), ns = sys ? 440 * u : 0.5 * size;
+  if (sys) ns = CC.fit(ns, CC.measure(c, num, ns).advance, maxW, 120 * u);
   var nm = CC.measure(c, num, ns), cap = -CC.measure(c, "H", size).top, ncap = -CC.measure(c, "H", ns).top;
-  var lead = 1.06 * size, gap = 0.42 * size;
+  var lead = 1.06 * size, gap = sys ? Math.max(0.2 * size, 170 * u - cap) : 0.42 * size;
   var blockH = ncap + gap + cap + (ls.length - 1) * lead, cx = area.x + area.w / 2, cy = area.y + area.h / 2;
   var rig = CC.rig(c, P.layer + " rig", [cx, cy]);
   var tIn = tg - 0.08, tOut = P.outAt !== null && P.outAt !== undefined ? P.outAt : D - exit - f1;
   var top = -blockH / 2;
-  var nId = CC.text(c, { text: num, size: ns, fill: CC.color(0), name: P.layer + " number" });
+  var nId = CC.text(c, { text: num, size: ns, fill: sys ? CC.keyColor(next) : CC.color(0), name: P.layer + " number" });
   CC.rise(c, nId, { parent: rig, x: -nm.advance / 2, y: top + ncap, size: ns, ink: nm, t: tIn, dur: enter,
                     outAt: tOut, outDur: exit, name: P.layer + " number" });
   var ids = [nId];
   for (var j = 0; j < ls.length; j++) {
     var m = CC.measure(c, ls[j], size);
-    var tId = CC.text(c, { text: ls[j], size: size, fill: ink, name: P.layer + " title " + (j + 1) });
+    var tId = CC.text(c, { text: ls[j], size: size, fill: sys ? (g.paper || "#FFFFFF") : ink, name: P.layer + " title " + (j + 1) });
     CC.rise(c, tId, { parent: rig, x: -m.advance / 2, y: top + ncap + gap + cap + j * lead, size: size, ink: m,
                       t: tIn + 0.07 * (j + 1), dur: enter, outAt: tOut + 0.03 * (j + 1), outDur: exit, name: P.layer + " title " + (j + 1) });
     ids.push(tId);

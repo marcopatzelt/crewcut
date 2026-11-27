@@ -137,7 +137,7 @@ jobs:
           if-no-files-found: warn
 
   motion-imports:
-    name: Lottie and After Effects imports through the pinned EffectCraft
+    name: Motion engine - imports (Lottie, After Effects) and the graphic system, through the pinned EffectCraft
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -165,10 +165,10 @@ jobs:
           python-version: "3.11"
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends fonts-inter > /dev/null
       - run: pip install -q -e ".[dev]"
-      - name: Convert the open sample Lottie, import it, render it in the palette; an .aep round trip
+      - name: The open sample Lottie in the palette, an .aep round trip; highlight, halo, ink chapter card, card, Short safe zone
         env:
           CREWCUT_EC_OUT: ${{ runner.temp }}/ec-out
-        run: pytest -q -rs -s tests/motion/test_imports_engine.py tests/motion/test_imports.py
+        run: pytest -q -rs -s tests/motion/test_imports_engine.py tests/motion/test_graphics_engine.py tests/motion/test_imports.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -5,7 +5,8 @@
  *   complete 1 frame before its cue. Digits are set tight with their real advances in one font, whole on every hold
  *   and never clipped by the frame; leading zeros stay hidden until the count reaches them. A unit in the accent
  *   colour and one line of text sit with it. Full frame on the pack ground, or an overlay beside the speaker when
- *   the insert is transparent.
+ *   the insert is transparent. With the channel's graphic system (brand.graphics) the number and its unit take the
+ *   highlight over video (the accent on a light ground) and sit on an ink halo with a soft scrim on the free side.
  * @kind full
  * @formats ["landscape", "portrait", "stage"]
  * @version 1
@@ -62,13 +63,18 @@ function number_roll(P) {
   var rollAt = Math.min(P.rollAt, land - 0.6);
   var tOut = P.outAt !== null && P.outAt !== undefined ? P.outAt : D - exit - f1;
 
+  var g = CC.gfx(), key = g && g.highlight ? CC.keyColor() : null;      // the number in the highlight (graphic system)
   var mt = CC.meter(c, { parent: rig, text: chars.join(""), x: x0, base: base, size: sz, tone: tone, rollAt: rollAt,
-                         land: land, outAt: tOut, from: P.from, ease: P.ease, name: P.layer });
+                         land: land, outAt: tOut, from: P.from, ease: P.ease, name: P.layer, fill: key || undefined });
+  CC.halo(c, { parent: rig, text: chars.join(""), size: sz, x: x0, y: base, t: rollAt, dur: enter, outAt: tOut, outDur: exit,
+               name: P.layer });
   var ids = mt.ids, target = mt.target, from = mt.from;
   // the unit (accent) and the line of text rise out of their baselines
   var un = null, lb = null;
   if (unit) {
-    un = CC.text(c, { text: unit, size: Lx.us, fill: CC.color(0), name: P.layer + " unit" });
+    un = CC.text(c, { text: unit, size: Lx.us, fill: key || CC.color(0), name: P.layer + " unit" });
+    CC.halo(c, { parent: rig, text: unit, size: Lx.us, x: x0 + Lx.ux, y: base, t: Math.max(0, rollAt + 0.04), dur: enter,
+                 outAt: tOut + 0.03, outDur: exit, name: P.layer + " unit" });
     CC.legible(c, un, Lx.us, tone);
     CC.rise(c, un, { parent: rig, x: x0 + Lx.ux, y: base, size: Lx.us, ink: Lx.um, t: Math.max(0, rollAt + 0.04), dur: enter,
                      outAt: tOut + 0.03, outDur: exit, name: P.layer + " unit" });
@@ -78,9 +84,13 @@ function number_roll(P) {
     CC.legible(c, lb, ls, tone, 0.8);
     CC.rise(c, lb, { parent: rig2, x: rowX(lm.advance), y: base + gapL + lcap, size: ls, ink: lm, t: Math.max(0, rollAt + 0.12), dur: enter,
                      outAt: tOut + 0.05, outDur: exit, name: P.layer + " label", pop: false });
-    EC.set(c, lb, "transform/opacity", 72);
+    EC.set(c, lb, "transform/opacity", g && g.halo ? 100 : 72);
+    CC.halo(c, { parent: rig2, text: label, size: ls, role: "body", x: rowX(lm.advance), y: base + gapL + lcap,
+                 t: Math.max(0, rollAt + 0.12), dur: enter, outAt: tOut + 0.05, outDur: exit, name: P.layer + " label" });
   }
   CC.measureDone(c);
+  CC.scrim(c, F.side, Math.max(0, rollAt), enter, tOut, exit);
+  CC.halosBack(c);
   // the cut in lands on a camera move: the number settles from 104 % while it counts, then the slow push
   var s0 = 104, sL = 100 * CC.driftAt(D - land);
   EC.keys(c, rig, "transform/scale", [[0, [s0, s0]], [land, [100, 100]], [D, [sL, sL]]], ["out", "linear"]);

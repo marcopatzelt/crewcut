@@ -4,7 +4,9 @@
  *   words sink back through the baseline at the end. Words that fit stay on one line, otherwise one word per line.
  *   When the insert goes behind the person (CC_CTX.layer "behind"), the type is as large as behindMax at head
  *   height, where only the head covers it (behindAt "shoulders": 1.6 times larger, centred behind the shoulders,
- *   where the body covers most of a long word).
+ *   where the body covers most of a long word). With the channel's graphic system (brand.graphics) the accent word
+ *   takes the highlight over video (the accent on a light ground), every word sits on an ink halo and a soft scrim
+ *   darkens the free side.
  * @kind overlay
  * @formats ["landscape", "portrait", "stage"]
  * @version 1
@@ -69,17 +71,21 @@ function keyword_pop(P) {
     var x = align === "left" ? -bw / 2 : (align === "right" ? bw / 2 - lw : -lw / 2), y = firstBase + L * lead;
     for (var b = 0; b < lines[L].length; b++) {
       var word = lines[L][b], k2 = idx;
-      var fill = k2 === P.accentWord ? CC.color(0) : tone.fill;
+      var fill = k2 === P.accentWord ? CC.keyColor() : tone.fill;
       var id = CC.text(c, { text: word, size: size, fill: fill, name: P.layer + " " + word });
       CC.legible(c, id, size, tone);
       CC.rise(c, id, { parent: rig, x: x, y: y, size: size, ink: CC.measure(c, word, size), t: tIn + st * k2, dur: enter,
                        outAt: tOut + 0.04 * k2, outDur: exit, name: P.layer + " " + word });
+      CC.halo(c, { parent: rig, text: word, size: size, x: x, y: y, t: tIn + st * k2, dur: enter,
+                   outAt: tOut + 0.04 * k2, outDur: exit, name: P.layer + " " + word });
       ids.push(id);
       x += m.each[idx] + m.space;
       idx++;
     }
   }
   CC.measureDone(c);
+  CC.scrim(c, F.side, tIn, enter, tOut, exit);
+  CC.halosBack(c);
   CC.drift(c, rig, 0, D);
   return { words: ids, rig: rig, size: size, behind: behind, lines: lines.length, align: align, inAt: tIn,
            landed: tIn + enter + st * (n - 1), outAt: tOut, anchor: [ax, ay], side: F.side };

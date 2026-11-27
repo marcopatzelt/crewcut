@@ -36,13 +36,27 @@ var CC = (function () {
       layer: x.layer === "behind" || x.layer === "beside" ? x.layer : null,
       // Blender plates of the episode: {id: {first: "<path of 0001.png>", frames: N, ready: bool}}
       plates: x.plates && typeof x.plates === "object" ? x.plates : {},
-      brand: { colors: brand.colors || {}, fonts: brand.fonts || {}, shape: brand.shape || {}, mg: over(MG, brand.mg) }
+      brand: { colors: brand.colors || {}, fonts: brand.fonts || {}, shape: brand.shape || {}, mg: over(MG, brand.mg),
+               graphics: brand.graphics || null }
     };
   };
+  // The channel's graphic system when the pack has one (crewcut.brand.Pack.graphics_tokens): highlight, accent, ink,
+  // paper, halo {alpha, grow_px, blur_px, side_scrim_alpha}, safe {format: {left, right, top, bottom} px}, ease and
+  // ease_out (names in EC.EASES), shapes_only_on. null keeps every template as it was.
+  C.gfx = function () { return C.ctx().brand.graphics || null; };
 
   // Safe box of a format: 16:9 keeps 5 % on every side (8 % at the bottom for overlays, the player bar); 9:16 keeps
   // top 10 %, bottom 20 %, right `right_free` (platform buttons), left 6 %; stage keeps 5 % (6 % at the seam below).
+  // A pack with a graphic system may set them in pixels of 1920 x 1080 and 1080 x 1920 (graphics.safe_area); an overlay
+  // in 16:9 still keeps 8 % at the bottom, a Short at least `right_free` on the right.
   C.safe = function (fmt, W, H, transparent, rightFree) {
+    var g = C.gfx(), px = g && g.safe ? g.safe[fmt] : null;
+    if (px && (fmt === "portrait" || fmt === "landscape")) {
+      var RW = fmt === "portrait" ? 1080 : 1920, RH = fmt === "portrait" ? 1920 : 1080, sx = W / RW, sy = H / RH;
+      var l = px.left || 0, r = Math.max(px.right || 0, fmt === "portrait" ? rightFree * RW : 0), t = px.top || 0;
+      var b = Math.max(px.bottom || 0, fmt === "landscape" && transparent ? 0.08 * RH : 0);
+      return { x: l * sx, y: t * sy, w: W - (l + r) * sx, h: H - (t + b) * sy };
+    }
     if (fmt === "portrait") return { x: 0.06 * W, y: 0.10 * H, w: W * (1 - 0.06 - rightFree), h: H * (1 - 0.10 - 0.20) };
     if (fmt === "stage") return { x: 0.05 * W, y: 0.05 * H, w: 0.90 * W, h: H * (1 - 0.05 - 0.06) };
     var bottom = transparent ? 0.08 : 0.05;
@@ -162,8 +176,20 @@ var CC = (function () {
     var k = C.ctx(), cols = k.brand.colors, a = cols.ink || C.ink(), b = cols.paper || "#FFFFFF";
     var dark = C.luma(a) <= C.luma(b) ? a : b, light = dark === a ? b : a;
     if (!k.transparent) { var ink = C.ink(); return { fill: ink, shade: C.luma(ink) > 0.5 ? dark : light, onLight: C.luma(ink) < 0.5 }; }
+    // with the channel's halo light type always sits on its ink cloud, whatever the picture under it
+    var gh = C.gfx();
+    if (gh && gh.halo) return { fill: gh.paper || light, shade: gh.ink || dark, onLight: false, luma: C.lumaUnder(box), halo: true };
     var x = C.lumaUnder(box);
     return x !== null && x >= 0.55 ? { fill: dark, shade: light, onLight: true, luma: x } : { fill: light, shade: dark, onLight: false, luma: x };
+  };
+
+  // The colour of the one word or number that matters: the highlight over video and on a dark ground, the accent on
+  // a light ground (the highlight is never type on paper); without a graphic system the first content colour.
+  C.keyColor = function (ground) {
+    var g = C.gfx();
+    if (!g || !g.highlight) return C.color(0);
+    if (C.frame().transparent) return g.highlight;
+    return C.luma(ground || C.ground()) > 0.5 ? (g.accent || C.color(0)) : g.highlight;
   };
 
   // ── time helpers (pure) ─────────────────────────────────────────────
@@ -171,7 +197,8 @@ var CC = (function () {
   C.landBy = function (cue) { return cue - 1.5 / (C.ctx().fps || 25); };
   C.enterS = function () { return clamp(C.mg().enter_s || 0.4, 0.35, 0.5); };
   C.exitS = function () { return C.mg().exit_s || 0.25; };
-  C.ease = function () { return C.mg().ease || "expo"; };
+  C.ease = function () { var g = C.gfx(); return (g && g.ease) || C.mg().ease || "expo"; };
+  C.easeOut = function () { var g = C.gfx(); return (g && g.ease_out) || "expoIn"; };
   // the slow push of a hold: scale factor after `secs` seconds (linear, drift_pct_per_s clamped to 1.5..3 %)
   C.driftAt = function (secs, pct) {
     var p = clamp(pct === undefined ? (C.mg().drift_pct_per_s || 2) : pct, 1.5, 3);
@@ -233,6 +260,45 @@ var CC = (function () {
     var tight = EC.fx(c, id, "Drop Shadow", { color: col, opacity: (t.onLight ? 18 : 34) * k, direction: 180,
                                               distance: size * 0.012, softness: size * 0.06 });
     return [wide, tight];
+  };
+  // The halo behind type over video (the channel's graphic system): an ink copy of the type, grown by a stroke of
+  // 2 x grow_px, blurred by blur_px, at `alpha`, placed on the type's baseline in `parent` space and faded with it.
+  // Nothing without a halo in the pack, on a full frame or behind the person. Call C.halosBack(c) at the end: every
+  // halo goes under all type. o: {parent, text, size, role, x, y (baseline start), t, dur, outAt, outDur, name}
+  var _halos = [];
+  C.halo = function (c, o) {
+    var g = C.gfx(), F = C.frame();
+    if (!g || !g.halo || !F.transparent || F.layer === "behind" || !String(o.text).replace(/\s/g, "")) return null;
+    var h = g.halo, u = F.u, f = C.font(o.role || "display"), ink = g.ink || C.ink();
+    var id = EC.text(c, { text: String(o.text), size: o.size, fill: ink, stroke: ink, strokeWidth: 2 * (h.grow_px || 27) * u,
+                          applyStroke: true, font: f.font, style: f.style, justify: "left", name: (o.name || "type") + " halo" });
+    EC.fx(c, id, "Gaussian Blur", { blurriness: (h.blur_px || 28) * u });
+    if (o.parent !== undefined) C.child(c, id, o.parent);
+    EC.set(c, id, "transform/position", [o.x, o.y]);
+    var a = 100 * (h.alpha === undefined ? 0.8 : h.alpha), ks = [[o.t, 0], [o.t + o.dur, a]];
+    if (o.outAt !== undefined && o.outAt !== null) { ks.push([o.outAt, a]); ks.push([o.outAt + (o.outDur || C.exitS()), 0]); }
+    EC.keys(c, id, "transform/opacity", ks, "linear");
+    _halos.push([c, id]);
+    return id;
+  };
+  C.halosBack = function (c) {
+    for (var i = _halos.length - 1; i >= 0; i--) if (_halos[i][0] === c) EC.run("layer.arrange", { comp: c, layers: [_halos[i][1]], to: "back" });
+  };
+  // A soft ink gradient over the free side so light type reads over a bright set: from 0 at 58 % of the width to
+  // side_scrim_alpha at the frame edge (one blurred ink plate), faded with the graphic. side: "right" or "left".
+  C.scrim = function (c, side, t, dur, outAt, outDur) {
+    var g = C.gfx(), F = C.frame();
+    if (!g || !g.halo || !F.transparent || F.layer === "behind" || (side !== "left" && side !== "right")) return null;
+    var W = F.W, H = F.H, w = 0.42 * W, edge = 0.79;
+    var id = EC.shape(c, { kind: "rect", size: [w * 1.4, H * 1.5], fill: g.ink || C.ink(), name: "graphics scrim" });
+    EC.set(c, id, "transform/position", [side === "right" ? edge * W + 0.7 * w : (1 - edge) * W - 0.7 * w, H / 2]);
+    EC.fx(c, id, "Gaussian Blur", { blurriness: 0.30 * w });
+    var a = 100 * (g.halo.side_scrim_alpha === undefined ? 0.35 : g.halo.side_scrim_alpha);
+    var ks = [[t, 0], [t + dur, a]];
+    if (outAt !== undefined && outAt !== null) { ks.push([outAt, a]); ks.push([outAt + (outDur || C.exitS()), 0]); }
+    EC.keys(c, id, "transform/opacity", ks, "linear");
+    _halos.push([c, id]);
+    return id;
   };
   // An open stroke-only path on its own new shape layer (shape.newPath alone would add to a selected shape layer).
   // pts in layer space; returns {layer, group, trim} where trim is the path prefix of a Trim Paths operator.
@@ -303,7 +369,7 @@ var CC = (function () {
     EC.set(c, mt, "transform/position", [o.x + cx, o.y + (ink.top - pad + below) / 2]);
     EC.matte(c, id, mt, "alpha");
     var x = o.x + cx, y = o.y + cy, ks = [[o.t, [x, y + dy]], [o.t + o.dur, [x, y]]], ez = [C.ease()];
-    if (o.outAt !== undefined && o.outAt !== null) { ks.push([o.outAt, [x, y]]); ks.push([o.outAt + (o.outDur || C.exitS()), [x, y + dy]]); ez.push("linear"); ez.push("expoIn"); }
+    if (o.outAt !== undefined && o.outAt !== null) { ks.push([o.outAt, [x, y]]); ks.push([o.outAt + (o.outDur || C.exitS()), [x, y + dy]]); ez.push("linear"); ez.push(C.easeOut()); }
     EC.keys(c, id, "transform/position", ks, ez);
     if (o.pop !== false) {
       var p0 = 100 - (o.popPct || 3), p1 = 100 + Math.min(4, (o.popPct || 3));

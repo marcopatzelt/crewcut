@@ -192,7 +192,8 @@ def test_context_matches_the_template_contract(episode, studio):
     c = motion_context(plan, plan.by_id("m1"))
     assert set(c) == README_KEYS
     assert c["face"] is None and c["backdrop"] is None and c["duration"] == 4.6 and c["fps"] == 25
-    assert set(c["brand"]) == {"colors", "fonts", "shape", "mg"}
+    assert set(c["brand"]) == {"colors", "fonts", "shape", "mg", "graphics"}
+    assert c["brand"]["graphics"] is None            # the neutral pack has no graphic system of its own
     assert c["brand"]["fonts"]["display"] == {"family": "Inter", "weight": 800}
     assert c["brand"]["mg"]["palette"][0] == c["brand"]["colors"]["accent"]
     k = motion_context(plan, plan.by_id("k2"), draft=True, backdrop="/x/backdrop.mov")
