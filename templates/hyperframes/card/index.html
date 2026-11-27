@@ -12,8 +12,9 @@
       #root .card-row { position: relative; display: block; white-space: nowrap; }
       #root .card-title { line-height: 1.05; letter-spacing: -0.015em; }
       #root .card-line { line-height: 1.25; }
-      #root .card-mark { position: absolute; left: -0.06em; right: -0.06em; bottom: 0.08em; height: 0.36em; z-index: 0; }
-      #root .card-word { position: relative; z-index: 1; }
+      #root .card-word { position: relative; display: inline-block; isolation: isolate; }
+      #root .card-mark { position: absolute; left: -0.08em; right: -0.08em; bottom: 0.12em; height: 0.34em; z-index: -1;
+                         border-radius: 0.06em; transform-origin: 0% 50%; }
     </style>
   </head>
   <body>
@@ -48,11 +49,13 @@
         function row(cls, value, px, color, mark) {
           if (!value) return null;
           var el = CC.el("div", "card-row " + cls, null, card);
+          var word = CC.el("span", "card-word", null, el);
           if (mark) {
-            var m = CC.el("span", "card-mark", null, el);
+            var m = CC.el("span", "card-mark", null, word);
             m.style.background = pal.highlight;
+            el._mark = m;
           }
-          CC.el("span", "card-word", String(value), el);
+          CC.el("span", "card-text", String(value), word);
           el.style.color = color;
           el.style.fontSize = px + "px";
           rows.push(el);
@@ -89,6 +92,9 @@
         rows.forEach(function (el, i) {
           tl.fromTo(el, { x: from * CC.pushPx * 0.5, opacity: 0 }, { x: 0, opacity: 1, duration: CC.enter, ease: CC.easeIn }, inAt + st * (i + 1));
           tl.to(el, { x: from * CC.pushPx * 0.5, opacity: 0, duration: CC.exit, ease: CC.easeOut }, out + st * (rows.length - 1 - i));
+        });
+        rows.forEach(function (el, i) {               // a definition's marker draws under the term once it stands
+          if (el._mark) tl.fromTo(el._mark, { scaleX: 0 }, { scaleX: 1, duration: CC.enter, ease: CC.easeIn }, inAt + st * (i + 3));
         });
         CC.pushOut(tl, card, out + st * rows.length, from);
         CC.hold(tl, card, right ? "100% 100%" : "0% 100%");

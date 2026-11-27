@@ -479,14 +479,19 @@ def import_file(src: Path, name: str, licence: str, source: str, *, title: str |
     return entry
 
 
+def _res(r: Any) -> Any:
+    """An engine reply without the CLI's save wrapper (``{"result": ..., "saved": path}`` after --save/--save-as)."""
+    return r.get("result") if isinstance(r, dict) and "saved" in r and "result" in r else r
+
+
 def engine_check(folder: Path, backend: Any) -> dict:
     """Import ``converted.json`` into a scratch EffectCraft project and render one frame at 60 % (preview.png)."""
     proj = folder / ".check.ecproj"
     try:
-        r = backend.exec("file.importLottie", {"path": str(folder / "converted.json")}, project=None,
-                         save_as=str(proj))
+        r = _res(backend.exec("file.importLottie", {"path": str(folder / "converted.json")}, project=None,
+                              save_as=str(proj)))
         comp = r.get("comp") if isinstance(r, dict) else None
-        info = backend.exec("comp.info", {"comp": comp}, project=str(proj), save=False) if comp is not None else {}
+        info = _res(backend.exec("comp.info", {"comp": comp}, project=str(proj), save=False)) if comp is not None else {}
         t = round(float((info or {}).get("duration") or 1.0) * 0.6, 3)
         backend.render_frame(str(proj), str(folder / "preview.png"), comp=str((info or {}).get("name") or comp),
                              time=t, max_side=960, transparent=True)
@@ -523,15 +528,15 @@ def aep_import(folder: Path, src: Path, backend: Any, allow_losses: bool, pack: 
         return {"needs_adaptation": True, "report": None,
                 "status": "copied only: effectcraft-cli is not here, run the import again in the Crewcut image"}
     path = str(folder / "original" / src.name)
-    dry = backend.exec("file.importAep", {"path": path, "dryRun": True}, project=None, save=False)
+    dry = _res(backend.exec("file.importAep", {"path": path, "dryRun": True}, project=None, save=False))
     report = (dry or {}).get("report") if isinstance(dry, dict) else None
     losses = _aep_losses(report)
     if losses and not allow_losses:
         raise ImportError_(f"{src.name} would lose parts in EffectCraft ({'; '.join(losses[:5])}). Take a template "
                            "without third-party plugins, or --allow-losses to keep the rest")
     proj = folder / "project.ecproj"
-    res = backend.exec("file.importAep", {"path": path, "allowLosses": bool(allow_losses)}, project=None,
-                       save_as=str(proj))
+    res = _res(backend.exec("file.importAep", {"path": path, "allowLosses": bool(allow_losses)}, project=None,
+                            save_as=str(proj)))
     fonts = studio_style.fonts(pack)
     fix = backend.script(_aep_fix_script(studio_style.fps(pack), fonts["display"]["family"]), project=str(proj),
                          save=True, name="crewcut-aep-fix.jsx")

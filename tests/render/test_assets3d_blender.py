@@ -12,11 +12,12 @@ from pathlib import Path
 import pytest
 from PIL import Image, ImageStat
 
-from crewcut.render import assets3d, blender, media, plate_quality, plates
+from crewcut.render import assets3d, media, plate_quality, plates
 
 HERE = Path(__file__).resolve().parent
+BLENDER = os.environ.get("CREWCUT_BLENDER") or shutil.which("blender") or ""   # read before the fixtures clear it
 pytestmark = pytest.mark.skipif(
-    os.environ.get("CREWCUT_ASSET_RENDER") != "1" or not shutil.which(blender.blender_bin()),
+    os.environ.get("CREWCUT_ASSET_RENDER") != "1" or not (BLENDER and Path(BLENDER).exists() or shutil.which(BLENDER)),
     reason="needs Blender, the network and CREWCUT_ASSET_RENDER=1 (CI job blender-assets)")
 
 
@@ -24,7 +25,7 @@ def test_hdri_and_material_light_a_tiny_cycles_frame(tmp_path, monkeypatch):
     monkeypatch.setenv("CREWCUT_ASSET_CACHE", str(tmp_path / "cache"))
     out = tmp_path / "plate"
     profile = {"version": 1, "size": [320, 180], "samples": 16}
-    cmd = plates.blender_cmd(blender.blender_bin(), str(HERE / "data" / "hdri_plate.py"), str(out), "1-1",
+    cmd = plates.blender_cmd(BLENDER, str(HERE / "data" / "hdri_plate.py"), str(out), "1-1",
                              {"hdri": "studio_small_09", "material": "Paper005", "res": "1k"}, quality=profile,
                              gpu=False, lib=str(assets3d.LIB_DIR), cache=str(tmp_path / "cache"))
     rc, text = media.run(cmd, timeout=900)

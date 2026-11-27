@@ -74,7 +74,8 @@ def context() -> str:
              "colour, never replace the object's defining geometry with a generic rounded box. Inspect proven "
              "sources before rebuilding. Judge silhouettes, edge scale, detail, surfaces, light, composition "
              "and meaningful action separately from palette/render checks. Do not claim a still proves animation."]
-    lines += ["REUSE FIRST: inspect `crewcut motion library` before writing scene code. Use an approved reusable "
+    lines += ["REUSE FIRST: inspect `crewcut motion library` and `crewcut motion libraries` (HyperFrames templates, "
+              "private imported templates, CC0 3D assets) before writing scene code. Use an approved reusable "
               "source bundle with `crewcut motion reuse NAME EP NEW_ID [--version N]`, especially for 3D helpers. "
               "Adapt its parameters and cues in the new episode; never overwrite the proven source. "
               "After a successful new insert, propose reusable code with `crewcut motion promote` for the library."]

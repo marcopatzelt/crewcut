@@ -76,8 +76,8 @@ def test_a_few_frames_with_alpha_and_size(name, tmp_path):
         frames = sorted(Path(r["frames"]).glob("*.png"))
         assert len(frames) == 8, (name, fmt, len(frames))
         for f in (frames[0], frames[-1]):
-            with Image.open(f) as im:
-                assert im.size == size and im.mode == "RGBA", (name, fmt, im.size, im.mode)
+            with Image.open(f) as im:          # an overlay carries alpha; a full frame may come as plain RGB
+                assert im.size == size and (im.mode == "RGBA" or m["kind"] == "full"), (name, fmt, im.size, im.mode)
         rep = hf.alpha_report(frames[-1])
         if m["kind"] == "overlay":
             assert rep["transparent_share"] > 0.5, (name, fmt, rep)      # the speaker shows through
