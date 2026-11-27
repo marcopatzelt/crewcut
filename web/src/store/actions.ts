@@ -351,7 +351,9 @@ export function composerTarget(s: UiState = getUi()): string | null {
 export async function send(text: string, target = composerTarget()): Promise<void> {
   const origin = getUi().view;
   if (!target) {
-    const ep = await api.createEpisode(text);
+    const choice = getUi().newEpisode;
+    const ep = await api.createEpisode(text, { length: choice.length, show_format: choice.format });
+    setUi({ newEpisode: { length: "auto", format: null } });
     upsertEpisode(ep, true);
     if (getUi().view === origin) navigate({ kind: "episode", id: ep.id });
     await loadThread(ep.id, true);

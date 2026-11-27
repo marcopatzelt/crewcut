@@ -108,15 +108,45 @@ def start_record(episode: str) -> None:
     return None
 
 
-def new_episode(text: str) -> dict:
-    title = " ".join(text.split())
+def new_episode(text: str, length: str = "auto", show_format: str | None = None, topic_type: str | None = None,
+                source: str | None = None, title: str | None = None) -> dict:
+    """A new episode from a pasted tool, link, tweet or idea. `length` long, short or auto; `show_format` an id of the
+    format library or None (the Scout picks). With a format library the Scout's plan job starts (conductor/plan.py),
+    else the bare idea step."""
+    from .. import showformats
+    if length not in showformats.CHOICES:
+        raise ValueError("length must be long, short or auto")
+    fmt = None
+    if show_format:
+        fmt = showformats.get(show_format)
+        if fmt is None:
+            raise ValueError(f"no format {show_format!r} in the format library")
+        if length != "auto" and fmt["length"] != length:
+            raise ValueError(f"format {show_format} is {fmt['length']}, not {length}")
+        length = fmt["length"]
+    if topic_type is not None and topic_type not in showformats.TOPIC_TYPES:
+        topic_type = None
+    title = " ".join((title or text).split())
     title = title if len(title) <= 90 else title[:87].rstrip() + "…"
-    project = episodes.create(title)
+    short = length == "short"
+    project = episodes.create(title, source=source, kind="short" if short else "episode",
+                              mode="original" if short else None)
     eid = project["id"]
+    extra = {"length": length, **({"show_format": fmt["id"], "form": fmt["id"]} if fmt else {}),
+             **({"topic_type": topic_type} if topic_type else {})}
+    project.update(extra)
+    episodes.write(eid, project)
     post(eid, text, author="user")
+    if showformats.enabled():
+        from . import plan
+        jid = plan.start(eid, text)
+        post(eid, ("Scout reads your input, checks it against the format " + fmt["name"] if fmt else
+                   "Scout reads your input and picks the format that fits") +
+             ". You get the pick with a short reason here, then the Writer writes the full script.", job=jid)
+        return episodes.read(eid)
     jid = start_step(eid, "idea", seed=text)
     post(eid, "Scout is looking for the data behind this idea. You get a topic card when it is ready.", job=jid)
-    return project
+    return episodes.read(eid)
 
 
 def user_message(episode: str, text: str) -> dict:
@@ -361,6 +391,10 @@ def after_job(job: dict, res) -> None:
         name = (team.get(job["identity"]) or {}).get("name", job["identity"])
         post(target, f"{name} stopped: {engines.scrub(res.error)[:200]}. Say \"try again\" and I restart it.")
         return
+    if episode and not channel_child:
+        from . import plan
+        if plan.after_job(job, res):   # the Scout picked the show format: the Writer writes the full script next
+            return
     if (job["identity"] == "showrunner" or channel_child) and not said and res.text.strip():
         post(target, engines.scrub(res.text).strip()[:2000], job=job["id"], author=job["identity"])
     if episode and not channel_child:

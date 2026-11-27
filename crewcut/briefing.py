@@ -105,6 +105,11 @@ def text() -> str:
     if lines:
         sections.append("Measured results of published videos (Crewcut's YouTube data, newest first):\n"
                         + "\n".join(lines))
+    from . import scoreboard
+    board = scoreboard.briefing_lines()
+    if board:
+        sections.append("Show formats on this channel (`crewcut formats score`; pick formats that win more often):\n"
+                        + "\n".join(board))
     if not sections:
         return ""
     return "CHANNEL BRIEF (read before you plan; it is evidence and direction, not a new approval)\n" + \

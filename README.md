@@ -138,6 +138,10 @@ Editor cuts them from your original recording in 9:16 around your face. An *orig
 ideas with a proof from your real work, you talk for two minutes, the Writer shortens your own words, you record only
 yourself. One card per Short, or your own standing approval for Shorts. See [docs/shorts.md](docs/shorts.md).
 
+**Show formats.** Paste a tool, a link, a tweet or an idea and pick Long, Short or Auto: the Scout picks the format
+from your library, says why, and the Writer writes the full script from its template. Ideas from a scout ranking or
+saved links wait as cards; a scoreboard shows which formats win. See [docs/formats.md](docs/formats.md).
+
 Every correction is one sentence, typed or spoken ("keep the part where I laugh", "no captions"). A correction that should
 last becomes a proposed rule with the date and your words; one yes adds it to your style pack.
 
@@ -398,6 +402,7 @@ straight to the Editor, with hard limits. See [docs/crew-talk.md](docs/crew-talk
 [Desktop app](docs/desktop.md) ·
 [Crew talk](docs/crew-talk.md) ·
 [Shorts](docs/shorts.md) ·
+[Show formats and ideas](docs/formats.md) ·
 [HTTP API](docs/api.md) ·
 [First real episode](docs/first-real-episode.md) ·
 [Integration tests](docs/integration-test.md)

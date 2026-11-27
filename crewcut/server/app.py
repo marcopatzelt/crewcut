@@ -12,6 +12,7 @@ import shutil
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
@@ -29,6 +30,18 @@ mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 class TextIn(BaseModel):
     text: str
+
+
+class NewEpisodeIn(BaseModel):
+    """New Episode: the pasted tool, link, tweet or idea; long, short or auto; optionally a show format id."""
+    text: str
+    length: Literal["long", "short", "auto"] = "auto"
+    show_format: str | None = None
+
+
+class IdeaStartIn(BaseModel):
+    length: Literal["long", "short", "auto"] | None = None
+    show_format: str | None = None
 
 
 class AcceptIn(BaseModel):
@@ -182,6 +195,8 @@ def create_app(start_worker: bool = True) -> FastAPI:
             app.state.worker.start_background()
             from ..conductor import inbox
             inbox.start_background()
+            from .. import ideas
+            ideas.start_background()
             from ..youtube import connect as youtube_connect
             youtube_connect.start_background()
             try:
@@ -266,12 +281,58 @@ def create_app(start_worker: bool = True) -> FastAPI:
         return res
 
     @app.post("/api/episodes")
-    def post_episode(body: TextIn):
+    def post_episode(body: NewEpisodeIn):
         text = body.text.strip()
         if not text:
             raise HTTPException(400, "Say the idea in one sentence.")
-        project = flow.new_episode(text)
+        try:
+            project = flow.new_episode(text, length=body.length, show_format=body.show_format or None)
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from None
         return episodes.summary(project["id"])
+
+    # ---- the format system: formats, ideas, scoreboard (docs/formats.md) -----------------------------------------
+    @app.get("/api/formats")
+    def get_formats():
+        from .. import showformats
+        lib, problems = showformats.report()
+        return {"formats": [showformats.public(f) for f in sorted(lib.values(), key=lambda f: (f["length"], f["id"]))],
+                "problems": problems, "enabled": showformats.settings()["enabled"]}
+
+    @app.get("/api/ideas")
+    def get_ideas(status: str | None = None):
+        from .. import ideas
+        ideas.load()
+        return ideas.list_ideas(status=status)
+
+    @app.post("/api/ideas/{iid}/start")
+    def start_idea(iid: str, body: IdeaStartIn | None = None):
+        from .. import ideas
+        body = body or IdeaStartIn()
+        ideas.load()
+        try:
+            res = ideas.start(iid, length=body.length, show_format=body.show_format)
+        except KeyError:
+            raise HTTPException(404, "No such idea.") from None
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from None
+        return {"idea": res["idea"], "episode": episodes.summary(res["episode"])}
+
+    @app.post("/api/ideas/{iid}/dismiss")
+    def dismiss_idea(iid: str):
+        from .. import ideas
+        ideas.load()
+        try:
+            return ideas.dismiss(iid)
+        except KeyError:
+            raise HTTPException(404, "No such idea.") from None
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from None
+
+    @app.get("/api/scoreboard")
+    def get_scoreboard():
+        from .. import scoreboard
+        return scoreboard.build()
 
     @app.get("/api/episodes/{eid}/messages")
     def get_messages(eid: str, after: int = 0):

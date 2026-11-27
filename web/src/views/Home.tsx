@@ -6,6 +6,7 @@ import { Download, FolderOpen, Plus } from "lucide-react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Activity, Episode, Identity } from "../api/types";
 import { StepBar, identityOf } from "../components/bits";
+import { Ideas, ScoreboardTable } from "../components/Formats";
 import { ago, clock, countWord, episodeNumber } from "../lib/format";
 import { desktop } from "../lib/desktop";
 import { importFootage, navigate, newEpisode } from "../store/actions";
@@ -365,6 +366,8 @@ export function Home() {
           </section>
         ) : null}
 
+        {filter === "all" ? <Ideas /> : null}
+
         {long.length ? (
           <section className="home-section" aria-labelledby="grid-heading">
             <div className="section-head">
@@ -407,6 +410,8 @@ export function Home() {
             </div>
           </section>
         ) : null}
+
+        {filter === "all" ? <ScoreboardTable /> : null}
       </div>
     </main>
   );
