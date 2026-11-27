@@ -53,3 +53,12 @@
 .engine-popover > .meta { margin: 10px 0 0; }
 .engine-popover .connect { margin: 8px 0; padding: 0; }
 @media (max-width: 899px) { .engine-trigger { min-height: 44px; } }
+/* Claude subscription or API key: a two-way switch, then the key's state or its one field. */
+.claude-auth { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.claude-auth-switch { display: flex; gap: 4px; padding: 3px; background: var(--tile); border-radius: var(--r-ctl); }
+.claude-auth-switch button { flex: 1; min-height: 32px; border-radius: var(--r-row); color: var(--ink); font-size: var(--t-meta); }
+.claude-auth-switch button[aria-pressed="true"] { background: var(--chip-on); color: var(--chip-on-ink); font-weight: 600; }
+.claude-auth-switch button:disabled:not([aria-pressed="true"]) { color: var(--ink-3); }
+.claude-auth .connect-note { justify-content: flex-start; }
+.claude-auth > .meta { margin: 0; }
+@media (max-width: 899px) { .claude-auth-switch button { min-height: 44px; } }

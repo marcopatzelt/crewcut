@@ -81,7 +81,9 @@ light `mint-dawn`, the 1280 px versions on small screens) is the background of t
 
 - Each composer shows the selected Claude Code / Codex choice beside its scope. Its compact chooser shows both
   options, connection state and the selected option. Sign-in appears only when requested. Switching keeps both
-  sign-ins and applies to new work in all chats, not work already running.
+  sign-ins and applies to new work in all chats, not work already running. While Claude Code is selected, the chooser
+  also shows a two-way switch, "Subscription | API key", for the Claude login of new work, the API key's state
+  (saved, from the environment, or one password field to paste it once) and one line that the key is billed per token.
 - Crew uses compact cards: avatar, name and one role line. Showrunner leads the grid. Skills, rights, sources and
   the full identity stay in collapsed details, not a wall of text. Connection settings do not occupy the crew grid.
 
@@ -90,8 +92,9 @@ light `mint-dawn`, the 1280 px versions on small screens) is the background of t
 - Each composer names its scope: Channel or the episode title. Drafts stay with their conversation when navigating.
   Sending and receiving after a navigation never changes the destination. Channel is separate from onboarding.
 - Two exceptions: the search field of the command palette (rule 15), which picks from a list and takes no values,
-  and the one field of "Connect Claude" for the code Claude's own sign-in page shows (the only thing only the user
-  can copy; it appears after the button and goes away once Claude is connected).
+  the one field of "Connect Claude" for the code Claude's own sign-in page shows (the only thing only the user
+  can copy; it appears after the button and goes away once Claude is connected), and the one password field for an
+  Anthropic API key in the AI chooser (pasted once; it goes away once a key is saved, and the key never comes back).
 - Onboarding is the composer too: "Paste your links." Links go in, the Brand identity works in Working now, a profile
   card comes back.
 - Cards have exactly one primary button. Its label says what happens ("Use this title", "Rent a GPU", "Publish on
@@ -343,7 +346,7 @@ crew); narrow window; light and dark; the engine not logged in.
 | Check | Rule |
 |---|---|
 | `npm run check:tokens` | no raw colour values outside `tokens.css`; radii, shadows and durations only from tokens (4, 6, 9) |
-| `npm run check:forms` | three text fields: the composer, the search field of the palette and the code field of Connect Claude; no `<form>` with more than one field (1.2, 3, 15) |
+| `npm run check:forms` | four text fields: the composer, the search field of the palette, the code field of Connect Claude and the API key field of the AI chooser; no `<form>` with more than one field (1.2, 3, 15) |
 | `npm run check:words` | no emoji, no exclamation marks, no "Submit"/"OK" buttons in `src/` (8, 10) |
 | `npm run check:contrast` | every text token clears 4.5:1 on its surfaces in both themes: the opaque stand-ins, the glass over both wallpaper samples with tiles and chips on it, tags over a white picture (4, 18) |
 | `npm run check:fonts` | no font file in the repo or in `dist/` whose name or inner name contains "SF Pro", "SF Compact", "SFNS", "SF Mono" or "New York"; no `@font-face` with these names (5) |

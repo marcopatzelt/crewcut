@@ -190,6 +190,14 @@ def checks(ci: bool = False, probe: bool = False) -> list[dict]:
                                 if eng.name == "claude" else "Log in to Codex again: `crewcut engine login codex`."))
             if pok:
                 _probe_models(eng, add)
+    if eng.name == "claude":
+        from .engines import connect
+        view = connect.auth_view()
+        add(OK if ok else NOTE, "Claude login",
+            ("API key, billed per token" if view["mode"] == "api_key" else "Claude subscription")
+            + f" for new work (subscription: {'connected' if view['subscription']['connected'] else 'not connected'}, "
+            f"API key: {view['api_key']['source'] or 'none'})",
+            "" if ok else "Switch with `crewcut engine auth subscription|api-key` or in the AI chooser.")
     add(NOTE, "other engine", f"{other.label}{' (beta)' if other.beta else ''}: "
         + ("installed" if other.installed() else "not installed") + "; say \"use " + other.label + "\" to switch")
 
@@ -208,6 +216,9 @@ def checks(ci: bool = False, probe: bool = False) -> list[dict]:
                     exe = str(h.get("command", "")).split()[:1]
                     if exe and not exe[0].startswith("$") and not shutil.which(exe[0]) and not os.path.exists(exe[0]):
                         missing.add(exe[0])
+        if st.get("apiKeyHelper"):
+            add(WARN, "your Claude settings", ".claude/settings.json sets apiKeyHelper: every run bills the API key, "
+                "also in subscription mode", "Remove apiKeyHelper there; switch with `crewcut engine auth` instead.")
         add(WARN if missing else OK, "your Claude settings",
             ("hooks call programs this container does not have: " + ", ".join(sorted(missing))) if missing else
             "in use (.claude/ in the studio folder)")

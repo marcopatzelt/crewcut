@@ -136,6 +136,43 @@ recommended); until then only the parts without a login run.
 - Whether a subscription may drive an open-source app like this is governed by each provider's terms. Crewcut starts
   your own CLI with your own login, the same way you would in a terminal.
 
+## Claude-Abo oder API-Schlüssel: subscription or API key
+
+Claude Code can run new work on your **Claude subscription** (the `CLAUDE_CODE_OAUTH_TOKEN` of Connect Claude, as
+above) or on an **Anthropic API key**, for example the same key you use in other tools. The API key is billed per
+token by Anthropic; the subscription is not. You choose once; new work uses the choice, running work keeps the login
+it started with. Each job records which one it used (`auth` in the job: `subscription` or `api_key`; the log's start
+line says `login=…`, and Claude Code's own `apiKeySource` is kept in the job's engine info).
+
+Switch in one of three ways:
+
+- **Web UI**: the AI chooser beside the composer, while Claude Code is selected: "Subscription | API key". Paste a key
+  once into the password field and press Save key (this also switches to it). The page shows only "API key saved." or
+  "API key from the environment (.env).", never the key or a part of it. Remove key deletes the stored key.
+- **CLI** (inside the container): `crewcut engine api-key --stdin --use < keyfile` (the key is read from stdin, never
+  from the arguments), `crewcut engine auth api-key`, `crewcut engine auth subscription`, `crewcut engine auth` (shows
+  the state), `crewcut engine api-key --forget`.
+- **API**: `GET|POST /api/engine/claude/auth`, `POST|DELETE /api/engine/claude/api-key` ([api.md](api.md)).
+
+How it works:
+
+- The stored key is `/opt/engine/secrets/anthropic-api-key` in the engine volume (mode 0600, folder 0700, written
+  atomically), never in the studio folder. Crewcut writes a small helper next to it,
+  `/opt/engine/secrets/api-key-helper.sh` (0700), which prints the key file.
+- In API-key mode each run gets `--settings '{"apiKeyHelper": "/opt/engine/secrets/api-key-helper.sh", …}'` (merged
+  with Crewcut's other settings, such as crew talk) and no `CLAUDE_CODE_OAUTH_TOKEN` in its environment. Claude Code
+  then reports `"apiKeySource": "apiKeyHelper"`. Only the helper's path is an argument; the key never is, and it is
+  never in a log, a job row or an API answer.
+- `ANTHROPIC_API_KEY` in the environment (`.env`) also counts as a key. It wins over a stored key, needs no helper and
+  cannot be removed from the UI. In subscription mode it is kept out of the run's environment, so it never wins
+  silently over the subscription.
+- Default when nothing is chosen: the subscription when a token exists, else the API key when one exists. A mode
+  without its credential is refused (409) and is not silently replaced by the other one; removing the stored key while
+  in API-key mode switches new work back to the subscription.
+- An `apiKeyHelper` in the studio's own `.claude/settings.json` would bill every run to the key, also in subscription
+  mode. `crewcut doctor` warns about it; remove it and use the switch instead. `crewcut doctor` also names the active
+  login (never a value).
+
 ## Adding and switching accounts
 
 Open **Crew** to connect Claude Code, Codex, or both. **Use Codex** and **Use Claude Code** select the engine for new
