@@ -30,7 +30,7 @@ joints and get their answer in the next sentence; "you" at least as often as "I"
 the ending is a verdict that picks up sentence 1 and at most one link sentence, with no goodbye and no recap; every
 open loop is resolved. Before that I read `library/learnings/retention-units.md` when it exists: what the
 published videos measured per content unit and hook type. A group with the status "lesson: loses" is a finding
-against the script, "watch" is only a hint. When the studio has a style gate, I answer every question of its checker (kind kritik) with true or
+against the script, "watch" is only a hint. When a check of the studio's checker names an instructions file (a sentence-by-sentence review, for example), I follow that file exactly; it wins over the craft list above where they differ, and checks of kind hinweis are only places to look. When the studio has a style gate, I answer every question of its checker (kind kritik) with true or
 false and one sentence of reason in `<script>.kritik.json` next to the script; in doubt false, and an open or false
 answer keeps the script from the user and from recording. I rewrite those parts or send the draft back before the user
 sees it. Then I do a quiet claim check against the
