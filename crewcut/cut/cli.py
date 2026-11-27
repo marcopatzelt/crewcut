@@ -117,6 +117,17 @@ def cmd_transcribe(args) -> int:
     for s in result.get("suspects", []):
         lines.append(f"listen at {s['at']:.1f} s: «{s['text']}» is often invented by the recognizer")
     lines.append("Whole-file recognition can leave out sentences: `crewcut cut islands ... --words` lists the gaps.")
+    if ep_dir is not None:
+        from .. import stylegate
+        try:   # the words of a finished voice cut: the Critic reviews what was said against the cue sheet
+            after = stylegate.after_transcript(ep_dir.name, Path(out))
+        except Exception as e:  # noqa: BLE001 - the transcript is written; the review is a bonus
+            after = None
+            lines.append(f"(the review of what was said did not start: {e})")
+        if after:
+            result["review"] = after
+            lines.append(f"The Critic reviews what was said against the cue sheet (job {after['job']}); a cut list "
+                         "for the edit follows.")
     _out(args, result, "\n".join(lines))
     return 0
 

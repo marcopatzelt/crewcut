@@ -119,3 +119,19 @@ get the words of the finished cut, write the edit plan (`SKILL.md`).
    spelling of the selects. Check three captions (start, middle, end) against what is said at those times.
 7. `project.json`: the final file, its length and sha256, the user's words with the date, the measured loudness, and
    what is NOT final.
+
+## Recorded from a cue sheet
+
+A cue sheet (brief/CUES-vNNN.md or DREHZETTEL-vNNN.md, docs/cue-sheets.md) fixes only the opening, each unit's hook and
+punch line, the bridge, the ask, the verdict and the link line; the speaker says the bullets in their own words.
+
+- **`crewcut cut takes` does not know free speech yet.** It lines up script sentences, so it would treat the free parts
+  as missing or extra. Select whole units instead: one select from the island where the unit's hook starts to the
+  island where its bridge (or punch line) ends, from the take the speaker finished last (the teleprompter log names the
+  page, unit and take of every start: `page`, `unit`, `take`). Use `cut takes` only for the opening, which is read
+  word for word.
+- Every cut between units lies in the pause before the next hook ("Point two." / "Punkt zwei."), so a unit recorded
+  again later fits between the old ones.
+- After the voice cut is transcribed, the Critic reviews what was said and writes `edit/cutlist-vNNN.json`: sentences
+  without value, with start and end. Listen to each one; cut at islands or measured dips, never at word times. A hook
+  or punch line the Critic calls broken means that unit is recorded again.

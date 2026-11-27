@@ -1,7 +1,8 @@
 // The teleprompter: the script as numbered speaking blocks in big letters, on phones and on the prompter glass.
 // Every screen follows one shared timeline (timeline.ts, sync.ts). Tap a block on any screen and every screen jumps to
 // its start; Previous, Repeat and Next do the same for the blocks around the reading line. A hand scroll on one screen
-// moves the others with it. The block on the reading line is marked on every screen.
+// moves the others with it. The block on the reading line is marked on every screen. A cue sheet is shown in pages
+// (CueSheet.tsx): Previous, Repeat and Next move by page, and the remote lists the pages with their take counts.
 import {
   AlignLeft,
   ArrowDown,
@@ -20,10 +21,24 @@ import {
 } from "lucide-react";
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PrompterControl, PrompterScript } from "../api/types";
+import { CueText, cueClass, PageBar, PageHead, takesText } from "./CueSheet";
 import { measure, placeOn, scrollFor, type Layout } from "./geometry";
 import { guidePercent, ReadingLine } from "./ReadingLine";
 import { DEFAULT_CONTROL, httpSource, PrompterSync, type PrompterSource } from "./sync";
-import { DEFAULT_CPS, normalizeBlocks, placeAt, stepTarget, type Block, type ControlPatch } from "./timeline";
+import {
+  DEFAULT_CPS,
+  normalizeBlocks,
+  normalizePages,
+  pageAt,
+  pageStep,
+  placeAt,
+  stepTarget,
+  stopsOf,
+  withStops,
+  type Block,
+  type ControlPatch,
+  type Weights,
+} from "./timeline";
 
 export { DEFAULT_CONTROL, httpSource, type PrompterSource };
 
@@ -45,12 +60,15 @@ function Panel({
   change,
   setMode,
   dim,
+  points = true,
 }: {
   ctl: PrompterControl;
   mode: "full" | "points";
   change: (patch: ControlPatch) => void;
   setMode: (m: "full" | "points") => void;
   dim: boolean;
+  /** Offer the switch between full text and key points (a cue sheet has none: its bullets are the points). */
+  points?: boolean;
 }) {
   return (
     <div className={dim ? "pr-panel dim" : "pr-panel"} role="toolbar" aria-label="Teleprompter controls">
@@ -84,15 +102,17 @@ function Panel({
         A+
       </button>
       <span className="pr-sep" aria-hidden="true" />
-      <button
-        type="button"
-        className="pr-btn"
-        aria-label={mode === "full" ? "Show key points" : "Show full text"}
-        title={mode === "full" ? "Key points" : "Full text"}
-        onClick={() => setMode(mode === "full" ? "points" : "full")}
-      >
-        {mode === "full" ? <List size={16} aria-hidden="true" /> : <AlignLeft size={16} aria-hidden="true" />}
-      </button>
+      {points ? (
+        <button
+          type="button"
+          className="pr-btn"
+          aria-label={mode === "full" ? "Show key points" : "Show full text"}
+          title={mode === "full" ? "Key points" : "Full text"}
+          onClick={() => setMode(mode === "full" ? "points" : "full")}
+        >
+          {mode === "full" ? <List size={16} aria-hidden="true" /> : <AlignLeft size={16} aria-hidden="true" />}
+        </button>
+      ) : null}
       <button
         type="button"
         className="pr-btn"
@@ -155,8 +175,14 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
   const blocks = useMemo(() => normalizeBlocks(script?.blocks ?? []), [script]);
   const blocksRef = useRef(blocks);
   blocksRef.current = blocks;
-  const pace = useRef({ weights: [] as number[], cps: DEFAULT_CPS });
-  const weights = useMemo(() => blocks.map((b) => b.weight), [blocks]);
+  // A cue sheet: its pages (none for a normal script, which keeps everything as it was).
+  const pages = useMemo(() => (script?.format === "cuesheet" ? normalizePages(script.pages, blocks) : []), [script, blocks]);
+  const pagesRef = useRef(pages);
+  pagesRef.current = pages;
+  const paged = pages.length > 0;
+  const pace = useRef({ weights: [] as Weights, cps: DEFAULT_CPS });
+  // A cue sheet's weights carry its page ends: playing stops at the end of every page, on every screen.
+  const weights = useMemo(() => withStops(blocks.map((b) => b.weight), stopsOf(pages, blocks.length)), [blocks, pages]);
   pace.current = { weights, cps: script?.cps ?? DEFAULT_CPS };
   const currentRef = useRef(0);
   const layout = useRef<Layout | null>(null);
@@ -371,7 +397,8 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
     const all = blocksRef.current;
     if (!all.length) return;
     const here = Math.min(currentRef.current, all.length - 1);
-    const target = kind === "repeat" ? here : stepTarget(all, here, kind === "next" ? 1 : -1);
+    const target = pagesRef.current.length ? pageStep(pagesRef.current, here, kind)
+      : kind === "repeat" ? here : stepTarget(all, here, kind === "next" ? 1 : -1);
     if (target !== null) change({ action: kind, block: target });
   }, [change]);
 
@@ -391,17 +418,18 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
     };
   }, [ctl.playing]);
 
-  // The remote keeps the marked block in view, unless a thumb moved the list a moment ago.
+  // The remote keeps the marked block (on a cue sheet: its page) in view, unless a thumb moved the list a moment ago.
   const listTouched = useRef(-1e9);
+  const row = paged ? pageAt(pages, current) : current;
   useEffect(() => {
     if (!remote || performance.now() - listTouched.current < 3000) return;
-    const row = list.current?.querySelector<HTMLElement>(`[data-index="${current}"]`);
-    if (row && typeof row.scrollIntoView === "function") row.scrollIntoView({ block: "center" });
-  }, [current, remote]);
+    const el = list.current?.querySelector<HTMLElement>(`[data-index="${row}"]`);
+    if (el && typeof el.scrollIntoView === "function") el.scrollIntoView({ block: "center" });
+  }, [row, remote]);
 
   // Keys: Space plays and pauses, arrows change the speed, +/- the size, M mirrors, P switches the mode, Home goes to
   // the start. Page Down or N goes to the next block, Page Up or B to the previous one, R repeats the block (a
-  // presenter clicker sends Page Up and Page Down).
+  // presenter clicker sends Page Up and Page Down). On a cue sheet these move by page, and P does nothing.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const c = sync.current?.state ?? DEFAULT_CONTROL;
@@ -421,7 +449,7 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
         change({ size: clamp(c.size - SIZE.step, SIZE.min, SIZE.max) });
       } else if (e.key === "m" || e.key === "M") {
         change({ mirror: !c.mirror });
-      } else if (e.key === "p" || e.key === "P") {
+      } else if ((e.key === "p" || e.key === "P") && !pagesRef.current.length) {
         setMode((m) => (m === "full" ? "points" : "full"));
       } else if (e.key === "Home") {
         e.preventDefault();
@@ -468,13 +496,19 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
   const dim = ctl.playing && !remote;
   const dock = (
     <div className="pr-dock">
-      <BlockBar blocks={blocks} current={current} step={step} dim={dim} />
-      <Panel ctl={ctl} mode={mode} change={change} setMode={setMode} dim={dim} />
+      {paged ? (
+        <PageBar pages={pages} current={current} takes={ctl.takes} step={step} dim={dim} />
+      ) : (
+        <BlockBar blocks={blocks} current={current} step={step} dim={dim} />
+      )}
+      <Panel ctl={ctl} mode={mode} change={change} setMode={setMode} dim={dim} points={!paged} />
     </div>
   );
   const blockClass = (i: number, base: string) =>
     [base, i === current ? "current" : i < current ? "past" : "", flash?.block === i ? "cued" : ""].filter(Boolean).join(" ");
   const breakBefore = (i: number) => i > 0 && blocks[i]?.section !== blocks[i - 1]?.section;
+  const pageStarting = (i: number) => (paged ? pages.find((p) => p.first === i) : undefined);
+  const currentPage = paged ? pageAt(pages, current) : -1;
 
   if (remote) {
     return (
@@ -482,12 +516,31 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
         <header className="pr-remote-head">
           <h1>{script.title}</h1>
           {script.note ? <p className="pr-value" role="note">{script.note}</p> : null}
-          <p className="pr-value">Remote. Tap a block and every screen jumps to it.</p>
+          <p className="pr-value">
+            {paged ? "Remote. Tap a page and every screen jumps to its start." : "Remote. Tap a block and every screen jumps to it."}
+          </p>
         </header>
-        <ol className="pr-list" ref={list} aria-label="Speaking blocks"
+        <ol className="pr-list" ref={list} aria-label={paged ? "Pages" : "Speaking blocks"}
           onTouchStart={() => { listTouched.current = performance.now(); }}
           onWheel={() => { listTouched.current = performance.now(); }}>
-          {blocks.map((b, i) => (
+          {paged ? pages.map((p, k) => {
+            const takes = ctl.takes?.[p.page] ?? 0;
+            const state = k === currentPage ? "current" : k < currentPage ? "past" : "";
+            return (
+              <li key={k} data-index={k} className="pr-row">
+                <button key={flash?.block === p.first ? `cue-${flash.cue}` : "row"} type="button"
+                  className={["pr-row-btn pr-page-row", state, flash?.block === p.first ? "cued" : ""].filter(Boolean).join(" ")}
+                  aria-current={k === currentPage ? "true" : undefined} aria-label={`${p.label}, ${takesText(takes)}`}
+                  onClick={() => jumpTo(p.first)}>
+                  <span className="pr-row-main">
+                    <span className="pr-row-page">{p.short ? `${p.label} · Short` : p.label}</span>
+                    <span className="pr-row-text">{blocks[p.first]?.text}</span>
+                  </span>
+                  <span className="pr-row-takes">{takesText(takes)}</span>
+                </button>
+              </li>
+            );
+          }) : blocks.map((b, i) => (
             <li key={i} data-index={i} className={breakBefore(i) ? "pr-row break" : "pr-row"}>
               {b.heading ? (
                 <p className="pr-row-heading">{b.text}</p>
@@ -541,7 +594,19 @@ export function Prompter({ source, remote }: { source: PrompterSource | null; re
               <p className="pr-title">{script.title}</p>
               {script.note ? <p className="pr-title" role="note">{script.note}</p> : null}
             </div>
-            {blocks.map((b, i) => (
+            {paged ? blocks.map((b, i) => {
+              const page = pageStarting(i);
+              return (
+                <Fragment key={i}>
+                  {page ? <PageHead page={page} takes={ctl.takes?.[page.page] ?? 0} first={i === 0} /> : null}
+                  <div key={flash?.block === i ? `cue-${flash.cue}` : "block"} className={blockClass(i, cueClass(b))}
+                    data-index={i} aria-current={i === current ? "true" : undefined} onClick={() => jumpTo(i)}>
+                    {b.n !== null ? <span className="pr-num" aria-hidden="true"><span>{b.n}</span></span> : null}
+                    <CueText block={b} />
+                  </div>
+                </Fragment>
+              );
+            }) : blocks.map((b, i) => (
               <Fragment key={i}>
                 {breakBefore(i) ? <div className="pr-break" aria-hidden="true" /> : null}
                 <div key={flash?.block === i ? `cue-${flash.cue}` : "block"} className={blockClass(i, b.heading ? "pr-block heading" : "pr-block")}

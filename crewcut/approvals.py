@@ -107,8 +107,16 @@ def propose(episode: str | None, step: str | None, kind: str, title: str, body: 
 def _require_story(episode: str | None, p: Path) -> None:
     """A script reaches the user only when every word of its teleprompter text reads aloud and, for a long video,
     when it is told as one story: a story plan below the --- line and no strong list smell (crewcut.spoken)."""
-    from . import spoken
+    from . import cuesheet, spoken
     text = p.read_text(encoding="utf-8")
+    if cuesheet.is_cue_sheet(p, text):
+        # a cue sheet is a list by design: its fixed lines must read aloud, its form must parse; the bullets are cue
+        # words the speaker turns into speech, and the style gate's Critic judges them
+        sheet = cuesheet.parse(text)
+        if sheet.errors:
+            raise spoken.Unspeakable(f"{p.name} is not a readable cue sheet: " + "; ".join(sheet.errors[:6]))
+        spoken.require_speakable("\n\n".join(x.spoken for _, x in sheet.fixed_lines()), p.name)
+        return
     spoken.require_speakable(text, p.name)
     short = False
     if episode and episode != "_onboarding":
