@@ -22,6 +22,8 @@ module.exports = {
     // the repository's own compose.yaml, unchanged: the app runs the same stack as ./start.sh
     { from: "../compose.yaml", to: "stack/compose.yaml" },
     { from: "stack/desktop.yaml", to: "stack/desktop.yaml" },
+    // the host helper and its fixed prompts, as ./start.sh runs them (host-helper.ts starts it next to the stack)
+    { from: "../host", to: "host", filter: ["crewcut-host.sh", "prompts/**"] },
     { from: "build/icon.png", to: "icon.png" },
     { from: "build/tray.png", to: "tray.png" },
     { from: "build/tray@2x.png", to: "tray@2x.png" },

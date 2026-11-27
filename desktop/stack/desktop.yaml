@@ -5,3 +5,7 @@ services:
     build: !reset null
     pull_policy: never
     env_file: !reset []
+    environment:
+      # the host helper's key (./start.sh's .env has it too): the app keeps it in its data folder (stack/.env) and
+      # passes it in the docker command's environment
+      CREWCUT_HOST_TOKEN: ${CREWCUT_HOST_TOKEN:-}

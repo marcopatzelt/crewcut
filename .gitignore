@@ -8,6 +8,8 @@ token*.json
 # the user's studio folder (brand, episodes, state) never goes into the app repo
 /studio/
 /import/
+# the host helper's own work folder (host/crewcut-host.sh)
+/.host/
 /brand/
 
 # python
