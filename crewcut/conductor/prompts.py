@@ -324,9 +324,16 @@ def format_script_task(episode: str) -> str:
              "shown, one example), and a reward that closes it (the punch line). Numbers early, high value per second, "
              "no greeting, no recap, no goodbye; the close is a verdict that picks up sentence 1, then at most one "
              "link sentence.")
-    end = ("Run the studio's style checker with --nur-auto (the command is in your prompt) until no automatic check "
-           "fails, then end your turn: the conductor runs the full style gate (Critic, fresh review, second opinion) "
-           "and sends you what is still open." if gate else
+    cues_first = bool(cue) and not short and f.get("gate_on") == "cues"
+    cue_name = ("DREHZETTEL" if _german() else "CUES") + "-v001.md"
+    derive = (f"Then derive the cue sheet brief/{cue_name} from the full script with the template {cue} (docs/cue-sheets.md: "
+              "hook and punch line word for word from the script, the retain part as bullets with what is on screen "
+              "first). The full script stays as the readable text; the style gate checks the cue sheet. "
+              if cues_first else "")
+    end = (derive + "Run the studio's style checker with --nur-auto (the command is in your prompt) on the "
+           + ("cue sheet" if cues_first else "script") + " until no automatic check fails, then end your turn: the "
+           "conductor runs the full style gate (Critic, fresh review, second opinion) and sends you what is still "
+           "open." if gate else
            ("Then derive the cue sheet brief/" + ("DREHZETTEL" if _german() else "CUES") + f"-v001.md from the script with "
             f"the template {cue} (hook and punch line word for word from the script, the retain part as bullets), "
             "and " if cue and not short else "Then ") + "run the script skill's checks and propose one card of kind "
@@ -351,6 +358,8 @@ def cue_sheet_task(episode: str) -> str | None:
     if f is None or f["length"] != "long" or p.get("kind") == "short":
         return None
     cue = showformats.template(f, "cue_template")
+    if f["gate_on"] == "cues":
+        return None   # the Writer derived the cue sheet with the first draft already
     found = stylegate.latest(episode).get("SCRIPT")
     if cue is None or found is None or not re.match(r"(?i)^script-", found.name):
         return None

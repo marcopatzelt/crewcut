@@ -52,6 +52,7 @@ paths are relative to the folder of the file that names them, so your templates 
 | `keywords` | no | words that point to this format in an idea's text (the keyword guess) |
 | `packaging_rules`, `title_formulas`, `thumbnail_formats` | no | for PACKAGING: rules, named title formulas, thumbnail format ids from `crewcut thumbnail formats` |
 | `checker_format` | no | `lang` or `short` for the style checker; default from `length` |
+| `gate_on` | no | `script` (default): the gate checks the full script, then the cue sheet is derived; `cues`: the Writer writes the full script and derives the cue sheet in the same run, and the gate checks the cue sheet (for a studio checker that takes only cue sheets for long videos) |
 | `cadence`, `strong` | no | how often (e.g. `weekly`), and the evidence line |
 
 A broken format is left out and named with a clear reason (`crewcut formats check`, also `problems` in

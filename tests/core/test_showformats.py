@@ -268,3 +268,17 @@ def test_the_title_step_starts_from_the_packaging(crew):
     showformats.choose(eid, "tool-test")
     assert "PACKAGING-v001.md" in prompts.step_task("title", eid)
     assert "PACKAGING-v001.md (three" not in prompts.step_task("title", episodes.create("Plain")["id"])
+
+
+def test_a_format_can_gate_the_cue_sheet_first(crew, calls, studio):
+    d = studio_format(studio, [fmt(id="cue-first", cue_template="t.cues.md", gate_on="cues"),
+                               fmt(id="bad-gate", gate_on="cues")], templates=("t.script.md", "t.cues.md"))
+    lib, problems = showformats.report()
+    assert lib["cue-first"]["gate_on"] == "cues" and lib["tool-test"]["gate_on"] == "script"
+    assert any("gate_on cues needs a cue_template" in p for p in problems)
+    eid = flow.new_episode("A tool", show_format="cue-first")["id"]
+    task = prompts.format_script_task(eid)
+    assert "derive the cue sheet brief/CUES-v001.md" in task and str(d / "t.cues.md") in task
+    (paths.episode_dir(eid) / "brief" / "SCRIPT-v001.md").write_text("# Script\n")
+    assert prompts.cue_sheet_task(eid) is None
+    assert "the gate checks the cue sheet derived" in showformats.prompt_block(eid)

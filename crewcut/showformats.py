@@ -16,7 +16,8 @@ paths are relative to the folder of the formats.json that names them. `[formats]
        "when": "…", "topic_types": ["manufactured"], "structure": [{"name": "Opening", "purpose": "…"}],
        "script_template": "templates/tool-test.script.md", "cue_template": "templates/tool-test.cues.md",
        "testplan_template": "templates/tool-test.testplan.md", "packaging_rules": ["…"], "title_formulas": ["…"],
-       "thumbnail_formats": ["house-face-result"], "checker_format": "lang", "cadence": "weekly", "strong": "…"}]}
+       "thumbnail_formats": ["house-face-result"], "checker_format": "lang", "gate_on": "script", "cadence": "weekly",
+       "strong": "…"}]}
 
 `crewcut formats [list|show <id>|check|choose <episode> <id>|score]`.
 """
@@ -39,6 +40,8 @@ TOPIC_TYPES = ("far_past", "recent_past", "present", "trending", "manufactured")
 TOPIC_NAMES = {"far_past": "far past", "recent_past": "recent past", "present": "present", "trending": "trending",
                "manufactured": "manufactured"}
 CHECKER_FORMATS = ("lang", "short")
+GATE_ON = ("script", "cues")   # what the style gate checks first: the full script, or (a studio whose checker takes
+                               # only cue sheets for long videos) the cue sheet derived from it in the same run
 INPUT_KINDS = ("tool", "link", "tweet", "idea")
 ID = re.compile(r"^[a-z0-9][a-z0-9-]{1,60}$")
 TEMPLATE_KEYS = ("script_template", "cue_template", "testplan_template")
@@ -104,6 +107,10 @@ def problems_of(f: Any, folder: Path | None = None) -> list[str]:
             out.append(f"{name}: {key} must be a list of texts")
     if f.get("checker_format") is not None and f["checker_format"] not in CHECKER_FORMATS:
         out.append(f"{name}: checker_format must be lang or short")
+    if f.get("gate_on") is not None and f["gate_on"] not in GATE_ON:
+        out.append(f"{name}: gate_on must be script or cues")
+    if f.get("gate_on") == "cues" and not f.get("cue_template"):
+        out.append(f"{name}: gate_on cues needs a cue_template")
     for key in ("cadence", "strong"):
         if key in f and f[key] is not None and not isinstance(f[key], str):
             out.append(f"{name}: {key} must be a text")
@@ -149,6 +156,7 @@ def report() -> tuple[dict[str, dict], list[str]]:
                 continue
             seen.add(f["id"])
             out[f["id"]] = {**f, "checker_format": f.get("checker_format") or ("lang" if f["length"] == "long" else "short"),
+                            "gate_on": f.get("gate_on") or "script",
                             "dir": str(folder), "source": source}
     return out, errors
 
@@ -387,7 +395,8 @@ def prompt_block(episode: str | None) -> str:
         t = template(f, key)
         if t:
             lines.append(f"{label}: {t}")
-    lines.append(f"Style checker format: {f['checker_format']}.")
+    lines.append(f"Style checker format: {f['checker_format']}; the gate checks the "
+                 + ("cue sheet derived from the full script." if f["gate_on"] == "cues" else "full script first."))
     if f.get("strong"):
         lines.append(f"Evidence for this format: {f['strong']}")
     ref = studio_reference()
