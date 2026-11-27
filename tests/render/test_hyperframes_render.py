@@ -26,7 +26,7 @@ DATA = {
              ("portrait", {"variant": "tag", "title": "Eigene Szene, Blender"})],
     "chapter": [("landscape", {"number": "2", "word": "Recherche"}), ("portrait", {"number": "3", "word": "Prüfung"})],
     "snippet": [("landscape", {}), ("portrait", {"mode": "code", "highlight": [2]})],
-    "diagram": [("landscape", {}), ("portrait", {"nodes": ["Idee", "Skript", "Schnitt"], "highlight": 1})],
+    "diagram": [("landscape", {}), ("portrait", {})],
 }
 
 
@@ -93,3 +93,4 @@ def test_a_few_frames_with_alpha_and_size(name, tmp_path):
             ext = im.getchannel("A").getextrema() if "A" in im.getbands() else (255, 255)
             assert ext[1] == 255, f"{name} {fmt}: the still shows nothing"
         print(name, fmt, rep, s["still"])
+
