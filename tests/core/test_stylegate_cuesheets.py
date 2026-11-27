@@ -55,7 +55,7 @@ if hz:
 else:
     sp, sm, spts = None, "waits for the Critic", []
 checks.append({"id": "K-SO", "kind": "kritik", "titel": "second opinion", "pass": sp, "measured": sm, "target": "agree",
-               "points": spts, "second_opinion": True, "answer_file": str(so)})
+               "points": spts, "second_opinion": True, "answer_file": str(so), "pruefsumme": "sum-1"})
 auto = all(c["pass"] for c in checks if c["kind"] == "auto")
 ok = auto and all(c["pass"] is True for c in checks if c["kind"] == "kritik")
 print(json.dumps({"version": 1, "datei": str(f), "format": "lang", "pass": ok, "auto_pass": auto,
@@ -203,7 +203,7 @@ def test_without_a_host_helper_the_second_opinion_is_unavailable_and_the_card_sa
     sheet(episode, 1, {"verdict": "pass", "marked": [], "for_user": ["unit 3 advises Medium, the verdict says High"]})
     c = ends(episode, "critic", {"style_gate_kritik": 1})
     answer = json.loads((paths.episode_dir(episode) / "brief" / "CUES-v001.second.json").read_text())
-    assert answer["status"] == "unavailable" and "host helper" in answer["reason"]
+    assert answer["status"] == "unavailable" and "host helper" in answer["reason"] and answer["checksum"] == "sum-1"
     [w] = jobs(episode, "writer", c["id"])
     assert "Propose your script card" in w["task"] and "Second opinion: unavailable" in w["task"]
     assert "Open for the user: unit 3 advises Medium, the verdict says High" in w["task"]
@@ -236,7 +236,7 @@ def test_with_the_host_helper_the_request_is_signed_and_the_answer_moves_the_gat
         'Here is my answer: {"agree": false, "points": [{"text": "Helpers beat thinking time.", "why": "not shown",'
         ' "rewrite": "Three helpers, 50 minutes saved."}]}')}))
     done = second_opinion.tick(force=True)
-    assert done and done[0]["status"] == "ok" and done[0]["agree"] is False
+    assert done and done[0]["status"] == "ok" and done[0]["agree"] is False and done[0]["checksum"] == "sum-1"
     [r] = [j for j in jobs(episode, "writer") if (j.get("data") or {}).get("style_gate_round")]
     assert "Helpers beat thinking time." in r["task"] and "Three helpers, 50 minutes saved." in r["task"]
 

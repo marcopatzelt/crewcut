@@ -102,8 +102,10 @@ def _set_pending(items: list[dict]) -> None:
     db.kv_set("second_opinion:pending", json.dumps(items))
 
 
-def request(episode: str, script: Path, answer: Path, verdict: Path) -> dict:
-    """Ask the host helper for a second opinion, or write why it cannot be had. Never raises for a missing helper."""
+def request(episode: str, script: Path, answer: Path, verdict: Path, checksum: str | None = None) -> dict:
+    """Ask the host helper for a second opinion, or write why it cannot be had. Never raises for a missing helper.
+    `checksum` is the checker's checksum of the text the Critic approved: the answer carries it, so it is only valid
+    for that text."""
     answer = Path(answer)
     # the checker names the answer file as its own path; map a container path under the studio to this studio
     try:
@@ -115,7 +117,7 @@ def request(episode: str, script: Path, answer: Path, verdict: Path) -> dict:
     if reason is None and not Path(verdict).is_file():
         reason = f"the Critic's verdict file is missing ({Path(verdict).name})"
     if reason:
-        _write(answer, {"status": "unavailable", "reason": reason})
+        _write(answer, {"status": "unavailable", "reason": reason, "checksum": checksum})
         return {"status": "unavailable", "reason": reason, "answer": rel_answer}
     rid = f"so-{int(time.time())}-{secrets.token_hex(3)}"
     fields = {"kind": KIND, "id": rid, "at": str(int(time.time())), "nonce": secrets.token_hex(16),
@@ -127,8 +129,9 @@ def request(episode: str, script: Path, answer: Path, verdict: Path) -> dict:
     tmp = d / f"{rid}.tmp"
     tmp.write_text("".join(f"{k}={v}\n" for k, v in fields.items()), encoding="utf-8")
     tmp.rename(d / f"{rid}.req")
-    _write(answer, {"status": "requested", "id": rid})
-    _set_pending(_pending() + [{"id": rid, "episode": episode, "answer": rel_answer, "at": int(time.time())}])
+    _write(answer, {"status": "requested", "id": rid, "checksum": checksum})
+    _set_pending(_pending() + [{"id": rid, "episode": episode, "answer": rel_answer, "at": int(time.time()),
+                                "checksum": checksum}])
     return {"status": "requested", "id": rid, "answer": rel_answer}
 
 
@@ -197,6 +200,8 @@ def tick(force: bool = False) -> list[dict]:
         else:
             keep.append(it)
             continue
+        if not data.get("checksum"):
+            data["checksum"] = it.get("checksum")
         _write(answer, data)
         done.append({**it, **data})
     _set_pending(keep)

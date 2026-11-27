@@ -252,7 +252,8 @@ def run(p: Path, fmt: str, title: str | None = None, cfg: dict | None = None, to
     keep = ("id", "alt", "rule", "kind", "titel", "measured", "target", "line", "fix", "points", "instructions")
     out["failed"] = [{k: c.get(k) for k in keep if c.get(k) is not None} for c in checks if c.get("pass") is False]
     out["open"] = [c.get("id") for c in checks if c.get("kind") == "kritik" and c.get("pass") is None]
-    out["second_opinion"] = [{"id": c.get("id"), "answer_file": c.get("answer_file"), "measured": c.get("measured")}
+    out["second_opinion"] = [{"id": c.get("id"), "answer_file": c.get("answer_file"), "measured": c.get("measured"),
+                              "checksum": c.get("pruefsumme") or c.get("checksum")}
                              for c in checks if c.get("second_opinion") and c.get("pass") is None and c.get("answer_file")]
     out["instructions"] = sorted({str(c["instructions"]) for c in checks if c.get("instructions")})
     out["hints"] = sum(1 for c in checks if c.get("kind") == "hinweis")
@@ -567,7 +568,7 @@ def second_opinion_round(episode: str, verdict: dict) -> dict:
         for s in r.get("second_opinion", []):
             script = paths.inside(paths.episode_dir(episode), r["file"])
             res = second_opinion.request(episode, script, Path(s["answer_file"]),
-                                         script.with_suffix(".kritik.json"))
+                                         script.with_suffix(".kritik.json"), checksum=s.get("checksum"))
             asked.append(res)
     if any(a.get("status") == "requested" for a in asked):
         flow.post(episode, "The Critic approves. A second opinion from another model is asked now; the card waits "
