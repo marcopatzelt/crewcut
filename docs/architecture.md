@@ -109,6 +109,7 @@ A skill never hard-codes a colour, font, logo, loudness or mix limit. It reads t
 | `showformats.py` | the show format library (neutral examples + `brand/show-formats/`), the episode's pick, the format block of the prompt; `conductor/plan.py` runs the plan job ([formats.md](formats.md)) | core |
 | `ideas.py`, `scoreboard.py` | idea cards from `inbox/ideas/` (start, dismiss); results per show format | core |
 | `stylegate.py` | the studio's own style checker as a hard gate for scripts: rounds with the Writer, card and advance refusals | core |
+| `voicemetrics.py`, `voicecheck.py`, `lernstand.py` | a reference speaker's measured voice, the voice and structure checks the gate adds, the learning file after every gate round and retention run ([hormozi-voice.md](hormozi-voice.md)) | core |
 | `studio_import.py` | offline legacy studio copy, manifests and visible references; no jobs or publication | core |
 | `conductor/` | steps, job queue (one heavy job at a time; chat answers in their own reply lane, one per episode; a chat message that arrives while a crew member runs reaches it once at its next `crewcut doing`, `say`, `chat` or `card propose`, and the chat shows when, `conductor/deliver.py`), engine runner | core |
 | `engines/` | one interface (`base.py`: Task, Event, RunResult; start, stream, stop, resume), two engines on the user's own subscription (`claude_code.py` default, `codex.py` beta) and the version manager (`versions.py`: newest version, smoke test, way back); see [engine.md](engine.md) | core |
@@ -195,6 +196,8 @@ crewcut retention units <episode> [--clips N] [--saved] [--words F --since D --u
         content unit: analytics/retention-units.json/.md, a block in library/learnings/retention-units.md
 crewcut humanize record --draft FILE --final FILE [--why "…"]       the Humanizer pass of a script, for its card
 crewcut style-gate <episode> [--file F …] [--json]               the studio's style checker on the newest scripts: 0 pass, 1 block
+crewcut voice check <file> [--format lang|short] [--json]         voice and structure checks against the voice profile (docs/hormozi-voice.md)
+crewcut lernstand [--no-cards] [--print]                          write the learning file now (findings, units, gold candidates, rule cards)
 crewcut brand voice add <video link | recording> | list          the user's own spoken words (brand/voice/)
 crewcut skills status | update [<name>]                           skills from other projects (Humanizer), newest
 crewcut skills own [--json]                                      your own skills from <studio>/skills and where they apply
@@ -271,6 +274,8 @@ unreadable; JSON `{"version": 1, "pass", "auto_pass", "kritik_offen", "checks": 
 
 Without the skill in the studio the gate is skipped with a warning (the verdict says so); `mode = "off"` switches it
 off. The Writer and the Critic get the checker's path and the rules of the gate in their prompt for the script step.
+With a voice profile (`[style_gate] voice_profile`), the gate adds voice and structure checks to the checker's result in
+the same interface, and writes the learning file after every round ([hormozi-voice.md](hormozi-voice.md)).
 `crewcut style-gate <episode>` prints the verdict (`--file` checks given files, also a `work/words-vNNN.json` with real
 times).
 

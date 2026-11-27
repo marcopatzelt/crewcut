@@ -24,6 +24,8 @@ DELEGATED = {
     "motion": ("crewcut.motion.cli", False),
     "formats": ("crewcut.showformats", False),
     "ideas": ("crewcut.ideas", False),
+    "voice": ("crewcut.voicecheck", False),
+    "lernstand": ("crewcut.lernstand", False),
 }
 HEAVY = {"render": {"2d", "3d", "probe", "cut", "all", "capture", "music-bed"}, "transcribe": None,
          "cut": {"build", "grade", "islands", "probe", "verify", "doubles", "takes", "short", "short-check"}}

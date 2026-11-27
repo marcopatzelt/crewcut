@@ -181,8 +181,17 @@ def system_prompt(identity: dict, episode: str | None, step: str | None, with_id
         craft = "\n".join(x for x in (libraries.prompt_line(), craft) if x)
     from .. import showformats
     fmt_block = showformats.prompt_block(episode) if conversation_scope != "channel" else ""
+    voice = ""
+    roles = {identity.get("id"), worker}
+    if episode and conversation_scope != "channel" and roles & {"writer", "critic", "showrunner"} and (
+            fmt_block or step in ("script", "title")):
+        try:
+            short = episodes.read(episode).get("kind") == "short"
+        except (FileNotFoundError, ValueError):
+            short = False
+        voice = "\n".join(x for x in (voice_block(short), learning_block()) if x)
     return "\n".join([ident, rights, skill_line, own_line, rules, WORKSPACE_RULES, pack_line, briefing.text(), step_line,
-                      ctx, fmt_block, auto, craft])
+                      ctx, fmt_block, voice, auto, craft])
 
 
 STEP_TASKS = {
@@ -252,12 +261,73 @@ def step_task(step: str, episode: str, seed: str = "") -> str:
         t = short_tasks[step]
     if not t:
         return f"Work on step {step} of episode {episode}."
+    if step == "script":
+        v = voice_block(project.get("kind") == "short")
+        if v:
+            t += (" Follow the voice block in your prompt: model every hook and punch line on named reference "
+                  f"passages and write brief/{companion_name()} next to each version.")
     if step == "title" and project.get("show_format"):
         t = ("This episode has a show format and its plan already wrote brief/PACKAGING-v001.md (three title and "
              "thumbnail pairs from named formulas). Start from those pairs and the format's packaging rules; keep what "
              "works and replace what fails the checks. ") + t
     from .. import full_auto
     return t.format(seed=json.dumps(seed or "(no sentence)", ensure_ascii=False), episode=episode) + full_auto.instructions(episode)
+
+
+# ---- the voice profile, the reference moves and the learning loop (docs/hormozi-voice.md) ---------------------------
+LONG_MOVES = ("hook", "intro", "proof", "transition", "punch", "ending")
+SHORT_MOVES = ("short-first", "proof", "punch", "short-end")
+
+
+def _moves_dir():
+    from .. import lernstand
+    d = lernstand._studio_path(lernstand.settings().get("reference_moves"))
+    return d if d is not None and d.is_dir() else None
+
+
+def companion_name(script: str = "SCRIPT-vNNN.md") -> str:
+    """The learning companion of a script: brief/<prefix><script name> (the prefix keeps it out of the script globs)."""
+    from .. import lernstand
+    return f"{lernstand.settings().get('companion_prefix') or 'LEARN-'}{script}"
+
+
+def voice_block(short: bool = False) -> str:
+    """What the Writer reads and writes for the voice: the profile, the reference moves, the learning companion.
+    "" when the studio has neither a voice profile nor reference moves."""
+    from .. import voicecheck
+    prof = voicecheck.profile_path()
+    moves = _moves_dir()
+    if prof is None and moves is None:
+        return ""
+    names = SHORT_MOVES if short else LONG_MOVES
+    files = [moves / f"{n}.md" for n in names] if moves else []
+    files = [f for f in files if f.is_file()]
+    out = ["VOICE AND STRUCTURE OF THE REFERENCE SPEAKER (the gate checks both):"]
+    if prof:
+        out.append(f"- Read {prof}: the speaker's measured voice (reference) and this channel's target bands "
+                   f"(targets.{'short' if short else 'long'}): sentence length, short sentences, numbers per minute and "
+                   "the first number, 'you' against 'I', questions, commands, filler words, unit length. Write inside "
+                   "the bands; `crewcut voice check <file>` measures a draft the same way the gate does.")
+    if files:
+        out.append("- Read the reference moves " + ", ".join(str(f) for f in files) + ": word-for-word passages of the "
+                   "speaker with link, the pattern in one line and a transfer line in the channel's language.")
+        out.append("- For every unit, model the hook and the punch line on one or two named passages (file and number, "
+                   "e.g. hook.md #3, punch.md #7): copy the move, never the words, the topic or a number. The opening "
+                   "follows intro.md, the transitions transition.md, the close ending.md." if not short else
+                   "- Model sentence 1 on short-first.md and the last sentence on short-end.md (one or two named "
+                   "passages each): copy the move, never the words, the topic or a number.")
+    out.append(f"- Next to every script version write brief/{companion_name()} (for example "
+               f"brief/{companion_name('SCRIPT-v002.md')}): per unit (and the opening and the close) three lines "
+               "Hook / Retain / Reward with the line from the script, which reference passage it copies (file#number "
+               "and its link) and which rule it fulfils (rule ids such as DH-L3, HB1, P-U3, or the voice and "
+               "structure check ids). It is how the next script learns; the Critic reads it, the gate does not check "
+               "it.")
+    return "\n".join(out) + "\n"
+
+
+def learning_block() -> str:
+    from .. import lernstand
+    return lernstand.prompt_top()
 
 
 # ---- the format system: plan, full script, cue sheet (crewcut/showformats.py, docs/formats.md) -----------------------
@@ -299,6 +369,9 @@ def plan_task(episode: str, seed: str) -> str:
         "test plan template (the real tests to run, cheap first; you run none that cost money), and "
         "brief/PACKAGING-v001.md: three title and thumbnail pairs, each from a named title formula of the format and "
         "a thumbnail format it names, with the format's packaging rules.\n"
+        + (f"   For the openings of the pairs, read the reference moves {_moves_dir()}/hook.md and intro.md (and "
+           "short-first.md for a Short): every pair names the passage its first sentence copies.\n" if _moves_dir()
+           else "") +
         "6. Numbers only from real material or tests that ran. Where a test has not run, write a placeholder such as "
         "[ZAHL nach Test] or [NUMBER after test]; never invent a number.\n"
         "7. Do not write the script: when you end, the conductor posts your pick with its reason in the chat and the "
@@ -346,7 +419,9 @@ def format_script_task(episode: str) -> str:
         "prompt. If brief/SCRIPT-v001.md already exists, improve it into the next version instead of starting over.\n"
         f"Write brief/SCRIPT-v001.md as the real spoken text, every sentence, not a form or an outline. {shape}\n"
         "Numbers only from the material and tests that ran, each with its source in the notes below `---`; where the "
-        "test has not run, keep a placeholder such as [ZAHL nach Test]. Never invent a number.\n" + end)
+        "test has not run, keep a placeholder such as [ZAHL nach Test]. Never invent a number.\n"
+        + (voice_block(short) + f"Write brief/{companion_name('SCRIPT-v001.md')} with the draft.\n"
+           if voice_block(short) else "") + end)
 
 
 def cue_sheet_task(episode: str) -> str | None:
@@ -368,7 +443,9 @@ def cue_sheet_task(episode: str) -> str | None:
     return (f"The full script {found.name} passes the style gate. Derive the cue sheet brief/{name}-v{n:03d}.md from "
             f"it with the template {cue} (docs/cue-sheets.md): the opening lines, per unit the hook and the punch line "
             "word for word from the script, the retain part as bullets (what is on screen first, then cue words), the "
-            "close with verdict and link. Keep the script unchanged. Run the style checker on the cue sheet with "
+            "close with verdict and link. Keep the script unchanged"
+            + (f"; write brief/{companion_name(f'{name}-v{n:03d}.md')} for it (Hook / Retain / Reward per unit, the "
+               "reference passage and the rule)" if voice_block() else "") + ". Run the style checker on the cue sheet with "
             "--nur-auto until no automatic check fails, then " + (
                 "end your turn: the gate checks the cue sheet too and the card comes after it passes."
                 if stylegate.settings()["mode"] == "block" else "propose one card of kind script with the cue sheet."))

@@ -95,7 +95,9 @@ studio, else `CUES-vNNN.md`), the gate checks it too, and only then comes the sc
 episode goes on with its normal steps; the title step starts from `PACKAGING-v001.md`.
 
 The system prompt of every job in such an episode carries the format block: structure, rules, formulas, template
-paths and, when the studio has it, `brand/references/HORMOZI-NIE-OHNE-CONTENT.md` (where topics come from).
+paths and, when the studio has it, `brand/references/HORMOZI-NIE-OHNE-CONTENT.md` (where topics come from). With a
+voice profile or reference moves, the Writer, the Critic and the Showrunner also get the voice block and the head of
+the learning file ([hormozi-voice.md](hormozi-voice.md)).
 
 ## Idea cards
 

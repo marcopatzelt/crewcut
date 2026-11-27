@@ -46,7 +46,11 @@ from . import config, db, paths
 
 MODES = ("block", "warn", "off")
 DEFAULTS = {"mode": "block", "max_rounds": 3, "skill": "deutscher-hormozi", "checker": "scripts/stil_check.py",
-            "timeout_seconds": 120, "loop": "rounds", "safety_rounds": 10}
+            "timeout_seconds": 120, "loop": "rounds", "safety_rounds": 10,
+            # the voice profile and the learning loop (crewcut/voicecheck.py, crewcut/lernstand.py,
+            # docs/hormozi-voice.md); paths inside the studio, None = not used
+            "voice": "block", "voice_profile": None, "reference_moves": None, "learning_file": None,
+            "gold_dir": None}
 LOOPS = ("rounds", "until_pass")
 INTERFACE = 1
 NAME = re.compile(r"^(?P<kind>SCRIPT|SHORT|CUES|DREHZETTEL)-v(?P<n>\d+)(?P<rest>[^/]*)\.(?:md|txt)$", re.I)
@@ -248,7 +252,12 @@ def run(p: Path, fmt: str, title: str | None = None, cfg: dict | None = None, to
     if data.get("version") != INTERFACE:
         out["error"] = f"the checker speaks interface version {data.get('version')!r}; the gate reads {INTERFACE}"
         return out
-    checks = data.get("checks") or []
+    checks = list(data.get("checks") or [])
+    voice: list[dict] = []
+    if not any(x == "--drehzettel" for x in (extra or [])):   # not for a transcript against its plan
+        from . import voicecheck
+        voice = voicecheck.for_gate(p, fmt, {"voice": cfg.get("voice"), "voice_profile": cfg.get("voice_profile")})
+        checks += voice
     keep = ("id", "alt", "rule", "kind", "titel", "measured", "target", "line", "fix", "points", "instructions")
     out["failed"] = [{k: c.get(k) for k in keep if c.get(k) is not None} for c in checks if c.get("pass") is False]
     out["open"] = [c.get("id") for c in checks if c.get("kind") == "kritik" and c.get("pass") is None]
@@ -264,7 +273,8 @@ def run(p: Path, fmt: str, title: str | None = None, cfg: dict | None = None, to
     out["notes"] += [str(n) for c in checks for n in (c.get("notes") or [])]   # what only the user decides
     out["instructions_used"] = out["instructions"]
     out["pruefstuecke"] = len(data.get("pruefstuecke") or [])
-    out["auto_pass"] = bool(data.get("auto_pass"))
+    out["auto_pass"] = bool(data.get("auto_pass")) and not any(c.get("pass") is False for c in voice)
+    out["voice"] = [c.get("id") for c in voice if c.get("pass") is False]
     out["pass"] = bool(data.get("pass")) and r.returncode == 0 and not out["failed"] and not out["open"]
     out["words"], out["seconds"], out["times"] = data.get("woerter"), data.get("dauer_s"), data.get("zeiten")
     out["title"] = data.get("titel")
@@ -508,7 +518,9 @@ def writer_round(episode: str, verdict: dict, job: dict | None = None, why: str 
             f"open point, as its fix or the Critic's rewrite says, and keep what passes:\n{text(verdict)}\n"
             + (f"\nThe points one by one (sentence -> rewrite):\n{rewrites}\n" if rewrites else "") +
             "\nRun the checker yourself until its automatic part passes "
-            f"(`python3 {verdict.get('checker')} <file> --nur-auto`), write a new version (the next number of the same "
+            f"(`python3 {verdict.get('checker')} <file> --nur-auto`" + (", and `crewcut voice check <file>` for the "
+            "voice and structure checks" if any(r.get("voice") for r in verdict.get("results", [])) else "")
+            + "), write a new version (the next number of the same "
             "kind of file), then ask the Critic again for its review and answers in `<script>.kritik.json` "
             "(`crewcut job add --identity critic --step script \"…\"`) and stop. A script card is refused while the "
             "full check fails. A point that stays the same for two rounds stops the loop and goes to the user as not "
@@ -610,7 +622,9 @@ def second_opinion_round(episode: str, verdict: dict) -> dict:
 
 def ready(episode: str, verdict: dict, why: str) -> dict:
     """The checker passes: the Writer proposes the card with exactly this version."""
+    from . import lernstand
     from .conductor import flow, prompts, queue
+    lernstand.after_ready(episode, verdict)   # passing scripts become gold candidates; the learning file is rewritten
     derive = prompts.cue_sheet_task(episode)   # a show format with a cue template: the cue sheet first, then the card
     if derive:
         jid = queue.add(episode, "writer", "script", derive, data={"format_cues": 1})
@@ -702,6 +716,7 @@ def after_writer(job: dict, res) -> dict | None:
         return None
     v = check(episode)
     db.update("jobs", job["id"], data={**d, "style_gate_after": summary(v)})
+    _learn()
     if v["pass"] and not v.get("skipped") and (d.get("format_script") or d.get("format_cues")):
         return ready(episode, v, "The style check passes.")   # a format draft ends without a card: the gate goes on
     if v.get("skipped") or v["pass"]:
@@ -711,6 +726,12 @@ def after_writer(job: dict, res) -> dict | None:
         flow.post(episode, short_line(v) + " (The gate only warns in this studio.)", step="script")
         return {"action": "warned"}
     return route(episode, v, job)
+
+
+def _learn() -> None:
+    """After a gate round: write the learning file again (crewcut/lernstand.py); never fails the gate."""
+    from . import lernstand
+    lernstand.safe_refresh()
 
 
 def route(episode: str, v: dict, job: dict | None = None, why: str = "") -> dict:
@@ -740,6 +761,7 @@ def after_critic(job: dict, res) -> dict | None:
         return None
     v = check(episode)
     db.update("jobs", job["id"], data={**d, "style_gate_after": summary(v)})
+    _learn()
     if v.get("skipped"):
         return None
     if v["pass"]:
@@ -821,6 +843,12 @@ def after_transcript_review(job: dict, res) -> dict | None:
     return {"action": "none"}
 
 
+def _voice_note() -> str:
+    from . import voicecheck
+    line = voicecheck.prompt_lines()
+    return (line + " ") if line else ""
+
+
 def writer_note(episode: str | None) -> str:
     """The lines the Writer and the Critic get in the script step while the gate is on."""
     cfg = settings()
@@ -837,7 +865,7 @@ def writer_note(episode: str | None) -> str:
             " and the script does not go to recording; the conductor sends the failed checks back ("
             + (f"at most {cfg['max_rounds']} rounds)" if cfg["loop"] == "rounds" else "rounds go on until the checker and the "
                "Critic pass; a point that stays the same for two rounds goes to the user as not approved)")
-            + ". The checker's rules win over the generic craft where they differ. When the studio writes cue sheets "
+            + ". " + _voice_note() + "The checker's rules win over the generic craft where they differ. When the studio writes cue sheets "
             "(brief/CUES-vNNN.md or DREHZETTEL-vNNN.md, see docs/cue-sheets.md), the long script is a cue sheet: fixed "
             "opening, per unit a fixed hook and punch line, bullets in between, and the checker says so if a full text "
             "is not allowed.")
