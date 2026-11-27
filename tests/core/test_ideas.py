@@ -173,3 +173,14 @@ def test_a_failed_start_leaves_the_idea_open(crew, studio, monkeypatch):
     with pytest.raises(ValueError):
         ideas.start("scout-a")
     assert ideas.get("scout-a")["status"] == "open"
+
+
+def test_the_same_link_from_two_sources_is_one_card(tmp_path, studio):
+    links = braindump_dir(tmp_path)
+    sf = tmp_path / "scout.json"
+    sf.write_text(json.dumps({"date": "2030-01-02", "ranked": [
+        {"key": "link:2030-01-01-a", "kind": "link", "name": "the same post", "url": "https://www.example.com/2030-01-01-a/?s=1",
+         "total": 4}]}))
+    exporter().main(["--studio", str(studio), "--scout", str(sf), "--braindump", str(links)])
+    files = sorted(p.name for p in (studio / "inbox" / "ideas").glob("*.json"))
+    assert files == ["braindump-2030-01-01-a.json"]

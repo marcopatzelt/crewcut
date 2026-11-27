@@ -14,8 +14,9 @@ Sources:
 - `--braindump DIR`: saved links, one folder per link with `eintrag.json` and its result `ergebnis` (`titel`, `was`,
   `warum`, `projekte: [{"id", "idee", "wo"}]`, `tags`, `prioritaet`). Only links whose projects contain `--project`.
 
-An idea file that exists is left alone (dedupe by id); with `--refresh` an open idea is rewritten. A started or
-dismissed idea (its file says so once Crewcut decided) is never rewritten.
+An idea file that exists is left alone (dedupe by id, and by link: the same post from two sources is one card); with
+`--refresh` an open idea is rewritten. A started or dismissed idea (its file says so once Crewcut decided) is never
+rewritten.
 """
 
 from __future__ import annotations
@@ -36,6 +37,13 @@ def slug(text: str, n: int = 60) -> str:
     if len(s) > n:
         s = s[:n].rstrip("-") + "-" + hashlib.sha1(text.encode()).hexdigest()[:6]
     return s or hashlib.sha1(text.encode()).hexdigest()[:12]
+
+
+def norm_url(u) -> str | None:
+    if not isinstance(u, str) or not u.strip():
+        return None
+    u = re.sub(r"^https?://(www\.)?", "", u.strip().lower()).split("#")[0].split("?")[0].rstrip("/")
+    return u or None
 
 
 def iso(ts) -> str | None:
@@ -108,15 +116,29 @@ def from_braindump(root: Path, projects: list[str]) -> list[dict]:
 
 
 def write(ideas: list[dict], folder: Path, refresh: bool, dry: bool) -> dict:
-    counts = {"written": 0, "kept": 0, "decided": 0}
+    counts = {"written": 0, "kept": 0, "decided": 0, "same_link": 0}
     if not dry:
         folder.mkdir(parents=True, exist_ok=True)
     now = dt.datetime.now(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     seen = set()
+    links: dict[str, str] = {}   # one card per link: the same post from two sources is one idea
+    for f in sorted(folder.glob("*.json")) if folder.is_dir() else []:
+        try:
+            u = norm_url(json.loads(f.read_text(encoding="utf-8")).get("url"))
+        except (OSError, ValueError, AttributeError):
+            continue
+        if u:
+            links.setdefault(u, f.stem)
     for idea in ideas:
         if idea["id"] in seen:
             continue
         seen.add(idea["id"])
+        u = norm_url(idea.get("url"))
+        if u and links.get(u, idea["id"]) != idea["id"]:
+            counts["same_link"] += 1
+            continue
+        if u:
+            links[u] = idea["id"]
         p = folder / f"{idea['id']}.json"
         if p.exists():
             try:
@@ -159,16 +181,17 @@ def main(argv: list[str] | None = None) -> int:
         ap.error("name at least one source: --scout FILE or --braindump DIR")
     ideas: list[dict] = []
     try:
+        if a.braindump:   # first: a saved link carries the richer summary when the scout found the same link
+            ideas += from_braindump(a.braindump, a.project or ["crewcut"])
         for s in a.scout:
             ideas += from_scout(s, a.top, a.min_total)
-        if a.braindump:
-            ideas += from_braindump(a.braindump, a.project or ["crewcut"])
     except (OSError, ValueError) as e:
         print(f"ideas-export: {e}", file=sys.stderr)
         return 1
     counts = write(ideas, folder, a.refresh, a.dry_run)
     print(f"{len(ideas)} ideas found: {counts['written']} written, {counts['kept']} already there, "
-          f"{counts['decided']} decided in Crewcut (left alone). Folder: {folder}")
+          f"{counts['decided']} decided in Crewcut (left alone), {counts['same_link']} with a link that has a card "
+          f"already. Folder: {folder}")
     return 0
 
 
