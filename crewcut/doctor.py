@@ -146,10 +146,19 @@ def checks(ci: bool = False, probe: bool = False) -> list[dict]:
     tool = stylegate.checker(gate) if gate["mode"] != "off" else None
     add(OK if gate["mode"] == "off" or tool else NOTE, "style gate",
         "off" if gate["mode"] == "off" else
-        f"{gate['mode']}, {tool} (at most {gate['max_rounds']} rounds)" if tool else
+        f"{gate['mode']}, {tool} (" + (f"rounds until the Critic passes, emergency stop after {gate['safety_rounds']}"
+                                       if gate["loop"] == "until_pass" else f"at most {gate['max_rounds']} rounds")
+        + ")" if tool else
         f"{gate['mode']}, but the studio has no {gate['skill']} skill with {gate['checker']}: skipped",
         "" if tool or gate["mode"] == "off" else
         "Only for a studio with its own style checker (docs/own-skills.md, \"A skill with a checker\").")
+    if tool and gate["mode"] != "off":
+        from . import second_opinion
+        why = second_opinion.why_not()
+        add(OK if why is None else NOTE, "second opinion", "the host helper can ask a second model" if why is None
+            else f"not available: {why}",
+            "" if why is None else "Only when the studio's checker asks for one; the card then says it is missing "
+            "(docs/cue-sheets.md, \"The second opinion\").")
     if extskills.humanizer_enabled():
         n = len(voice.samples())
         add(OK if n else NOTE, "voice sample", f"{n} of your own videos in brand/voice/" if n else
