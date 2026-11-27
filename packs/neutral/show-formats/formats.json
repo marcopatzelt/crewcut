@@ -1,0 +1,89 @@
+{
+ "schema": 1,
+ "note": "Generic example show formats in Crewcut's own words. Your own library in brand/show-formats/formats.json adds to these and replaces formats with the same id. Template paths are relative to this folder.",
+ "formats": [
+  {
+   "id": "tool-test",
+   "name": "Tool test",
+   "length": "long",
+   "kinds": [
+    {"id": "free-vs-paid", "name": "Free against paid", "when": "A free tool claims to replace a paid one."},
+    {"id": "rebuild", "name": "Rebuild it yourself", "when": "An AI agent can rebuild a paid app or service in a few hours."},
+    {"id": "settings", "name": "Which setting wins", "when": "One tool has several modes, models or price tiers to compare on the same task."}
+   ],
+   "when": "The input is a tool, an app, a repository or a model the viewer could use or pay for. The video runs the same real task through it and gives a verdict.",
+   "keywords": ["tool", "app", "repo", "github", "model", "free", "paid", "subscription", "alternative", "replace", "test"],
+   "topic_types": ["manufactured", "trending"],
+   "structure": [
+    {"name": "Opening", "purpose": "The result first: one sentence with the surprising number, the proof in one line, the viewer's stake (money, data, time), a plan with a count.", "seconds": 30},
+    {"name": "Unit 1", "purpose": "The first test: hook with a number, the visible proof, one example, a punch line. It stands alone as a Short.", "seconds": 30},
+    {"name": "Unit 2", "purpose": "The second test, higher stakes: where it breaks or surprises. Same hook, proof, punch pattern.", "seconds": 30},
+    {"name": "Unit 3", "purpose": "The strongest test last: the one that decides the verdict.", "seconds": 30},
+    {"name": "Close", "purpose": "The verdict that picks up sentence 1, then at most one link sentence. No recap, no goodbye.", "seconds": 15}
+   ],
+   "script_template": "templates/tool-test.script.md",
+   "cue_template": "templates/tool-test.cues.md",
+   "testplan_template": "templates/tool-test.testplan.md",
+   "packaging_rules": [
+    "The viewer's stake (money, data or time) is in the title; the task itself is shown in the video.",
+    "The result must not be predictable from the title.",
+    "Three title and thumbnail pairs, each from a named formula."
+   ],
+   "title_formulas": [
+    "I tested X so you don't pay for Y",
+    "X replaced my Y subscription (here is the catch)",
+    "The free X beat the paid Y at one thing"
+   ],
+   "thumbnail_formats": ["house-face-result", "house-result-vs-result", "house-before-after"],
+   "checker_format": "lang",
+   "cadence": "weekly",
+   "strong": "Example format: a measured claim, an own number, where it breaks and a verdict is a common outlier pattern in tech channels. Replace this line with your own evidence."
+  },
+  {
+   "id": "claim-check",
+   "name": "Claim check",
+   "length": "short",
+   "kinds": [],
+   "when": "The input is a viral post, tweet or headline that claims a number or a result the creator can check in minutes.",
+   "keywords": ["claim", "tweet", "post", "viral", "says", "really", "true", "myth"],
+   "topic_types": ["trending", "manufactured"],
+   "structure": [
+    {"name": "Case", "purpose": "Sentence 1: the claim against your own number, in first person.", "seconds": 5},
+    {"name": "Proof", "purpose": "The visible test: the screen, the log, the clock. Fast.", "seconds": 25},
+    {"name": "Punch line", "purpose": "One short sentence the viewer remembers. No ask, no goodbye.", "seconds": 5}
+   ],
+   "script_template": "templates/claim-check.script.md",
+   "testplan_template": "templates/claim-check.testplan.md",
+   "packaging_rules": [
+    "The claim is quoted in a few words on screen in the first second.",
+    "The related video links the long video on the same topic."
+   ],
+   "title_formulas": ["Is X really true? I checked", "X says Y. My number says Z"],
+   "thumbnail_formats": [],
+   "checker_format": "short",
+   "cadence": "weekly",
+   "strong": "Example format: a claim against an own measurement is quick to make and easy to prove."
+  },
+  {
+   "id": "incident-file",
+   "name": "Incident file",
+   "length": "short",
+   "kinds": [],
+   "when": "The input is something that went wrong or surprised you in your own work with an agent or a tool: a log, a run, a mistake.",
+   "keywords": ["agent", "log", "run", "mistake", "error", "failed", "instead", "incident", "deleted", "broke"],
+   "topic_types": ["recent_past"],
+   "structure": [
+    {"name": "Case", "purpose": "Sentence 1: \"My agent was supposed to X. Instead it did Y.\" with a number.", "seconds": 5},
+    {"name": "Proof", "purpose": "The log or the screen recording that shows it happened.", "seconds": 25},
+    {"name": "Rule", "purpose": "The one rule you use since then, as the punch line.", "seconds": 5}
+   ],
+   "script_template": "templates/incident-file.script.md",
+   "packaging_rules": ["Only real incidents from your own runs, with the log as proof."],
+   "title_formulas": ["My agent was supposed to X. It did Y", "The one rule after my agent did X"],
+   "thumbnail_formats": [],
+   "checker_format": "short",
+   "cadence": "weekly",
+   "strong": "Example format: documenting what already happened costs little, so the volume stays high."
+  }
+ ]
+}

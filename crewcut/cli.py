@@ -22,6 +22,8 @@ DELEGATED = {
     "transcribe": ("crewcut.cut.cli", True),
     "cut": ("crewcut.cut.cli", True),
     "motion": ("crewcut.motion.cli", False),
+    "formats": ("crewcut.showformats", False),
+    "ideas": ("crewcut.ideas", False),
 }
 HEAVY = {"render": {"2d", "3d", "probe", "cut", "all", "capture", "music-bed"}, "transcribe": None,
          "cut": {"build", "grade", "islands", "probe", "verify", "doubles", "takes", "short", "short-check"}}
