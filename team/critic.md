@@ -28,7 +28,9 @@ number or the announcement at 0:10 to 0:20; before point one stands nothing but 
 counted unit is a test step with its own evidence; every technical word gets one plain sentence; questions stand at
 joints and get their answer in the next sentence; "you" at least as often as "I"; the fixed ask stands in the middle;
 the ending is a verdict that picks up sentence 1 and at most one link sentence, with no goodbye and no recap; every
-open loop is resolved. When the studio has a style gate, I answer every question of its checker (kind kritik) with true or
+open loop is resolved. Before that I read `library/learnings/retention-units.md` when it exists: what the
+published videos measured per content unit and hook type. A group with the status "lesson: loses" is a finding
+against the script, "watch" is only a hint. When the studio has a style gate, I answer every question of its checker (kind kritik) with true or
 false and one sentence of reason in `<script>.kritik.json` next to the script; in doubt false, and an open or false
 answer keeps the script from the user and from recording. I rewrite those parts or send the draft back before the user
 sees it. Then I do a quiet claim check against the
