@@ -5,7 +5,8 @@ console (project, two APIs, consent screen with themselves as test user, a Deskt
 Claude Code that is one card:
 
 1. "Connect YouTube" card (`propose()`): the user presses **Set it up in my Chrome**.
-2. On the yes, Crewcut writes a signed request for the host helper (`host/crewcut-host.sh`, started by `./start.sh`).
+2. On the yes, Crewcut writes a signed request for the host helper (`host/crewcut-host.sh`, started by `./start.sh`
+   or the desktop app).
    The container cannot start programs on the computer; the helper can, and only this one job: it checks the HMAC
    signature (CREWCUT_HOST_TOKEN), the age, that the request is new, and that its own setup prompt has the checksum the
    request names, then starts the user's own Claude Code with `--chrome` on that fixed prompt, in a visible window.
@@ -90,9 +91,11 @@ def why_not() -> str | None:
         return ("Setting up YouTube through Chrome works with Claude Code; with Codex it is planned. Follow the five "
                 "steps in docs/youtube.md instead.")
     if not s["token"]:
-        return "Start Crewcut with ./start.sh once more: it creates the key the helper needs (CREWCUT_HOST_TOKEN)."
+        return ("Quit the desktop app and open it again, or start Crewcut with ./start.sh once more: the container gets "
+                "the key the helper needs (CREWCUT_HOST_TOKEN) when it starts.")
     if not s["helper"]:
-        return "The host helper is not running. Start Crewcut with ./start.sh (it starts the helper next to Docker)."
+        return ("The host helper is not running. The desktop app starts it (on macOS and Linux), and so does "
+                "./start.sh, next to Docker.")
     if not s["claude_on_host"]:
         return "Claude Code is not installed on this computer. Install it, run `claude` once and sign in with /login."
     if not s["chrome_on_host"]:

@@ -1,6 +1,7 @@
 // Crewcut's desktop app. It runs the same Docker stack as ./start.sh, connects Claude (the token stays in the system
 // keychain), and shows the local Crewcut page in its own window. On quit it stops the stack, unless "keep the crew
 // working in the background" is on: then closing the window leaves a tray (menu-bar) icon and the crew keeps working.
+// Next to the stack it runs the host helper (host-helper.ts), as ./start.sh does, and stops it on quit.
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell, Tray, type IpcMainInvokeEvent } from "electron";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -17,6 +18,7 @@ import { applyTheme, createMainWindow, createSettingsWindow, guard, isMac, local
 import type { ThemeName } from "./theme";
 import { DesktopPrompter } from "./prompter";
 import { DesktopMedia, removableRoots } from "./media";
+import { HostHelper, hostToken, secondOpinionConfig } from "./host-helper";
 
 if (process.platform === "linux" && process.env.WAYLAND_DISPLAY && process.env.DISPLAY &&
     !app.commandLine.hasSwitch("ozone-platform")) {
@@ -40,6 +42,8 @@ const PRELOAD = join(__dirname, "preload.js");
 const SHOTS = process.env.CREWCUT_DESKTOP_SHOTS || "";
 const res = (name: string) => (app.isPackaged ? join(process.resourcesPath, name) : join(__dirname, "..", "build", name));
 const ICON = res("icon.png");
+const HELPER = app.isPackaged ? join(process.resourcesPath, "host", "crewcut-host.sh")
+  : join(__dirname, "..", "..", "host", "crewcut-host.sh");
 
 // `crewcut --help` / `--version` from a shell: print and leave, without Docker and without a window.
 if (process.argv.some((a) => a === "--help" || a === "-h")) {
@@ -71,6 +75,7 @@ const log = (line: string) => {
   if (logLines.length > 500) logLines.shift();
   if (!app.isPackaged) console.log(line);
 };
+const hostHelper = new HostHelper(log);
 
 function stackConfig(): stack.StackConfig {
   const s = settings.get();
@@ -89,7 +94,15 @@ function stackConfig(): stack.StackConfig {
     prompterPort: PROFILE.prompterPort,
     prompterBind: PROFILE.development ? "127.0.0.1" : "0.0.0.0",
     token: getToken(),
+    hostToken: hostToken(join(app.getPath("userData"), "stack")),
   };
+}
+
+/** The host helper for the studio the stack runs, with the second opinion from the environment or settings.json. */
+function startHelper(): void {
+  const cfg = stackConfig();
+  hostHelper.start({ script: HELPER, studioDir: cfg.studioDir, token: cfg.hostToken ?? "", parentPid: process.pid,
+    secondOpinion: secondOpinionConfig(settings.get().secondOpinion, process.env, app.getPath("userData")) });
 }
 
 function send(channel: string, data: unknown): void {
@@ -234,6 +247,7 @@ async function startStack(): Promise<{ ok: boolean; text?: string; login?: strin
   const login = problem ? LOGIN_PROBLEM[problem] : undefined;
   if (await stack.health(PORT)) { // Crewcut already runs: never pull or restart a healthy stack on start
     stackStarted = true;
+    startHelper();
     return { ok: true, login };
   }
   const d = await checkDocker();
@@ -290,6 +304,7 @@ async function startStack(): Promise<{ ok: boolean; text?: string; login?: strin
     }
   }, startWatch(cfg));
   if (ready !== true) return { ok: false, text: ready };
+  startHelper();
   settings.set({ image: ref });
   send("stack:progress", { phase: "ready", text: "Crewcut is ready." });
   return { ok: true, login };
@@ -533,6 +548,7 @@ app.on("before-quit", (e) => {
   if (quitting) return;
   quitting = true;
   stopSignIn();
+  hostHelper.stop();
   if (!stackStarted) return;
   e.preventDefault();
   main?.hide();

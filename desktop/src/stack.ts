@@ -1,7 +1,7 @@
 // The Crewcut stack, as ./start.sh runs it: the repository's compose.yaml (shipped unchanged inside the app), the
 // project name "crewcut", the studio folder mounted at /studio, the LAN address for the teleprompter's QR code. The app
 // adds stack/desktop.yaml (no build, no pull by Compose) and passes the Claude token from the keychain in the
-// environment of the docker command only, never in a file.
+// environment of the docker command only, never in a file; likewise the host helper's key (host-helper.ts).
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { get } from "node:http";
@@ -21,6 +21,8 @@ export interface StackConfig {
   prompterPort?: number;
   prompterBind?: string;
   token?: string | null;
+  /** The host helper's key (host-helper.ts), so the container can sign its requests. */
+  hostToken?: string | null;
 }
 
 export const PROJECT = "crewcut";
@@ -53,6 +55,7 @@ export function composeEnv(c: StackConfig, base: NodeJS.ProcessEnv = process.env
     CREWCUT_LAN_HOST: lanHost() ?? "",
     // Always set, also when empty: a token in the user's shell must not slip into the container unasked.
     CLAUDE_CODE_OAUTH_TOKEN: c.token ?? "",
+    CREWCUT_HOST_TOKEN: c.hostToken ?? "",
   };
 }
 

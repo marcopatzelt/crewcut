@@ -11,12 +11,16 @@
 #   the Critic's verdict named in the request (both inside the studio). At most CREWCUT_SECOND_OPINION_PARALLEL runs
 #   at a time (default 2). The output goes to studio/.crewcut/host/runs/<id>.json; Crewcut reads it.
 #
+# The desktop app starts it the same way, as its own child process (CREWCUT_HOST_BY="desktop app",
+# CREWCUT_HOST_PARENT=<the app's process id>: the helper stops when the app is gone), with the key from the app's data
+# folder and the second-opinion command from the user's environment or the app's settings.json.
+#
 # It never runs a command or a prompt it is sent. A request is a small file in studio/.crewcut/host/requests/ that names
 # the job, a time and the checksum of the prompt; it must carry an HMAC signature made with CREWCUT_HOST_TOKEN (in
 # .env, never inside the studio folder). Unsigned, old (over two minutes), repeated or mismatching requests are deleted
-# and reported. No network port.
+# and reported (a refused second opinion also gets its answer file, so the card says why at once). No network port.
 #
-#   host/crewcut-host.sh            watch (started by ./start.sh)
+#   host/crewcut-host.sh            watch (started by ./start.sh or the desktop app)
 #   host/crewcut-host.sh --once     handle the requests that are there now, then stop (tests)
 set -euo pipefail
 
@@ -26,10 +30,14 @@ STUDIO="${CREWCUT_STUDIO_DIR:-$ROOT/studio}"
 BOX="$STUDIO/.crewcut/host"
 PROMPT="$HERE/prompts/youtube-setup.md"
 SO_PROMPT="$HERE/prompts/second-opinion.md"
-SO_DIR="${CREWCUT_SECOND_OPINION_DIR:-$BOX/second-opinion}"
+# outside the studio: the crew can write there, and a command with tools must not find files the crew put down
+SO_DIR="${CREWCUT_SECOND_OPINION_DIR:-$ROOT/.host/second-opinion}"
 SO_MAX="${CREWCUT_SECOND_OPINION_PARALLEL:-2}"
+case "$SO_MAX" in ''|0|*[!0-9]*) SO_MAX=2 ;; esac
 MAX_AGE="${CREWCUT_HOST_MAX_AGE:-120}"
 DOWNLOADS="${CREWCUT_DOWNLOADS:-$HOME/Downloads}"
+PARENT="${CREWCUT_HOST_PARENT:-}"
+BY=$(printf '%s' "${CREWCUT_HOST_BY:-start.sh}" | tr -cd 'A-Za-z0-9 ._-')
 VERSION=1
 
 if [ -z "${CREWCUT_HOST_TOKEN:-}" ] && [ -f "$ROOT/.env" ]; then
@@ -53,8 +61,9 @@ beat() {
     || { [ -d "/Applications/Google Chrome.app" ] && echo "/Applications/Google Chrome.app"; } || true)
   local so=false
   [ -n "${CREWCUT_SECOND_OPINION_CMD:-}" ] && so=true
-  printf '{"version":%s,"pid":%s,"at":%s,"claude":"%s","chrome":"%s","second_opinion":%s}\n' "$VERSION" "$$" "$(now)" \
-    "$claude" "$chrome" "$so" > "$BOX/helper.json.tmp" && mv "$BOX/helper.json.tmp" "$BOX/helper.json"
+  printf '{"version":%s,"pid":%s,"at":%s,"by":"%s","claude":"%s","chrome":"%s","second_opinion":%s,"second_opinion_parallel":%s}\n' \
+    "$VERSION" "$$" "$(now)" "$BY" "$claude" "$chrome" "$so" "$SO_MAX" > "$BOX/helper.json.tmp" \
+    && mv "$BOX/helper.json.tmp" "$BOX/helper.json"
 }
 
 open_terminal() {  # run a command in a visible terminal window, so the person sees Claude and can answer it
@@ -110,7 +119,7 @@ safe_rel() {  # a path inside the studio: relative, no "..", only plain characte
 
 run_second_opinion() {
   local id="$1" file="$2" verdict="$3" running
-  [ -n "${CREWCUT_SECOND_OPINION_CMD:-}" ] || { say "$id" failed "No second-opinion command on this computer."; return 1; }
+  [ -n "${CREWCUT_SECOND_OPINION_CMD:-}" ] || { refuse "$id" second-opinion "No second-opinion command on this computer."; return 0; }
   running=$(find "$BOX/runs" -maxdepth 1 -name '*.running' 2>/dev/null | wc -l | tr -d ' ')
   if [ "$running" -ge "$SO_MAX" ]; then say "$id" rejected "Already $running second opinions running (at most $SO_MAX)."
     printf '{"status":"unavailable","error":"busy: %s runs at a time"}\n' "$SO_MAX" > "$BOX/runs/$id.json"; return 0; fi
@@ -125,6 +134,13 @@ run_second_opinion() {
   say "$id" running "A second opinion on the script runs on this computer."
 }
 
+refuse() {  # refuse <id> <kind> <text>: report it; a second opinion also gets its answer, so the card says why at once
+  say "$1" rejected "$3"
+  if [ "$2" = "second-opinion" ] && [ ! -e "$BOX/runs/$1.json" ] && [ ! -e "$BOX/runs/$1.running" ]; then
+    printf '{"status":"unavailable","error":"refused by the host helper: %s"}\n' "$3" > "$BOX/runs/$1.json"
+  fi
+}
+
 handle() {
   local f="$1" kind id at nonce psha sig want file verdict answer
   kind=$(field kind "$f"); id=$(field id "$f"); at=$(field at "$f"); nonce=$(field nonce "$f")
@@ -137,14 +153,14 @@ handle() {
   else
     want=$(hmac "kind=$kind;id=$id;at=$at;nonce=$nonce;prompt_sha256=$psha")
   fi
-  if [ -z "$sig" ] || [ "$sig" != "$want" ]; then say "$id" rejected "The request was not signed by this Crewcut."; return 0; fi
-  case "$at" in ''|*[!0-9]*) say "$id" rejected "The request has no valid time."; return 0 ;; esac
-  if [ $(( $(now) - at )) -gt "$MAX_AGE" ] || [ "$at" -gt $(( $(now) + 30 )) ]; then say "$id" rejected "The request is too old. Press the button again."; return 0; fi
-  if [ -e "$BOX/used/$nonce" ]; then say "$id" rejected "This request was used before."; return 0; fi
+  if [ -z "$sig" ] || [ "$sig" != "$want" ]; then refuse "$id" "$kind" "The request was not signed by this Crewcut."; return 0; fi
+  case "$at" in ''|*[!0-9]*) refuse "$id" "$kind" "The request has no valid time."; return 0 ;; esac
+  if [ $(( $(now) - at )) -gt "$MAX_AGE" ] || [ "$at" -gt $(( $(now) + 30 )) ]; then refuse "$id" "$kind" "The request is too old. Press the button again."; return 0; fi
+  if [ -e "$BOX/used/$nonce" ]; then refuse "$id" "$kind" "This request was used before."; return 0; fi
   touch "$BOX/used/$nonce"
   if [ "$kind" = "second-opinion" ]; then
-    if [ "$psha" != "$(sha256 < "$SO_PROMPT")" ]; then say "$id" rejected "The second-opinion prompt differs from Crewcut's."; return 0; fi
-    if ! safe_rel "$file" || ! safe_rel "$verdict" || ! safe_rel "$answer"; then say "$id" rejected "A path is not inside the studio."; return 0; fi
+    if [ "$psha" != "$(sha256 < "$SO_PROMPT")" ]; then refuse "$id" "$kind" "The second-opinion prompt differs from Crewcut's (update the app or the repository)."; return 0; fi
+    if ! safe_rel "$file" || ! safe_rel "$verdict" || ! safe_rel "$answer"; then refuse "$id" "$kind" "A path is not inside the studio."; return 0; fi
     run_second_opinion "$id" "$file" "$verdict"
     return 0
   fi
@@ -156,9 +172,18 @@ handle() {
   run_setup "$id"
 }
 
-once() { local f; for f in "$BOX"/requests/*.req; do [ -f "$f" ] && handle "$f"; done; beat; }
+once() {
+  local f
+  # a run that left its mark longer ago than any command may take (a restart of the computer mid-run) is not running
+  find "$BOX/runs" -maxdepth 1 -name '*.running' -mmin +20 -exec rm -f {} + 2>/dev/null || true
+  for f in "$BOX"/requests/*.req; do [ -f "$f" ] && handle "$f"; done
+  beat
+}
 
 if [ "${1:-}" = "--once" ]; then once; exit 0; fi
 echo "crewcut-host: watching $BOX/requests (Ctrl+C to stop)"
 trap 'rm -f "$BOX/helper.json"; exit 0' INT TERM
-while true; do once; sleep 1; done
+while true; do
+  if [ -n "$PARENT" ] && ! kill -0 "$PARENT" 2>/dev/null; then rm -f "$BOX/helper.json"; exit 0; fi
+  once; sleep 1
+done
