@@ -62,6 +62,7 @@ LAYERS = ("behind",)                                # "layer": an overlay that s
 FACE_BOX = (0.32, 0.28)                             # face box size (fractions of the frame) when the plan gives a centre
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".bmp", ".tif", ".tiff"}
 FOOTAGE_EXT = {".mp4", ".mov", ".mkv", ".webm", ".m4v", ".avi"}
+LOTTIE_EXT = {".json", ".lottie"}                   # motion template lottie_clip: an imported, converted Lottie
 SOUND_LISTS = {"whoosh": "whooshes", "hit": "hits", "pop": "hits", "click": "hits", "bell": "hits",
                "tick": "typing", "reel_tick": "typing", "typing": "typing"}
 MOTION_CAP_USD = {"landscape": 2.0, "portrait": 0.5}   # rented motion work per video: long-form, Short
@@ -113,7 +114,7 @@ def tokens_for_hash(tokens: dict, kind: str) -> dict:
     if kind == "3d":
         keys = ("stage3d", "colors", "fonts", "motion")
     elif kind == "motion":
-        keys = ("colors", "fonts", "shape", "motion_graphics")
+        keys = ("colors", "fonts", "shape", "motion_graphics", "graphics")
     else:
         keys = ("colors", "fonts", "logo", "shape", "motion", "css")
     return {k: tokens.get(k) for k in keys}
@@ -174,7 +175,7 @@ def brand_context(tokens: dict) -> dict:
     fonts = {role: {"family": (spec or {}).get("family"), "weight": (spec or {}).get("weight")}
              for role, spec in (tokens.get("fonts") or {}).items()}
     return {"colors": tokens.get("colors") or {}, "fonts": fonts, "shape": tokens.get("shape") or {},
-            "mg": tokens.get("motion_graphics") or {}}
+            "mg": tokens.get("motion_graphics") or {}, "graphics": tokens.get("graphics")}
 
 
 @dataclass
@@ -472,6 +473,8 @@ class Plan:
         scene = str(e.get("scene") or "")
         if not _SCENE.fullmatch(scene):
             raise PlanError(f"insert {iid}: scene name {scene!r} is not valid")
+        if kind == "2d" and scene.startswith("hf-"):
+            return self._hyperframes(e, iid, scene, start_s, end_s, start, end, transparent)
         if kind == "3d" and transparent:
             raise PlanError(f"insert {iid}: 3D inserts are full frame; transparent is for 2D overlays")
         cues = {str(n): self.cue_frame(c, start, start_s) for n, c in (e.get("cues") or {}).items()}
@@ -490,6 +493,49 @@ class Plan:
         out_dir = self.episode_dir / "render" / "inserts" / f"{iid}-{h}"
         clip = Path(str(out_dir) + (".mov" if transparent else ".mp4"))
         return self._placed(Insert(iid, kind, scene, start_s, end_s, start, end, transparent, cues, data, e,
+                                   template=template, shared=shared, hash=h, out_dir=out_dir, clip=clip))
+
+    def _hyperframes(self, e: dict, iid: str, scene: str, start_s: float, end_s: float, start: int, end: int,
+                     transparent: bool) -> Insert:
+        """A 2D insert from a HyperFrames template (scene ``hf-<name>``, crewcut/render/hyperframes.py). Its params
+        are checked against the template's ``template.json``; the hash also covers the pinned HyperFrames version,
+        the resolved studio style (palette, fonts, motion) and, on an overlay, the speaker picture under it."""
+        from . import hyperframes as hfr
+        name = hfr.name_of(scene)
+        try:
+            if name is None:
+                raise hfr.HyperFramesError(f"{scene!r} is not a HyperFrames template name")
+            folder = hfr.find(name, self.pack)
+            m = hfr.manifest(folder)
+            template, shared = hfr.template_files(name, self.pack)
+        except hfr.HyperFramesError as ex:
+            raise PlanError(f"insert {iid}: {ex}") from ex
+        formats = m.get("formats") or list(FORMATS)
+        if self.format not in formats:
+            raise PlanError(f"insert {iid}: template {scene} has no {self.format} format (it has {', '.join(formats)})")
+        cues = {str(n): self.cue_frame(c, start, start_s) for n, c in (e.get("cues") or {}).items()}
+        bad = sorted(n for n in cues if n not in (m.get("cues") or {}))
+        if bad:
+            raise PlanError(f"insert {iid}: cue {', '.join(bad)} is not a cue of {scene} "
+                            f"(cues: {', '.join(sorted(m.get('cues') or {})) or 'none'})")
+        data = copy.deepcopy(e.get("data") or {})
+        if not isinstance(data, dict):
+            raise PlanError(f"insert {iid}: data must be an object")
+        try:
+            hfr.merge_params(m, data)
+        except hfr.HyperFramesError as ex:
+            raise PlanError(f"insert {iid}: {ex}") from ex
+        data.update(format=self.format, frames=end - start + EXTRA_FRAMES, fps=self.fps, cues=cues)
+        stats = self._resolve_paths(data)
+        extra = [*hfr.hash_extra(self.pack), *stats, f"right_free:{self.right_free}"]
+        if transparent:
+            extra.append(f"face:{self.face_box()}")
+            if self.p.get("base") or self.base_color():
+                extra.append(self.backdrop_key(start, end - start + EXTRA_FRAMES))
+        h = insert_hash(data, [template, *shared], tokens_for_hash(self.tokens, "2d"), extra)
+        out_dir = self.episode_dir / "render" / "inserts" / f"{iid}-{h}"
+        clip = Path(str(out_dir) + (".mov" if transparent else ".mp4"))
+        return self._placed(Insert(iid, "2d", scene, start_s, end_s, start, end, transparent, cues, data, e,
                                    template=template, shared=shared, hash=h, out_dir=out_dir, clip=clip))
 
     def _place(self, iid: str, e: dict, transparent: bool) -> str:
@@ -543,8 +589,8 @@ class Plan:
         return p
 
     def _motion_paths(self, params: dict) -> list[Path]:
-        """Relative image and footage paths in the params (at any depth) become absolute paths inside the episode
-        folder. Returns the files."""
+        """Relative image, footage and Lottie paths in the params (at any depth) become absolute paths inside the
+        episode folder. Returns the files."""
         files: list[Path] = []
 
         def one(v: Any) -> Any:
@@ -552,7 +598,7 @@ class Plan:
                 return {k: one(x) for k, x in v.items()}
             if isinstance(v, list):
                 return [one(x) for x in v]
-            if not isinstance(v, str) or "://" in v or Path(v).suffix.lower() not in IMAGE_EXT | FOOTAGE_EXT:
+            if not isinstance(v, str) or "://" in v or Path(v).suffix.lower() not in IMAGE_EXT | FOOTAGE_EXT | LOTTIE_EXT:
                 return v
             try:
                 p = self.local(v)

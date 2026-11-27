@@ -26,6 +26,21 @@ blender -b --factory-startup --python plates/gpu3d.py -- --out DIR --frames 1-12
   estimate both ways, the spend card, then a rented RTX 4090); each plate is cached by its own hash in
   `render/plates/<id>-<hash>/`. Only plate scripts, their args, tokens and font files go up.
 
+## 1b. Light and material from CC0 libraries
+
+Every plate can `import crewcut_assets` (the bootstrap puts it on Blender's path): Poly Haven HDRIs and texture sets
+and ambientCG materials, fetched by their public APIs into a cache (on a rented machine `/work/assets`, straight from
+the sources). Prefer a real HDRI and a scanned material over flat colours and clay.
+
+```python
+import crewcut_assets as ca
+ca.world_hdri(ca.hdri("studio_small_09", "2k"), strength=0.9, rotation=200)
+paper = ca.material_from(ca.material("ambientcg:Paper005", "2K"), name="paper", tint="#FAF9F5")
+```
+
+`crewcut render assets fetch <spec>` fills the cache here first; `crewcut render assets list` shows it. All CC0
+(no credit needed). Details: docs/motion-libraries.md, section 3.
+
 ## 2. Colour management
 
 | Plate | View transform | Why |

@@ -131,7 +131,9 @@ var EC = (function () {
   // ease presets: [outInfluence of the earlier key, inInfluence of the later key] (speed 0 at both)
   E.EASES = {
     linear: null, easy: [33.33, 33.33], smooth: [60, 60], strong: [85, 85],
-    out: [8, 92], expo: [3, 97], "in": [92, 8], expoIn: [97, 3], soft: [40, 75], snap: [1, 99]
+    out: [8, 92], expo: [3, 97], "in": [92, 8], expoIn: [97, 3], soft: [40, 75], snap: [1, 99],
+    // the channel's one curve: cubic-bezier(0.2, 0, 0, 1) in, cubic-bezier(0.3, 0, 0.8, 0.15) out (approximated)
+    emphasized: [20, 100], emphasizedOut: [30, 20]
   };
   // keys: [[t, value], ...] in comp seconds. ease: preset name, [out,in] pair, or array per segment.
   E.startOf = function (c, id) { var l = E.layerObj(c, id); return l ? l.startTime : 0; };

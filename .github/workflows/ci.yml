@@ -101,6 +101,119 @@ jobs:
           done
           ls -la /tmp/mmd
 
+  hyperframes:
+    name: HyperFrames templates render with alpha (pinned CLI, headless Chrome)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/hyperframes/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: ffmpeg and the neutral pack's font
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-inter > /dev/null
+      - name: HyperFrames as pinned in tools/hyperframes, and its pinned Chrome
+        run: |
+          cd tools/hyperframes && npm ci --no-audit --no-fund
+          ./node_modules/.bin/browsers install chrome-headless-shell@158.0.8127.88 --path "$RUNNER_TEMP/hf-browsers" > /dev/null
+          echo "HYPERFRAMES_BROWSER_PATH=$(find "$RUNNER_TEMP/hf-browsers" -type f -name chrome-headless-shell | head -1)" >> "$GITHUB_ENV"
+          HYPERFRAMES_NO_TELEMETRY=1 HYPERFRAMES_NO_UPDATE_CHECK=1 ./node_modules/.bin/hyperframes --version
+      - run: pip install -q -e ".[dev]"
+      - name: Every template - lint, a few frames per format (size, count, alpha), one still each
+        env:
+          CREWCUT_HF_RENDER: "1"
+          CREWCUT_HF_OUT: ${{ runner.temp }}/hf-out
+        run: pytest -q -rs -s tests/render/test_hyperframes_render.py tests/render/test_hyperframes.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hyperframes-stills
+          path: ${{ runner.temp }}/hf-out/
+          if-no-files-found: warn
+
+  motion-imports:
+    name: Motion engine - imports (Lottie, After Effects) and the graphic system, through the pinned EffectCraft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: effectcraft-cli from the engine image the Crewcut image copies it from
+        run: |
+          sha=$(awk '$1=="commit"{print $2}' third_party/effectcraft/PIN)
+          n=$(ls third_party/effectcraft/patches/*.patch | wc -l)
+          img="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/crewcut-effectcraft:${sha:0:12}-p${n}"
+          docker pull -q "$img"
+          docker create --name ec "$img" /effectcraft-cli > /dev/null
+          mkdir -p "$RUNNER_TEMP/bin" && docker cp ec:/effectcraft-cli "$RUNNER_TEMP/bin/effectcraft-cli" && docker rm ec > /dev/null
+          echo "EFFECTCRAFT_CLI=$RUNNER_TEMP/bin/effectcraft-cli" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/bin/effectcraft-cli" --empty info --json | head -c 300; echo
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends fonts-inter > /dev/null
+      - run: pip install -q -e ".[dev]"
+      - name: The open sample Lottie in the palette, an .aep round trip; highlight, halo, ink chapter card, card, Short safe zone
+        env:
+          CREWCUT_EC_OUT: ${{ runner.temp }}/ec-out
+        run: pytest -q -rs -s tests/motion/test_imports_engine.py tests/motion/test_graphics_engine.py tests/motion/test_imports.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: imports-frames
+          path: ${{ runner.temp }}/ec-out/
+          if-no-files-found: warn
+
+  blender-assets:
+    name: CC0 assets - one Poly Haven HDRI and one ambientCG material light a tiny Cycles frame on the CPU
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/blender
+          key: blender-5.0.1-linux-x64
+      - name: Blender 5.0.1 (official build, as in the image)
+        run: |
+          if [ ! -x ~/blender/blender ]; then
+            mkdir -p ~/blender
+            curl -fsSL https://download.blender.org/release/Blender5.0/blender-5.0.1-linux-x64.tar.xz | tar -xJ -C ~/blender --strip-components=1
+          fi
+          sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends libxi6 libxxf86vm1 libxfixes3 \
+            libxrender1 libgl1 libsm6 libxkbcommon0 libegl1 libglu1-mesa > /dev/null
+          ~/blender/blender --version | head -1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -q -e ".[dev]"
+      - name: crewcut render assets fetch, then the plate with the bootstrap
+        env:
+          CREWCUT_BLENDER: /home/runner/blender/blender
+          CREWCUT_ASSET_RENDER: "1"
+          CREWCUT_ASSET_OUT: ${{ runner.temp }}/assets-out
+        run: |
+          CREWCUT_STUDIO="$RUNNER_TEMP/studio" crewcut render assets fetch polyhaven:hdri/studio_small_09 ambientcg:Paper005 --res 1k
+          pytest -q -rs -s tests/render/test_assets3d_blender.py tests/render/test_assets3d.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: assets-frame
+          path: ${{ runner.temp }}/assets-out/
+          if-no-files-found: warn
+
   privacy:
     name: Secrets and personal data
     runs-on: ubuntu-24.04
@@ -113,6 +226,8 @@ jobs:
         run: |
           curl -fsSL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz | tar -xz gitleaks
           ./gitleaks detect --source . --redact -v
+      - name: no marketplace templates (Mixkit, Envato, LottieFiles items stay in the studio's private folder)
+        run: python3 tools/ci/no_private_templates.py .
       - name: no personal paths or numbers
         run: |
           if grep -rnI -e "/home/pol[o]" -e "marcopatzelt8[2]" -e "+4[9]" --exclude-dir=.git . ; then

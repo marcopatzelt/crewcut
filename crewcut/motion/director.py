@@ -214,6 +214,12 @@ def scenes() -> dict[str, dict]:
                 if f.name in shared or f.name.endswith(".scene.json"):
                     continue
                 out.setdefault(f.stem, {"render": render, "kind": "overlay" if f.stem == "keyword" else "full"})
+    try:                                  # HyperFrames templates render as 2D scenes named hf-<name>
+        from ..render import hyperframes
+        for t in hyperframes.listing():
+            out.setdefault(t["scene"], {"render": "2d", "kind": t.get("kind") or "full", "library": "hyperframes"})
+    except Exception:  # noqa: BLE001 - a broken template folder never stops the motion plan
+        pass
     return out
 
 

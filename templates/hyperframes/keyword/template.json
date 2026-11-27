@@ -1,0 +1,23 @@
+{
+ "title": "Keyword or number beside the speaker",
+ "type": "a",
+ "kind": "overlay",
+ "formats": ["landscape", "portrait"],
+ "length_s": [1.5, 3.0],
+ "description": "One keyword of at most four words, or one number with a unit, on the free side next to the face: right-aligned at the right safe edge (left-aligned on the left when the speaker sits right), centred at head to shoulder height. Over video the keyword takes the highlight colour and the side line the paper colour, on an ink halo with a soft side scrim and shadow; on a paper ground the accent takes the highlight's role. The push brings the side line first and the keyword last, complete 1 frame before the cue 'land'; a number counts up and locks there. Type only: no box, no icon.",
+ "params": {
+  "words": ["Dreißig", "Cent"],
+  "number": null,
+  "unit": null,
+  "sub": null,
+  "size": null,
+  "side": "auto",
+  "y": null,
+  "ground": "paper",
+  "inAt": 0.0,
+  "outAt": null
+ },
+ "cues": {"land": "the keyword or number is complete here (1 frame before the spoken word)"},
+ "example_cues": {"land": 0.7},
+ "notes": "words: 1 to 4 (more are dropped). number: text such as \"30\" or \"13.544\" (digits count, separators stand). sub: one side line (500, 64 to 80 px) or null. side: auto, left or right. y: centre as a share of the height (null: 47 %). ground: paper or ink, only with \"transparent\": false."
+}

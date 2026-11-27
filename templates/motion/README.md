@@ -25,8 +25,9 @@ libraries `lib/ec_lib.jsx` (`EC.*`: layers, keys, eases, effects, springs, text 
 - Times in params are **seconds local to the insert** (0 = the first frame of the insert). Plan cues arrive as params
   of the same name (`"cues": {"landAt": {"word": "thirty"}}` becomes `landAt: 1.84`).
 - A template never contains `1920`, `1080`, a font name such as `Manrope`, the Shatter effect, the Temporal Motion Blur
-  effect, or a filled box behind words (the one allowed plate is the frosted glass of `CC.glass`). The lint in
-  `skills/cut-check/scripts/motion_check.py` refuses them.
+  effect, or a filled box behind words (the allowed plates are the frosted glass of `CC.glass` and the channel's one
+  card form, `lower_third` with `"variant": "card"`). The lint in `skills/cut-check/scripts/motion_check.py` refuses
+  them.
 
 ### Context (`CC_CTX`)
 
@@ -62,10 +63,35 @@ Templates read it only through `CC.*`:
       "enter_s": 0.4, "exit_s": 0.25, "ease": "expo", "drift_pct_per_s": 2.0,
       "blur": {"shutter": 180, "samples": 16},
       "plate3d": {"material": "glossy", "bevel": 0.05, "extrude": 0.2}
-    }
+    },
+    "graphics": null                  // the channel's graphic system, or null (see "The graphic system" below)
   }
 }
 ```
+
+### The graphic system (`CC_CTX.brand.graphics`)
+
+A pack that declares a graphic system (`channel.json` `graphics.palette`, `edit-style.json` `graphics`; read by
+`crewcut.brand.Pack.graphics_tokens`) gives the templates one more object; `null` leaves every template as it was:
+
+```json
+{"highlight": "#FFE600", "accent": "#2320D6", "ink": "#141413", "paper": "#FAF9F5",
+ "halo": {"alpha": 0.8, "grow_px": 27, "blur_px": 28, "side_scrim_alpha": 0.35},
+ "safe": {"landscape": {"left": 96, "right": 96, "top": 54, "bottom": 54},
+          "portrait": {"top": 288, "bottom": 672, "left": 48, "right": 192}},
+ "ease": "emphasized", "ease_out": "emphasizedOut", "shapes_only_on": ["chapter_card", "end_lockup"]}
+```
+
+- `CC.keyColor(ground)`: the one word or number that matters: the highlight over video and on a dark ground, the
+  accent on a light ground (the highlight is never type on paper); without the system `CC.color(0)`.
+- `CC.halo(c, o)`, `CC.scrim(c, side, t, dur, outAt, outDur)`, `CC.halosBack(c)`: an ink copy of the type (grown,
+  blurred) and a soft ink gradient on the free side, under all type; only over video and beside the person.
+- `CC.tone()` gives light type on the halo over video; `CC.safe` takes the pixels of `safe`; `CC.ease()` and
+  `CC.easeOut()` the named curves `emphasized` (`cubic-bezier(0.2, 0, 0, 1)`, EC.EASES `[20, 100]`) and
+  `emphasizedOut` (`cubic-bezier(0.3, 0, 0.8, 0.15)`, approximated as `[30, 20]`).
+- `keyword_pop` and `number_roll` use the key colour, the halo and the scrim; `chapter_card` stands on ink with the
+  number large in the highlight and the stored shapes at its edges when `shapes_only_on` names it; `lower_third`
+  has `"variant": "card"`, the one box form (paper plate, 24 px rounding, soft shadow, 10 px accent edge).
 
 ### `CC.frame(comp)`
 
@@ -378,3 +404,17 @@ click; it leaves the way it came 0.45 s before the end.
 | `image` | `""` | another pointer image (default `assets/cursor.png`, an original drawing) |
 
 Sounds: `click` at `clickAt`. Limits: the ring opens where the path stands at the click (click while resting).
+
+### `lottie_clip` (overlay or full, as long as the insert)
+
+An imported template from the studio's private folder (docs/motion-libraries.md): a Lottie file that
+`crewcut motion imports` turned into the pack's palette, fonts and 25 fps. EffectCraft imports it as its own comp and
+lays it into the frame. `crewcut motion imports use NAME EPISODE INSERT_ID` writes the file into the episode and
+prints the plan entry. Without a file (a sample run of the shelf) the overlay stays empty.
+
+| Param | Default | Meaning |
+|---|---|---|
+| `file` | `""` | the converted Lottie, relative to the episode (`motion/<insert>/<name>.json`) |
+| `fit` | `"contain"` | `contain`: the whole animation inside the safe box; `cover`: the whole frame covered |
+| `x`, `y`, `scale` | `0.5`, `0.5`, `1.0` | centre as shares of the frame; a factor on the fitted size |
+| `speed`, `offset` | `1.0`, `0.0` | its own clock times `speed`, starting `offset` seconds into it; a longer insert holds the last frame |

@@ -146,6 +146,22 @@ their own. The pack's font `files` are copied into a font folder for every motio
 through `EFFECTCRAFT_FONT_DIRS`, so a pack font needs no install. The look tokens (`colors`, `fonts`, `shape`,
 `motion_graphics`) are part of every motion insert's cache key: change one and every motion insert renders again.
 
+## channel.json graphics and edit-style.json graphics: the graphic system
+
+A pack may declare one graphic system for every insert. Ready-made blocks (HyperFrames templates, imported Lottie and
+After Effects templates) and the motion templates read it; without it everything keeps its own look.
+
+| Key | Example | Used by |
+|---|---|---|
+| `channel.json` `graphics.palette` | `{"ink": "#141413", "paper": "#FAF9F5", "accent": "#2320D6", "highlight": "#FFE600"}` | the four colours of every block (`crewcut motion style`); the highlight is for the keyword and numbers over video or ink, the accent takes its role on paper |
+| `channel.json` `graphics.motion` | `{"enter_s": 0.4, "exit_s": 0.28, "stagger_s": 0.08, "ease": [0.2, 0, 0, 1]}` | entrance and exit; `[0.2, 0, 0, 1]` is the named curve `emphasized` in the motion templates |
+| `edit-style.json` `graphics.safe_area` | `{"portrait": {"top": 288, "bottom": 672, "left": 48, "right": 192}}` | safe areas in pixels (1920 x 1080 and 1080 x 1920) |
+| `edit-style.json` `graphics.contrast.overlay_backing` | `{"alpha": 0.8, "grow_px": 27, "blur_px": 28, "side_scrim_alpha": 0.35}` | the ink halo behind type over video and the scrim on the free side |
+| `edit-style.json` `graphics.motion.out_bezier`, `graphics.text.min_px_short` | `[0.3, 0, 0.8, 0.15]`, `48` | the exit curve; the smallest text in a Short |
+| `brand.json` `motion_graphics.background.shapes_only_on` | `["chapter_card", "end_lockup"]` | the stored background shapes appear only on these templates |
+
+Details: [motion-libraries.md](motion-libraries.md) and `templates/motion/README.md` ("The graphic system").
+
 ## rules/edit.md, rules/cut.md, rules/3d.md, rules/thumbnail.md
 
 Learned rules of the steps edit, cut, 3D and thumbnail (format: `- YYYY-MM-DD: rule (source: …)`). The cut checks print

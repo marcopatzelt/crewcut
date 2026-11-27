@@ -129,7 +129,8 @@ MOTION_GRAPHICS = {          # brand.json motion_graphics: the defaults (palette
     "background": {"mode": "pools"}, "accent_area_limit": 0.0,
 }
 MOTION_PAIRS = {"insert_s": "[3, 6]", "big_moments": "[3, 5]"}
-EASES = ("linear", "easy", "smooth", "strong", "out", "expo", "in", "expoIn", "soft", "snap")   # EC.EASES in ec_lib.jsx
+EASES = ("linear", "easy", "smooth", "strong", "out", "expo", "in", "expoIn", "soft", "snap",   # EC.EASES in ec_lib.jsx
+         "emphasized", "emphasizedOut")
 
 
 @dataclass
@@ -236,6 +237,28 @@ class Pack:
                 "blur": {**MOTION_GRAPHICS["blur"], **(mg.get("blur") or {})},
                 "plate3d": {**MOTION_GRAPHICS["plate3d"], **(mg.get("plate3d") or {})}}
 
+    def graphics_tokens(self) -> dict | None:
+        """The channel's graphic system for motion templates (CC_CTX.brand.graphics): the four colours, the halo
+        behind type over video, safe areas in pixels, the named curves and where the background shapes may appear.
+        None when the pack declares none (``channel.json`` ``graphics.palette`` or ``edit-style.json`` ``graphics``),
+        so every template keeps its look."""
+        pal = self.value("channel.graphics.palette")
+        es = self.value("edit_style.graphics")
+        if not isinstance(pal, dict) and not isinstance(es, dict):
+            return None
+        from .motion import studio_style
+        p = studio_style.palette(self)
+        es = es if isinstance(es, dict) else {}
+        halo = (es.get("contrast") or {}).get("overlay_backing")
+        motion = self.value("channel.graphics.motion") or {}
+        named = studio_style._curve(motion.get("ease")) == studio_style.CURVES["emphasized"]
+        bg = (self.brand.get("motion_graphics") or {}).get("background") or {}
+        return {"highlight": p["highlight"] if p["highlight"] != p["accent"] else None, "accent": p["accent"],
+                "ink": p["ink"], "paper": p["paper"], "halo": halo if isinstance(halo, dict) else None,
+                "safe": es.get("safe_area") if isinstance(es.get("safe_area"), dict) else None,
+                "ease": "emphasized" if named else None, "ease_out": "emphasizedOut" if named else None,
+                "shapes_only_on": list(bg.get("shapes_only_on") or [])}
+
     def render_tokens(self) -> dict:
         """Everything a renderer needs, as one JSON object (passed to 2D pages as window.BRAND and to Blender)."""
         b = self.brand
@@ -256,6 +279,7 @@ class Pack:
             "motion": b.get("motion", {}),
             "motion_graphics": self.motion_graphics(),
             "stage3d": b.get("stage3d", {}),
+            "graphics": self.graphics_tokens(),
             "css": self.css_vars(),
             "edit": {k: v for k, v in self.edit_style.items() if k != "sources"},
         }

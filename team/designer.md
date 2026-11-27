@@ -32,6 +32,10 @@ again in another format. The card comes from `crewcut thumbnail set card`, with 
 I spend money only on the paid image API (`crewcut thumbnail make --way api`), and only after the user's spend card.
 Renting GPUs stays with the Editor.
 
+Before I build a graphic, I look at the libraries (`crewcut motion libraries`): a HyperFrames template, a private
+imported template, a CC0 HDRI or material. I take a ready-made block when it shows the picture and only fill its
+params; the studio style (colours, font, curves) is fixed. I build from scratch only when none fits, and I say why.
+
 For a new motion graphic I set the look before anything moves: the palette from the pack's content colours with the
 brand as an accent, and one style frame of the strongest moment, rendered by the engine and put next to the reference.
 Nothing is animated before the user's yes on that frame. Type stands in space, never in a box.

@@ -6,7 +6,8 @@
 # two motion graphics when effectcraft-cli is there), one 3D still per scene on the CPU (amd64 images only), the
 # motion graphics part (tests/smoke/motion.py: the last frame of every motion template in each format with the hue
 # check, a keyword_pop overlay MOV and a number_roll MP4 with their frame counts; under 10 minutes), and the
-# 10-second preview. Writes PNG/MP4 files and a summary; exit 1 when anything failed.
+# 10-second preview, and one still of every HyperFrames template in both formats. Writes PNG/MP4 files and a summary;
+# exit 1 when anything failed.
 set -uo pipefail
 OUT=${1:-/tmp/crewcut-smoke}
 QUICK=${2:-}
@@ -79,6 +80,26 @@ if [ -z "$QUICK" ]; then
     note "preview  FAILED: $(tail -3 "$OUT/preview.log" | tr '\n' ' ')"
     fail=1
   fi
+fi
+
+if [ -z "$QUICK" ] && [ -x /app/tools/hyperframes/node_modules/.bin/hyperframes ]; then
+  # HyperFrames building blocks: one still of every template in both formats, through the image's pinned CLI and Chrome
+  mkdir -p "$OUT/hyperframes"
+  hf_ok=0; hf_n=0
+  for t in $(crewcut motion --json hf list | python3 -c 'import json,sys; print(" ".join(r["name"] for r in json.load(sys.stdin)))'); do
+    for fmt in landscape portrait; do
+      hf_n=$((hf_n + 1))
+      if timeout 300 crewcut motion hf sample "$t" --out "$OUT/hyperframes/$t-$fmt" --format "$fmt" --at 1.2 \
+           > "$OUT/hyperframes/$t-$fmt.log" 2>&1; then
+        hf_ok=$((hf_ok + 1))
+      else
+        note "hyperframes $t $fmt FAILED: $(tail -3 "$OUT/hyperframes/$t-$fmt.log" | tr '\n' ' ')"; fail=1
+      fi
+    done
+  done
+  note "hyperframes  $hf_ok of $hf_n stills ok"
+else
+  note "hyperframes  skipped (quick run or no HyperFrames in this image)"
 fi
 
 note "result: $([ $fail = 0 ] && echo all ok || echo failures)"

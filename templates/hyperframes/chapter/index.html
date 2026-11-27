@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <!--CC:HEAD-->
+    <style>
+      #root .ch-shapes { position: absolute; inset: 0; overflow: hidden; }
+      #root .ch-shape { position: absolute; }
+      #root .ch-stage { position: absolute; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; }
+      #root .ch-num { line-height: 0.86; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+      #root .ch-word { line-height: 1.0; letter-spacing: -0.02em; white-space: nowrap; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-width="1920" data-height="1080" data-start="0" data-duration="3.5">
+      <div id="ch-clip" class="clip" data-start="0" data-duration="3.5" data-track-index="0">
+        <div id="ch-shapes" class="ch-shapes"></div>
+        <div id="ch-stage" class="ch-stage">
+          <div id="ch-num" class="ch-num cc-display"></div>
+          <div id="ch-word" class="ch-word cc-display"></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      CC.start("main", function (tl) {
+        var P = CC.data, pal = CC.palette, u = CC.u;
+        var clip = document.getElementById("ch-clip");
+        var ink = P.ground !== "paper";
+        CC.ground(clip, ink ? pal.ink : pal.paper);
+        var shapes = document.getElementById("ch-shapes"), stage = document.getElementById("ch-stage");
+        var num = document.getElementById("ch-num"), word = document.getElementById("ch-word");
+
+        // the pack's stored shapes (brand.json motion_graphics.background.layouts), at the edges, standing still: the
+        // only card that may carry them (with the end card)
+        var m = Math.min(CC.W, CC.H);
+        if (P.shapes !== false) (CC.D.shapes || []).forEach(function (s) {
+          var g = (s.size || 0.1) * m, d = (s.thickness || (s.size || 0.1) * 0.24) * m, color = s.color || pal.accent;
+          function part(w, h, round, ring) {
+            var el = CC.el("div", "ch-shape", null, shapes);
+            el.style.width = Math.round(w) + "px"; el.style.height = Math.round(h) + "px";
+            el.style.left = Math.round(s.x * CC.W - w / 2) + "px"; el.style.top = Math.round(s.y * CC.H - h / 2) + "px";
+            el.style.borderRadius = round ? "50%" : Math.round(Math.min(w, h) * 0.08) + "px";
+            if (ring) { el.style.border = Math.round(d) + "px solid " + color; } else el.style.background = color;
+            if (s.blur) el.style.filter = "blur(" + Math.round(s.blur * m) + "px)";
+            if (s.opacity !== undefined) el.style.opacity = s.opacity;
+            gsap.set(el, { rotation: s.rotation || 0 });
+          }
+          if (s.kind === "plus") { part(g, d, false, false); part(d, g, false, false); }
+          else if (s.kind === "ring") part(g, g, true, true);
+          else if (s.kind === "square") part(g, g, false, true);
+          else if (s.kind === "circle") part(g, g, true, false);
+          else part(g, d, true, false);                   // bar
+        });
+
+        // the number large in the highlight (the accent on paper), the word under it in paper (ink on paper)
+        var portrait = CC.portrait;
+        num.textContent = "";
+        word.textContent = "";
+        var nRise = CC.riser(CC.text(P.number, "2"), num);
+        var wRise = CC.riser(CC.text(P.word, ""), word);
+        num.style.color = ink ? pal.highlight : pal.accent;
+        word.style.color = ink ? pal.paper : pal.ink;
+        num.style.fontSize = Math.round((P.number_size || (portrait ? 400 : 440)) * u) + "px";
+        var wSize = Math.round((P.size || (portrait ? 130 : 150)) * u);
+        CC.fit(word, CC.safe.w, wSize, CC.minText);
+        word.style.marginTop = Math.round(-0.04 * wSize) + "px";
+        var sh = stage.offsetHeight;
+        stage.style.top = Math.round(CC.safe.y + (CC.safe.h - sh) / 2) + "px";
+
+        // a hard cut onto a frame where the number already rises (never an empty ground); the word 2 frames later;
+        // out: both sink in 7 frames
+        var st = CC.stagger, d = CC.enter;
+        var out = P.outAt !== null && P.outAt !== undefined ? P.outAt : CC.outAt(st);
+        var lead = Math.min(d * 0.45, 0.18);              // the frame the cut lands on is already in motion
+        tl.fromTo(nRise, { yPercent: 100 * (1 - CC.easeIn(lead / d)) }, { yPercent: 0, duration: d - lead, ease: function (p) { var x = lead / d + p * (1 - lead / d); return (CC.easeIn(x) - CC.easeIn(lead / d)) / (1 - CC.easeIn(lead / d)); } }, 0);
+        tl.fromTo(wRise, { yPercent: 110 }, { yPercent: 0, duration: d, ease: CC.easeIn }, Math.max(0, st - lead) + st);
+        tl.to(wRise, { yPercent: 110, duration: CC.exit, ease: CC.easeOut }, out);
+        tl.to(nRise, { yPercent: 100, duration: CC.exit, ease: CC.easeOut }, out + st);
+      });
+    </script>
+  </body>
+</html>

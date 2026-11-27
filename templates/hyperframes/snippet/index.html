@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <!--CC:HEAD-->
+    <style>
+      #root .sn { position: absolute; }
+      #root .sn-plate { position: absolute; inset: 0; border-radius: var(--sn-radius); }
+      #root .sn-body { position: relative; display: flex; flex-direction: column; }
+      #root .sn-head { line-height: 1.1; letter-spacing: 0.01em; }
+      #root .sn-msg { display: flex; flex-direction: column; }
+      #root .sn-who { line-height: 1.1; }
+      #root .sn-text { line-height: 1.3; white-space: pre-wrap; overflow-wrap: anywhere; }
+      #root .sn-code { position: relative; display: flex; flex-direction: column; }
+      #root .sn-row { position: relative; display: flex; white-space: pre; line-height: 1.42; }
+      #root .sn-band { position: absolute; left: -0.3em; right: -0.3em; top: 0.08em; bottom: 0.08em; border-radius: 0.18em; transform-origin: 0% 50%; }
+      #root .sn-no { position: relative; flex: 0 0 auto; text-align: right; }
+      #root .sn-src { position: relative; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-width="1920" data-height="1080" data-start="0" data-duration="5">
+      <div id="sn-clip" class="clip" data-start="0" data-duration="5" data-track-index="0">
+        <div id="sn" class="sn">
+          <div id="sn-plate" class="sn-plate"></div>
+          <div id="sn-body" class="sn-body"></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      CC.start("main", function (tl) {
+        var P = CC.data, pal = CC.palette, u = CC.u;
+        var clip = document.getElementById("sn-clip"), sn = document.getElementById("sn");
+        var plate = document.getElementById("sn-plate"), body = document.getElementById("sn-body");
+        CC.ground(clip, pal.paper);
+        // the channel's one box form, dark: ink at 90 %, 24 px rounding; an excerpt, never a whole screen
+        var padX = Math.round(44 * u), padY = Math.round(36 * u);
+        sn.style.setProperty("--sn-radius", Math.round(24 * u) + "px");
+        body.style.padding = padY + "px " + padX + "px";
+        body.style.gap = Math.round(24 * u) + "px";
+        plate.style.background = CC.rgba(pal.ink, CC.transparent ? 0.9 : 1);
+        plate.style.boxShadow = CC.transparent ? "0 " + CC.px(14) + " " + CC.px(22) + " " + CC.rgba(pal.ink, 0.35) : "none";
+        body.style.color = pal.paper;
+        var dim = CC.rgba(pal.paper, 0.62);
+
+        // width: the free side next to the face on an overlay, two thirds of the frame on a full frame
+        var side = CC.side(P.side);
+        var W = CC.transparent && CC.face ? Math.max(560 * u, side.box.w - 24 * u) : Math.min(CC.safe.w, (CC.portrait ? 0.94 : 0.66) * CC.W);
+        W = Math.min(W, CC.safe.w);
+        sn.style.width = Math.round(W) + "px";
+        var inner = W - 2 * padX;
+
+        var parts = [];            // [{el, kind: "fade" | "type" | "line", text, node, band}]
+        if (P.title) {
+          var h = CC.el("div", "sn-head cc-body", String(P.title), body);
+          h.style.fontSize = Math.max(Math.round(CC.minText * 0.75), Math.round(40 * u)) + "px";
+          h.style.color = dim;
+          parts.push({ el: h, kind: "fade" });
+        }
+        var textSize = Math.max(CC.minText, Math.round((P.size || (P.mode === "code" ? 54 : 56)) * u));
+        if (P.mode === "code") {
+          var code = CC.el("div", "sn-code " + (P.mono ? "cc-mono" : "cc-body"), null, body);
+          var lines = String(P.code || "").replace(/\t/g, "  ").split("\n").slice(0, P.max_lines || 7);
+          var hl = (P.highlight || []).map(Number);
+          var noW = String(lines.length).length;
+          var rows = lines.map(function (l, i) {
+            var row = CC.el("div", "sn-row", null, code);
+            var band = null, on = hl.indexOf(i + 1) >= 0;
+            if (on) { band = CC.el("div", "sn-band", null, row); band.style.background = pal.highlight; }
+            var no = CC.el("span", "sn-no", String(i + 1), row);
+            no.style.width = (noW + 0.6) + "em";
+            no.style.paddingRight = "0.9em";
+            no.style.color = on ? pal.ink : dim;
+            var src = CC.el("span", "sn-src", l.length ? l : " ", row);
+            if (on) src.style.color = pal.ink;
+            return { row: row, band: band, src: src, no: no, on: on };
+          });
+          code.style.fontSize = textSize + "px";
+          var widest = rows.reduce(function (m, r) { return r.row.scrollWidth > m.row.scrollWidth ? r : m; }, rows[0]);
+          if (widest) {
+            var fs = CC.fit(widest.row, inner, textSize, CC.minText);
+            rows.forEach(function (r) { r.row.style.fontSize = fs + "px"; });
+          }
+          rows.forEach(function (r) { parts.push({ el: r.row, kind: "line", band: r.band, row: r }); });
+        } else {
+          (P.messages || []).slice(0, 3).forEach(function (m) {
+            var user = m.who === "user";
+            var msg = CC.el("div", "sn-msg", null, body);
+            var who = CC.el("div", "sn-who cc-body", user ? CC.text(P.user, "Du") : CC.text(P.assistant, "Claude"), msg);
+            who.style.fontSize = Math.max(Math.round(CC.minText * 0.75), Math.round(40 * u)) + "px";
+            who.style.color = user ? dim : pal.highlight;
+            who.style.marginBottom = Math.round(6 * u) + "px";
+            var t = CC.el("div", "sn-text cc-body", String(m.text || ""), msg);
+            t.style.fontSize = textSize + "px";
+            t.style.color = pal.paper;
+            parts.push({ el: msg, kind: user ? "fade" : "type", text: String(m.text || ""), node: t, who: who });
+          });
+        }
+
+        var cw = sn.offsetWidth, ch = sn.offsetHeight;
+        var x, y;
+        if (CC.transparent && CC.face && side.side !== "below") {
+          x = side.side === "left" ? CC.safe.x : CC.safe.x + CC.safe.w - cw;
+          y = Math.min(CC.safe.y + CC.safe.h - ch, Math.max(CC.safe.y, 0.47 * CC.H - ch / 2));
+        } else {
+          x = CC.safe.x + (CC.safe.w - cw) / 2;
+          y = side.side === "below" ? side.box.y + Math.max(0, (side.box.h - ch) / 2) : CC.safe.y + (CC.safe.h - ch) / 2;
+        }
+        sn.style.left = Math.round(x) + "px";
+        sn.style.top = Math.round(Math.max(CC.safe.y, y)) + "px";
+
+        // time: the plate pushes in from the speaker's side, then the parts in order (2 frames apart); typed text
+        // runs at cps characters per second and is done by the cue "land" when there is one; a marked code line gets
+        // its highlight band at "land"
+        var d = CC.enter, st = CC.stagger, cps = P.cps || 38;
+        var out = P.outAt !== null && P.outAt !== undefined ? P.outAt : CC.outAt(0.04);
+        var land = CC.cue("land", null);
+        CC.pushIn(tl, sn, P.inAt || 0, CC.transparent ? side.from : 0);
+        var at = (P.inAt || 0) + d * 0.6;
+        var typed = parts.filter(function (p) { return p.kind === "type"; });
+        var chars = typed.reduce(function (k, p) { return k + p.text.length; }, 0);
+        if (land !== null && chars) cps = Math.max(cps, chars / Math.max(0.4, CC.landBy(land) - at - st * parts.length));
+        parts.forEach(function (p) {
+          if (p.kind === "fade") { tl.fromTo(p.el, { opacity: 0, y: Math.round(10 * u) }, { opacity: 1, y: 0, duration: d, ease: CC.easeIn }, at); at += st * 2; }
+          else if (p.kind === "line") { tl.fromTo(p.el, { opacity: 0, y: Math.round(10 * u) }, { opacity: 1, y: 0, duration: d * 0.8, ease: CC.easeIn }, at); at += st; }
+          else {
+            tl.fromTo(p.who, { opacity: 0 }, { opacity: 1, duration: d * 0.6, ease: CC.easeIn }, at);
+            var full = p.text, node = p.node, o = { n: 0 }, dur = Math.max(0.3, full.length / cps);
+            node.style.minHeight = node.offsetHeight + "px";
+            node.textContent = "";
+            tl.to(o, { n: full.length, duration: dur, ease: CC.linear, onUpdate: function () { node.textContent = full.substring(0, Math.round(o.n)); } }, at + st);
+            at += st + dur + st;
+          }
+        });
+        parts.forEach(function (p) {
+          if (!p.band) return;
+          var when = land !== null ? Math.max(at, CC.landBy(land) - d) : at + 0.15;
+          when = Math.min(when, out - d);
+          tl.fromTo(p.band, { scaleX: 0 }, { scaleX: 1, duration: d, ease: CC.easeIn }, when);
+        });
+        CC.pushOut(tl, sn, out, CC.transparent ? side.from : 0);
+        CC.hold(tl, sn);
+      });
+    </script>
+  </body>
+</html>

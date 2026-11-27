@@ -32,6 +32,13 @@ The motion workflow (no engine; docs/motion-workflow.md):
     crewcut motion lessons
     crewcut motion reference add LINK_OR_FILE --reason R [--by user|scout] [--episode E] | from-chat | list
 
+Ready-made libraries (docs/motion-libraries.md):
+
+    crewcut motion libraries                     HyperFrames templates, private imported templates, CC0 3D assets
+    crewcut motion style                         the studio style every library block takes
+    crewcut motion hf list | show NAME | sample NAME --out DIR [--at T] | lint NAME
+    crewcut motion imports list | add FILE --name N --licence L --source URL | use NAME EPISODE INSERT_ID [--text L=T]
+
 Exit codes: 0 ok, 1 error, 2 usage, 3 `render palette` found one hue above the limit (plain output only).
 """
 
@@ -1344,6 +1351,216 @@ def reference_list(app: App):
     rows = rf.read()
     out(app, rows, "\n".join(f"{e['id']}  {e.get('by'):<5} {e.get('link') or e.get('file')}  {e.get('reason')}"
                              for e in rows) or "no references yet")
+
+
+# ── ready-made libraries: HyperFrames, imported templates, CC0 3D assets (docs/motion-libraries.md) ───────────
+@cli.command("libraries")
+@click.pass_obj
+@handle_error
+def libraries_cmd(app: App):
+    """What to take before building from scratch: HyperFrames templates, private imported templates, 3D assets."""
+    from . import libraries as libs
+    data = libs.rows()
+    out(app, data, "\n".join(libs.lines(data)))
+
+
+@cli.command("style")
+@click.pass_obj
+@handle_error
+def style_cmd(app: App):
+    """The studio style every library block takes: palette, fonts, motion, fps, safe areas."""
+    from . import studio_style
+    st = studio_style.resolve()
+    human = [f"palette ({st['palette_source']}): " + ", ".join(f"{k} {v}" for k, v in st["palette"].items()),
+             "fonts: " + ", ".join(f"{r} {v['family']} {v['weight']} ({len(v['files'])} file(s))"
+                                   for r, v in st["fonts"].items()),
+             f"motion: in {st['motion']['enter_s']} s cubic-bezier{tuple(st['motion']['ease'])}, out "
+             f"{st['motion']['exit_s']} s, stagger {st['motion']['stagger_s']} s; {st['fps']} fps; smallest text "
+             f"{st['min_text_px']} px"]
+    out(app, st, "\n".join(human))
+
+
+@cli.group("hf")
+def hf_grp():
+    """HyperFrames templates (HTML building blocks rendered with alpha): list, show, sample, lint."""
+
+
+@hf_grp.command("list")
+@click.pass_obj
+@handle_error
+def hf_list(app: App):
+    from ..render import hyperframes as hfr
+    rows = hfr.listing()
+    out(app, rows, "\n".join(f"{r['scene']:<14} {r['origin']:<4} type {r['type']} {r['kind']:<7} {r['title']}"
+                             for r in rows) or "no HyperFrames templates")
+
+
+@hf_grp.command("show")
+@click.argument("name")
+@click.pass_obj
+@handle_error
+def hf_show(app: App, name):
+    from ..render import hyperframes as hfr
+    folder = hfr.find(hfr.name_of(name) or name)
+    m = hfr.manifest(folder)
+    out(app, {**m, "folder": str(folder), "scene": hfr.PREFIX + folder.name})
+
+
+@hf_grp.command("sample")
+@click.argument("name")
+@click.option("--out", "out_dir", required=True, help="Folder for the project, the frames or the still.")
+@click.option("--format", "fmt", type=click.Choice(["landscape", "portrait"]), default="landscape", show_default=True)
+@click.option("--seconds", type=float, default=None, help="Length (default: the template's longest).")
+@click.option("--data", "data", default=None, help="Params as JSON or @file (may hold \"cues\" in seconds).")
+@click.option("--at", "at", type=float, default=None, help="Only one still at this second (still.png).")
+@click.option("--opaque", is_flag=True, help="Render an overlay template on its ground instead of transparent.")
+@click.pass_obj
+@handle_error
+def hf_sample(app: App, name, out_dir, fmt, seconds, data, at, opaque):
+    """Render one template outside a plan, in the active style pack (frames, or one still with --at)."""
+    from pathlib import Path
+
+    from ..render import hyperframes as hfr
+    r = hfr.sample(hfr.name_of(name) or name, Path(out_dir), fmt=fmt, seconds=seconds,
+                   data=parse_json_opt(data, "--data") or {}, transparent=False if opaque else None, at=at,
+                   log=lambda m: click.echo(m, err=True))
+    if r.get("still") and r.get("ok"):
+        r["alpha"] = hfr.alpha_report(Path(r["still"]))
+    out(app, r, f"{'ok' if r['ok'] else 'FAILED'}: {r.get('still') or r.get('frames')}")
+    if not r["ok"]:
+        raise click.exceptions.Exit(1)
+
+
+@hf_grp.command("lint")
+@click.argument("name")
+@click.option("--format", "fmt", type=click.Choice(["landscape", "portrait"]), default="landscape")
+@click.pass_obj
+@handle_error
+def hf_lint(app: App, name, fmt):
+    """Build the template's project with the example data and run `hyperframes lint` on it."""
+    import tempfile
+    from pathlib import Path
+
+    from ..render import hyperframes as hfr
+    from ..render import media
+    n = hfr.name_of(name) or name
+    folder = hfr.find(n)
+    m = hfr.manifest(folder)
+    size = (1920, 1080) if fmt == "landscape" else (1080, 1920)
+    ctx = hfr.context(fmt=fmt, size=size, fps=25, frames=75, transparent=m["kind"] == "overlay",
+                      face={"x": 0.34, "y": 0.36, "w": 0.3, "h": 0.3})
+    with tempfile.TemporaryDirectory(prefix="hf-lint-") as d:
+        project = hfr.build_project(folder, Path(d) / "project", hfr.merge_params(m, {}), ctx)
+        rc, text = hfr.runner_with_env(media.run)(hfr.lint_cmd(project), timeout=300)
+    try:
+        data = json.loads(text[text.index("{"):])
+    except ValueError:
+        data = {"output": text[-2000:]}
+    out(app, {"exit": rc, **(data if isinstance(data, dict) else {"result": data})},
+        text.strip()[-3000:] or f"exit {rc}")
+    if rc:
+        raise click.exceptions.Exit(1)
+
+
+@cli.group("imports")
+def imports_grp():
+    """Imported templates (Lottie, After Effects) in the studio's private folder, in the pack's look."""
+
+
+@imports_grp.command("list")
+@click.pass_obj
+@handle_error
+def imports_list(app: App):
+    from . import imports as im
+    rows = im.entries()
+    out(app, rows, "\n".join(f"{e['name']:<24} {e.get('kind'):<7} {e.get('insert_kind', '-'):<8} {e.get('licence')}  "
+                             f"{e.get('source')}" for e in rows) or f"none in {im.private_dir()}")
+
+
+@imports_grp.command("add")
+@click.argument("file")
+@click.option("--name", required=True, help="Lower-case name, e.g. lower_third_slide.")
+@click.option("--licence", required=True, help="The licence that allows the use, e.g. \"Mixkit Free License\".")
+@click.option("--source", required=True, help="The item's page (where it came from).")
+@click.option("--title", default=None)
+@click.option("--kind", "insert_kind", type=click.Choice(["overlay", "full"]), default="overlay", show_default=True)
+@click.option("--allow-losses", is_flag=True, help="After Effects: keep what EffectCraft can import.")
+@click.option("--replace", is_flag=True, help="Replace an earlier import of this name.")
+@click.option("--no-engine", is_flag=True, help="Do not check the file with EffectCraft (Lottie only).")
+@click.pass_obj
+@handle_error
+def imports_add(app: App, file, name, licence, source, title, insert_kind, allow_losses, replace, no_engine):
+    """Copy a Lottie (.json, .lottie) or a plugin-free After Effects project (.aep) into the private folder and turn
+    it into the pack's palette, fonts and fps."""
+    from pathlib import Path
+
+    from . import imports as im
+    from .backend import find_effectcraft
+    backend = None
+    if not no_engine:
+        try:
+            find_effectcraft(app.backend.cli)
+            from ..motion import studio_style
+            from ..render.motion import font_env
+            fonts = [str(f.parent) for spec in studio_style.fonts().values() for f in spec["files"]]
+            backend = Backend(cli=app.backend.cli, env=font_env(fonts[0]) if fonts else None)
+        except BackendError:
+            warn("effectcraft-cli is not here: the file is converted but not checked by the engine")
+    e = im.import_file(Path(file), name, licence, source, title=title, kind_of_insert=insert_kind,
+                       allow_losses=allow_losses, replace=replace, backend=backend)
+    rep = e.get("report") or {}
+    human = [f"{e['name']}: {e['kind']} in {e['folder']}"]
+    if e["kind"] == "lottie":
+        human.append("  colours: " + ", ".join(f"{k} -> {v['role']}" for k, v in (rep.get("colors") or {}).items()))
+        human.append(f"  fonts: {rep.get('fonts') or 'none'}; fps {rep.get('fps')}; {rep.get('seconds')} s; "
+                     f"texts: {', '.join(rep.get('texts') or {}) or 'none'}")
+        for w in rep.get("warnings") or []:
+            human.append(f"  warning: {w}")
+        chk = e.get("engine_check")
+        if chk:
+            human.append(f"  engine: {'ok, preview.png' if chk.get('ok') else 'FAILED: ' + str(chk.get('error'))}")
+    else:
+        human.append(f"  {e.get('status')}")
+    out(app, e, "\n".join(human))
+
+
+@imports_grp.command("use")
+@click.argument("name")
+@click.argument("episode")
+@click.argument("insert_id")
+@click.option("--text", "texts", multiple=True, help="Layer=Text for a text layer of the template (repeatable).")
+@click.pass_obj
+@handle_error
+def imports_use(app: App, name, episode, insert_id, texts):
+    """Copy a converted template into the episode (motion/<insert-id>/) with its texts; prints the plan entry."""
+    from . import imports as im
+    pairs = {}
+    for t in texts:
+        k, sep, v = t.partition("=")
+        if not sep or not k.strip():
+            raise ValueError(f"--text {t!r}: write Layer=Text")
+        pairs[k.strip()] = v
+    r = im.use(name, episode, insert_id, pairs or None)
+    out(app, r, f"{r['file']} ({r['seconds']} s). Plan entry (set start and end, keep beat and column):\n"
+        + json.dumps(r["plan_entry"], ensure_ascii=False))
+
+
+@imports_grp.command("convert")
+@click.argument("file")
+@click.option("--out", "out_file", required=True)
+@click.option("--text", "texts", multiple=True, help="Layer=Text (repeatable).")
+@click.pass_obj
+@handle_error
+def imports_convert(app: App, file, out_file, texts):
+    """Convert one Lottie file to the pack's look without importing it (a dry look at the report)."""
+    from pathlib import Path
+
+    from . import imports as im
+    doc = im.read_lottie(Path(file))
+    pairs = dict(t.split("=", 1) for t in texts if "=" in t)
+    conv, rep = im.convert_lottie(doc, texts=pairs or None)
+    Path(out_file).write_text(json.dumps(conv, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    out(app, rep)
 
 
 def main(argv: list[str] | None = None) -> int:

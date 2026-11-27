@@ -173,6 +173,9 @@ def system_prompt(identity: dict, episode: str | None, step: str | None, with_id
     auto = full_auto.instructions(episode) if episode and not episode.startswith("_") else ""
     from ..motion import quality
     craft = quality.context() if step == "edit" and identity.get("id") in ("designer", "editor", "critic", "showrunner") else ""
+    if step == "edit" and identity.get("id") in ("designer", "editor"):
+        from ..motion import libraries
+        craft = "\n".join(x for x in (libraries.prompt_line(), craft) if x)
     return "\n".join([ident, rights, skill_line, own_line, rules, WORKSPACE_RULES, pack_line, briefing.text(), step_line,
                       ctx, auto, craft])
 

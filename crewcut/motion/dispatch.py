@@ -35,7 +35,10 @@ def dispatch(card: dict) -> int:
     jid = queue.add(episode, "designer", "edit",
         f"Build only the approved insert '{insert}', style-frame card #{card['id']}. "
         f"Your working folder is motion/{insert}/ in this episode. Read its brief, beats and approved frame. "
-        "Use the edit/motion skills for 2D or Blender for 3D as the brief requires. Do not change another insert, "
+        "First run `crewcut motion libraries` and start from a ready-made block when one shows the picture (a "
+        "HyperFrames template hf-*, a private imported template via `crewcut motion imports use`, a CC0 HDRI or "
+        "material for Blender via `import crewcut_assets`); build from scratch only when none fits and say why in "
+        "your handoff. Use the edit/motion skills for 2D or Blender for 3D as the brief requires. Do not change another insert, "
         "the shared edit plan, timing of the speaker cut or the episode's step. Save source, renders and a clear "
         "handoff in your insert folder. Use Crewcut render commands so heavy renders keep their resource limits. "
         "No new paid work without an existing spend approval. Check the approved card still matches before finalizing. "

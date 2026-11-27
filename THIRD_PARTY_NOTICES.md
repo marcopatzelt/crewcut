@@ -13,6 +13,28 @@ Crewcut itself is MIT licensed (`LICENSE`). These parts come from others. Each k
 - Not included: EffectCraft's brand folder (name, wordmark, logos), which is not open source. Crewcut names
   EffectCraft in text only.
 
+## HyperFrames (HTML building blocks, installed in the image)
+
+- What: the `hyperframes` command-line program (npm package `hyperframes`), pinned in
+  `tools/hyperframes/package-lock.json` and installed with `npm ci` in the image; with it the pinned
+  `chrome-headless-shell` (Chrome for Testing, amd64) it renders with. Crewcut runs it as a separate program.
+- Source: https://github.com/heygen-com/hyperframes (HeyGen). Licence: Apache-2.0.
+- Inside the package: GSAP (GreenSock, "Standard No Charge" licence, free also commercially; Crewcut renders by code
+  and is not a visual animation builder), puppeteer-core and others under MIT, Apache-2.0, ISC and BSD licences; the
+  optional image library sharp brings libvips (LGPL-3.0-or-later) as a separate shared library.
+- Crewcut's templates in `templates/hyperframes/` are Crewcut's own (MIT); nothing of HyperFrames' registry is copied.
+
+## Imported motion templates (never in this repository)
+
+- Templates from Mixkit, LottieFiles, Envato or other marketplaces stay in a studio's private folder
+  (`library/templates-private/`) under their own licences; `tools/ci/no_private_templates.py` keeps them out of the
+  repository. The one Lottie sample here, `templates/motion/assets/lottie/crewcut-card.json`, is Crewcut's own (MIT).
+
+## CC0 assets for Blender (fetched at run time, never shipped)
+
+- Poly Haven (https://polyhaven.com/license) and ambientCG (https://docs.ambientcg.com/license/), CC0 1.0. Fetched by
+  `crewcut/render/blender_lib/crewcut_assets.py` into a cache; no file of theirs is in this repository or the image.
+
 ## The motion harness (`crewcut/motion/`)
 
 - Written for Crewcut with the method of CLI-Anything (HKUDS, https://github.com/HKUDS/CLI-Anything, Apache-2.0).

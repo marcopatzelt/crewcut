@@ -92,6 +92,16 @@ else
   echo "blender: $("$BL" --version 2> /dev/null | head -1)"
 fi
 
+echo "== 3D assets"
+# CC0 HDRIs and materials (Poly Haven, ambientCG) are fetched here by the plate's own crewcut_assets module, straight
+# from the sources (never up through the user's connection), into this cache. Only a note when the sources are down.
+mkdir -p /work/assets
+if curl -fsS --max-time 15 -A "crewcut-assets/1.0" -o /dev/null https://api.polyhaven.com/types 2> /dev/null; then
+  echo "assets: Poly Haven reachable, cache /work/assets"
+else
+  echo "WARNING: Poly Haven not reachable; plates that need an HDRI will fail, others are fine"
+fi
+
 echo "== app"
 if [ -d /app/templates/3d ]; then echo "app: present"; else echo "app: missing"; fi
 echo "SETUP_OK"

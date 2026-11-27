@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <!--CC:HEAD-->
+    <style>
+      #root .card { position: absolute; display: flex; flex-direction: column; justify-content: center; }
+      #root .card-plate { position: absolute; inset: 0; border-radius: var(--card-radius); }
+      #root .card-edge { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--card-radius) 0 0 var(--card-radius); }
+      #root .card-row { position: relative; display: block; white-space: nowrap; }
+      #root .card-title { line-height: 1.05; letter-spacing: -0.015em; }
+      #root .card-line { line-height: 1.25; }
+      #root .card-word { position: relative; display: inline-block; isolation: isolate; }
+      #root .card-mark { position: absolute; left: -0.08em; right: -0.08em; bottom: 0.12em; height: 0.34em; z-index: -1;
+                         border-radius: 0.06em; transform-origin: 0% 50%; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-width="1920" data-height="1080" data-start="0" data-duration="4">
+      <div id="card-clip" class="clip" data-start="0" data-duration="4" data-track-index="0">
+        <div id="card" class="card">
+          <div id="card-plate" class="card-plate"></div>
+          <div id="card-edge" class="card-edge"></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      CC.start("main", function (tl) {
+        var P = CC.data, pal = CC.palette, u = CC.u;
+        var clip = document.getElementById("card-clip"), card = document.getElementById("card");
+        var plate = document.getElementById("card-plate"), edge = document.getElementById("card-edge");
+        CC.ground(clip, pal.paper);
+        // the one box form: 24 px rounding, paper at 96 %, a soft ink shadow, a 10 px accent edge on the left;
+        // variant "tag" (the name tag of a proof film): ink at 90 %, no shadow, no edge, one line in paper
+        var tag = P.variant === "tag";
+        var r = Math.round(24 * u);
+        card.style.setProperty("--card-radius", r + "px");
+        plate.style.background = tag ? CC.rgba(pal.ink, 0.9) : CC.rgba(pal.paper, 0.96);
+        plate.style.boxShadow = tag || !CC.transparent ? "none" : "0 " + CC.px(14) + " " + CC.px(22) + " " + CC.rgba(pal.ink, 0.35);
+        edge.style.width = tag ? "0px" : Math.round(10 * u) + "px";
+        edge.style.background = pal.accent;
+        var padX = Math.round((tag ? 30 : 44) * u), padY = Math.round((tag ? 18 : 34) * u);
+        card.style.padding = padY + "px " + padX + "px " + padY + "px " + (padX + (tag ? 0 : Math.round(10 * u))) + "px";
+
+        var rows = [];
+        var maxW = Math.min(CC.safe.w, (CC.portrait ? 0.9 : 0.56) * CC.W) - 2 * padX - Math.round(10 * u);
+        function row(cls, value, px, color, mark) {
+          if (!value) return null;
+          var el = CC.el("div", "card-row " + cls, null, card);
+          var word = CC.el("span", "card-word", null, el);
+          if (mark) {
+            var m = CC.el("span", "card-mark", null, word);
+            m.style.background = pal.highlight;
+            el._mark = m;
+          }
+          CC.el("span", "card-text", String(value), word);
+          el.style.color = color;
+          el.style.fontSize = px + "px";
+          rows.push(el);
+          return el;
+        }
+        if (tag) {
+          row("card-line cc-body", P.title || P.line, Math.max(CC.minText, Math.round(54 * u)), pal.paper, false);
+        } else {
+          row("card-title cc-display", P.title, Math.max(CC.minText, Math.round((P.size || 72) * u)), pal.ink, !!P.mark);
+          row("card-line cc-body", P.line, Math.max(CC.minText, Math.round(56 * u)), pal.ink, false);
+        }
+        rows.forEach(function (el) { CC.fit(el, maxW, parseInt(el.style.fontSize, 10), CC.minText); });
+        if (rows.length > 1) rows[1].style.marginTop = Math.round(8 * u) + "px";
+
+        // place: the lower third on the free side, right-aligned at the safe edge (left when the speaker sits right);
+        // the name tag sits low on the left of a proof film
+        var side = CC.side(P.side), cw = card.offsetWidth, ch = card.offsetHeight;
+        var right = tag ? false : side.side !== "left";
+        var x = right ? CC.safe.x + CC.safe.w - cw : CC.safe.x;
+        var bottom = CC.portrait ? CC.safe.y + CC.safe.h : CC.H - Math.round((tag ? 54 : 86) * u);
+        var y = bottom - ch;
+        if (P.x !== null && P.x !== undefined) x = P.x * CC.W - cw / 2;
+        if (P.y !== null && P.y !== undefined) y = P.y * CC.H - ch / 2;
+        card.style.left = Math.round(x) + "px";
+        card.style.top = Math.round(y) + "px";
+
+        // in: the card with the push (from the speaker's side), each line 2 frames later; out the same way back
+        var st = CC.stagger, land = CC.cue("land", null);
+        var inAt = land === null ? (P.inAt || 0) : Math.max(0, CC.landBy(land) - CC.enter - st * rows.length);
+        if (tag && land === null) inAt = Math.max(inAt, 2 * CC.f);
+        var out = P.outAt !== null && P.outAt !== undefined ? P.outAt : CC.outAt(st * rows.length);
+        var from = tag ? -1 : side.from;
+        CC.pushIn(tl, card, inAt, from);
+        rows.forEach(function (el, i) {
+          tl.fromTo(el, { x: from * CC.pushPx * 0.5, opacity: 0 }, { x: 0, opacity: 1, duration: CC.enter, ease: CC.easeIn }, inAt + st * (i + 1));
+          tl.to(el, { x: from * CC.pushPx * 0.5, opacity: 0, duration: CC.exit, ease: CC.easeOut }, out + st * (rows.length - 1 - i));
+        });
+        rows.forEach(function (el, i) {               // a definition's marker draws under the term once it stands
+          if (el._mark) tl.fromTo(el._mark, { scaleX: 0 }, { scaleX: 1, duration: CC.enter, ease: CC.easeIn }, inAt + st * (i + 3));
+        });
+        CC.pushOut(tl, card, out + st * rows.length, from);
+        CC.hold(tl, card, right ? "100% 100%" : "0% 100%");
+      });
+    </script>
+  </body>
+</html>

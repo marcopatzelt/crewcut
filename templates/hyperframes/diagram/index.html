@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <!--CC:HEAD-->
+    <style>
+      #root .dg { position: absolute; }
+      #root .dg-title { position: absolute; left: 0; top: 0; line-height: 1.05; letter-spacing: -0.015em; white-space: nowrap; }
+      #root .dg-node { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center;
+                       text-align: center; border-radius: var(--dg-radius); }
+      #root .dg-value { line-height: 0.95; letter-spacing: -0.03em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+      #root .dg-label { line-height: 1.12; white-space: nowrap; }
+      #root .dg-wires { position: absolute; left: 0; top: 0; overflow: visible; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-width="1920" data-height="1080" data-start="0" data-duration="5">
+      <div id="dg-clip" class="clip" data-start="0" data-duration="5" data-track-index="0">
+        <div id="dg" class="dg"></div>
+      </div>
+    </div>
+    <script>
+      CC.start("main", function (tl) {
+        var P = CC.data, pal = CC.palette, u = CC.u;
+        var clip = document.getElementById("dg-clip"), dg = document.getElementById("dg");
+        // a calm paper ground: no shapes, no gradient; lines in ink, the accent for what matters
+        CC.ground(clip, pal.paper);
+        var s = CC.safe;
+        dg.style.left = s.x + "px"; dg.style.top = s.y + "px"; dg.style.width = s.w + "px"; dg.style.height = s.h + "px";
+        dg.style.setProperty("--dg-radius", Math.round(24 * u) + "px");
+
+        var nodes = (P.nodes || []).slice(0, 4).map(function (n) { return typeof n === "string" ? { label: n } : (n || {}); });
+        if (nodes.length < 2) nodes = [{ label: "Eingabe" }, { label: "Ausgabe" }];
+        var n = nodes.length, vertical = CC.portrait;
+        var top = 0, titleEl = null, titleRise = null;
+        if (P.title) {
+          titleEl = CC.el("div", "dg-title cc-display", null, dg);
+          titleEl.style.color = pal.ink;
+          titleRise = CC.riser(String(P.title), titleEl);
+          CC.fit(titleEl, s.w, Math.round(84 * u), CC.minText);
+          top = titleEl.offsetHeight + Math.round(64 * u);
+        }
+        var areaH = s.h - top;
+        var gap = Math.round((vertical ? 84 : 110) * u);
+        var nw = vertical ? Math.min(s.w, 840 * u) : (s.w - gap * (n - 1)) / n;
+        var hasValue = nodes.some(function (d) { return d.value; });
+        var nh = vertical ? Math.min((hasValue ? 300 : 210) * u, (areaH - gap * (n - 1)) / n) : Math.min(areaH * 0.7, (hasValue ? 360 : 260) * u);
+        var line = Math.max(2, Math.round(4 * u));
+        var boxes = nodes.map(function (d, i) {
+          var el = CC.el("div", "dg-node", null, dg);
+          var hi = i === P.highlight;
+          el.style.width = Math.round(nw) + "px"; el.style.height = Math.round(nh) + "px";
+          var x = vertical ? (s.w - nw) / 2 : i * (nw + gap);
+          var y = vertical ? top + i * (nh + gap) + (areaH - n * nh - (n - 1) * gap) / 2 : top + (areaH - nh) / 2;
+          el.style.left = Math.round(x) + "px"; el.style.top = Math.round(y) + "px";
+          el.style.border = line + "px solid " + (hi ? pal.accent : pal.ink);
+          el.style.background = pal.paper;
+          var pad = Math.round(28 * u), val = null;
+          if (d.value) {
+            val = CC.el("div", "dg-value cc-display", String(d.value), el);
+            val.style.color = pal.accent;
+            CC.fit(val, nw - 2 * pad, Math.round(150 * u), CC.minText);
+          }
+          var lab = CC.el("div", "dg-label cc-body", String(d.label || ""), el);
+          lab.style.color = pal.ink;
+          if (val) lab.style.marginTop = Math.round(10 * u) + "px";
+          CC.fit(lab, nw - 2 * pad, Math.round((P.size || 64) * u), CC.minText);
+          return { el: el, x: x, y: y, hi: hi, label: lab, value: val };
+        });
+
+        // wires: an arrow from each box to the next, drawn like a pen stroke
+        var NS = "http://www.w3.org/2000/svg";
+        var svg = document.createElementNS(NS, "svg");
+        svg.setAttribute("class", "dg-wires");
+        svg.setAttribute("width", s.w); svg.setAttribute("height", s.h);
+        svg.setAttribute("viewBox", "0 0 " + s.w + " " + s.h);
+        dg.insertBefore(svg, dg.firstChild);
+        var wires = [];
+        for (var i = 0; i < n - 1; i++) {
+          var a = boxes[i], b = boxes[i + 1], head = Math.round(16 * u), m = Math.round(18 * u);
+          var x1, y1, x2, y2;
+          if (vertical) { x1 = x2 = a.x + nw / 2; y1 = a.y + nh + m; y2 = b.y - m; }
+          else { y1 = y2 = a.y + nh / 2; x1 = a.x + nw + m; x2 = b.x - m; }
+          var path = document.createElementNS(NS, "path");
+          var tip = vertical ? ("M" + (x2 - head) + " " + (y2 - head) + " L" + x2 + " " + y2 + " L" + (x2 + head) + " " + (y2 - head))
+                             : ("M" + (x2 - head) + " " + (y2 - head) + " L" + x2 + " " + y2 + " L" + (x2 - head) + " " + (y2 + head));
+          path.setAttribute("d", "M" + x1 + " " + y1 + " L" + x2 + " " + y2 + " " + tip);
+          path.setAttribute("fill", "none");
+          path.setAttribute("stroke", b.hi ? pal.accent : pal.ink);
+          path.setAttribute("stroke-width", line);
+          path.setAttribute("stroke-linecap", "round");
+          path.setAttribute("stroke-linejoin", "round");
+          svg.appendChild(path);
+          var len = Math.hypot(x2 - x1, y2 - y1) + 2 * Math.hypot(head, head) + 4;
+          path.style.strokeDasharray = len;
+          path.style.strokeDashoffset = len;
+          wires.push(path);
+        }
+
+        // time: everything is built within about one second; the cut lands on a frame that already moves (the title
+        // and the first box are on their way at frame 0); the highlighted box fills with the accent at "land"
+        var d = CC.enter, step = Math.min(Math.max(0.16, P.step || 0.26), 1.0 / Math.max(1, n - 1));
+        var out = P.outAt !== null && P.outAt !== undefined ? P.outAt : CC.outAt(0.06);
+        var t0 = 0;
+        if (titleRise) tl.fromTo(titleRise, { yPercent: 45 }, { yPercent: 0, duration: d * 0.7, ease: CC.easeIn }, 0);
+        boxes.forEach(function (bx, k) {
+          var at = t0 + k * step;
+          var from = k === 0 ? { y: Math.round(10 * u), opacity: 0.45, scale: 0.985 } : { y: Math.round(24 * u), opacity: 0, scale: 0.96 };
+          tl.fromTo(bx.el, from, { y: 0, opacity: 1, scale: 1, duration: k === 0 ? d * 0.65 : d, ease: CC.easeIn }, at);
+          if (k < wires.length) tl.to(wires[k], { strokeDashoffset: 0, duration: step, ease: CC.easeIn }, at + d * 0.4);
+        });
+        var hiBox = boxes.filter(function (b) { return b.hi; })[0];
+        if (hiBox) {
+          var land = CC.cue("land", t0 + n * step + d);
+          var when = Math.min(out - d, Math.max(t0 + boxes.indexOf(hiBox) * step + d, CC.landBy(land) - d));
+          tl.to(hiBox.el, { backgroundColor: pal.accent, duration: d, ease: CC.easeIn }, when);
+          tl.to([hiBox.label, hiBox.value].filter(Boolean), { color: pal.paper, duration: d, ease: CC.easeIn }, when);
+        }
+        tl.to(dg, { y: Math.round(-20 * u), opacity: 0, duration: CC.exit, ease: CC.easeOut }, out);
+        CC.hold(tl, dg);
+      });
+    </script>
+  </body>
+</html>

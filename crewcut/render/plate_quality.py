@@ -5,11 +5,18 @@ import json
 from pathlib import Path
 
 
-def bootstrap(profile: dict, out: str, probe: bool, gpu: bool) -> str:
-    """Executed by Blender before the user's script; no user code is interpolated."""
+def bootstrap(profile: dict, out: str, probe: bool, gpu: bool, lib: str | None = None,
+              cache: str | None = None) -> str:
+    """Executed by Blender before the user's script; no user code is interpolated. ``lib`` (a folder) goes on
+    ``sys.path`` so a plate can ``import crewcut_assets`` (CC0 HDRIs and materials), ``cache`` becomes its cache."""
     code = '''
-import bpy as _cc_bpy, json as _cc_json
+import bpy as _cc_bpy, json as _cc_json, os as _cc_os, sys as _cc_sys
 from pathlib import Path as _cc_Path
+_cc_lib = __LIB_VALUE__
+if _cc_lib and _cc_lib not in _cc_sys.path:
+    _cc_sys.path.insert(0, _cc_lib)
+if __CACHE_VALUE__:
+    _cc_os.environ.setdefault('CREWCUT_ASSET_CACHE', __CACHE_VALUE__)
 _cc_profile = __PROFILE_VALUE__
 _cc_out = __OUTPUT_VALUE__
 _cc_probe = __PROBE_VALUE__
@@ -54,7 +61,8 @@ class _cc_RenderOps:
 _cc_bpy.ops.render = _cc_RenderOps()
 '''
     for placeholder, value in (("__PROFILE_VALUE__", profile), ("__OUTPUT_VALUE__", out),
-                               ("__PROBE_VALUE__", probe), ("__GPU_VALUE__", gpu)):
+                               ("__PROBE_VALUE__", probe), ("__GPU_VALUE__", gpu), ("__LIB_VALUE__", lib),
+                               ("__CACHE_VALUE__", cache)):
         code = code.replace(placeholder, repr(value))
     return "exec(" + repr(code) + ")"
 

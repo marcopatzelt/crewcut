@@ -42,3 +42,11 @@ render-out/
 # the demo renders into the studio copy; never into the repo
 examples/demo/render/
 examples/demo/export/
+
+# marketplace templates (Mixkit, Envato, Motion Array, LottieFiles) stay in the studio's private folder, never here
+templates-private/
+*.aep
+*.aepx
+*.mogrt
+*.ffx
+*.prproj

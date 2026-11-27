@@ -66,6 +66,27 @@ RUN cd tools && (npm ci --no-audit --no-fund || npm install --no-audit --no-fund
  && npx --yes playwright-core install --with-deps chromium \
  && rm -rf /var/lib/apt/lists/*
 
+# HyperFrames (HeyGen, Apache-2.0): HTML building blocks rendered to frames with alpha (crewcut/render/hyperframes.py).
+# The version is pinned in tools/hyperframes/package-lock.json. Its Chrome: the pinned chrome-headless-shell from
+# Chrome for Testing on amd64; on arm64 (no build exists) Playwright's headless shell from the layer above. No
+# telemetry, no update check, nothing fetched at render time (GSAP ships inside the package, fonts come from the pack).
+ENV HYPERFRAMES_NO_TELEMETRY=1 \
+    DO_NOT_TRACK=1 \
+    HYPERFRAMES_NO_UPDATE_CHECK=1 \
+    HYPERFRAMES_BROWSER_PATH=/opt/hyperframes/chrome-headless-shell
+COPY tools/hyperframes/package.json tools/hyperframes/package-lock.json tools/hyperframes/
+RUN cd tools/hyperframes && npm ci --no-audit --no-fund \
+ && mkdir -p /opt/hyperframes \
+ && if [ "$TARGETARCH" = "amd64" ]; then \
+      ./node_modules/.bin/browsers install chrome-headless-shell@158.0.8127.88 --path /opt/hyperframes/browsers \
+      && ln -s "$(find /opt/hyperframes/browsers -type f -name chrome-headless-shell | head -1)" /opt/hyperframes/chrome-headless-shell; \
+    else \
+      ln -s "$(find /opt/ms-playwright -type f \( -name chrome-headless-shell -o -name headless_shell \) | head -1)" /opt/hyperframes/chrome-headless-shell; \
+    fi \
+ && test -x /opt/hyperframes/chrome-headless-shell \
+ && ./node_modules/.bin/hyperframes --version \
+ && rm -rf /root/.npm /tmp/*
+
 # Python side: the app with speech recognition, the YouTube API and the face models of the thumbnail identity gate
 COPY pyproject.toml README.md LICENSE ./
 COPY crewcut/ crewcut/

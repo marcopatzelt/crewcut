@@ -1,0 +1,12 @@
+{
+  "name": "crewcut-hyperframes",
+  "private": true,
+  "description": "HyperFrames (HeyGen, Apache-2.0), pinned for Crewcut's HTML building blocks (crewcut/render/hyperframes.py). Installed with npm ci in the image; never upgraded at run time.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "hyperframes": "0.9.102"
+  }
+}
