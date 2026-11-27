@@ -105,6 +105,129 @@ def forget_token() -> bool:
     return True
 
 
+# ---------- Claude subscription or Anthropic API key ----------
+# The user picks which Claude login new work uses: the subscription (CLAUDE_CODE_OAUTH_TOKEN, above) or an Anthropic
+# API key, billed per token. The key lives next to the token in the engine volume (mode 0600, never the studio folder,
+# never an argument, a log, a job row or an API answer). Claude Code reads it through a small helper script that
+# Crewcut writes (`apiKeyHelper` in `--settings`): the helper's path is passed, never the key. ANTHROPIC_API_KEY in the
+# environment (.env) is a key source too; it wins over the stored key and cannot be removed from the UI.
+
+KEY_ENV = "ANTHROPIC_API_KEY"
+AUTH_KV = "claude_auth_mode"
+MODES = ("subscription", "api_key")
+
+
+def api_key_file() -> Path:
+    return token_file().parent / "anthropic-api-key"
+
+
+def helper_file() -> Path:
+    return token_file().parent / "api-key-helper.sh"
+
+
+def valid_api_key(key: str) -> bool:
+    """A loose check: Anthropic keys start with sk-ant- and are long; no spaces."""
+    return key.startswith("sk-ant-") and len(key) >= 40 and not re.search(r"\s", key)
+
+
+def _write_private(path: Path, text: str, mode: int) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    os.chmod(path.parent, 0o700)
+    tmp = path.with_name(path.name + ".tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    os.chmod(tmp, mode)
+    os.replace(tmp, path)
+
+
+def ensure_helper() -> Path:
+    """The script Claude Code runs to get the key: it prints the key file. Rewritten only when it differs."""
+    import shlex
+    f = helper_file()
+    text = f"#!/bin/sh\n# Written by Crewcut: Claude Code's apiKeyHelper. Prints the stored Anthropic API key.\n" \
+           f"exec cat {shlex.quote(str(api_key_file()))}\n"
+    try:
+        if f.read_text(encoding="utf-8") == text and (f.stat().st_mode & 0o777) == 0o700:
+            return f
+    except OSError:
+        pass
+    _write_private(f, text, 0o700)
+    return f
+
+
+def store_api_key(key: str) -> None:
+    key = key.strip()
+    if not valid_api_key(key):
+        raise ValueError("That is not an Anthropic API key (it starts with sk-ant-).")
+    _write_private(api_key_file(), key, 0o600)
+    ensure_helper()
+
+
+def stored_api_key_present() -> bool:
+    try:
+        return valid_api_key(api_key_file().read_text(encoding="utf-8").strip())
+    except OSError:
+        return False
+
+
+def api_key_source() -> str | None:
+    """"environment" (ANTHROPIC_API_KEY, wins), "stored" (saved in Crewcut) or None."""
+    if os.environ.get(KEY_ENV):
+        return "environment"
+    return "stored" if stored_api_key_present() else None
+
+
+def has_api_key() -> bool:
+    return api_key_source() is not None
+
+
+def forget_api_key() -> bool:
+    """Remove the stored key. A key from the environment is not ours to remove: False while one is set."""
+    try:
+        api_key_file().unlink()
+    except FileNotFoundError:
+        pass
+    return not os.environ.get(KEY_ENV)
+
+
+def auth_mode() -> str:
+    """The Claude login new work uses. Chosen once (db), else the subscription when a token exists, else the key."""
+    from .. import db
+    chosen = db.kv_get(AUTH_KV)
+    if chosen in MODES:
+        return chosen
+    if os.environ.get(TOKEN_ENV):
+        return "subscription"
+    return "api_key" if has_api_key() else "subscription"
+
+
+def set_auth_mode(mode: str) -> str:
+    """Store the choice. ValueError for an unknown mode, LookupError when its credential is missing."""
+    from .. import db
+    mode = mode.strip().lower().replace("-", "_")
+    if mode not in MODES:
+        raise ValueError("Choose subscription or api_key.")
+    if mode == "subscription" and not os.environ.get(TOKEN_ENV):
+        raise LookupError("Connect your Claude subscription first.")
+    if mode == "api_key" and not has_api_key():
+        raise LookupError("Save an Anthropic API key first.")
+    db.kv_set(AUTH_KV, mode)
+    return mode
+
+
+def auth_view() -> dict:
+    """What the UI may know: the mode and which credentials exist, never a value or a part of one."""
+    return {"mode": auth_mode(),
+            "subscription": {"connected": bool(os.environ.get(TOKEN_ENV)), "source": token_source()},
+            "api_key": {"present": has_api_key(), "source": api_key_source()}}
+
+
+def switch_note(mode: str) -> str:
+    what = "the API key" if mode == "api_key" else "the Claude subscription"
+    return f"New work uses {what} now. Running work keeps its login."
+
+
 # ---------- inside the container: run as the studio's owner, never as root ----------
 
 RUN_AS = Path("/run/crewcut-user")
@@ -357,4 +480,64 @@ def cli_disconnect(name: str) -> int:
                                        "remove it there."})
         return 1
     _say({"step": "done", "text": "Claude is disconnected."})
+    return 0
+
+
+def _describe(view: dict) -> str:
+    sub, key = view["subscription"], view["api_key"]
+    mode = "API key (billed per token)" if view["mode"] == "api_key" else "Claude subscription"
+    return (f"New work uses: {mode}. Subscription: "
+            + (f"connected ({sub['source']})" if sub["connected"] else "not connected")
+            + ". API key: " + (f"saved ({key['source']})" if key["present"] else "none") + ".")
+
+
+def cli_auth(mode: str | None) -> int:
+    """`crewcut engine auth [subscription|api-key]`: show or switch the Claude login of new work."""
+    from .. import events
+    drop_to_studio_owner()
+    load_stored_token()
+    if mode:
+        before = auth_mode()
+        try:
+            now = set_auth_mode(mode)
+        except (ValueError, LookupError) as e:
+            print(f"crewcut: {e}", file=sys.stderr)
+            return 4 if isinstance(e, LookupError) else 2
+        if now != before:
+            events.emit("activity", text=switch_note(now))
+            print(switch_note(now))
+    print(_describe(auth_view()))
+    return 0
+
+
+def cli_api_key(from_stdin: bool, use: bool, forget: bool) -> int:
+    """`crewcut engine api-key --stdin [--use]` or `--forget`. The key is read from stdin, never from the arguments."""
+    from .. import db, events
+    drop_to_studio_owner()
+    load_stored_token()
+    if forget:
+        if not forget_api_key():
+            print("crewcut: this API key comes from the environment (ANTHROPIC_API_KEY in .env); remove it there.",
+                  file=sys.stderr)
+            return 1
+        if auth_mode() == "api_key":
+            db.kv_set(AUTH_KV, "subscription")
+            events.emit("activity", text=switch_note("subscription"))
+        print("The stored API key is removed. " + _describe(auth_view()))
+        return 0
+    if not from_stdin:
+        print("crewcut: pass the key on stdin with --stdin (never as an argument), e.g. "
+              "`crewcut engine api-key --stdin < keyfile`.", file=sys.stderr)
+        return 2
+    try:
+        store_api_key(sys.stdin.read())
+    except ValueError as e:
+        print(f"crewcut: {e}", file=sys.stderr)
+        return 2
+    if use:
+        before = auth_mode()
+        set_auth_mode("api_key")
+        if before != "api_key":
+            events.emit("activity", text=switch_note("api_key"))
+    print("API key saved (value never shown). " + _describe(auth_view()))
     return 0

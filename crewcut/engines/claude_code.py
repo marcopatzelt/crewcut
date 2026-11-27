@@ -9,7 +9,9 @@ layers:
    sets wins over layer 2; layer 1 cannot be overridden, because without it Crewcut cannot read the run.
 Login: CLAUDE_CODE_OAUTH_TOKEN from `claude setup-token`, made by "Connect Claude" (engines/connect.py) or by hand. It
 stays in the environment: never an argument or a log. The web UI keeps it in the engine volume (mode 0600, never in the
-studio folder); the desktop app keeps it in the system keychain.
+studio folder); the desktop app keeps it in the system keychain. The user can switch new work to an Anthropic API key
+instead (billed per token): then `--settings` names Crewcut's `apiKeyHelper` script, which prints the stored key, and
+the child gets no OAuth token. In subscription mode an ANTHROPIC_API_KEY from the environment is kept from the child.
 """
 
 from __future__ import annotations
@@ -106,19 +108,49 @@ class ClaudeCode(Engine):
     binary_name = "claude"
     npm_package = "@anthropic-ai/claude-code"
 
+    def auth_mode(self) -> str:
+        """"subscription" or "api_key": the Claude login new work uses (engines/connect.py)."""
+        from . import connect
+        return connect.auth_mode()
+
     def login_kind(self) -> str | None:
-        if os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
-            return "subscription"
-        if os.environ.get("ANTHROPIC_API_KEY"):
-            return "api-key"
-        return None
+        from . import connect
+        if self.auth_mode() == "api_key":
+            return "api-key" if connect.has_api_key() else None
+        return "subscription" if os.environ.get("CLAUDE_CODE_OAUTH_TOKEN") else None
 
     def login_status(self) -> tuple[bool, str]:
         kind = self.login_kind()
         if not kind:
+            if self.auth_mode() == "api_key":
+                return False, ("Claude is set to the API key, but no key is saved: save one in Crewcut "
+                               "(`crewcut engine api-key --stdin`) or switch back to the subscription")
             return False, ("Claude is not connected: press Connect Claude in Crewcut (or put a `claude setup-token` "
                            "token into .env)")
+        from . import connect
+        if kind == "api-key":
+            return True, f"API key ({connect.api_key_source()}, billed per token; value never shown)"
         return True, f"{kind} credential present (value never shown)"
+
+    def auth_for(self, task: Task) -> str:
+        """The login of one run, fixed at its start: a later switch does not change a running job."""
+        opts = task.engine_options
+        if opts.get("auth") not in ("subscription", "api_key"):
+            opts["auth"] = self.auth_mode()
+        return opts["auth"]
+
+    @staticmethod
+    def _auth_parts(mode: str) -> tuple[dict, list[str]]:
+        """Settings to add and environment names to drop for a mode. The key itself never appears here."""
+        from . import connect
+        if mode == "api_key":
+            if connect.api_key_source() == "environment":
+                return {}, ["CLAUDE_CODE_OAUTH_TOKEN"]   # the CLI reads ANTHROPIC_API_KEY itself
+            return {"apiKeyHelper": str(connect.ensure_helper())}, ["CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY"]
+        return {}, ["ANTHROPIC_API_KEY"]   # an API key in the environment must not win over the subscription
+
+    def env_drop(self, task: Task) -> list[str]:
+        return self._auth_parts(self.auth_for(task))[1]
 
     def command(self, task: Task) -> list[str]:
         layer1 = [self.binary() or "claude", "-p", task.prompt, "--output-format", "stream-json", "--verbose"]
@@ -140,8 +172,9 @@ class ClaudeCode(Engine):
             layer2 += ["--add-dir", d]
         if task.name:
             layer2 += ["--name", task.name]
-        if opts.get("settings"):
-            layer2 += ["--settings", json.dumps(opts["settings"])]
+        settings = {**(opts.get("settings") or {}), **self._auth_parts(self.auth_for(task))[0]}
+        if settings:
+            layer2 += ["--settings", json.dumps(settings)]
         for flag in opts.get("flags") or []:          # switches without a value, e.g. --forward-subagent-text
             layer2.append(flag)
         if opts.get("skip_permissions", True):
@@ -185,7 +218,7 @@ class ClaudeCode(Engine):
             out.append(Event("result", obj.get("subtype") or "", {"turns": state["turns"]}))
         elif t == "system" and obj.get("subtype") == "init":
             out.append(Event("init", data={k: obj.get(k) for k in ("model", "claude_code_version", "agents",
-                                                                    "plugins", "skills", "mcp_servers")
+                                                                    "plugins", "skills", "mcp_servers", "apiKeySource")
                                            if obj.get(k) is not None}))
         elif t == "system" and "hook" in str(obj.get("subtype", "")):
             out.append(Event("hook", str(obj.get("hook_event_name") or obj.get("subtype")), {"raw": obj}))
@@ -203,11 +236,16 @@ class ClaudeCode(Engine):
             return False, why
         from .. import config
         cmd = [self.binary(), "-p", "Reply with the single word: ok", "--output-format", "json"]
+        extra, drop = self._auth_parts(self.auth_mode())
+        if extra:
+            cmd += ["--settings", json.dumps(extra)]
+        env = {k: v for k, v in os.environ.items() if k not in drop}
         probe_model = model or config.get("crewcut", "engine.claude.probe_model", "")
         if probe_model:
             cmd += ["--model", probe_model]
         try:
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s, stdin=subprocess.DEVNULL)
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s, stdin=subprocess.DEVNULL,
+                               env=env)
         except subprocess.TimeoutExpired:
             return False, f"no answer within {timeout_s} s"
         try:

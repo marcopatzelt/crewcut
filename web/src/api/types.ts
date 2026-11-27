@@ -191,6 +191,8 @@ export interface Activity {
   model?: string | null;
   effort?: string | null;
   engine_version?: string | null;
+  /** Optional: the Claude login of this run, "subscription" or "api_key" (billed per token). */
+  auth?: "subscription" | "api_key" | null;
   /** Optional: the newest picture this job made (a render frame, a thumbnail draft), shown live in "Working now". */
   preview?: string | null;
 }
@@ -222,6 +224,12 @@ export interface EngineLogin {
     text?: string;
   };
   chosen: string;
+  /** Which Claude login new work uses, and which credentials exist (never a value). Older servers leave it out. */
+  claude_auth?: {
+    mode: "subscription" | "api_key";
+    subscription: { connected: boolean; source: "stored" | "environment" | null };
+    api_key: { present: boolean; source: "stored" | "environment" | null };
+  };
 }
 
 /** What Claude Code says about the connected account (each field optional). */

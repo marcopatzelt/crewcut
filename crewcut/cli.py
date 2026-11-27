@@ -377,6 +377,12 @@ def build_parser() -> argparse.ArgumentParser:
                           "storing it in the engine volume")
     end = ensub.add_parser("disconnect", help="forget the login made with connect")
     end.add_argument("name")
+    ena = ensub.add_parser("auth", help="Claude: show or switch the login of new work, the subscription or an API key")
+    ena.add_argument("mode", nargs="?", choices=["subscription", "api-key", "api_key"])
+    enk = ensub.add_parser("api-key", help="Claude: save an Anthropic API key (read from stdin, never an argument)")
+    enk.add_argument("--stdin", action="store_true", help="read the key from stdin")
+    enk.add_argument("--use", action="store_true", help="also switch new work to the API key")
+    enk.add_argument("--forget", action="store_true", help="remove the stored key")
     enl = ensub.add_parser("login", help="Codex: device-code login, the link and code appear in the chat")
     enl.add_argument("name")
     enl.add_argument("--episode", help="which chat gets the link (default: the onboarding chat)")
@@ -423,6 +429,10 @@ def main(argv: list[str] | None = None) -> int:
         except ValueError as e:
             print(json.dumps({"step": "error", "text": str(e)}), flush=True)
             return 2
+    if a.cmd == "engine" and a.encmd in ("auth", "api-key"):  # the key file belongs to the studio's owner, as the token
+        from .engines import connect
+        return (connect.cli_auth(a.mode) if a.encmd == "auth" else
+                connect.cli_api_key(a.stdin, a.use, a.forget))
     try:
         code = int(_run(a) or 0)
         _deliver_news(a)

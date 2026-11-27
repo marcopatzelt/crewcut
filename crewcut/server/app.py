@@ -92,6 +92,10 @@ class CodeIn(BaseModel):
     code: str
 
 
+class AuthModeIn(BaseModel):
+    mode: str
+
+
 def _engine_changed(ok: bool | None) -> None:
     """After a connect or disconnect: forget the start's probe and the cache, so the screen shows the new state."""
     _ENGINE_CACHE.clear()
@@ -114,6 +118,7 @@ def _login_view() -> dict:
         "codex": {"installed": codex.installed(), "connected": codex_ok,
                   **({k: v for k, v in cx.items() if k in ("status", "url", "code", "text")} if cx else {})},
         "chosen": engines.current_name(),
+        "claude_auth": connect.auth_view(),
     }
 
 
@@ -622,6 +627,62 @@ def create_app(start_worker: bool = True) -> FastAPI:
                                      "remove it there.")
         _engine_changed(ok=False)
         return _login_view()
+
+    # ---- Claude subscription or Anthropic API key (engines/connect.py); the key never comes back ---------------------
+    @app.get("/api/engine/claude/auth")
+    def claude_auth():
+        from ..engines import connect
+        return connect.auth_view()
+
+    @app.post("/api/engine/claude/auth")
+    def claude_auth_set(body: AuthModeIn):
+        from ..engines import connect
+        before = connect.auth_mode()
+        try:
+            mode = connect.set_auth_mode(body.mode)
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from None
+        except LookupError as e:
+            raise HTTPException(409, str(e)) from None
+        _engine_changed(ok=None)
+        if mode != before:
+            events.emit("activity", text=connect.switch_note(mode))
+        return connect.auth_view()
+
+    @app.post("/api/engine/claude/api-key")
+    async def claude_api_key(request: Request):
+        # read by hand: a validation error of a model would echo the body (the key) in its answer
+        from ..engines import connect
+        try:
+            body = await request.json()
+        except ValueError:
+            body = None
+        key = body.get("key") if isinstance(body, dict) else None
+        if not isinstance(key, str):
+            raise HTTPException(400, "Send the key as {\"key\": \"sk-ant-...\"}.")
+        try:
+            connect.store_api_key(key)
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from None
+        if body.get("use") is True:
+            before = connect.auth_mode()
+            connect.set_auth_mode("api_key")   # stored, so a later token does not change the default under the user
+            if before != "api_key":
+                events.emit("activity", text=connect.switch_note("api_key"))
+        _engine_changed(ok=None)
+        return connect.auth_view()
+
+    @app.delete("/api/engine/claude/api-key")
+    def claude_api_key_delete():
+        from ..engines import connect
+        if not connect.forget_api_key():
+            raise HTTPException(409, "This API key comes from the environment (ANTHROPIC_API_KEY in .env); "
+                                     "remove it there.")
+        if connect.auth_mode() == "api_key":
+            db.kv_set(connect.AUTH_KV, "subscription")   # never bill a missing key; the subscription takes over
+            events.emit("activity", text=connect.switch_note("subscription"))
+        _engine_changed(ok=None)
+        return connect.auth_view()
 
     @app.post("/api/engine/codex/connect")
     def codex_connect():

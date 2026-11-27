@@ -121,7 +121,7 @@ scrolls inside. The microphone button uses the browser's speech recognition (`Sp
 microphone level (through `getUserMedia`, nothing is recorded or sent by Crewcut). Some browsers send the audio to their
 maker's speech service; that is the browser's behaviour, not Crewcut's.
 
-**Connect Claude** (`src/components/ConnectEngine.tsx`) is the third and last text field. It shows on the first start
+**Connect Claude** (`src/components/ConnectEngine.tsx`) is the third text field. It shows on the first start
 and at the top of the onboarding page while Claude is not connected: one primary button, "Connect Claude". It opens a
 tab in the click, asks the server for Claude's sign-in link (`POST /api/engine/claude/connect`, which runs
 `claude setup-token` in the container with `BROWSER=true`) and sends the tab there. The card then shows one field,
@@ -130,6 +130,13 @@ it says "Claude is connected as <email>. Paste your links below." "Connect Codex
 `POST /api/engine/codex/connect` and shows the device link and code until `GET /api/engine/login` says Codex is
 connected. In the desktop app (`window.crewcutDesktop`, from its preload) both buttons call the app instead, which
 keeps the Claude token in the system keychain; the page never sees it.
+
+**Claude subscription or API key** (`src/components/ClaudeAuth.tsx`) sits in the AI chooser while Claude Code is
+selected: a two-way switch "Subscription | API key" (`POST /api/engine/claude/auth`; a side without its credential is
+disabled), then "API key saved." with Remove key (`DELETE /api/engine/claude/api-key`), "API key from the environment
+(.env).", or the fourth text field, a password field "Anthropic API key" with Save key
+(`POST /api/engine/claude/api-key` with `use: true`). The page never gets the key back. One line says the key is billed
+per token; running work keeps its login.
 
 The second text field is the search field of the command palette (`src/components/Palette.tsx`). It only picks from a
 list of episodes, views and actions; it takes no values.
@@ -341,7 +348,7 @@ npm run dev                   # http://localhost:5173, forwards /api to :4747 an
 | `npm run typecheck` | TypeScript, strict |
 | `npm run test` | vitest + Testing Library: loading (spinner after 300 ms), empty, error with retry, long content (90-character title, 4,000-word message, 30 jobs), the engine not logged in, "Crewcut is starting…" and "Can't reach the Crewcut engine" (never made-up content), card accept (options, Ctrl+Enter, spend card, error), the composer (Enter, Shift+Enter, new episode, onboarding, failed send), the teleprompter; the states table above, the step dots, the spend card's two ways (local declines, never accepts), the waiting row jumping to its card, the palette and shortcuts, crew talk (collapsed and opened), the sample data's still scene and the steps of the README animation; the media of an episode (thumbnails, cut, scenes, GPU), the thumbnail pick, the GPU card's Stop, the media's empty, pending and error states, the home's sections and filters; the four motion cards (columns, the strike call and its refusal, the cap per video and per Short, posters only with reduced motion, accessible names), the motion tiles on the strip and the Motion panel (order, states, report lines, 404, error), the Motion shelf (hover to play, opened details, one-off pieces, no shelf) and motion in the sample data |
 | `npm run check:tokens` | no raw colour values in `src/` outside `src/styles/tokens.css`; radii, shadows, durations and curves only from tokens (rules 4, 6, 9) |
-| `npm run check:forms` | three text fields, the composer, the palette's search field and the code field of Connect Claude, and no `<form>` with more than one field (rules 1.2, 3, 15) |
+| `npm run check:forms` | four text fields, the composer, the palette's search field, the code field of Connect Claude and the API key field of the AI chooser, and no `<form>` with more than one field (rules 1.2, 3, 15) |
 | `npm run check:words` | no emoji, no exclamation marks in user-facing text (tooltips too), no "OK", "Submit" or "Yes" labels (rules 8, 10) |
 | `npm run check:contrast` | every text token clears 4.5:1 on its surfaces in light and dark: the opaque stand-ins, the glass window over the brightest and darkest wallpaper sample with tiles, chips and row states on it, tags over a white picture; the focus ring 3:1 (rules 4, 18) |
 | `npm run check:fonts` | no font file in the repository or `dist/` whose name or inner name contains "SF Pro", "SF Compact", "SFNS", "SF Mono" or "New York"; no `@font-face` with these names (rule 5) |

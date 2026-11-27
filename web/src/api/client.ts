@@ -124,6 +124,13 @@ export const api = {
     request<{ connected: boolean; account: ClaudeAccount }>("POST", "/api/engine/claude/code", { code }),
   claudeDisconnect: () => request<EngineLogin>("POST", "/api/engine/claude/disconnect", {}),
   codexConnect: () => request<EngineLogin["codex"]>("POST", "/api/engine/codex/connect", {}),
+  /** Claude subscription or Anthropic API key for new work; the key goes in once and never comes back. */
+  claudeAuth: () => request<NonNullable<EngineLogin["claude_auth"]>>("GET", "/api/engine/claude/auth"),
+  setClaudeAuth: (mode: "subscription" | "api_key") =>
+    request<NonNullable<EngineLogin["claude_auth"]>>("POST", "/api/engine/claude/auth", { mode }),
+  saveClaudeApiKey: (key: string, use: boolean) =>
+    request<NonNullable<EngineLogin["claude_auth"]>>("POST", "/api/engine/claude/api-key", { key, use }),
+  forgetClaudeApiKey: () => request<NonNullable<EngineLogin["claude_auth"]>>("DELETE", "/api/engine/claude/api-key"),
   money: () => request<Money>("GET", "/api/money"),
   prompter: (id: string) => request<PrompterLink>("GET", `/api/episodes/${enc(id)}/prompter`),
   fullAuto: (id: string) => request<{ mode: string; blocked?: string; complete?: boolean }>("GET", `/api/episodes/${enc(id)}/full-auto`),

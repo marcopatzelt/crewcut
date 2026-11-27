@@ -103,7 +103,8 @@ def job_view(j: dict) -> dict:
             "scope": d.get("conversation_scope", "episode" if j["episode"] else "onboarding"),
             "parent": j.get("parent"),
             "engine": d.get("engine"), "model": info.get("model"), "effort": d.get("effort"),
-            "engine_version": info.get("claude_code_version"), "preview": media.job_preview(j)}
+            "engine_version": info.get("claude_code_version"), "auth": d.get("auth"),
+            "preview": media.job_preview(j)}
 
 
 def active(episode: str | None = None) -> list[dict]:
@@ -268,7 +269,9 @@ def _run_agent(j: dict) -> None:
     eng = engines.current()
     data = dict(j.get("data") or {})
     task = build_task(j, eng, data)
-    db.update("jobs", j["id"], status="running", started=db.now(), doing="Starting", log_path=str(task.log_path))
+    if hasattr(eng, "auth_for"):
+        data["auth"] = eng.auth_for(task)   # "subscription" or "api_key", fixed for this run (no secret)
+    db.update("jobs", j["id"], status="running", data=data, started=db.now(), doing="Starting", log_path=str(task.log_path))
     events.emit("activity", episode=j["episode"], identity=j["identity"], data=job_view(get(j["id"])))
 
     def on_event(ev: engines.Event) -> None:
@@ -286,7 +289,8 @@ def _run_agent(j: dict) -> None:
             data["usage"] = ev.data.get("usage")
             db.update("jobs", j["id"], data=data)
         elif ev.kind == "init":
-            data["engine_info"] = {k: ev.data.get(k) for k in ("model", "claude_code_version") if ev.data.get(k)}
+            data["engine_info"] = {k: ev.data.get(k) for k in ("model", "claude_code_version", "apiKeySource")
+                                   if ev.data.get(k)}
             db.update("jobs", j["id"], data=data)
 
     stop = _stops.setdefault(j["id"], threading.Event())

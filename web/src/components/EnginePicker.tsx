@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { EngineLogin } from "../api/types";
 import { messageOf, refreshState } from "../store/actions";
+import { ClaudeAuth } from "./ClaudeAuth";
 import { ConnectEngine } from "./ConnectEngine";
 import { useUi } from "../store/store";
 import "../styles/engine-picker.css";
@@ -83,6 +84,11 @@ export function EnginePicker() {
         </button>;
       })}
       {connecting && !login?.[connecting].connected ? <ConnectEngine only={connecting} /> : null}
+      {login?.claude_auth && login.chosen === "claude" ? (
+        <ClaudeAuth auth={login.claude_auth}
+          onChange={(auth) => setLogin((prev) => prev ? { ...prev, claude_auth: auth,
+            claude: { ...prev.claude, connected: auth.mode === "api_key" ? auth.api_key.present : auth.subscription.connected } } : prev)} />
+      ) : null}
       <p className="meta">For new work in all chats. Running work stays unchanged.</p>
       </section> : null}
     </div>

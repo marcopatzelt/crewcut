@@ -114,6 +114,10 @@ class Engine:
     def env(self) -> dict[str, str]:
         return {}
 
+    def env_drop(self, task: Task) -> list[str]:
+        """Environment names the child of this task must not get (e.g. a credential of the login not in use)."""
+        return []
+
     # ---- shared ---------------------------------------------------------------------------------------------------
     def binary(self) -> str | None:
         import shutil
@@ -147,6 +151,8 @@ class Engine:
         env.update(task.env)
         env.setdefault("DISABLE_AUTOUPDATER", "1")
         cmd = self.command(task)
+        for name in self.env_drop(task):
+            env.pop(name, None)
         t0 = time.time()
         log = open(task.log_path, "a", encoding="utf-8") if task.log_path else None
 
@@ -167,6 +173,7 @@ class Engine:
         write(f"--- start {time.strftime('%Y-%m-%d %H:%M:%S')} engine={self.name} model={task.model or 'default'}"
               + (f" agent={task.agent}" if task.agent else "") + (f" effort={task.effort}" if task.effort else "")
               + (f" resume={task.resume}" if task.resume else "")
+              + (f" login={task.engine_options['auth']}" if (task.engine_options or {}).get("auth") else "")
               + (f" extra={' '.join(task.extra_args)}" if task.extra_args else ""))
         for note in (task.engine_options or {}).get("notes", []):
             write("note: " + note)

@@ -337,12 +337,17 @@ need a local origin like every write.
 | `POST /api/engine/claude/disconnect` | `{}` | as `GET /api/engine/login`; 409 when the token comes from the environment (`.env` or the desktop app) |
 | `POST /api/engine/codex/connect` | `{}` | `{"status": "waiting", "url", "code"}` (installs Codex first when needed); `GET /api/engine/login` says when it is connected |
 | `POST /api/engine/codex/disconnect` | `{}` | as `GET /api/engine/login` |
+| `GET /api/engine/claude/auth` | | `{"mode": "subscription" or "api_key", "subscription": {"connected", "source"}, "api_key": {"present", "source": "stored", "environment" or null}}`; never the key. `GET /api/engine/login` carries the same as `claude_auth` |
+| `POST /api/engine/claude/auth` | `{"mode": "subscription" or "api_key"}` | as `GET /api/engine/claude/auth`; new work uses that login, running work keeps its own. 400 for an unknown mode, 409 when its credential is missing |
+| `POST /api/engine/claude/api-key` | `{"key": "sk-ant-…", "use": true}` | as `GET /api/engine/claude/auth`; the key goes to `/opt/engine/secrets/anthropic-api-key` (0600); `use` also switches to it. 400 for a malformed key (the answer never repeats it) |
+| `DELETE /api/engine/claude/api-key` | | as `GET /api/engine/claude/auth`; in API-key mode new work goes back to the subscription. 409 when the key comes from the environment (`ANTHROPIC_API_KEY`) |
 
 The same steps on the command line, as JSON lines (the desktop app uses them through `docker compose exec`):
 `crewcut engine connect claude [--print-token]` prints `{"step": "url", "url"}`, reads the code as one line on stdin,
 then prints `{"step": "done", "account", "token" or "stored": true}` or `{"step": "error", "text"}`;
 `crewcut engine connect codex` prints `{"step": "device", "url", "code"}`, then `done` or `error`;
-`crewcut engine disconnect claude|codex`. Run as root (as `docker compose exec` does), they switch to the studio
+`crewcut engine disconnect claude|codex`; `crewcut engine auth [subscription|api-key]` and
+`crewcut engine api-key --stdin [--use]` or `--forget` (the key only on stdin). Run as root (as `docker compose exec` does), they switch to the studio
 folder's owner first.
 
 ## Money and compute
