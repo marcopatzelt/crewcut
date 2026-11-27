@@ -63,8 +63,12 @@ The crew's know-how is in [`skills/shorts/SKILL.md`](../skills/shorts/SKILL.md);
   scheduled. If anything differs, it stays private and the chat says what.
 - **When.** At most `shorts.per_day_max` (2) a day at `shorts.publish_times` (12:00 and 18:00 in your channel's time
   zone), never two Shorts with the same message on one day (`crewcut shorts slot`). "All at once" is one sentence.
-- **Link to the long video.** Through the API Crewcut puts it into the description and a comment. YouTube's "Related
-  video" field and pinning a comment have no API: the chat tells you to set them in YouTube Studio.
+- **Link to the long video.** Through the API Crewcut puts it into the description and a comment (the package's
+  `related_comment`, posted as your channel). The comment waits until YouTube has processed the Short: a comment sent
+  while it still processes is refused. The upload waits up to `youtube.comment_wait_s` (45 s); after that the worker
+  tries again on its own, never posts it twice, and the chat says when it is there. By hand: `crewcut youtube comment
+  <episode>`. YouTube's "Related video" field and pinning a comment have no API: the chat tells you to set them in
+  YouTube Studio.
 
 ## Results
 
