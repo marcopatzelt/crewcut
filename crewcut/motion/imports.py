@@ -477,6 +477,17 @@ def import_file(src: Path, name: str, licence: str, source: str, *, title: str |
             raise ImportError_(f"{name} is already imported ({folder}); use --replace for a new version")
         shutil.rmtree(folder)
     (folder / "original").mkdir(parents=True)
+    try:
+        entry = _import_into(folder, src, name, licence, source, title, kind_of_insert, allow_losses, pack, backend)
+    except BaseException:
+        shutil.rmtree(folder, ignore_errors=True)     # a refused import leaves nothing behind
+        raise
+    return entry
+
+
+def _import_into(folder: Path, src: Path, name: str, licence: str, source: str, title: str | None,
+                 kind_of_insert: str, allow_losses: bool, pack: brand.Pack | None, backend: Any) -> dict:
+    ext = src.suffix.lower()
     shutil.copy2(src, folder / "original" / src.name)
     pack = pack or brand.load()
     entry: dict[str, Any] = {"name": name, "title": title or name.replace("_", " ").replace("-", " "),
@@ -570,15 +581,18 @@ def _aep_losses(report: Any) -> list[str]:
     and up to 20 ``details``. ``missingFonts`` are no losses (the fix script sets the pack's font)."""
     out: list[str] = []
     losses = report.get("losses") if isinstance(report, dict) else None
-    if isinstance(losses, dict):
-        for cat, v in losses.items():
-            count = v.get("count") if isinstance(v, dict) else v
-            if isinstance(count, (int, float)) and count > 0:
-                details = v.get("details") if isinstance(v, dict) else None
-                first = f" ({str(details[0])[:80]})" if isinstance(details, list) and details else ""
-                out.append(f"{cat}: {int(count)}{first}")
-    elif isinstance(losses, list):
-        out += [str(x)[:120] for x in losses if x]
+    if isinstance(losses, dict):                      # {category: {count, details}}
+        items = [{"category": k, **(v if isinstance(v, dict) else {"count": v})} for k, v in losses.items()]
+    elif isinstance(losses, list):                    # [{category, count, details}] (EffectCraft at the pin)
+        items = [x if isinstance(x, dict) else {"category": str(x), "count": 1} for x in losses if x]
+    else:
+        items = []
+    for v in items:
+        count = v.get("count")
+        if isinstance(count, (int, float)) and not isinstance(count, bool) and count > 0:
+            details = v.get("details")
+            first = f" ({str(details[0])[:80]})" if isinstance(details, list) and details else ""
+            out.append(f"{v.get('category')}: {int(count)}{first}")
     return out
 
 
