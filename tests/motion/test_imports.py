@@ -134,7 +134,7 @@ def test_no_linux_path_and_never_into_the_app(tmp_path, monkeypatch):
 
 
 class FakeEngine:
-    def __init__(self, losses: dict | None = None):
+    def __init__(self, losses: dict | list | None = None):
         self.calls = []
         self.losses = losses or {}
 
@@ -156,6 +156,11 @@ def test_after_effects_needs_a_lossless_import(tmp_path):
     aep.write_bytes(b"RIFX")
     eng = FakeEngine({"effects": {"count": 2, "details": ["Element 3D (third-party)"]}})
     with pytest.raises(im.ImportError_, match="effects: 2"):
+        im.import_file(aep, "lt_one", "Mixkit Free License", "https://mixkit.co/x", backend=eng, pack=pack(tmp_path),
+                       root=tmp_path / "priv")
+    assert not (tmp_path / "priv" / "lt_one").exists(), "a refused import leaves nothing behind"
+    eng = FakeEngine([{"category": "markers", "count": 21, "details": ["cue type 2"]}])     # the list form
+    with pytest.raises(im.ImportError_, match="markers: 21 \\(cue type 2\\)"):
         im.import_file(aep, "lt_one", "Mixkit Free License", "https://mixkit.co/x", backend=eng, pack=pack(tmp_path),
                        root=tmp_path / "priv")
     eng = FakeEngine()

@@ -43,7 +43,7 @@
           top = titleEl.offsetHeight + Math.round(64 * u);
         }
         var areaH = s.h - top;
-        var gap = Math.round((vertical ? 84 : 110) * u);
+        var gap = Math.round((vertical ? 64 : 110) * u);
         var nw = vertical ? Math.min(s.w, 840 * u) : (s.w - gap * (n - 1)) / n;
         var hasValue = nodes.some(function (d) { return d.value; });
         var nh = vertical ? Math.min((hasValue ? 300 : 210) * u, (areaH - gap * (n - 1)) / n) : Math.min(areaH * 0.7, (hasValue ? 360 : 260) * u);
@@ -67,6 +67,16 @@
           lab.style.color = pal.ink;
           if (val) lab.style.marginTop = Math.round(10 * u) + "px";
           CC.fit(lab, nw - 2 * pad, Math.round((P.size || 64) * u), CC.minText);
+          // a low box (a Short's narrow safe zone): the value gives way first, then the label, never below the floor
+          var room = nh - 2 * Math.round(14 * u), guard = 0;
+          while (el.scrollHeight > nh && guard++ < 60) {
+            var vs = val ? parseFloat(val.style.fontSize) : 0, ls = parseFloat(lab.style.fontSize);
+            if (val && vs > Math.max(CC.minText, room * 0.5)) val.style.fontSize = Math.round(vs * 0.92) + "px";
+            else if (ls > CC.minText) lab.style.fontSize = Math.max(CC.minText, Math.round(ls * 0.94)) + "px";
+            else if (val && vs > CC.minText * 0.8) val.style.fontSize = Math.round(vs * 0.92) + "px";
+            else break;
+            if (val) val.style.marginBottom = "0px";
+          }
           return { el: el, x: x, y: y, hi: hi, label: lab, value: val };
         });
 
