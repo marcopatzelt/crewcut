@@ -106,6 +106,8 @@ A skill never hard-codes a colour, font, logo, loudness or mix limit. It reads t
 | `approvals.py` | cards: propose, decide, wait, `require_spend()`; checksum of the shown file | core |
 | `ledger.py` | cost book: add, totals for today / episode / month, cap | core |
 | `episodes.py` | create and read episodes, `project.json`, the ten steps | core |
+| `showformats.py` | the show format library (neutral examples + `brand/show-formats/`), the episode's pick, the format block of the prompt; `conductor/plan.py` runs the plan job ([formats.md](formats.md)) | core |
+| `ideas.py`, `scoreboard.py` | idea cards from `inbox/ideas/` (start, dismiss); results per show format | core |
 | `stylegate.py` | the studio's own style checker as a hard gate for scripts: rounds with the Writer, card and advance refusals | core |
 | `studio_import.py` | offline legacy studio copy, manifests and visible references; no jobs or publication | core |
 | `conductor/` | steps, job queue (one heavy job at a time; chat answers in their own reply lane, one per episode; a chat message that arrives while a crew member runs reaches it once at its next `crewcut doing`, `say`, `chat` or `card propose`, and the chat shows when, `conductor/deliver.py`), engine runner | core |
@@ -132,6 +134,8 @@ crewcut doctor [--json] [--ci]
 crewcut serve [--host 0.0.0.0 --port 4747]
 
 crewcut episode new "<working title>" [--source URL]      prints the episode id, e.g. 003-local-llms
+crewcut formats [list|show <id>|check|score] | choose <episode> <id> [--topic-type T] [--input K]   (docs/formats.md)
+crewcut ideas [list|load]                                 idea cards from <studio>/inbox/ideas/
 crewcut episode new "<title>" --short clip --from <episode> | --short original      a Short (docs/shorts.md)
 crewcut episode import <folder> --title "…" [--format portrait] [--script F] [--broll F …] [--plan F] [--skip upload]
 crewcut episode status [<id>] [--json]
@@ -204,7 +208,7 @@ Environment set by the conductor for every agent run: `CREWCUT_STUDIO`, `CREWCUT
 
 | # | Step id | Who | Result in `episodes/<id>/` | Card (user says yes) |
 |---|---|---|---|---|
-| 1 | `idea` | Scout | `brief/BRIEF.md` | topic |
+| 1 | `idea` | Scout; with show formats its plan job ([formats.md](formats.md)) | `brief/BRIEF.md`; with formats also `brief/FORMAT-v001.md`, `TESTPLAN-v001.md`, `PACKAGING-v001.md` | topic (none with formats: the pick goes to the chat) |
 | 2 | `title` | Scout | `brief/TITLE-vNNN.md` | title and thumbnail text |
 | 3 | `proof` (optional, off by default: `[steps] proof` in `config/crewcut.toml`) | Scout | `brief/PROOF-vNNN.md`, raw data in `review/`; off: the Writer keeps its facts in `work/material-vNNN.md` | the facts (only when on) |
 | 4 | `script` | Writer; first the interview (on by default: `[steps] interview`) | `brief/INTERVIEW-vNNN.md` (the user's answers), `brief/SCRIPT-vNNN.md` | script |
@@ -286,6 +290,9 @@ and parked states appear separately from current step approvals. Download links 
 {"id": "003-local-llms", "title": "Working title", "created": "2026-11-16T10:00:00Z", "format": "landscape", "fps": 25,
  "step": "script", "steps": {"idea": {"status": "done", "card": 4}}, "next_action": "…", "open_items": []}
 ```
+
+With the format system the project also has `length` (`long`, `short`, `auto`), `show_format` and `form` (the format
+id), `topic_type` and `input_kind` ([formats.md](formats.md)).
 
 ## Edit plan (`episodes/<id>/edit/plan-vNNN.json`)
 
@@ -399,6 +406,7 @@ shows it next to the value.
 | `rentals` | id, provider, instance, label, episode, job, price_per_hour, started, deadline, ended, status, detail |
 | `events` | id, at, episode, kind, identity, text, data (JSON) |
 | `messages` | id, at, episode, author (`user` or identity id), text, card |
+| `ideas` | id, source, url, title, summary, signals (JSON), topic_type, suggested_format, reason, suggestion (`exporter` or `rule`), length, status (`open`, `started`, `dismissed`), episode, created, imported, decided_at, file |
 
 Money: `costs` holds real money only (rented GPUs, paid APIs). Agent runs on a subscription have no real cost; their API
 equivalent (`total_cost_usd` from Claude Code) is kept in `jobs.equiv_usd` and shown as such, never added to money.

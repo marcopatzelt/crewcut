@@ -58,7 +58,12 @@ See [Full auto](full-auto.md) for review and stop conditions.
 | `GET /api/episodes/{id}` | | episode as in `state.episodes[]` plus `project` (the raw `project.json`) and `files` (list of `{path, size, kind}` under `export/`, `graphics/`, `brief/`) |
 | `GET /api/episodes/{id}/media` | | what the episode view shows first: thumbnails, the cut, 3D scenes, the rented GPU (see "Episode media" below) |
 | `GET /api/episodes/{id}/imported-files?folder=&offset=0&limit=100` | | read-only directory listing under `legacy/`: `{folder, total, entries: [{path, name, directory, size?}]}`; at most 100 entries, no hidden files, excluded credential names or links |
-| `POST /api/episodes` | `{"text": "an idea in one sentence"}` | the new episode; the Showrunner starts with the sentence |
+| `POST /api/episodes` | `{"text": "a tool, link, tweet or idea", "length": "long"\|"short"\|"auto", "show_format": "id"}` (only `text` is required) | the new episode with `length` and, once chosen, `show_format: {id, name, length, topic_type, reason, runner_up, file}`; with a format library the Scout's plan starts (docs/formats.md), else the idea step; 400 for an unknown format or a format of the other length |
+| `GET /api/formats` | | `{formats: [the format without its folder, with "templates"], problems: ["…"], enabled}` |
+| `GET /api/ideas?status=` | | idea cards `[{id, source, url, title, summary, signals, topic_type, suggested_format, reason, suggestion, status, episode, created}]`, open first; loads new files from `inbox/ideas/` first |
+| `POST /api/ideas/{id}/start` | `{"length"?, "show_format"?}` or none | `{idea, episode}`: the episode made the same way as `POST /api/episodes`; 400 when the idea is decided, 404 unknown |
+| `POST /api/ideas/{id}/dismiss` | none | the idea with status `dismissed` |
+| `GET /api/scoreboard` | | `{channel: {median_views, median_avg_view_pct, subs_per_1000, episodes}, formats: [{format, name, length, episodes, measured, median_views, median_avg_view_pct, subs_per_1000, retention_drop_per_min, ctr, verdict, verdict_text}]}` |
 | `GET /api/episodes/{id}/messages?after=ID` | | `[{"id", "at", "author", "text", "card", "cite", "step", "preview", "facts"}]`; `author` is `user` or an identity id; `cite`, `preview` (a file in the episode) and `facts` (`[{"label", "value"}]`) are optional |
 | `POST /api/episodes/{id}/messages` | `{"text": "…"}` | the stored message; the Showrunner answers in later messages. While the interview waits, the message is an answer instead (docs/architecture.md, "The interview") |
 | `POST /api/episodes/{id}/interview` | `{"action": "skip"}` or `{"action": "done"}` | `episode.interview` after "Skip interview" or "Done answering"; 400 when the interview is over (skip) or not waiting (done) |
