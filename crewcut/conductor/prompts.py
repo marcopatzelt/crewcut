@@ -162,6 +162,10 @@ def system_prompt(identity: dict, episode: str | None, step: str | None, with_id
         from .. import graphicsgate
         note = graphicsgate.editor_note().strip()   # the pack's graphic system decides (crewcut/graphicsgate.py)
         step_line += (note + "\n") if note else ""
+    if episode and step == "title" and "critic" in (identity.get("id"), worker):
+        from .. import titlepairs
+        note = titlepairs.critic_note(episode)   # a show-format episode with a test result: pairs against the test
+        step_line += (note + "\n") if note else ""
     if episode and identity.get("id") == "critic":
         step_line += ("End every review report (review/critic-<version>.md) with two lines: `Verdict: back` (it goes "
                       "back to the builder) or `Verdict: show` (the user may see it), and `Round: N of M`. The conductor "
@@ -272,14 +276,23 @@ def step_task(step: str, episode: str, seed: str = "") -> str:
             t += (" Follow the voice block in your prompt: model every hook and punch line on named reference "
                   f"passages and write brief/{companion_name()} next to each version.")
     if step == "title" and project.get("show_format"):
-        from .. import showformats
+        from .. import showformats, titlepairs
         res = showformats.test_result(episode)
         t = ("This episode has a show format and its plan already wrote brief/PACKAGING-v001.md (three title and "
              "thumbnail pairs from named formulas). Start from those pairs and the format's packaging rules; keep what "
              "works and replace what fails the checks. "
-             + (f"The test result is brief/{res.name}: fill every [ERGEBNIS: …] from it, and drop a pair whose "
-                "formula has a condition the result does not meet (for example a title that says Claude wins, when "
-                "the test does not show Claude ahead). " if res else "")) + t
+             + (f"The test result is brief/{res.name}: fill every [ERGEBNIS: …] from it. First check every pair "
+                "against it: a pair whose claim the result reverses (its title or image says the opposite of what was "
+                "measured, for example 'not as current as you think' when the test found it more current) is dropped "
+                "or rebuilt in the measured direction, and so is a pair whose formula has a condition the result does "
+                "not meet (for example a title that says Claude wins, when the test does not show Claude ahead). Write "
+                f"the next brief/PACKAGING-vNNN.md, {titlepairs.SHAPE} (a dropped pair stays in the file with its "
+                "line), and give the Critic the "
+                "test result with the pairs. The title card is refused while a pair is unchecked or when an option is "
+                "a reversed pair. " if res else "")) + t
+    if step == "thumbnail" and project.get("show_format"):
+        t += (" Never build the image idea of a pair marked `Test: reverses` (`Test: dreht um`) in the newest "
+              "brief/PACKAGING-vNNN.md: its image says the opposite of what the test measured.")
     from .. import full_auto
     return t.format(seed=json.dumps(seed or "(no sentence)", ensure_ascii=False), episode=episode) + full_auto.instructions(episode)
 
@@ -393,7 +406,9 @@ def plan_task(episode: str, seed: str) -> str:
         "brief/BRIEF.md (the topic, the viewer's problem in one sentence, the material with sources), "
         "brief/TESTPLAN-v001.md when the format has a test plan template (the real tests to run, cheap first; you run "
         "none that cost money), and brief/PACKAGING-v001.md: three title and thumbnail pairs, each from a named title "
-        "formula of the format and a thumbnail format it names, with the format's packaging rules.\n"
+        "formula of the format and a thumbnail format it names, with the format's packaging rules. Each pair is a "
+        "section `## Pair A: <formula>` (German `## Paar A`) with a line `- Title: …` (`- Titel: …`); the title step "
+        "checks every pair against the test result and drops one the result reverses.\n"
         "   The test plan fixes the cases, what is counted and how, before any run, and never the result: no "
         "'expected break', no expected winner. A case is chosen because it could break the claim, not because it "
         "will; if the tool holds, the video says so. A step that only makes sense after a certain result (for example "
