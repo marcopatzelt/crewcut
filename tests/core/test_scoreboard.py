@@ -147,3 +147,20 @@ def test_search_formats_wait_for_28_days_and_coviews_are_noted(crew):
     t = {f["format"]: f for f in scoreboard.build()["formats"]}["tool-test"]
     assert t["basis"] == "first days" and t["judged"] == 2 and t["median_x"] > 1
     assert t["coview_mixed"] and "co-views" in scoreboard.line(t)
+
+
+def test_total_views_compare_shorts_with_shorts(crew):
+    """Abnahme Hormozi round 2: a Short is judged against the Shorts median, never against long videos."""
+    for v in (5000, 6000, 7000):
+        measured("tool-test", v, 50.0, 50)
+    for v in (300, 400, 500, 600):
+        sid = measured("claim-check", v, 80.0, 1)
+        p = episodes.read(sid)
+        p["kind"] = "short"
+        episodes.write(sid, p)
+    board = scoreboard.build()
+    c = board["channel"]
+    assert c["by_length"]["short"]["median_views"] == 450 and c["by_length"]["long"]["median_views"] == 6000
+    short = next(f for f in board["formats"] if f["format"] == "claim-check")
+    assert short["basis"] == "total views" and short["median_x"] is not None and 0.8 <= short["median_x"] <= 1.2
+    assert short["verdict"] != "drop"   # against the whole channel (median 600) it would look like a flop

@@ -183,3 +183,42 @@ def test_without_profile_and_moves_the_prompts_stay_as_they_were(studio, crew):
     assert prompts.voice_block() == "" and lernstand.prompt_top() == ""
     ep = episodes.create("Plain")["id"]
     assert "LEARN" not in prompts.step_task("script", ep)
+
+
+def test_only_lesson_units_are_models_and_placeholder_scripts_teach_nothing(studio_data):
+    """Abnahme Hormozi round 2: S2 (watch units are no models) and F2 (no findings from gaps)."""
+    an = studio_data / "episodes"
+    for i, ep in enumerate(("003-third", "004-fourth", "005-fifth")):
+        d = an / ep / "analytics"
+        d.mkdir(parents=True)
+        units = [{"index": 1, "kind": "unit", "drop_per_min": 2 + i, "seconds": 30, "hook": f"Ich habe {i} getestet.",
+                  "hook_type": "number", "verdict": "holds"},
+                 {"index": 2, "kind": "unit", "drop_per_min": 20, "seconds": 30, "hook": "Rolle 3 ist der Schnitt.",
+                  "hook_type": "label", "verdict": "loses"}]
+        (d / "retention-units.json").write_text(json.dumps({"episode": ep, "measurements": [{"units": units}]}))
+    us = lernstand.units()
+    status = {u["hook_type"]: u["status"] for u in us}
+    assert status["number"] == "lesson: holds" and status["label"] == "lesson: loses" and status["objection"] == "watch"
+    text = lernstand.refresh(cards=False).read_text()
+    models = text.split("**Models")[1].split("**Held well")[0]
+    watch = text.split("**Held well, but only watch")[1].split("**Avoid")[0]
+    assert "Ich habe 0 getestet." in models and "Jetzt denkst du dir" not in models
+    assert "Jetzt denkst du dir" in watch and "watch, do not copy" in text
+    assert "Rolle 3 ist der Schnitt." in text.split("**Avoid")[1].split("**Weak")[0]
+    assert 'Only units with status "lesson" are models to copy' in text
+    assert 'never units marked "watch"' in lernstand.prompt_top()
+    # a review of a script with placeholders does not count
+    brief = studio_data / "episodes" / "002-second" / "brief"
+    before = [f["category"] for f in lernstand.findings()[0]].count("P-S1")
+    (brief / "SCRIPT-v001.md").write_text("Claude took [ZAHL nach Test] minutes.\n---\nnotes\n")
+    after = lernstand.findings()[0]
+    assert [f["category"] for f in after].count("P-S1") == before - 1
+    assert not [f for f in after if f["file"] == "brief/SCRIPT-v001.md"]
+    (brief.parent / "brief" / "CUES-v009.kritik.json").write_text(json.dumps(kritik(sentences=[
+        {"text": "Ich habe [ZAHL nach Test] Clips.", "wert": False, "pruefrage": "P-S6", "grund": "Platzhalter"}])))
+    assert "P-S6" not in [f["category"] for f in lernstand.findings()[0]]
+
+
+def test_the_learning_file_says_when_there_is_no_model_yet(studio_data):
+    text = lernstand.refresh(cards=False).read_text()
+    assert "None yet. No hook type holds in at least 3 episodes." in text

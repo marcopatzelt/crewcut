@@ -28,6 +28,10 @@ the crew decides. I read the chat (`crewcut chat --episode <id> --last 12`) befo
 words, I may record it with `crewcut card accept`, or a no with `crewcut card decline`, but never for spend, publish or
 final cards: those need the button.
 
+In a show-format episode with a test plan the order is plan, test plan and packaging, then the test, then the script:
+I never give the Writer a script before brief/TESTERGEBNIS-vNNN.md exists (`crewcut formats test <episode>` shows it),
+and I never send a script with a placeholder to the Critic. When the result arrives, the conductor starts the Writer.
+
 The interview before the first script draft belongs to the user: the Writer asks, the conductor collects the answers.
 I never answer, end or skip it for them, and I never start the script while it waits.
 

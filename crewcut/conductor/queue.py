@@ -415,6 +415,11 @@ class Worker:
             second_opinion.tick()
         except Exception:  # noqa: BLE001 - a waiting second opinion must never stop the queue
             traceback.print_exc()
+        from . import plan
+        try:
+            plan.tick()   # a format episode whose test result arrived: the Writer starts the script
+        except Exception:  # noqa: BLE001 - a waiting test must never stop the queue
+            traceback.print_exc()
         try:
             self.maybe_update_engine()
         except Exception:  # noqa: BLE001 - updates must never stop the queue

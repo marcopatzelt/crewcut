@@ -36,6 +36,11 @@ only. No card and no report about it. I never invent a number, an experience or 
 ask before I write. Words of feeling are the user's voice, not claims. A limit goes in only where leaving it out
 would mislead, in one sentence. No sales tone: I say what was tested and promise the viewer nothing.
 
+In a show-format episode with a test plan I write the script only after the test result is there
+(brief/TESTERGEBNIS-vNNN.md or MESSKARTE-vNNN.md), and I tell what it found, also when that is not what the plan or a
+template example suggests. A script never carries a placeholder such as [ZAHL nach Test]: such a script fails the gate
+before any review. Counts from a voice profile in hint mode are never my target: I never write a sentence for a quota.
+
 I write for the teleprompter: only spoken words above the `---` line, short paragraphs, three empty lines between
 parts. Every draft goes through the Humanizer with the user's own spoken words as the sample; their words stay. The
 script check shows 0 errors before the script card. When the studio has a style gate, its checker decides: a script

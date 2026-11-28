@@ -48,7 +48,7 @@ paths are relative to the folder of the file that names them, so your templates 
 | `structure` | yes | the ordered units, each with `name` and `purpose` (and `seconds` if you like) |
 | `script_template` | yes | the full-script template the Writer starts from |
 | `cue_template`, `testplan_template` | no | a cue sheet template ([cue sheets](cue-sheets.md)) and a test plan template |
-| `kinds` | no | variants of the format, each `{id, name, when}` |
+| `kinds` | no | variants of the format, each `{id, name, when}`, optionally with its own `structure` and its own `script_template`, `cue_template`, `testplan_template` (a kind's own wins); the episode keeps its kind in `format_kind` |
 | `keywords` | no | words that point to this format in an idea's text (the keyword guess) |
 | `packaging_rules`, `title_formulas`, `thumbnail_formats` | no | for PACKAGING: rules, named title formulas, thumbnail format ids from `crewcut thumbnail formats` |
 | `checker_format` | no | `lang` or `short` for the style checker; default from `length` |
@@ -65,7 +65,8 @@ starts the idea step as before), `include_examples = false` leaves out the neutr
 crewcut formats [list]                     the library (studio formats replace examples with the same id)
 crewcut formats show <id>                  one format as JSON, with the full template paths
 crewcut formats check                      every problem of both files
-crewcut formats choose <episode> <id> [--topic-type T] [--input tool|link|tweet|idea]   the Scout records its pick
+crewcut formats choose <episode> <id> [--kind K] [--topic-type T] [--input tool|link|tweet|idea]   the Scout's pick
+crewcut formats test <episode> [--wait] [--json]   test plan, test result, and whether the script waits (--wait: arm it)
 crewcut formats score [--json]             the scoreboard (below)
 ```
 
@@ -80,21 +81,52 @@ The neutral pack has three generic examples: `tool-test` (long), `claim-check` (
 While the library is not empty, the first job is the Scout's **plan** (step idea, `data.plan`):
 
 1. classify the input (tool, link, tweet, idea), read links, find the real material;
-2. pick the format (or check the given one) and the topic type, record it with `crewcut formats choose` (with Auto a
-   short format turns the episode into an original Short);
-3. write `brief/FORMAT-v001.md` (`format:`, `length:`, `topic_type:`, `input:`, `reason:` in 2 to 4 sentences,
-   `runner_up:`), `brief/BRIEF.md`, `brief/TESTPLAN-v001.md` when the format has a test plan, and
-   `brief/PACKAGING-v001.md` with three title and thumbnail pairs from the format's named formulas.
+2. pick the format (or check the given one), its kind when it has kinds, and the topic type, record it with
+   `crewcut formats choose` (with Auto a short format turns the episode into an original Short). The plan task names
+   the kinds the last episodes of the format used, newest first, so the Scout switches kinds instead of repeating one;
+3. write `brief/FORMAT-v001.md` (`format:`, `kind:`, `length:`, `topic_type:`, `input:`, `reason:` in 2 to 4
+   sentences, `runner_up:`), `brief/BRIEF.md`, `brief/TESTPLAN-v001.md` when the format has a test plan, and
+   `brief/PACKAGING-v001.md` with three title and thumbnail pairs from the format's named formulas. The test plan
+   fixes the cases and the counting before any run and never the result (no "expected break"); a step that only makes
+   sense after a certain result is written as "only if test N shows …". Packaging stays provisional until the test:
+   words that depend on the result are `[ERGEBNIS: …]`, and a title formula with a condition (for example "only after
+   a measured Claude win") is used only when the result meets it.
 
-When the plan ends, the conductor posts the pick and the reason in the chat (the episode head shows it too), marks the
-idea step done and gives the script step to the Writer, who writes `brief/SCRIPT-v001.md` as a full script from the
-template: a long video is a chain of units of about 30 seconds, each built like a Short (hook, retain, reward), numbers
-early, no greeting, recap or goodbye; a Short is the own case with a number in sentence 1, the proof, the punch line,
-no ask. Numbers come only from material and tests that ran; where a test has not run, the script keeps a placeholder
-such as `[ZAHL nach Test]`. Then the [style gate](architecture.md#the-style-gate) runs unchanged on the newest script.
-When it passes and the format has a `cue_template`, the Writer derives the cue sheet (`DREHZETTEL-vNNN.md` in a German
-studio, else `CUES-vNNN.md`), the gate checks it too, and only then comes the script card. After the script card the
-episode goes on with its normal steps; the title step starts from `PACKAGING-v001.md`.
+**Test first, then the script.** Alex Hormozi: "Do stuff, then talk about what you did or what happened." (*$100M
+Leads*, part 4). When the plan ends, the conductor posts the pick and the reason in the chat (the episode head shows it
+too) and marks the idea step done. A format with a test plan (its own or its kind's `testplan_template`, or a
+`brief/TESTPLAN-vNNN.md` in the episode) now waits:
+
+- the script step is `waiting`, and a card asks "Run the test plan now?". Yes: the Scout runs the free tests, counts as
+  the plan fixed it, asks with a spend card before anything costs money, and writes the result file. No: the user drops
+  the result file;
+- the result file is `brief/TESTERGEBNIS-vNNN.md` (also accepted: `MESSKARTE-vNNN.md`, `TEST-RESULT-vNNN.md`): per test
+  the measured value, its source, minutes and cost, what held and what broke, the verdict;
+- as soon as the result file is there and no job of the episode runs, the worker (`conductor/plan.py`, `tick`) gives
+  the script step to the Writer. `crewcut formats test <episode> --wait` arms the same wait for an episode that is
+  already in the script step;
+- a Writer job in the script step is refused while the result is missing (`crewcut job add`), and the Writer's task
+  says to write nothing before it.
+
+A format without a test plan goes to the Writer at once. The Writer writes `brief/SCRIPT-v001.md` as a full script
+from the template (a kind's own template wins), reading the test result first: a long video is a chain of units of
+about 30 seconds, each built like a Short (hook, retain, reward), numbers early, no greeting, recap or goodbye; a Short
+is the own case with a number in sentence 1, the proof, the punch line, no ask. Numbers and results come only from the
+test result and the material. The script tells what the test found: a unit that depends on a result that did not
+happen is left out or takes the alternative the structure names.
+
+**No placeholder reaches a review.** A script or cue sheet whose spoken part (above `---`) has a placeholder
+(`[ZAHL nach Test]`, `[ERGEBNIS: …]`, `[NUMBER after test]`, `[Zahl]`, any bracket that says "after the test") fails
+the [style gate](architecture.md#the-style-gate) at once with the check `PLACEHOLDER`, before the studio's checker and
+before any Critic round; `crewcut job add --identity critic --step script` is refused for it. While the test result is
+missing, the gate holds the script and the conductor waits for the result as above; with the result there, the Writer
+gets a round to fill every placeholder from it. The learning file counts no finding on a script with placeholders.
+
+Then the style gate runs on the newest script. When it passes and the format has a `cue_template`, the Writer derives
+the cue sheet (`DREHZETTEL-vNNN.md` in a German studio, else `CUES-vNNN.md`; the bullets come from the material and the
+test result, not from shortening the full text), the gate checks it too, and only then comes the script card. After
+the script card the episode goes on with its normal steps; the title step starts from `PACKAGING-v001.md`, fills its
+`[ERGEBNIS: …]` from the test result and drops a pair whose formula's condition the result does not meet.
 
 The system prompt of every job in such an episode carries the format block: structure, rules, formulas, template
 paths and, when the studio has it, `brand/references/HORMOZI-NIE-OHNE-CONTENT.md` (where topics come from). With a
@@ -124,6 +156,15 @@ python3 host/ideas-export.py --studio ~/Crewcut --braindump path/to/links --proj
   (default `crewcut`). Topic type: present.
 - An idea that exists is left alone (dedupe by id); `--refresh` rewrites open ones. A started or dismissed idea is never
   rewritten: Crewcut writes the decision back into the file.
+
+Your own week is a source too: `--recent-episodes` makes one card per studio episode whose files changed in the last
+`--days` days (default 7), `--recent-git DIR` one card per own repository with its commit subjects of those days, and
+`--braindump DIR --days 7` only the links saved in that time. Their topic type is recent past: "Look at your calendar
+for the last week" (Hormozi, *$100M Leads*, part 4).
+
+```bash
+python3 host/ideas-export.py --studio ~/Crewcut --recent-episodes --recent-git ~/dev/my-tool --days 7
+```
 
 Run it by hand or from a timer of your own (not part of the repository), for example a systemd user timer that runs the
 command above once a day. In the app, a loader (`crewcut/ideas.py`, every minute and on `GET /api/ideas`) imports the
@@ -159,7 +200,9 @@ Per episode the scoreboard computes:
 - subscribers gained per 1,000 views and the median drop per minute of the units (`analytics/retention-units.json`).
 
 Without window reports the newest `review/results-*.json` (or, for Shorts, their newest row in `studio/shorts.tsv`)
-gives total views against the channel median, marked "total views" because it is unfair to young videos.
+gives total views against the channel median of the same length (Shorts against Shorts, long against long), marked
+"total views" because it is unfair to young videos. Subscribers per 1,000 views are compared within the same length
+too, and the channel line shows long videos and Shorts separately.
 
 Per format: **too little data** under two judged episodes; with two or three a **stop early** when the first two are
 both under 0.5 and both "weak for us", else **watch**; from four on, over the last four: **more of this** at a median

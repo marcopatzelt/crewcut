@@ -442,6 +442,28 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _script_job_allowed(episode: str, identity: str) -> None:
+    """Raise ValueError for script-step work that would run on a guess: a Writer before the test result of a format
+    episode with a test plan, a Critic review of a script that still has placeholders (docs/formats.md)."""
+    from . import showformats, stylegate
+    try:
+        pending = showformats.test_pending(episode)
+    except (FileNotFoundError, ValueError):
+        return
+    if identity == "writer" and pending:
+        raise ValueError(f"{episode}: the script waits for the test result (brief/TESTERGEBNIS-vNNN.md or "
+                         "MESSKARTE-vNNN.md). Run the test plan first; the conductor starts the Writer when the result "
+                         "is there (crewcut formats test <episode>).")
+    if identity == "critic":
+        for p in stylegate.subjects(episode):
+            r = stylegate.placeholder_result(p, stylegate.fmt_of(episode, p))
+            if r:
+                raise ValueError(f"{episode}: {p.name} still has {r['placeholders']} placeholder(s); no Critic "
+                                 "reviews a script before every number is measured. "
+                                 + ("The test result is missing: run the test first." if pending else
+                                    "Fill them from the test result first."))
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] in DELEGATED:
@@ -746,6 +768,8 @@ def _run(a) -> int:
         try:
             if a.step == "edit" and a.identity != "critic" and _env_episode(a):
                 stylegate.guard_advance(_env_episode(a), "edit")   # no cut of a failing script before a recording
+            if a.step == "script" and _env_episode(a):
+                _script_job_allowed(_env_episode(a), a.identity)   # test first, then the script; no review of a guess
             jid = queue.add(_env_episode(a), a.identity, a.step, a.task, heavy=a.heavy, parent=_job())
         except (ValueError, FileNotFoundError) as error:
             print(str(error), file=sys.stderr)

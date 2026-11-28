@@ -29,9 +29,10 @@ A cue sheet (crewcut/cuesheet.py) is read as it will be spoken: the fixed lines 
 Settings (`[style_gate]` in config/crewcut.toml or `script.style_gate` in the style pack): `voice` block (default when
 a profile exists), hint (every finding is a hint) or off; `voice_profile`, the profile's path inside the studio.
 
-Command: `crewcut voice check <file> [--format lang|short] [--json] [--profile FILE]` (the Writer runs it before the
-gate; exit 1 when an error-severity check fails). `crewcut voice reading <file>` checks the reading version of a script
-(crewcut/delivery.py).
+Command: `crewcut voice check <file> [--format lang|short] [--json] [--profile FILE] [--mode block|hint]` (the Writer
+runs it before the gate; it uses the studio's `voice` mode, so in hint mode every count is a hint and the exit is 0;
+in block mode exit 1 when an error-severity check fails). `crewcut voice reading <file>` checks the reading version of
+a script (crewcut/delivery.py).
 """
 
 from __future__ import annotations
@@ -585,6 +586,10 @@ def prompt_lines() -> str:
     p = profile_path()
     if p is None:
         return ""
+    if settings()["voice"] != "block":
+        return (f"Voice profile: {p} (the reference speaker's measured voice). In this studio its counts are hints for "
+                "the Critic, never a target and never a failure: do not add, cut or bend a sentence to hit a number "
+                "(sentence length, short sentences, numbers per minute, 'you' per 100 words).")
     return (f"Voice profile: {p} (the reference speaker's measured voice and the target bands for this channel). "
             "Run `crewcut voice check <script>` before you end a draft: its voice and structure checks are part of "
             "the style gate and every failing line comes back to you.")
@@ -598,6 +603,7 @@ def _parser() -> argparse.ArgumentParser:
     c.add_argument("--format", choices=["lang", "short"])
     c.add_argument("--profile", help="the profile file (default: [style_gate] voice_profile)")
     c.add_argument("--json", action="store_true")
+    c.add_argument("--mode", choices=["block", "hint"], help="default: the studio's [style_gate] voice")
     from . import delivery
     delivery.add_parser(sub)
     return ap
@@ -618,11 +624,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     prof = load_profile(p)
     fmt = a.format or ("short" if re.match(r"(?i)^short", path.name) else "lang")
-    res = checks(path, fmt, prof, "block")
+    mode = a.mode or ("hint" if settings()["voice"] == "hint" else "block")
+    res = checks(path, fmt, prof, mode)
     failed = [x for x in res if x["pass"] is False]
     if a.json:
-        print(json.dumps({"version": 1, "file": str(path), "format": fmt, "profile": str(p), "pass": not failed,
-                          "checks": res}, ensure_ascii=False, indent=1))
+        print(json.dumps({"version": 1, "file": str(path), "format": fmt, "profile": str(p), "mode": mode,
+                          "pass": not failed, "checks": res}, ensure_ascii=False, indent=1))
     else:
         for x in res:
             state = {True: "PASS", False: "FAIL", None: "HINT"}[x["pass"]]
@@ -630,7 +637,8 @@ def main(argv: list[str] | None = None) -> int:
             for pt in (x.get("points") or [])[:6] if x["pass"] is not True else []:
                 print(f"        {pt.get('wo') or ''} \"{pt['text'][:110]}\" : {pt['why']}"
                       + (f"\n          -> {pt['rewrite']}" if pt.get("rewrite") else ""))
-        print(f"{len(failed)} failed.")
+        print(f"{len(failed)} failed." + (" Mode hint: every count is a hint for the Critic, never a target."
+                                          if mode == "hint" else ""))
     return 1 if failed else 0
 
 

@@ -76,6 +76,12 @@ def start_step(episode: str, step: str, seed: str = "") -> int | None:
             stylegate.guard_advance(episode, step)
         except stylegate.Blocked as e:
             return _held(episode, step, e.verdict)
+    if step == "script":
+        from .. import showformats
+        if showformats.test_pending(episode):   # test first, then the script (conductor/plan.py)
+            from . import plan
+            plan.wait_for_test(episode)
+            return None
     episodes.set_step(episode, step, "working")
     if step == "record":
         return start_record(episode)
@@ -229,6 +235,9 @@ def on_card_decided(card: dict) -> None:
         return
     from .. import graphicsgate
     if graphicsgate.on_card(card):   # the graphics check stopped a render; a yes sends the fixes to the Editor
+        return
+    from . import plan
+    if plan.on_card(card):   # run the test plan of a format episode now, before the script
         return
     tl = (card.get("data") or {}).get("time_limit")
     if tl:   # a run hit the time limit twice

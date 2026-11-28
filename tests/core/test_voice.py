@@ -361,3 +361,22 @@ def test_the_cli_delegates(profile, tmp_path, monkeypatch):
     p = write(tmp_path, "SCRIPT-v001.md", GOOD)
     monkeypatch.setattr(sys, "argv", ["crewcut"])
     assert cli.main(["voice", "check", str(p)]) == 0
+
+
+def test_in_hint_mode_the_command_and_the_writer_never_aim_at_a_count(tmp_path, profile, studio, capsys):
+    """Abnahme Hormozi round 2, S1: with voice = "hint" no count blocks and the Writer is not told to hit one."""
+    from crewcut.conductor import prompts
+    (studio / "config" / "crewcut.toml").write_text('[style_gate]\nvoice = "hint"\n'
+                                                     'voice_profile = "brand/voice/profile.json"\n')
+    bad = write(tmp_path, "SCRIPT-v001.md", BAD)
+    assert voicecheck.main(["check", str(bad)]) == 0
+    out = capsys.readouterr().out
+    assert "HINT  VOICE:fillers_per_100" in out and "FAIL" not in out and "never a target" in out
+    assert voicecheck.main(["check", str(bad), "--mode", "block"]) == 1
+    capsys.readouterr()
+    line = voicecheck.prompt_lines()
+    assert "never a target" in line and "Run `crewcut voice check" not in line
+    block = prompts.voice_block()
+    assert "never targets" in block and "Write inside the bands" not in block
+    assert "Never add, cut or bend a sentence" in block
+    assert "never a target" in stylegate.writer_note(None) or "crewcut voice check" not in stylegate.writer_note(None)

@@ -27,7 +27,7 @@ inside the studio.
 
 | Key | Default | Meaning |
 |---|---|---|
-| `voice` | `block` | `block`: a failing check of severity "error" fails the gate; `hint`: every finding is a hint; `off` |
+| `voice` | `block` | `block`: a failing check of severity "error" fails the gate; `hint`: every finding is a hint for the Critic, and the Writer is told the counts are never a target (no sentence is added, cut or bent to hit a number); `off` |
 | `voice_profile` | none | the profile (below); without it there are no voice and structure checks |
 | `reference_moves` | none | the folder with the reference moves (`hook.md`, `intro.md`, …) |
 | `learning_file` | `library/learnings/script-learning.md` | the learning file |
@@ -103,9 +103,13 @@ unchanged point works on them too.
   sentence has at most 8 words; `no-ask`.
 
 A cue sheet ([cue-sheets.md](cue-sheets.md)) is read as it will be spoken: the fixed lines are the sentences, every
-bullet takes `bullet_seconds` and its numbers count. `crewcut voice check <file> [--format lang|short] [--json]`
-runs the same checks for the Writer (exit 1 when one fails). A broken profile never stops the gate: it becomes one
-hint.
+bullet takes `bullet_seconds` and its numbers count. `crewcut voice check <file> [--format lang|short] [--json] [--mode block|hint]`
+runs the same checks in the studio's mode (in block mode exit 1 when one fails; in hint mode every count is a hint and
+the exit is 0). A broken profile never stops the gate: it becomes one hint.
+
+Hint mode is for a studio that takes the reference speaker's own rule: counts are hints, never a goal. Alex Hormozi
+asks for "value per second, not seconds of value"; a sentence written for a quota adds words without value. In hint
+mode the structure checks above are hints too; a studio's own checker keeps its hard structure checks.
 
 ## 4. What the Writer is told
 
@@ -128,7 +132,11 @@ units after every run (`crewcut retention units`).
    say no). Top 10 by count, each with an example and the best fix: the newest "done" note of a later review, else the
    Critic's rewrite.
 2. **Best and worst units**: from every episode's newest `analytics/retention-units.json`, units of at least 15 s,
-   ranked by drop per minute against the median unit of the same video, with the hook sentence.
+   ranked by drop per minute against the median unit of the same video, with the hook sentence and the status of its
+   hook group: "lesson: holds" when that hook type holds in at least 3 episodes and loses in at most one ("lesson:
+   loses" the other way round), else "watch". Only "lesson: holds" units are listed as models to copy; units that held
+   but are only "watch" stand in their own list, "watch, do not copy". Findings on a script that still has
+   placeholders are not counted (they come from gaps, not from mistakes).
 3. **Gold candidates**: when the gate passes, every passing script is copied into `gold_dir` as
    `CANDIDATE-NNN-<episode>-<file>` (German studios `KANDIDAT-…`) with its Critic answers and a score file
    (`100 / (1 + hints left)`); the same content is never copied twice.
