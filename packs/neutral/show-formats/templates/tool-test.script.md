@@ -1,8 +1,8 @@
 # Full script: Tool test (template)
 
 How to use this template: copy the frame below into brief/SCRIPT-vNNN.md and replace every <…> with the episode's
-material. Each unit is about 30 seconds and works on its own like a Short: a hook that opens a question, the part
-that keeps the viewer (retain), and a reward that closes it. Numbers come early. Write it after the test ran, from
+material. Each unit is about 30 seconds and is built like a Short: a hook that opens a question, the part that keeps
+the viewer (retain), and a reward that closes it (whether it also works alone as a Short is only a hint). Numbers come early. Write it after the test ran, from
 brief/TEST-RESULT-vNNN.md: a script with a placeholder such as [NUMBER after test] fails the style gate before any
 review; never invent a number. Tell what the test found, also when the tool held. No greeting, no recap, no goodbye.
 

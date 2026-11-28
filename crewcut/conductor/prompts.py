@@ -497,8 +497,8 @@ def format_script_task(episode: str) -> str:
         + test +
         f"Write brief/SCRIPT-v001.md as the real spoken text, every sentence, not a form or an outline. {shape}\n"
         "Numbers only from the material and tests that ran. A script never carries a placeholder: a script with "
-        "[ZAHL …], [ERGEBNIS …] or [NUMBER …] fails the style gate before any Critic round. Where a number is not "
-        "measured, the sentence goes, or it says plainly what was not measured. Never invent a number.\n"
+        "[ZAHL …], [ERGEBNIS …], [NUMBER …] or any other gap of the template left in brackets fails the style gate "
+        "before any Critic round. Where a number is not measured, the sentence goes. Never invent a number.\n"
         + (voice_block(short) + f"Write brief/{companion_name('SCRIPT-v001.md')} with the draft.\n"
            if voice_block(short) else "") + end)
 

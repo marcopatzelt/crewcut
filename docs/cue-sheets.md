@@ -2,7 +2,8 @@
 
 A cue sheet is a script that does not make the speaker read. It fixes the opening, and per unit the first line (the
 hook) and the last line (the punch line); everything between them is bullets the speaker says in their own words. A
-long video is a chain of units, and each unit is built to stand alone, so it can also be cut as a Short.
+long video is a chain of units, and each unit is built like a Short (hook, retain, reward); whether it also works alone
+as a Short is only a hint, and `Short: yes` marks the units that do.
 
 Crewcut reads cue sheets in the teleprompter (pages instead of running text), in the style gate (the plan before the
 recording, and what was said after it) and on script cards. The parser is `crewcut/cuesheet.py`.

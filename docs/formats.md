@@ -119,10 +119,15 @@ test result and the material. The script tells what the test found: a unit that 
 happen is left out or takes the alternative the structure names.
 
 **No placeholder reaches a review.** A script or cue sheet whose spoken part (above `---`) has a placeholder
-(`[ZAHL nach Test]`, `[ERGEBNIS: …]`, `[NUMBER after test]`, `[Zahl]`, any bracket that says "after the test", and a
-template slot left behind such as `[Betrag]`, `[Pointe …]`, `[… mit Zahl]` or `<…>`) fails
+(`[ZAHL nach Test]`, `[ERGEBNIS: …]`, `[NUMBER after test]`, `[Zahl]`, any bracket that says "after the test" or "as
+measured", and a template slot left behind such as `[Betrag]`, `[Pointe …]`, `[… mit Zahl]` or `<…>`) fails
 the [style gate](architecture.md#the-style-gate) at once with the check `PLACEHOLDER`, before the studio's checker and
-before any Critic round; `crewcut job add --identity critic --step script` is refused for it. While the test result is
+before any Critic round. A word list never catches up with the templates, so every bracket in a script whose text is a
+gap of one of the library's script or cue templates counts too (`showformats.template_slots`: a template with
+`[Bezahl-Tool]` or `[dem schweren Fall]` makes the same bracket in a script a placeholder; case, spacing and closing
+punctuation do not count). Not gaps: a picture or stage cue (`[Bild: …]`, `[Szene 3: …]`, `[Gesicht]`), the first
+bracket of a cue-sheet bullet (`• Beleg: [Messkarte] …` names what is on screen), a citation marker (`[3]`) and
+anything below `---`; `crewcut job add --identity critic --step script` is refused for it. While the test result is
 missing, the gate holds the script and the conductor waits for the result as above; with the result there, the Writer
 gets a round to fill every placeholder from it. The learning file counts no finding on a script with placeholders.
 
