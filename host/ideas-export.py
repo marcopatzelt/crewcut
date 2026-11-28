@@ -10,7 +10,9 @@ only; it reads the sources and never changes them.
 
 Sources:
 - `--scout FILE`: a ranking `{"date", "ranked": [{"key", "kind", "name", "url", "desc", "topics", "sources", "sig",
-  "score", "total", "excluded", "flags", "claim"}]}`. The best `--top` entries that are not excluded.
+  "score", "total", "excluded", "flags", "claim", "format"?}]}`. The best `--top` entries that are not excluded. The
+  audience score (`score.audience` or `score.masse`, with its group) goes into the signals; the show format comes
+  from the entry's `format` or from `--format` (the library format the whole ranking is for).
 - `--braindump DIR`: saved links, one folder per link with `eintrag.json` and its result `ergebnis` (`titel`, `was`,
   `warum`, `projekte: [{"id", "idee", "wo"}]`, `tags`, `prioritaet`). Only links whose projects contain `--project`.
 
@@ -53,7 +55,7 @@ def iso(ts) -> str | None:
         return None
 
 
-def from_scout(path: Path, top: int, min_total: float | None) -> list[dict]:
+def from_scout(path: Path, top: int, min_total: float | None, fmt: str | None = None) -> list[dict]:
     data = json.loads(path.read_text(encoding="utf-8"))
     ranked = data.get("ranked") if isinstance(data, dict) else None
     if not isinstance(ranked, list):
@@ -67,8 +69,11 @@ def from_scout(path: Path, top: int, min_total: float | None) -> list[dict]:
         if min_total is not None and (not isinstance(total, (int, float)) or total < min_total):
             continue
         sig = r.get("sig") if isinstance(r.get("sig"), dict) else {}
+        score = r.get("score") if isinstance(r.get("score"), dict) else {}
+        audience = score.get("audience", score.get("masse"))
         signals = {k: v for k, v in {
             "total": total, "score": r.get("score"), "kind": r.get("kind"), "sources": r.get("sources"),
+            "audience": audience, "audience_group": r.get("audience_group") or r.get("gruppe"),
             "stars": sig.get("stars"), "velocity_day": sig.get("velocity_day"), "created": sig.get("created"),
             "gap": (sig.get("gap") or {}).get("gap") if isinstance(sig.get("gap"), dict) else None,
             "youtube": [{k: y.get(k) for k in ("title", "channel", "views", "x_median")} for y in sig.get("yt") or []
@@ -76,11 +81,16 @@ def from_scout(path: Path, top: int, min_total: float | None) -> list[dict]:
             "flags": r.get("flags") or None, "group": r.get("gruppe"), "send_by": r.get("send_by"),
             "claim": r.get("claim"), "claim_source": r.get("claim_src"), "file": path.name,
         }.items() if v not in (None, [], {}, "")}
-        out.append({"id": "scout-" + slug(str(r.get("key") or r.get("url"))), "source": "scout",
-                    "url": r.get("url"), "title": str(r.get("name") or r.get("key")),
-                    "summary": str(r.get("desc") or r.get("claim") or "")[:1500],
-                    "signals": signals, "topic_type": "trending",
-                    "created": (r.get("first_seen") or date or None)})
+        idea = {"id": "scout-" + slug(str(r.get("key") or r.get("url"))), "source": "scout",
+                "url": r.get("url"), "title": str(r.get("name") or r.get("key")),
+                "summary": str(r.get("desc") or r.get("claim") or "")[:1500],
+                "signals": signals, "topic_type": "trending",
+                "created": (r.get("first_seen") or date or None)}
+        f = r.get("format") or fmt
+        if f:
+            idea.update(suggested_format=str(f), reason=r.get("format_reason") or
+                        (f"The scout ranks candidates for the format {f}." if not r.get("format") else None))
+        out.append(idea)
         if len(out) >= top:
             break
     return out
@@ -169,6 +179,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--scout", type=Path, action="append", default=[], help="a scout ranking JSON (repeatable)")
     ap.add_argument("--top", type=int, default=12, help="best scout entries per file (default 12)")
     ap.add_argument("--min-total", type=float, help="only scout entries with at least this total score")
+    ap.add_argument("--format", help="the show format (library id) the scout rankings are for")
     ap.add_argument("--braindump", type=Path, help="the folder of saved links (<id>/eintrag.json)")
     ap.add_argument("--project", action="append", default=[], help="project id a link must name (default crewcut)")
     ap.add_argument("--refresh", action="store_true", help="rewrite open ideas that exist")
@@ -184,7 +195,7 @@ def main(argv: list[str] | None = None) -> int:
         if a.braindump:   # first: a saved link carries the richer summary when the scout found the same link
             ideas += from_braindump(a.braindump, a.project or ["crewcut"])
         for s in a.scout:
-            ideas += from_scout(s, a.top, a.min_total)
+            ideas += from_scout(s, a.top, a.min_total, a.format)
     except (OSError, ValueError) as e:
         print(f"ideas-export: {e}", file=sys.stderr)
         return 1

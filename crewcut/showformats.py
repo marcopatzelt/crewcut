@@ -43,6 +43,7 @@ CHECKER_FORMATS = ("lang", "short")
 GATE_ON = ("script", "cues")   # what the style gate checks first: the full script, or (a studio whose checker takes
                                # only cue sheets for long videos) the cue sheet derived from it in the same run
 INPUT_KINDS = ("tool", "link", "tweet", "idea")
+TRAFFIC_TYPES = ("browse", "search")   # how viewers find the format: home page and feed, or search (judged at 28 days)
 ID = re.compile(r"^[a-z0-9][a-z0-9-]{1,60}$")
 TEMPLATE_KEYS = ("script_template", "cue_template", "testplan_template")
 STUDIO_REFERENCE = "references/HORMOZI-NIE-OHNE-CONTENT.md"   # read when a studio has it (where ideas come from)
@@ -105,6 +106,17 @@ def problems_of(f: Any, folder: Path | None = None) -> list[str]:
     for key in ("packaging_rules", "title_formulas", "thumbnail_formats", "keywords"):
         if key in f and not (_str_list(f[key]) or f[key] == []):
             out.append(f"{name}: {key} must be a list of texts")
+    if "title_patterns" in f:
+        if not (_str_list(f["title_patterns"]) or f["title_patterns"] == []):
+            out.append(f"{name}: title_patterns must be a list of regular expressions")
+        else:
+            for pat in f["title_patterns"]:
+                try:
+                    re.compile(pat)
+                except re.error as e:
+                    out.append(f"{name}: title pattern {pat!r} is not a valid regular expression ({e})")
+    if f.get("traffic_type") is not None and f["traffic_type"] not in TRAFFIC_TYPES:
+        out.append(f"{name}: traffic_type must be browse or search")
     if f.get("checker_format") is not None and f["checker_format"] not in CHECKER_FORMATS:
         out.append(f"{name}: checker_format must be lang or short")
     if f.get("gate_on") is not None and f["gate_on"] not in GATE_ON:

@@ -54,6 +54,8 @@ paths are relative to the folder of the file that names them, so your templates 
 | `checker_format` | no | `lang` or `short` for the style checker; default from `length` |
 | `gate_on` | no | `script` (default): the gate checks the full script, then the cue sheet is derived; `cues`: the Writer writes the full script and derives the cue sheet in the same run, and the gate checks the cue sheet (for a studio checker that takes only cue sheets for long videos) |
 | `cadence`, `strong` | no | how often (e.g. `weekly`), and the evidence line |
+| `title_patterns` | no | regular expressions that mark a title as this format, for the Scout's format test (`idea.py formats --library-patterns`) |
+| `traffic_type` | no | `browse` (home page and feed, the default) or `search`: the scoreboard judges a search format on its first 28 days |
 
 A broken format is left out and named with a clear reason (`crewcut formats check`, also `problems` in
 `GET /api/formats`). `[formats]` in `config/crewcut.toml`: `enabled = false` switches the system off (New Episode then
@@ -134,19 +136,45 @@ a job. `crewcut ideas [list|load]` does the same on the command line.
 ## Scoreboard
 
 `crewcut formats score`, `GET /api/scoreboard` and the table "Formats" on the home group episodes by `show_format`
-(else `form`) and read only measured numbers:
+(else `form`) and read only measured numbers. The fair numbers are a video's **first days**, never today's total
+(skills/idea/references/method.md, section 10):
 
-- the newest `review/results-*.json` of each episode (`crewcut youtube results`): views, average view percentage,
-  subscribers gained per 1,000 views;
-- for Shorts without such a file, their newest row in `studio/shorts.tsv` (column `form`);
-- the median drop per minute of the units in `analytics/retention-units.json`, when it exists;
-- click-through rate is not in the YouTube Analytics API: it shows as missing unless the episode has
-  `analytics/ctr.json` (`{"ctr": 0.051, "impressions": 12000}`, copied from YouTube Studio).
+```bash
+crewcut youtube results <episode> --first 7     # the first 7 days from the publication day (export/upload-result.json)
+crewcut youtube results <episode> --first 28    # the same for 28 days; --start gives the day for older videos
+```
 
-Per format: episodes, measured episodes, median views, median view percentage, subscribers per 1,000 views, and a hint:
-**more of this** when at least two episodes are measured and the format beats the channel median on two of the three
-metrics; **too little data** below two measured episodes; else **watch**. Every crew job gets one line per measured
-format in its channel brief, so the Scout and the Writer see which formats win. It is a hint, never a rule.
+Each report keeps its `window` and, when YouTube answers, the share of views from search and from browse features.
+Per episode the scoreboard computes:
+
+- `x_7d` and `x_28d`: views in those days against the median of the same days of the channel's last 10 videos of the
+  same length (long or Short) before it;
+- `ctr_rel` and `avp_rel`: click-through rate and average view percentage against the same videos. Click-through rate
+  is not in the YouTube Analytics API: it shows as missing unless the episode has `analytics/ctr.json`
+  (`{"ctr": 0.051, "impressions": 12000}`, copied from YouTube Studio);
+- the diagnosis from the two (format carries; packaging carries, script or opening weak; content carries, packaging
+  weak; weak for us);
+- the traffic type: from the report's shares, else `traffic_type` in project.json or the format library, else browse.
+  Search formats are judged on `x_28d`, browse formats on `x_7d`;
+- subscribers gained per 1,000 views and the median drop per minute of the units (`analytics/retention-units.json`).
+
+Without window reports the newest `review/results-*.json` (or, for Shorts, their newest row in `studio/shorts.tsv`)
+gives total views against the channel median, marked "total views" because it is unfair to young videos.
+
+Per format: **too little data** under two judged episodes; with two or three a **stop early** when the first two are
+both under 0.5 and both "weak for us", else **watch**; from four on, over the last four: **more of this** at a median
+of at least 1.2 (1.0 for a format that already runs) or with more subscribers per 1,000 views than the channel,
+**drop** under 0.8 without that, else **change** after the diagnosis and measure two more. A comparison that mixes
+videos from before and after November 2026 is marked (public views include co-views since then). Every crew job gets
+one line per measured format in its channel brief, so the Scout and the Writer see which formats win. It is a hint,
+never a rule.
+
+## Idea cards from the Scout
+
+The Scout writes idea cards itself: `python3 skills/idea/scripts/idea.py rank review/idea-*.json --cards` puts the
+best checked ideas into `inbox/ideas/`, each with its grade, evidence level, audience score and the matching format
+from the library (`suggested_format`; the card says so when no format fits yet). The host exporter takes `--format
+<id>` for a scout ranking made for one format and carries an entry's own `format` and its audience score.
 
 ## Limits
 

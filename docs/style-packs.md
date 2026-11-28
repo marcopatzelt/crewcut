@@ -200,7 +200,32 @@ A key under `checks` sets how strict one style check is: `"error"` (blocks the c
 | `outlier_per_sub` | 1.0 | views per subscriber that make an outlier |
 | `small_channel_subs` | [1000, 100000] | subscriber range of a small channel |
 | `breakthrough_per_sub` | 3.0 | views per subscriber that make a small channel's breakthrough |
-| `gap_thin_views` | 30000 | in the user's market, a best video under this leaves a thin gap |
+| `strong_x_median`, `very_strong_x_median` | 3.0, 10.0 | the tiers above a candidate (new 28 Nov 2026) |
+| `per_sub_max_days` | 90 | views per subscriber only for videos up to this age |
+| `min_views_market`, `min_views_other` | 10000, 3000 | views floor of an outlier in the market language and in other languages |
+| `well_proven_views` | 50000 | "well proven" in the market language |
+| `baseline_before`, `baseline_after`, `baseline_months`, `baseline_min_uploads` | 15, 15, 6, 10 | the window around a video that gives its channel's normal views |
+| `baseline_min_median`, `mature_days` | 500, 28 | a usable baseline's median; a baseline upload and a final x median need this age |
+| `collect_months`, `decay_window_days` | 12, 56 | months of uploads per channel for the format test; the windows of the decay check |
+| `gap_thin_views` | 30000 | in the user's market, a best video over this leaves no thin gap |
+| `gap_thin_x_market` | 2.0 | ... nor one over this many times the median of the largest channel on the topic in the user's language |
+| `imports_penalty_views` | 100000 | an import in the user's search above this takes a grade off (unless the test subject is local) |
+| `coview_from` | `"2026-11-01"` | from this day public views include co-views; comparisons across it are marked |
+| `search_source` | `"api"` | `"ytdlp"` is the user's opt-in: searches through yt-dlp (no API units), reads through the API |
+| `audience` | not set | the audience score (method section 7): `{"groups": {name: [words]}, "core", "open", "zero", "narrow", "insider"}`; words are regular expressions matched as whole words |
+
+An audience block for a channel that speaks to people who build, make content or want more out of a tool, not to
+companies, could look like this:
+
+```json
+"audience": {
+  "groups": {"Builder": ["build\\w*", "apps?", "websites?", "no.?code"],
+             "Creator": ["youtube", "shorts", "thumbnails?", "videos?", "content"],
+             "Power user": ["tips", "tricks?", "workflows?", "features?", "free"]},
+  "core": ["<the tool or niche word>"], "open": ["anyone", "beginners?", "free", "without (?:coding|code)"],
+  "zero": ["enterprise\\w*", "b2b", "compliance", "your clients", "accounting"],
+  "narrow": ["compilers?", "kernels?"], "insider": ["sdk", "cli"]}
+```
 
 `title`:
 

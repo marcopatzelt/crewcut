@@ -53,3 +53,24 @@ def test_invalid_request_stops_before_query(published, start, end, video):
     episode, root = published
     with pytest.raises(ValueError):
         results(episode, start, end, video, query=lambda params: pytest.fail("Must not query"))
+
+
+def test_first_days_window_from_the_upload_record_and_traffic_shares(published):
+    episode, root = published
+    (root / "export/upload-result.json").write_text(json.dumps({"video_id": "example1234", "at": "2026-11-02T10:00:00Z"}))
+    calls = []
+    def query(parameters):
+        calls.append(parameters)
+        if parameters.get("dimensions") == "insightTrafficSourceType":
+            return {"rows": [["YT_SEARCH", 70], ["SUBSCRIBER", 20], ["RELATED_VIDEO", 10]]}
+        return {"columnHeaders": [{"name": "views"}], "rows": [[100]]}
+    report = results(episode, None, None, query=query, first_days=7)
+    assert report["period"] == {"start": "2026-11-02", "end": "2026-11-08", "granularity": "calendar_days"}
+    assert report["window"] == {"first_days": 7, "published": "2026-11-02"}
+    assert report["traffic"] == {"search": 0.7, "browse": 0.2, "other": 0.1, "type": "search"}
+    assert (root / "review/results-2026-11-02-2026-11-08.json").is_file()
+    with pytest.raises(ValueError):
+        results(episode, None, None, query=query, first_days=5)
+    (root / "export/upload-result.json").write_text(json.dumps({"video_id": "example1234"}))
+    with pytest.raises(ValueError, match="publication day"):
+        results(episode, None, None, query=query, first_days=28)
