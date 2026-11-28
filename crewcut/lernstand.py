@@ -180,8 +180,11 @@ def findings(root: Path | None = None, ignore: list[str] | None = None) -> tuple
                 if isinstance(pt, dict) and pt.get("text"):
                     kind = ("second opinion: wrong or misleading" if WRONG.search(str(pt.get("why") or ""))
                             else "second opinion: unclear or not needed")
+                    cat = _category(pt, kind)
+                    if cat in ignore or kind in ignore:
+                        continue
                     out.append({"episode": ep.name, "file": f"brief/{stem}.md", "mtime": p.stat().st_mtime,
-                                "source": "second opinion", "category": _category(pt, kind),
+                                "source": "second opinion", "category": cat,
                                 "text": pt["text"], "why": pt.get("why") or "", "fix": pt.get("rewrite")})
         review = ep / "review"
         for p in sorted(review.glob("critic-*.md")) if review.is_dir() else []:
