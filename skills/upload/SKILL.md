@@ -58,7 +58,9 @@ measures it after 48 hours. Before this step: the final cut is approved (`skills
 3. Upload: `crewcut youtube upload --episode <id> [--schedule <ISO time>]`. Not connected yet (`crewcut youtube
    status`): `crewcut youtube connect --episode <id>`. It posts one card; on the user's yes Claude in Chrome sets up the
    API on their computer and the chat gets the sign-in link. Uploads always go through the API, never the browser. Then `crewcut youtube status` and tell the
-   user the link in one message.
+   user the link in one message. A video goes up once: when the command answers `"status": "exists"` (the episode is
+   on YouTube already) post that link; exit 5 means another upload of the episode runs (it reports the link); exit 6
+   means YouTube could not be asked. Never try again in any of these cases, never remove the record to get past it.
 4. **Where YouTube has no API**, build everything and send the user to the right page with one sentence of what to
    click: the A/B test ("Test & compare": upload the variants under "A/B Testing" on the video's details page in
    YouTube Studio), the end screen (the video's editor in Studio). The agent never clicks there.

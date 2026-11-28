@@ -1,4 +1,7 @@
-"""`crewcut youtube connect | auth | upload | comment | status | verify | results | retention`."""
+"""`crewcut youtube connect | auth | upload | comment | status | verify | results | retention`.
+
+`upload` exits 0 when the video is up (also when it was up already: "status": "exists"), 3 without an accepted card,
+5 while another upload of the episode runs, 6 when YouTube cannot be asked whether the video is there already."""
 
 from __future__ import annotations
 
@@ -102,9 +105,16 @@ def main(a) -> int:
             if job.isdigit():
                 queue.set_doing(int(job), f"Uploading to YouTube, {p * 100:.0f} %", p)
 
+        from . import guard
         try:
             res = upload.upload(episode, a.package or "export/upload.json", publish_at=a.schedule, dry_run=a.dry_run,
-                                progress=progress)
+                                progress=progress, new_video=getattr(a, "new_video", False))
+        except guard.Busy as e:
+            print(str(e))
+            return 5
+        except guard.CheckFailed as e:
+            print(str(e))
+            return 6
         except PermissionError as e:
             print(str(e))
             return 3
@@ -114,6 +124,8 @@ def main(a) -> int:
         except ValueError as e:
             print(str(e))
             return 1
+        if res.get("status") == "exists":
+            print(res["message"])
         print(json.dumps(res, indent=1, ensure_ascii=False))
         return 0
     return 2

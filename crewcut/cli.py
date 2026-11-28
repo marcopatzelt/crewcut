@@ -316,11 +316,14 @@ def build_parser() -> argparse.ArgumentParser:
     yc.add_argument("--episode")
     yc.add_argument("--state", action="store_true", help="what is there: helper, Claude Code and Chrome on the computer")
     ysub.add_parser("auth")
-    yu = ysub.add_parser("upload")
+    yu = ysub.add_parser("upload", help="upload the approved package once (never a second copy of the episode)")
     yu.add_argument("--episode")
     yu.add_argument("--package", help="upload package JSON, default export/upload.json")
     yu.add_argument("--schedule", help="ISO time to publish; without it the video stays private")
     yu.add_argument("--dry-run", action="store_true")
+    yu.add_argument("--new-video", action="store_true",
+                    help="only at the terminal: a second video of this episode next to the one on YouTube (another "
+                         "video file; the same file never goes up twice)")
     ycm = ysub.add_parser("comment", help="post the Short's approved link comment once YouTube has processed it "
                           "(never twice; pinning has no API)")
     ycm.add_argument("episode")

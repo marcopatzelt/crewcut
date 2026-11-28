@@ -74,6 +74,30 @@ current `export/upload.json`: you approve exactly what goes out. Put `publish_at
 before asking for approval. `--schedule` may repeat that exact value, but cannot override it after approval.
 Without a schedule, visibility follows the approved package's `privacy` field, defaulting to **private**.
 
+## A video goes up once
+
+On 24.11.2026 two Shorts went up twice: each had two accepted publish cards, each yes queued a Publisher job, and a
+second upload of the same package ran at the same time as the first. `crewcut youtube upload` now checks three things
+before anything goes up (`crewcut/youtube/guard.py`):
+
+1. **One upload per episode at a time.** A lock in the SQLite file (`upload_locks`) lets one upload of an episode run,
+   across processes and restarts. A second one stops at once (exit 5: "Another upload … is running"). A lock whose
+   holder stopped is free again: no sign of life for `youtube.upload_lock_stale_minutes` (default 30; the upload
+   reports after every 8 MB), or its process on this machine is gone (after two minutes).
+2. **The episode's record.** Every video Crewcut uploaded or found is in the `uploads` table (video id per episode and
+   video version, the sha256 of the file); the id in `export/upload-result.json` counts too. If YouTube still has a
+   recorded video, nothing goes up: the command reports the existing link with `"status": "exists"` (exit 0). A
+   recorded video that was deleted on YouTube no longer blocks.
+3. **YouTube itself.** Every upload carries a marker tag `crewcut-<episode>-<version>` (25 characters; tags are not
+   shown to viewers, `crewcut youtube verify` ignores it, and the package check keeps room for it). Before an upload
+   Crewcut reads the channel's 100 newest uploads: a video with this episode's marker, or one from before the marker
+   with exactly the same title, is recorded and reported instead of uploading again.
+
+When YouTube cannot be asked, nothing goes up (exit 6). A yes on a second publish card for an episode that is up
+already, or whose upload is queued or running, starts no job; the chat says why. A second video of an episode next to
+the first one (another video file) is for the person at the terminal only: `crewcut youtube upload --new-video`. The
+same file never goes up twice.
+
 ## Video results
 
 `crewcut youtube results <episode> --start YYYY-MM-DD --end YYYY-MM-DD [--video ID]` reads views, watch time,

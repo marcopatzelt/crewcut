@@ -75,6 +75,20 @@ CREATE TABLE IF NOT EXISTS ideas (
   episode TEXT, created TEXT, imported TEXT NOT NULL, decided_at TEXT, file TEXT
 );
 CREATE INDEX IF NOT EXISTS ideas_status ON ideas(status);
+CREATE TABLE IF NOT EXISTS uploads (            -- every YouTube video of an episode (crewcut/youtube/guard.py)
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  episode TEXT NOT NULL, video_id TEXT NOT NULL,
+  version TEXT, marker TEXT,                    -- version: sha256 of the video file; marker: the tag on YouTube
+  package TEXT, card INTEGER, job INTEGER,
+  source TEXT NOT NULL,                         -- upload | youtube | result-file
+  status TEXT NOT NULL DEFAULT 'up',            -- up | gone
+  at TEXT NOT NULL, checked TEXT,
+  UNIQUE (episode, video_id)
+);
+CREATE TABLE IF NOT EXISTS upload_locks (       -- one upload of an episode at a time
+  episode TEXT PRIMARY KEY, token TEXT NOT NULL, job INTEGER, pid INTEGER, host TEXT, pid_start TEXT,
+  since TEXT NOT NULL, beat REAL NOT NULL, what TEXT
+);
 """
 
 _ready: set[str] = set()
