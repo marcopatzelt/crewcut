@@ -28,7 +28,7 @@ paths are relative to the folder of the file that names them, so your templates 
    "keywords": ["tool", "app", "free", "paid"],
    "topic_types": ["manufactured", "trending"],
    "structure": [{"name": "Opening", "purpose": "The result first …", "seconds": 30},
-                 {"name": "Unit 1", "purpose": "Hook, proof, punch line; stands alone as a Short.", "seconds": 30}],
+                 {"name": "Unit 1", "purpose": "Hook, proof, punch line.", "seconds": 30}],
    "script_template": "templates/tool-test.script.md",
    "cue_template": "templates/tool-test.cues.md",
    "testplan_template": "templates/tool-test.testplan.md",
@@ -57,7 +57,9 @@ paths are relative to the folder of the file that names them, so your templates 
 | `title_patterns` | no | regular expressions that mark a title as this format, for the Scout's format test (`idea.py formats --library-patterns`) |
 | `traffic_type` | no | `browse` (home page and feed, the default) or `search`: the scoreboard judges a search format on its first 28 days |
 
-A broken format is left out and named with a clear reason (`crewcut formats check`, also `problems` in
+A format whose script or cue template waits for a test (a `[ZAHL nach Test]`, `[ERGEBNIS: …]` or `[NUMBER after
+test]` slot above `---`) needs a `testplan_template` (its own or, for a kind, its kind's), so the test runs before the
+script. A broken format is left out and named with a clear reason (`crewcut formats check`, also `problems` in
 `GET /api/formats`). `[formats]` in `config/crewcut.toml`: `enabled = false` switches the system off (New Episode then
 starts the idea step as before), `include_examples = false` leaves out the neutral examples.
 
@@ -110,13 +112,15 @@ too) and marks the idea step done. A format with a test plan (its own or its kin
 
 A format without a test plan goes to the Writer at once. The Writer writes `brief/SCRIPT-v001.md` as a full script
 from the template (a kind's own template wins), reading the test result first: a long video is a chain of units of
-about 30 seconds, each built like a Short (hook, retain, reward), numbers early, no greeting, recap or goodbye; a Short
+about 30 seconds, each built like a Short (hook, retain, reward; whether it also works alone as a Short is only a
+hint), numbers early, no greeting, recap or goodbye; a Short
 is the own case with a number in sentence 1, the proof, the punch line, no ask. Numbers and results come only from the
 test result and the material. The script tells what the test found: a unit that depends on a result that did not
 happen is left out or takes the alternative the structure names.
 
 **No placeholder reaches a review.** A script or cue sheet whose spoken part (above `---`) has a placeholder
-(`[ZAHL nach Test]`, `[ERGEBNIS: …]`, `[NUMBER after test]`, `[Zahl]`, any bracket that says "after the test") fails
+(`[ZAHL nach Test]`, `[ERGEBNIS: …]`, `[NUMBER after test]`, `[Zahl]`, any bracket that says "after the test", and a
+template slot left behind such as `[Betrag]`, `[Pointe …]`, `[… mit Zahl]` or `<…>`) fails
 the [style gate](architecture.md#the-style-gate) at once with the check `PLACEHOLDER`, before the studio's checker and
 before any Critic round; `crewcut job add --identity critic --step script` is refused for it. While the test result is
 missing, the gate holds the script and the conductor waits for the result as above; with the result there, the Writer

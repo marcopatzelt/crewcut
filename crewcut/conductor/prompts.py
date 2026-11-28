@@ -440,7 +440,8 @@ def format_script_task(episode: str) -> str:
     cue = showformats.template(f, "cue_template") if f else None
     shape = ("A Short: sentence 1 is your own case with a number, in first person; then the proof, fast; then a short "
              "punch line. No ask, no goodbye." if short else
-             "A long video built of units of about 30 seconds. Each unit stands alone like a Short: a hook that opens a "
+             "A long video built of units of about 30 seconds. Each unit is built like a Short (whether it also works "
+             "alone as a Short is only a hint): a hook that opens a "
              "question (with a number where the material has one), the part that keeps the viewer (retain: what is "
              "shown, one example), and a reward that closes it (the punch line). Numbers early, high value per second, "
              "no greeting, no recap, no goodbye; the close is a verdict that picks up sentence 1, then at most one "

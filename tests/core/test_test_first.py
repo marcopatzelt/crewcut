@@ -270,3 +270,39 @@ def test_an_episode_whose_result_is_there_goes_to_the_writer_when_armed(crew):
     assert "Read brief/MESSKARTE-v001.md first" in queue.get(out[0]["job"])["task"]
     (paths.episode_dir(eid) / "brief" / "SCRIPT-v001.md").write_text("A script.\n")
     assert not plan.arm(eid)   # a script exists: nothing to hand on
+
+
+def test_template_slots_left_behind_are_placeholders_too():
+    """Round 3, hint 10: [Betrag], [Pointe …], [… mit Zahl] and <…> slots are gaps, picture cues are not."""
+    text = ("Wenn du jeden Monat [Betrag] zahlst, dann [ERGEBNIS: was es heißt].\n"
+            "[Pointe, höchstens acht Wörter]\n[Was im Bild passiert, mit Zahl.]\n<Sentence 1: the result>\n"
+            "[Bild: Messkarte, Zeile Test 1] 7 von 9. [Original und Claude nebeneinander] [result side by side]\n"
+            "---\n<!-- notes --> [Betrag]\n")
+    found = showformats.placeholders(text)
+    assert "[Betrag]" in found and "[Pointe, höchstens acht Wörter]" in found
+    assert "[Was im Bild passiert, mit Zahl.]" in found and "<Sentence 1: the result>" in found
+    assert not [f for f in found if f.startswith("[Bild") or "nebeneinander" in f or "side by side" in f]
+
+
+def test_a_template_that_waits_for_a_test_needs_a_test_plan(studio):
+    """Round 3, F3: a format whose template has [ZAHL nach Test] but no test plan would start the Writer first."""
+    d = studio / "brand" / "show-formats"
+    d.mkdir(parents=True)
+    (d / "wait.md").write_text("Satz 1: In [ZAHL nach Test] Minuten baust du das.\n---\nnotes\n")
+    (d / "plain.md").write_text("Satz 1: Mein Agent sollte [Aufgabe mit Zahl].\n---\n- Jede Zahl oder [ZAHL nach Test]\n")
+    (d / "plan.md").write_text("# plan\n")
+    base = {"length": "long", "when": "w", "topic_types": ["manufactured"],
+            "structure": [{"name": "Opening", "purpose": "Result first."}]}
+    (d / "formats.json").write_text(json.dumps({"schema": 1, "formats": [
+        {**base, "id": "course", "name": "Course", "script_template": "wait.md"},
+        {**base, "id": "course-ok", "name": "Course ok", "script_template": "wait.md", "testplan_template": "plan.md"},
+        {**base, "id": "incident", "name": "Incident", "script_template": "plain.md"},
+        {**base, "id": "kinds", "name": "Kinds", "script_template": "plain.md",
+         "kinds": [{"id": "k", "name": "K", "when": "w", "script_template": "wait.md"},
+                   {"id": "k2", "name": "K2", "when": "w", "script_template": "wait.md", "testplan_template": "plan.md"}]},
+    ]}))
+    lib, problems = showformats.report()
+    assert "course-ok" in lib and "incident" in lib and "course" not in lib and "kinds" not in lib
+    text = "\n".join(problems)
+    assert "format 'course': script_template waits for a test ([ZAHL nach Test])" in text
+    assert "kind 'k':" in text and "kind 'k2'" not in text

@@ -222,3 +222,14 @@ def test_only_lesson_units_are_models_and_placeholder_scripts_teach_nothing(stud
 def test_the_learning_file_says_when_there_is_no_model_yet(studio_data):
     text = lernstand.refresh(cards=False).read_text()
     assert "None yet. No hook type holds in at least 3 episodes." in text
+
+
+def test_rule_proposals_show_todays_counts(studio_data):
+    """Round 3, hint 5: an old proposal keeps its card, but the file shows the counts of today's findings."""
+    p = lernstand.learning_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.with_suffix(".json").write_text(json.dumps({"proposed": [
+        {"category": "P-S1", "rule": "Check before every draft: old text, 99 times.", "status": "card #7", "card": 7}]}))
+    text = lernstand.refresh(cards=False).read_text()
+    rules = text.split("## 4.")[1]
+    assert "card #7" in rules and "99 times" not in rules and "3 times" in rules

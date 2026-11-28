@@ -508,8 +508,8 @@ def refresh(cards: bool = True, root: Path | None = None) -> Path:
     for f in top:
         if limit and f["count"] >= limit and label_of(f["category"], names):   # a rule needs a named question
             prev = next((x for x in state["proposed"] if x["category"] == f["category"]), None)
-            if prev:
-                proposals.append(prev)
+            if prev:   # proposed once; the file shows today's counts, the card keeps its own text
+                proposals.append({**prev, "rule": rule_text(f, names, de)})
                 continue
             entry = {"category": f["category"], "rule": rule_text(f, names, de), "status": "",
                      "date": datetime.now(UTC).strftime("%Y-%m-%d")}
