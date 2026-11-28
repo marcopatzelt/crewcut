@@ -2,8 +2,9 @@
 
 A cue sheet replaces the full text a speaker reads. It fixes the opening, and per unit a hook (the first sentence) and
 a punch line (the last); everything between them is bullets the speaker says freely, in their own words. Each unit is
-built to stand alone, so it can also be cut as a Short. The teleprompter shows the fixed lines large and the bullets
-small; the style gate checks the plan before recording and the transcript after it.
+built like a Short (hook, retain, reward); whether it also works alone as a Short is only a hint (`Short: yes` marks
+the units that do). The teleprompter shows the fixed lines large and the bullets small; the style gate checks the plan
+before recording and the transcript after it.
 
 File: brief/CUES-vNNN.md (English) or brief/DREHZETTEL-vNNN.md (German), same numbering as scripts. Above the first
 line that is only `---` stands the sheet, below it notes. Format (English and German markers built in):

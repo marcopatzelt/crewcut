@@ -21,8 +21,8 @@ acts on them: `points` (the open findings, each with `text`), `instructions` (a 
 check, for example a sentence-by-sentence review) and `second_opinion: true` with `answer_file` (the gate asks a
 second model on the host computer once everything else passes; crewcut/second_opinion.py).
 
-A script with a placeholder that only a test can fill (`[ZAHL nach Test]`, `[ERGEBNIS: …]`, showformats.placeholders)
-fails at once with the check PLACEHOLDER, before the checker and before any Critic round: no review is spent on a
+A script with a placeholder (`[ZAHL nach Test]`, `[ERGEBNIS: …]`, or any gap of the library's own templates left in
+brackets, such as `[Bezahl-Tool]`; showformats.placeholders) fails at once with the check PLACEHOLDER, before the checker and before any Critic round: no review is spent on a
 guess. While the episode's test result is still missing, the gate holds the script and the conductor waits for the
 result (crewcut/conductor/plan.py); with the result there, the Writer fills the gaps from it.
 
@@ -331,9 +331,11 @@ def placeholder_result(p: Path, fmt: str) -> dict | None:
     if not found:
         return None
     lines = showformats.placeholder_lines(text)
-    pts = [{"text": ln.strip()[:240], "why": "a gap only the test can fill", "wo": f"Z{i}"} for i, ln in lines[:20]]
-    fix = ("Fill every placeholder with the measured value from the test result (brief/TESTERGEBNIS-vNNN.md), or cut "
-           "the sentence, or say plainly what was not measured. No Critic reviews a script with a placeholder.")
+    pts = [{"text": ln.strip()[:240], "why": "a gap the test result or the material fills", "wo": f"Z{i}"}
+           for i, ln in lines[:20]]
+    fix = ("Fill every placeholder with the measured value from the test result (brief/TESTERGEBNIS-vNNN.md) and every "
+           "template gap with the real word from the material (the tool's name, the case), or cut the sentence. No "
+           "Critic reviews a script with a placeholder.")
     check = {"id": "PLACEHOLDER", "rule": "F2", "kind": "auto", "titel": "placeholder in the spoken text",
              "measured": f"{len(found)} placeholder(s): " + ", ".join(found[:6]), "target": "0 placeholders",
              "line": pts[0]["wo"] if pts else None, "fix": fix, "points": pts, "pass": False}

@@ -24,8 +24,9 @@ asked in several ways, and each way has its own skeleton. The episode keeps its 
 
 A format with a test plan runs its test before the script: the plan writes brief/TESTPLAN-vNNN.md, the test writes
 brief/TESTERGEBNIS-vNNN.md (also accepted: MESSKARTE-vNNN.md, TEST-RESULT-vNNN.md), and only then does the Writer start
-(crewcut/conductor/plan.py). A script with a placeholder such as `[ZAHL nach Test]` or `[ERGEBNIS: …]` fails the style
-gate before any Critic round (`placeholders`).
+(crewcut/conductor/plan.py). A script with a placeholder such as `[ZAHL nach Test]` or `[ERGEBNIS: …]`, or with any gap
+of the library's own templates left in brackets (`template_slots`: `[Bezahl-Tool]` when a template has it), fails the
+style gate before any Critic round (`placeholders`). Picture cues and citation markers are not gaps.
 
 `crewcut formats [list|show <id>|check|choose <episode> <id> [--kind K]|test <episode> [--wait]|score]`.
 """
@@ -70,9 +71,22 @@ PLACEHOLDERS = (re.compile(r"\[\s*(?:ZAHL|ERGEBNIS|PREIS|MESSWERT|NUMBER|RESULT|
                            r"Daten|Tat|Quelle|Minuten|n|amount|task|tool|app|result)\s*[.…]?\s*\]"),
                 re.compile(r"\[\s*(?:Pointe|Kurz|Höchstens|Link-Satz|Punch line|Short punch)\b[^\]\n]*\]", re.I),
                 re.compile(r"\[[^\]\n]*\bmit Zahl\b[^\]\n]*\]"),
+                # a slot that says the test decides what goes here
+                re.compile(r"\[[^\]\n]*\b(?:so wie gemessen|wie gemessen|nur wenn der test|as measured|only if the test)\b"
+                           r"[^\]\n]*\]", re.I),
                 re.compile(r"<(?!!)[A-Za-zÄÖÜäöü][^<>\n]{1,160}>"))
 # a template that waits for a test: its format needs a test plan, or the Writer starts before the test
 TEST_SLOTS = (PLACEHOLDERS[2], re.compile(r"\[\s*ERGEBNIS\b"), re.compile(r"\[\s*(?:NUMBER|RESULT)\b"))
+# Every other gap is a bracket the library's own templates leave for the Writer (template_slots): a word list never
+# catches up with the templates ([Bezahl-Tool], [Das Gratis-Werkzeug], [dem schweren Fall]). One bracket, not a [[mark]]
+# and not a [link](url).
+BRACKET = re.compile(r"(?<!\[)\[([^\[\]\n]{1,240})\](?![\](])")
+# what a template's bracket is when it is not a gap: a picture or stage cue ([Bild: …], [Szene 3: …]), the first
+# bracket of a cue-sheet bullet (`• Beleg: [Messkarte] …` names what is on screen) or a citation marker ([3], [1, 4])
+CUE_LABEL = re.compile(r"^\s*(?:Bild|Picture|Image|Screen|Bildschirm|Szene|Scene|Clip|B-?Roll|Kamera|Camera|Grafik|"
+                       r"Graphic|Einblendung|Insert|Bauchbinde|Schnitt|Cut|Ton|Sound|Musik|Music)\b[^:\]]{0,24}:", re.I)
+CUE_BULLET = re.compile(r"^\s*[•*-]\s*[^:\[\]\n]{1,40}:\s*$")
+CITATION = re.compile(r"^\s*\d+(?:\s*[,–-]\s*\d+)*\s*$")
 
 
 def settings() -> dict:
@@ -528,17 +542,91 @@ def spoken(text: str) -> str:
     return re.split(r"(?m)^---\s*$", text, maxsplit=1)[0]
 
 
-def placeholders(text: str) -> list[str]:
-    """The placeholders in the spoken part of a script, in order (each once)."""
-    body = spoken(text or "")
-    found = sorted({(m.start(), m.group(0)) for rx in PLACEHOLDERS for m in rx.finditer(body)})
-    return list(dict.fromkeys(g for _, g in found))
+def _slot_key(text: str) -> str:
+    """A bracket's text as the slot comparison sees it: case, spacing and closing punctuation do not count."""
+    return re.sub(r"\s+", " ", text).strip(" .…:;,").casefold()
 
 
-def placeholder_lines(text: str) -> list[tuple[int, str]]:
+def slots_of(text: str) -> set[str]:
+    """The gaps a template leaves for the Writer: every bracket in its spoken part (above `---`) that is not a picture
+    or stage cue, not the picture of a cue-sheet bullet and not a citation marker (keys as `_slot_key` makes them)."""
+    out = set()
+    for line in spoken(text or "").splitlines():
+        for m in BRACKET.finditer(line):
+            inner = m.group(1)
+            if CUE_LABEL.match(inner) or CITATION.match(inner) or CUE_BULLET.match(line[:m.start()]):
+                continue
+            key = _slot_key(inner)
+            if key:
+                out.add(key)
+    return out
+
+
+_STATE: dict[str, tuple] = {}
+
+
+def _stat(p: Path) -> tuple | None:
+    try:
+        st = p.stat()
+    except OSError:
+        return None
+    return st.st_mtime_ns, st.st_size
+
+
+def _template_files() -> tuple[Path, ...]:
+    """The script and cue templates of every format and kind in the library (cached while formats.json is unchanged)."""
+    key = tuple((str(d), _stat(d / "formats.json")) for _, d in library_dirs())
+    if _STATE.get("files", (None,))[0] != key:
+        out: list[Path] = []
+        for f in load().values():
+            for h in [f, *[k for k in f.get("kinds") or [] if isinstance(k, dict)]]:
+                for name in ("script_template", "cue_template"):
+                    rel = h.get(name)
+                    p = Path(f["dir"]) / rel if isinstance(rel, str) and rel else None
+                    if p is not None and p not in out and p.is_file():
+                        out.append(p)
+        _STATE["files"] = (key, tuple(out))
+    return _STATE["files"][1]
+
+
+def template_slots() -> frozenset[str]:
+    """Every gap the library's script and cue templates leave (slots_of), cached while the files are unchanged. A
+    bracket in a script with the same text is a slot the Writer did not fill. Empty when the library cannot be read."""
+    try:
+        files = _template_files()
+    except Exception:  # noqa: BLE001 - a broken library weakens this check, it never breaks the gate
+        return frozenset()
+    key = tuple((str(p), _stat(p)) for p in files)
+    if _STATE.get("slots", (None,))[0] != key:
+        slots: set[str] = set()
+        for p in files:
+            try:
+                slots |= slots_of(p.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+        _STATE["slots"] = (key, frozenset(slots))
+    return _STATE["slots"][1]
+
+
+def _found(body: str, slots) -> list[tuple[int, str]]:
+    hits = {(m.start(), m.group(0)) for rx in PLACEHOLDERS for m in rx.finditer(body)}
+    if slots:
+        hits |= {(m.start(), m.group(0)) for m in BRACKET.finditer(body) if _slot_key(m.group(1)) in slots}
+    return sorted(hits)
+
+
+def placeholders(text: str, slots=None) -> list[str]:
+    """The placeholders in the spoken part of a script, in order (each once): the patterns above and every bracket
+    whose text is a gap of the library's templates (`slots`, default template_slots()). Picture cues such as
+    [Bild: …], [Gesicht] or [Rangliste] and citation markers such as [3] are not placeholders."""
+    slots = template_slots() if slots is None else slots
+    return list(dict.fromkeys(g for _, g in _found(spoken(text or ""), slots)))
+
+
+def placeholder_lines(text: str, slots=None) -> list[tuple[int, str]]:
     """(line number, line) of every spoken line with a placeholder."""
-    return [(i, ln) for i, ln in enumerate(spoken(text or "").splitlines(), 1)
-            if any(rx.search(ln) for rx in PLACEHOLDERS)]
+    slots = template_slots() if slots is None else slots
+    return [(i, ln) for i, ln in enumerate(spoken(text or "").splitlines(), 1) if _found(ln, slots)]
 
 
 def prompt_block(episode: str | None) -> str:

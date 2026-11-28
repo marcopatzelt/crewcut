@@ -284,6 +284,70 @@ def test_template_slots_left_behind_are_placeholders_too():
     assert not [f for f in found if f.startswith("[Bild") or "nebeneinander" in f or "side by side" in f]
 
 
+SLOT_SCRIPT = ("# Template\n\nRules: no claim without its source [9].\n\n## Pattern\n\n"
+               "[Das Gratis-Werkzeug] hat [Aufgabe] geschafft. [Bild: beide Ergebnisse nebeneinander]\n"
+               "Wenn du jeden Monat [Betrag] für [Bezahl-Tool] zahlst, geht es um dein Geld.\n"
+               "Ich habe versucht, es mit [dem schweren Fall] kaputt zu machen. [Die Zahl, so wie gemessen.]\n"
+               "---\n# Notes\n- Werkzeug, Link: [Quellenliste]\n")
+SLOT_CUES = ("## Einheit 1 | Beleg: Bildschirm\nHOOK: Punkt eins. Mit [Werkzeug] lief es.\n"
+             "• Beleg: [Messkarte] gleiche Aufgabe · [Stichworte]\n• Einwand: [Marco] einmal einrichten\n---\nNotes\n")
+
+
+def slot_library(studio, script=SLOT_SCRIPT, cues=SLOT_CUES):
+    d = studio / "brand" / "show-formats"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "s.md").write_text(script)
+    (d / "c.md").write_text(cues)
+    (d / "formats.json").write_text(json.dumps({"schema": 1, "formats": [
+        {"id": "stop-paying", "name": "Stop paying", "length": "long", "when": "A paid tool.",
+         "topic_types": ["manufactured"], "structure": [{"name": "Opening", "purpose": "Result first."}],
+         "script_template": "s.md", "cue_template": "c.md"}]}))
+    return d
+
+
+def test_every_gap_of_the_studio_templates_is_a_placeholder(studio):
+    """Round 4, R4-2: a gap the template names in its own words ([Bezahl-Tool], [Das Gratis-Werkzeug]) is a placeholder;
+    picture cues, the picture of a cue-sheet bullet, citation markers and the notes are not."""
+    d = slot_library(studio)
+    slots = showformats.template_slots()
+    assert {"das gratis-werkzeug", "bezahl-tool", "dem schweren fall", "die zahl, so wie gemessen", "werkzeug",
+            "stichworte"} <= slots
+    assert not {"9", "messkarte", "marco", "quellenliste"} & slots
+    assert not [s for s in slots if s.startswith("bild")]
+    text = ("Wenn du jeden Monat 20 Dollar für [Bezahl-Tool] zahlst, geht es um dein Geld.\n"
+            "Links das Original, rechts [das Gratis-Werkzeug ]. Mit [Werkzeug] waren es 61.\n"
+            "[Die Zahl, so wie gemessen] Ich habe es mit [dem schweren Fall] versucht.\n"
+            "• Beleg: [Messkarte] 72 gegen 61 · [Stichworte]\n"
+            "[Bild: beide Ergebnisse nebeneinander] [Gesicht] [Rangliste, blind bewertet] [Szene S1: Zahlenkarte] "
+            "[Protokoll] [3] [[first content | \"Punkt eins.\"]]\n"
+            "---\nnotes: [Bezahl-Tool] was the paid one\n")
+    assert showformats.placeholders(text) == ["[Bezahl-Tool]", "[das Gratis-Werkzeug ]", "[Werkzeug]",
+                                              "[Die Zahl, so wie gemessen]", "[dem schweren Fall]", "[Stichworte]"]
+    assert [n for n, _ in showformats.placeholder_lines(text)] == [1, 2, 3, 4]
+    assert showformats.placeholders(text, slots=frozenset()) == ["[Die Zahl, so wie gemessen]"]   # the phrase alone
+    # a filled script has none; a new slot in the template counts as soon as the file changes
+    filled = "Wenn du jeden Monat 20 Dollar für Perplexity zahlst, [Gesicht] geht es um dein Geld.\n---\n"
+    assert showformats.placeholders(filled) == []
+    (d / "s.md").write_text(SLOT_SCRIPT.replace("[Aufgabe]", "[Gesicht, dann der Bildschirm]"))
+    assert showformats.placeholders(filled) == []
+    (d / "s.md").write_text(SLOT_SCRIPT.replace("[Aufgabe]", "[Gesicht]"))
+    assert showformats.placeholders(filled) == ["[Gesicht]"]
+
+
+def test_a_template_gap_fails_the_gate_before_any_review(studio):
+    slot_library(studio)
+    eid = episodes.create("Stop paying")["id"]
+    p = paths.episode_dir(eid) / "brief" / "DREHZETTEL-v001.md"
+    p.write_text("## Einstieg\nLAGE: Wenn du jeden Monat 20 Dollar für [Bezahl-Tool] zahlst, geht es um dein Geld.\n"
+                 "• Beleg: [Messkarte] 72 gegen 61\n---\nnotes\n")
+    r = stylegate.placeholder_result(p, "lang")
+    assert r and r["placeholders"] == 1 and r["failed"][0]["id"] == "PLACEHOLDER"
+    assert "[Bezahl-Tool]" in r["failed"][0]["measured"] and r["failed"][0]["points"][0]["wo"] == "Z2"
+    assert "template gap" in r["failed"][0]["fix"]
+    p.write_text(p.read_text().replace("[Bezahl-Tool]", "Perplexity"))
+    assert stylegate.placeholder_result(p, "lang") is None
+
+
 def test_a_template_that_waits_for_a_test_needs_a_test_plan(studio):
     """Round 3, F3: a format whose template has [ZAHL nach Test] but no test plan would start the Writer first."""
     d = studio / "brand" / "show-formats"
