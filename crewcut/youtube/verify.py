@@ -6,6 +6,7 @@ import json
 from datetime import UTC, datetime
 
 from .. import db, paths
+from .guard import without_markers
 from .upload import body_of, load_package
 
 
@@ -35,8 +36,9 @@ def verify(episode: str, rel: str = "export/upload.json", youtube=None, now: dat
     for section, fields in expected.items():
         for field, value in fields.items():
             observed = actual.get(section, {}).get(field)
-            if field == "tags":
-                matches = sorted(observed or []) == sorted(value)
+            if field == "tags":   # Crewcut's own marker tag (guard.py) is not part of the package
+                observed = without_markers(observed)
+                matches = sorted(observed) == sorted(value)
             elif field == "publishAt" and observed:
                 matches = (datetime.fromisoformat(observed.replace("Z", "+00:00")) ==
                            datetime.fromisoformat(value.replace("Z", "+00:00")))

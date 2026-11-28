@@ -41,6 +41,7 @@ TITLE_CHECK = HERE.parents[1] / "title" / "scripts" / "title_check.py"
 # YouTube's own limits.
 MAX_DESCRIPTION = 5000      # bytes (UTF-8), YouTube API limit
 MAX_TAG_CHARS = 500
+MARKER_TAG_CHARS = 26         # `crewcut youtube upload` adds its marker tag (25 characters) and a comma
 MAX_HASHTAGS_HARD = 15        # more than 15 and YouTube ignores all hashtags of the video
 MAX_THUMB_BYTES = 2 * 1024 * 1024
 THUMB_MIN_WIDTH = 640
@@ -230,11 +231,12 @@ def check_tags(r: Report, tags: list[str], title: str, names: list[str], pack):
     if not tags:
         r.add("tags", "warn", "No tags. They help a little, mostly for misspelled searches.")
         return
-    n = youtube_tag_length(tags)
-    if n > MAX_TAG_CHARS:
-        r.add("tags", "error", f"{n} characters by YouTube's count: the limit is {MAX_TAG_CHARS}.")
+    n, room = youtube_tag_length(tags), MAX_TAG_CHARS - MARKER_TAG_CHARS
+    if n > room:
+        r.add("tags", "error", f"{n} characters by YouTube's count: the limit is {room} (YouTube's {MAX_TAG_CHARS} "
+              "minus Crewcut's marker tag).")
     else:
-        r.add("tags", "ok", f"{len(tags)} tags, {n} of {MAX_TAG_CHARS} characters by YouTube's count.")
+        r.add("tags", "ok", f"{len(tags)} tags, {n} of {room} characters by YouTube's count.")
     lo, hi = int(pack.value("channel.upload.tags_min", 5)), int(pack.value("channel.upload.tags_max", 15))
     if len(tags) < lo:
         r.add("tags", "warn", f"Only {len(tags)} tags; the pack wants {lo} to {hi}.")

@@ -309,10 +309,16 @@ def on_card_decided(card: dict) -> None:
                   "from the same plan at final quality, run the checks, then one card of kind final with the file.",
                   data=_resume_of(card))
     elif kind == "publish":
+        busy = publish_busy(episode, card)
+        if busy:   # a second yes for an upload that is done or under way starts nothing
+            post(episode, busy, card=card["id"], author="publisher")
+            return
         queue.add(episode, "publisher", "upload",
                   f"The user approved publishing (card #{card['id']}). Upload exactly what the card showed with "
                   "`crewcut youtube upload`, then post the link and mark the step: `crewcut episode step "
-                  f"{episode} upload done`.")
+                  f"{episode} upload done`. When it answers that the video is on YouTube already, or that another "
+                  "upload of the episode runs, do not try again: post the link it names (or that the other run "
+                  "reports it).")
     elif kind == "spend":
         who = card.get("identity") or "editor"
         queue.add(episode, who, card.get("step"),
@@ -324,6 +330,32 @@ def on_card_decided(card: dict) -> None:
     elif kind == "mix" and (card.get("data") or {}).get("auto_revision"):
         queue.add(episode, card.get("identity") or "editor", "edit",
                   "The Critic accepted the mix under Full auto. Continue through the preview and final production cards.")
+
+
+def publish_busy(episode: str, card: dict) -> str | None:
+    """Why a yes on this publish card starts no upload: the episode is on YouTube already, an upload of it runs, or a
+    Publisher job for the upload is queued or running (it uploads the newest approved package). None: go ahead.
+
+    On 24.11.2026 two accepted cards per Short queued two upload jobs, and two Shorts went up twice."""
+    from ..youtube import guard
+    done = guard.recorded(episode)
+    if done:
+        vid = done[0]["video_id"]
+        return (f"This episode is on YouTube already: https://youtu.be/{vid}. The yes on card #{card['id']} starts no "
+                "second upload. If that video was deleted and should go up again, say so in the chat.")
+    lock = guard.holder(episode)
+    if lock:
+        who = f"job #{lock['job']}" if lock.get("job") else "a run at the terminal"
+        return (f"An upload of this episode is running ({who}, since {lock['since']}). The yes on card #{card['id']} "
+                "starts no second one.")
+    with db.conn() as c:
+        r = c.execute("SELECT id, status FROM jobs WHERE episode = ? AND step = 'upload' AND identity = 'publisher' "
+                      "AND status IN ('queued', 'running') AND id IS NOT ? ORDER BY id LIMIT 1",
+                      (episode, card.get("job"))).fetchone()
+    if r:
+        return (f"Job #{r['id']} already takes care of the upload ({r['status']}). The yes on card #{card['id']} starts "
+                "no second one.")
+    return None
 
 
 def _motion_card(episode: str, card: dict, accepted: bool) -> bool:

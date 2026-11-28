@@ -1,4 +1,5 @@
-"""Upload exactly what the publish card showed: the package file's checksum must match the accepted card."""
+"""Upload exactly what the publish card showed: the package file's checksum must match the accepted card. A video goes
+up once: the lock, the episode's record and a look at the channel come first (guard.py)."""
 
 from __future__ import annotations
 
@@ -11,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .. import approvals, config, db, paths
+from . import guard
 
 REQUIRED = ("video", "title", "description")
 # The Short's link comment. YouTube refused it every time it came right after the upload, while the video was still
@@ -45,9 +47,9 @@ def validate(episode: str, pkg: dict) -> list[str]:
         errs.append("description longer than 5000 bytes (YouTube limit)")
     if any(c in (pkg.get("title", "") + pkg.get("description", "")) for c in "<>"):
         errs.append("title and description must not contain < or >")
-    tags = pkg.get("tags") or []
+    tags = [*(pkg.get("tags") or []), "x" * guard.MARKER_LEN]   # the upload adds its marker tag (guard.py)
     if sum(len(t) + (2 if " " in t else 0) for t in tags) + max(0, len(tags) - 1) > 500:
-        errs.append("tags longer than 500 characters together")
+        errs.append(f"tags longer than 500 characters together (Crewcut adds a {guard.MARKER_LEN}-character marker tag)")
     for k in ("video", "thumbnail"):
         if pkg.get(k):
             try:
@@ -100,7 +102,8 @@ def approval(episode: str, package_path: Path, pkg: dict, rel: str) -> dict | No
     return approvals.accept_under_standing(episode, rel) if ok else None
 
 
-def body_of(pkg: dict, publish_at: str | None = None) -> dict:
+def body_of(pkg: dict, publish_at: str | None = None, marker: str | None = None) -> dict:
+    """The videos.insert body. marker: the tag that tells this video apart on YouTube (guard.marker)."""
     publish_at = publish_at or pkg.get("publish_at")
     status = {"privacyStatus": "private" if publish_at else pkg.get("privacy", "private"),
               "selfDeclaredMadeForKids": bool(pkg.get("made_for_kids", False))}
@@ -108,7 +111,8 @@ def body_of(pkg: dict, publish_at: str | None = None) -> dict:
         status["publishAt"] = publish_at
     if "contains_synthetic_media" in pkg:
         status["containsSyntheticMedia"] = bool(pkg["contains_synthetic_media"])
-    snippet = {"title": pkg["title"], "description": pkg["description"], "tags": pkg.get("tags") or [],
+    tags = guard.without_markers(pkg.get("tags")) + ([marker] if marker else [])
+    snippet = {"title": pkg["title"], "description": pkg["description"], "tags": tags,
                "categoryId": str(pkg.get("category_id", 28))}
     for src, dst in (("default_language", "defaultLanguage"), ("default_audio_language", "defaultAudioLanguage")):
         if pkg.get(src):
@@ -116,62 +120,106 @@ def body_of(pkg: dict, publish_at: str | None = None) -> dict:
     return {"snippet": snippet, "status": status}
 
 
+def _client():
+    from googleapiclient.discovery import build
+
+    from .auth import credentials
+    return build("youtube", "v3", credentials=credentials(), cache_discovery=False)
+
+
+def _media(path: Path, **kw):
+    from googleapiclient.http import MediaFileUpload
+    return MediaFileUpload(str(path), **kw)
+
+
 def upload(episode: str, rel: str = "export/upload.json", publish_at: str | None = None, dry_run: bool = False,
-           progress=None) -> dict:
+           progress=None, youtube=None, media=None, new_video: bool = False) -> dict:
+    """Upload the approved package once. Returns the result with "status": "uploaded", or "exists" when YouTube has this
+    episode's video already (nothing goes up then). Raises guard.Busy while another upload of the episode runs and
+    guard.CheckFailed when YouTube cannot be asked whether the video is there."""
     approvals.require_right("publish")
+    if new_video and os.environ.get("CREWCUT_IDENTITY"):
+        raise PermissionError("A second video of an episode (--new-video) is for the person at the terminal, not for "
+                              "a crew member.")
     ep = paths.episode_dir(episode)
     pkg_path, pkg = load_package(episode, rel)
     errs = validate(episode, pkg)
     if errs:
         raise ValueError("The upload package has problems: " + "; ".join(errs))
-    body = body_of(pkg, publish_at)
+    version = guard.version_of(paths.inside(ep, pkg["video"]))
+    body = body_of(pkg, publish_at, marker=guard.marker(episode, version))
     if dry_run:
         return {"dry_run": True, "body": body, "video": pkg["video"], "thumbnail": pkg.get("thumbnail"),
-                "captions": pkg.get("captions") or []}
+                "captions": pkg.get("captions") or [], "version": version}
     if publish_at and publish_at != pkg.get("publish_at"):
         raise PermissionError("The schedule differs from the upload package. Put publish_at in the package and "
                               "request a new publish card before uploading.")
-    card = approval(episode, pkg_path, pkg, rel)
-    if card is None:
-        _ok, why = approvals.standing_covers(episode, pkg)
-        raise PermissionError("There is no accepted publish card for this exact package. Propose a card with "
-                              f"--kind publish --file {rel} and wait for the user's yes."
-                              + (f" (Standing approval: {why}.)" if approvals.standing("shorts") else ""))
+    job = int(os.environ["CREWCUT_JOB"]) if os.environ.get("CREWCUT_JOB", "").isdigit() else None
+    with guard.locked(episode, job=job, what=rel) as lock:   # raises guard.Busy: another upload of it runs
+        yt = youtube if youtube is not None else _client()
+        found = guard.existing(yt, episode, version, pkg.get("title"), new_video=new_video)
+        if found:
+            return _already(episode, ep, found, rel)
+        card = approval(episode, pkg_path, pkg, rel)
+        if card is None:
+            _ok, why = approvals.standing_covers(episode, pkg)
+            raise PermissionError("There is no accepted publish card for this exact package. Propose a card with "
+                                  f"--kind publish --file {rel} and wait for the user's yes."
+                                  + (f" (Standing approval: {why}.)" if approvals.standing("shorts") else ""))
+        return {**_send(episode, ep, yt, media or _media, pkg, body, rel, card, version, job, lock, progress),
+                "status": "uploaded"}
+
+
+def _already(episode: str, ep: Path, found: dict, rel: str) -> dict:
+    """YouTube has the video: record it in export/upload-result.json when that names another one, report, upload
+    nothing."""
+    vid = found["video_id"]
+    res = guard.result_file(episode)
+    if res.get("video_id") != vid:
+        res = {"video_id": vid, "url": f"https://youtu.be/{vid}", "at": found.get("at") or db.now(),
+               "card": found.get("card"), "privacy": found.get("privacy"), "publish_at": found.get("publish_at"),
+               "standing": False, "package": rel, "found": found["why"],
+               "notes": [f"found on YouTube, not uploaded again: {found['why']}"]}
+        _write_result(ep, res)
+    return {**res, "status": "exists", "why": found["why"],
+            "message": f"Already on YouTube: https://youtu.be/{vid} ({found['why']}). Nothing was uploaded again."}
+
+
+def _send(episode: str, ep: Path, yt, media, pkg: dict, body: dict, rel: str, card: dict, version: str,
+          job: int | None, lock: dict, progress) -> dict:
     short = _is_short(episode)
     final_status = dict(body["status"])
     if short:
         # Shorts go up private first, are read back, and only then become public or scheduled
         body["status"] = {k: v for k, v in body["status"].items() if k != "publishAt"}
         body["status"]["privacyStatus"] = "private"
-    from googleapiclient.discovery import build
-    from googleapiclient.http import MediaFileUpload
-
-    from .auth import credentials
-    yt = build("youtube", "v3", credentials=credentials(), cache_discovery=False)
-    media = MediaFileUpload(str(paths.inside(ep, pkg["video"])), chunksize=8 * 1024 * 1024, resumable=True)
-    req = yt.videos().insert(part="snippet,status", body=body, media_body=media, notifySubscribers=True)
+    video = media(paths.inside(ep, pkg["video"]), chunksize=8 * 1024 * 1024, resumable=True)
+    req = yt.videos().insert(part="snippet,status", body=body, media_body=video, notifySubscribers=True)
     resp = None
     while resp is None:
         st, resp = req.next_chunk()
+        guard.beat(lock)
         if st and progress:
             progress(st.progress())
     vid = resp["id"]
+    guard.remember(episode, vid, "upload", version=version, package=rel, card=card["id"], job=job)
     result = {"video_id": vid, "url": f"https://youtu.be/{vid}", "at": db.now(), "card": card["id"],
               "privacy": body["status"]["privacyStatus"], "publish_at": body["status"].get("publishAt"),
-              "standing": bool((card.get("data") or {}).get("standing")), "package": rel, "notes": []}
+              "standing": bool((card.get("data") or {}).get("standing")), "package": rel, "version": version,
+              "notes": []}
     _write_result(ep, result)   # the video is up: its id is on disk before anything else can fail or wait
     if short:
         result.update(finish_short(yt, vid, pkg, final_status))
     if pkg.get("thumbnail"):
         try:
-            yt.thumbnails().set(videoId=vid, media_body=MediaFileUpload(str(paths.inside(ep, pkg["thumbnail"])))).execute()
+            yt.thumbnails().set(videoId=vid, media_body=media(paths.inside(ep, pkg["thumbnail"]))).execute()
         except Exception as e:  # noqa: BLE001 - the video is up; report and go on
             result["notes"].append(f"thumbnail not set: {type(e).__name__} (custom thumbnails need a verified channel)")
     for c in pkg.get("captions") or []:
         try:
             yt.captions().insert(part="snippet", body={"snippet": {"videoId": vid, "language": c.get("language", "en"),
                                                                    "name": c.get("name", ""), "isDraft": False}},
-                                 media_body=MediaFileUpload(str(paths.inside(ep, c["file"])))).execute()
+                                 media_body=media(paths.inside(ep, c["file"]))).execute()
         except Exception as e:  # noqa: BLE001
             result["notes"].append(f"captions {c.get('file')} not uploaded: {type(e).__name__}")
     _write_result(ep, result)
