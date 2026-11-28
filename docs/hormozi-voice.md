@@ -27,7 +27,9 @@ inside the studio.
 
 | Key | Default | Meaning |
 |---|---|---|
-| `voice` | `block` | `block`: a failing check of severity "error" fails the gate; `hint`: every finding is a hint for the Critic, and the Writer is told the counts are never a target (no sentence is added, cut or bent to hit a number); `off` |
+| `voice` | `block` | `block`: a failing check of severity "error" fails the gate; `hint`: the counts are hints for the Critic (every voice check but `voice_hard`, and the structure checks in `structure_soft`), the build checks stay hard, and the Writer is told the counts are never a target (no sentence is added, cut or bent to hit a number); `off` |
+| `voice_hard` | `["fillers_per_100"]` | hint mode: voice counts that stay hard |
+| `structure_soft` | `["window", "rewards", "punch"]` | hint mode: structure checks that count seconds or words and become hints |
 | `voice_profile` | none | the profile (below); without it there are no voice and structure checks |
 | `reference_moves` | none | the folder with the reference moves (`hook.md`, `intro.md`, …) |
 | `learning_file` | `library/learnings/script-learning.md` | the learning file |
@@ -109,7 +111,8 @@ the exit is 0). A broken profile never stops the gate: it becomes one hint.
 
 Hint mode is for a studio that takes the reference speaker's own rule: counts are hints, never a goal. Alex Hormozi
 asks for "value per second, not seconds of value"; a sentence written for a quota adds words without value. In hint
-mode the structure checks above are hints too; a studio's own checker keeps its hard structure checks.
+mode the build stays a hard check (long: `intro`, `units`, `loops`, `ending`; Short: `case`, `proof`, `no-ask`), and so
+do filler words; what counts seconds or words (`window`, `rewards`, `punch`) is a hint.
 
 ## 4. What the Writer is told
 

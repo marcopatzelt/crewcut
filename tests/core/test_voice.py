@@ -279,7 +279,14 @@ def test_too_few_sentences_and_hint_mode_only_inform(tmp_path):
     res = voicecheck.checks(p, "lang", PROFILE)
     assert not [c for c in res if c["id"].startswith("VOICE") and c["pass"] is False]
     assert any(c["id"] == "VOICE:fillers_per_100" and c["kind"] == "hinweis" for c in res)
-    assert not [c for c in voicecheck.checks(write(tmp_path, "SCRIPT-v002.md", BAD), "lang", PROFILE, "hint")
+    hint = voicecheck.checks(write(tmp_path, "SCRIPT-v002.md", BAD), "lang", PROFILE, "hint")
+    failed = {c["id"] for c in hint if c["pass"] is False}
+    # hint mode: the counts never fail (filler words stay hard), the build checks do
+    assert failed and all(i == "VOICE:fillers_per_100" or i.startswith("STRUCTURE:") for i in failed)
+    assert not failed & {"STRUCTURE:window", "STRUCTURE:rewards", "STRUCTURE:punch"}
+    assert not [c for c in voicecheck.checks(write(tmp_path, "SCRIPT-v003.md", BAD), "lang", PROFILE, "hint",
+                                             voice_hard=(), structure_soft=("intro", "window", "units", "loops",
+                                                                            "rewards", "ending"))
                 if c["pass"] is False]
     assert voicecheck.checks(p, "lang", PROFILE, "off") == []
 
@@ -368,14 +375,20 @@ def test_in_hint_mode_the_command_and_the_writer_never_aim_at_a_count(tmp_path, 
     from crewcut.conductor import prompts
     (studio / "config" / "crewcut.toml").write_text('[style_gate]\nvoice = "hint"\n'
                                                      'voice_profile = "brand/voice/profile.json"\n')
-    bad = write(tmp_path, "SCRIPT-v001.md", BAD)
-    assert voicecheck.main(["check", str(bad)]) == 0
+    good = write(tmp_path, "SCRIPT-v002.md", GOOD)
+    assert voicecheck.main(["check", str(good)]) == 0
     out = capsys.readouterr().out
-    assert "HINT  VOICE:fillers_per_100" in out and "FAIL" not in out and "never a target" in out
+    assert "FAIL" not in out and "never a target" in out and "build checks stay hard" in out
+    bad = write(tmp_path, "SCRIPT-v001.md", BAD)
+    assert voicecheck.main(["check", str(bad)]) == 1   # filler words and the build stay hard
+    out = capsys.readouterr().out
+    assert "FAIL  VOICE:fillers_per_100" in out and "HINT  VOICE:sentence_words_median" in out or \
+        "HINT  VOICE:" in out
+    assert "FAIL  VOICE:numbers_per_minute" not in out and "FAIL  VOICE:you_per_100" not in out
     assert voicecheck.main(["check", str(bad), "--mode", "block"]) == 1
     capsys.readouterr()
     line = voicecheck.prompt_lines()
-    assert "never a target" in line and "Run `crewcut voice check" not in line
+    assert "never a target" in line and "build checks stay hard" in line
     block = prompts.voice_block()
     assert "never targets" in block and "Write inside the bands" not in block
     assert "Never add, cut or bend a sentence" in block

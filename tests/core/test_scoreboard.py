@@ -164,3 +164,18 @@ def test_total_views_compare_shorts_with_shorts(crew):
     short = next(f for f in board["formats"] if f["format"] == "claim-check")
     assert short["basis"] == "total views" and short["median_x"] is not None and 0.8 <= short["median_x"] <= 1.2
     assert short["verdict"] != "drop"   # against the whole channel (median 600) it would look like a flop
+
+
+def test_the_verdict_per_kind(crew):
+    """Round 3, hint 14: the scoreboard judges each kind too, so the Scout keeps a winning kind."""
+    from crewcut import showformats
+    from crewcut.conductor import prompts
+    for i, v in enumerate((900, 1000, 1100, 1200, 100, 120, 110, 130)):
+        eid = measured("tool-test", v, 50.0, 5 if i < 4 else 0)
+        p = episodes.read(eid)
+        p["format_kind"] = "rebuild" if i < 4 else "settings"
+        episodes.write(eid, p)
+    f = next(x for x in scoreboard.build()["formats"] if x["format"] == "tool-test")
+    assert set(f["kinds"]) == {"rebuild", "settings"} and f["kinds"]["rebuild"]["episodes"] == 4
+    assert f["kinds"]["rebuild"]["verdict"] == "more" and f["kinds"]["settings"]["verdict"] != "more"
+    assert prompts._winning_kinds(showformats.load()) == ["tool-test/rebuild"]

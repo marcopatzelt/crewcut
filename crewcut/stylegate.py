@@ -55,6 +55,7 @@ DEFAULTS = {"mode": "block", "max_rounds": 3, "skill": "deutscher-hormozi", "che
             # the voice profile and the learning loop (crewcut/voicecheck.py, crewcut/lernstand.py,
             # docs/hormozi-voice.md); paths inside the studio, None = not used
             "voice": "block", "voice_profile": None, "reference_moves": None, "learning_file": None,
+            "voice_hard": None, "structure_soft": None,   # hint mode: voice counts that stay hard, structure checks that soften
             "gold_dir": None,
             # the delivery guide and the reading version (crewcut/delivery.py); None = not used
             "delivery_guide": None, "reading_prefix": None, "reading_max_stress": 2}

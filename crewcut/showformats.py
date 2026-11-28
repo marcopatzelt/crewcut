@@ -64,7 +64,15 @@ RESULT_FILE = re.compile(r"^(?:TESTERGEBNIS|MESSKARTE|TEST-?RESULT)-v(\d{3,})[^/
 # "after the test"; a picture cue such as [result side by side] is not a placeholder.
 PLACEHOLDERS = (re.compile(r"\[\s*(?:ZAHL|ERGEBNIS|PREIS|MESSWERT|NUMBER|RESULT|PRICE)\b[^\]\n]*\]"),
                 re.compile(r"\[\s*(?:Zahl|Ergebnis|Preis)\s*(?:[:…][^\]\n]*)?\]"),
-                re.compile(r"\[[^\]\n]*\b(?:nach (?:dem )?(?:test|prüfung)|after (?:the )?test)\b[^\]\n]*\]", re.I))
+                re.compile(r"\[[^\]\n]*\b(?:nach (?:dem )?(?:test|prüfung)|after (?:the )?test)\b[^\]\n]*\]", re.I),
+                # a template slot left in the text: the bare slot word, a slot that says what to write, an <…> slot
+                re.compile(r"\[\s*(?:Betrag|Endzahl|Anzahl|App|Aufgabe|Material|Endergebnis|Neuigkeit|Tag|Zeit|Uhrzeit|"
+                           r"Daten|Tat|Quelle|Minuten|n|amount|task|tool|app|result)\s*[.…]?\s*\]"),
+                re.compile(r"\[\s*(?:Pointe|Kurz|Höchstens|Link-Satz|Punch line|Short punch)\b[^\]\n]*\]", re.I),
+                re.compile(r"\[[^\]\n]*\bmit Zahl\b[^\]\n]*\]"),
+                re.compile(r"<(?!!)[A-Za-zÄÖÜäöü][^<>\n]{1,160}>"))
+# a template that waits for a test: its format needs a test plan, or the Writer starts before the test
+TEST_SLOTS = (PLACEHOLDERS[2], re.compile(r"\[\s*ERGEBNIS\b"), re.compile(r"\[\s*(?:NUMBER|RESULT)\b"))
 
 
 def settings() -> dict:
@@ -150,6 +158,40 @@ def problems_of(f: Any, folder: Path | None = None) -> list[str]:
         if key in f and f[key] is not None and not isinstance(f[key], str):
             out.append(f"{name}: {key} must be a text")
     out += _template_problems(name, f, folder)
+    out += _test_slot_problems(name, f, folder)
+    return out
+
+
+def _waits_for_test(folder: Path | None, rel) -> str | None:
+    """The first test slot in a template ([ZAHL nach Test], [ERGEBNIS: …]), or None."""
+    if folder is None or not isinstance(rel, str) or not rel:
+        return None
+    try:
+        text = (folder / rel).read_text(encoding="utf-8")
+    except (OSError, ValueError):
+        return None
+    for rx in TEST_SLOTS:
+        m = rx.search(spoken(text).split("\n## Notizen")[0])
+        if m:
+            return m.group(0)[:60]
+    return None
+
+
+def _test_slot_problems(name: str, f: dict, folder: Path | None) -> list[str]:
+    """A format (or kind) whose script or cue template waits for a test needs a test plan, so the test runs first."""
+    out = []
+    holders = [(name, f, f)] + [(f"{name} kind {k.get('id')!r}", k, f) for k in f.get("kinds") or [] if isinstance(k, dict)]
+    for label, h, parent in holders:
+        if h is not f and not any(h.get(k) for k in ("script_template", "cue_template")):
+            continue   # a kind that uses the format's templates is covered by the format's own check
+        if h.get("testplan_template") or (h is not f and parent.get("testplan_template")):
+            continue
+        for key in ("script_template", "cue_template"):
+            slot = _waits_for_test(folder, h.get(key))
+            if slot:
+                out.append(f"{label}: {key} waits for a test ({slot}) but there is no testplan_template; add one, so "
+                           "the test runs before the script")
+                break
     return out
 
 
