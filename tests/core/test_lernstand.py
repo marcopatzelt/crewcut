@@ -233,3 +233,11 @@ def test_rule_proposals_show_todays_counts(studio_data):
     text = lernstand.refresh(cards=False).read_text()
     rules = text.split("## 4.")[1]
     assert "card #7" in rules and "99 times" not in rules and "3 times" in rules
+
+
+def test_ignore_covers_second_opinion_findings(studio_data):
+    # Marco 28.11.2026: no "check every detail for accuracy" rule; the studio can ignore that kind of finding
+    items, _ = lernstand.findings(ignore=["als_short", "second opinion: wrong or misleading"])
+    cats = [f["category"] for f in items]
+    assert "second opinion: wrong or misleading" not in cats
+    assert "P-S1" in cats and "P-V8" in cats   # other findings stay
