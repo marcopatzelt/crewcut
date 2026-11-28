@@ -162,6 +162,25 @@ After Effects templates) and the motion templates read it; without it everything
 
 Details: [motion-libraries.md](motion-libraries.md) and `templates/motion/README.md` ("The graphic system").
 
+The graphics gate (`crewcut/graphicsgate.py`, [architecture.md](architecture.md#the-graphics-gate)) measures every
+edit plan against the same block. It skips a pack without `edit-style.json` `graphics`; each key it reads is optional
+and only its check runs:
+
+| Key in `edit-style.json` `graphics` | Example | The gate checks |
+|---|---|---|
+| `types` | `{"a_keyword": {"templates": ["keyword_pop", "number_roll (transparent)"]}, "e_proof": {"templates": ["clip"]}}` | every insert is one of these types (key `<letter>_<role>`, roles keyword, card, chapter, explainer, proof); a template entry that names a kind (`clip`, `3d-scene`, `2D …`) allows any scene of that kind |
+| `palette` | `{"highlight_for": ["keyword", "number"], "extra": []}` | colours against `channel.json` `graphics.palette` (plus `extra`) |
+| `text` | `{"font": "Manrope", "weights": {"keyword": 800, "secondary": 500}, "italics": false, "min_px_landscape": 54, "min_px_short": 48, "keyword_max_words": 4, "full_sentences": false}` | family, weights, italics, smallest size, words per keyword, sentences |
+| `full_screen` | `{"share_max": 0.15, "seconds": [3, 6], "seconds_to_read_max": 8, "speaker_between_min_s": 2.5, "counts": ["c_chapter", "d_explainer"]}` | full-screen share, length, the speaker between two |
+| `speaker_share_min` | `0.75` | the speaker's share of the video (else the top-level key) |
+| `density` | `{"first_60s_max": 10, "per_minute_after": [3, 5]}` | inserts in the first minute (hint) and per minute afterwards |
+| `elements_max` | `4` | elements in one graphic |
+| `sync` | `{"arrive_tolerance_frames": 2, "hold_after_word_s": 0.5}` | the graphic on its word |
+| `sound` | `{"per_graphic_max": 1, "chapter_change_pair": ["whoosh", "pop"], "per_minute": [3, 6], "shorts": "dry"}` | effect sounds per graphic; a dry Short has none |
+| `shapes_background` | `{"allowed_on": ["c_chapter", "end_lockup"]}` | background shapes (with `brand.json` `motion_graphics.background.max_shapes`) |
+| `logo` | `{"allowed_on": ["end_lockup"]}` | a logo only there (without the key: no logo check) |
+| `safe_area` | as above | boxes and keyword positions |
+
 ## rules/edit.md, rules/cut.md, rules/3d.md, rules/thumbnail.md
 
 Learned rules of the steps edit, cut, 3D and thumbnail (format: `- YYYY-MM-DD: rule (source: …)`). The cut checks print

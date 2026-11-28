@@ -78,6 +78,15 @@ loop = "rounds"
 safety_rounds = 10
 skill = "deutscher-hormozi"
 checker = "scripts/stil_check.py"
+
+[graphics_gate]
+# The style pack's graphic system (edit-style.json graphics: types, palette, type sizes, shapes, speaker and
+# full-screen share, density, word sync, elements, sounds, safe zones) checked on the edit plan before
+# `crewcut render all` and `crewcut render cut` (crewcut/graphicsgate.py). block: a failing plan does not render and a
+# card on the edit step names every fix (a yes sends the list to the Editor); warn: the findings go to the render log
+# and once to the chat, the video still renders; off: no gate. A pack without a graphics block skips the gate.
+# `crewcut graphics-gate <plan>` shows the verdict.
+mode = "warn"
 timeout_seconds = 120
 
 [humanizer]

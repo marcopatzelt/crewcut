@@ -9,6 +9,8 @@
     cut     the finished video with sound
     shown   lock the output right after someone has seen it
     all     2d, motion, 3d, cut
+
+`cut` and `all` run the graphics gate first (crewcut/graphicsgate.py, `[graphics_gate]` in config/crewcut.toml).
 """
 
 from __future__ import annotations
@@ -300,8 +302,22 @@ def probe(plan: Plan, ids: list[str] | None = None, frames: list[int] | None = N
     return {"stills": [str(p) for p in got], "measured": measured, "dir": str(out_dir)}
 
 
+# ---- the graphics gate: the pack's graphic system before the video renders ----------------------------------------
+def graphics_gate(plan: Plan, log: Callable = print) -> dict | None:
+    """crewcut/graphicsgate.py on this plan. In block mode a failing plan raises Waiting (exit 3) with the card that
+    names every fix; in warn mode the findings go to the log and once to the chat."""
+    from .. import graphicsgate
+    try:
+        return graphicsgate.guard(plan.path, plan.episode, pack=plan.pack, episode_dir=plan.episode_dir, log=log)
+    except graphicsgate.Blocked as e:
+        raise Waiting(str(e), e.card_id) from None
+
+
 # ---- cut, shown, all ---------------------------------------------------------------------------------------------
-def cut(plan: Plan, runner: media.Runner = media.run, log: Callable = print) -> dict:
+def cut(plan: Plan, runner: media.Runner = media.run, log: Callable = print, graphics: bool = True) -> dict:
+    """The finished video. The graphics gate checks the plan first (``graphics`` False: the caller already did)."""
+    if graphics:
+        graphics_gate(plan, log)
     return assemble.cut(plan, runner, log, progress=progress_fn(plan))
 
 
@@ -373,6 +389,9 @@ def render_all(plan: Plan, mode: str | None = None, gpus: int = 2, samples: int 
     rented) is for motion and 3D. Without effectcraft-cli the motion step fails with one sentence, unless the plan
     says `"motion_without_engine": "skip"`: then the cut leaves those inserts out and says so in its notes."""
     out: dict = {"ok": False}
+    from .. import graphicsgate
+    gv = graphics_gate(plan, log)    # before anything renders: a failing plan stops here
+    out["graphics_gate"] = graphicsgate.summary(gv) if gv else None
     out["2d"] = render_2d(plan, runner=runner, log=log, gate=gate)
     if not _rows_ok(out["2d"]):
         log("2D inserts failed; not cutting")
@@ -407,7 +426,7 @@ def render_all(plan: Plan, mode: str | None = None, gpus: int = 2, samples: int 
     final = Plan(plan.path, pack=plan.pack, episode_dir=plan.episode_dir)
     if skipped:
         final.drop(skipped, "effectcraft-cli is missing here and the plan says motion_without_engine: skip")
-    out["cut"] = cut(final, runner=runner, log=log)
+    out["cut"] = cut(final, runner=runner, log=log, graphics=False)
     out["ok"] = True
     return out
 

@@ -109,6 +109,7 @@ A skill never hard-codes a colour, font, logo, loudness or mix limit. It reads t
 | `showformats.py` | the show format library (neutral examples + `brand/show-formats/`), the episode's pick, the format block of the prompt; `conductor/plan.py` runs the plan job ([formats.md](formats.md)) | core |
 | `ideas.py`, `scoreboard.py` | idea cards from `inbox/ideas/` (start, dismiss); results per show format | core |
 | `stylegate.py` | the studio's own style checker as a hard gate for scripts: rounds with the Writer, card and advance refusals | core |
+| `graphicsgate.py` | the style pack's graphic system checked on the edit plan before `render all` and `render cut`: a card names every fix, its yes goes to the Editor | core |
 | `voicemetrics.py`, `voicecheck.py`, `lernstand.py` | a reference speaker's measured voice, the voice and structure checks the gate adds, the learning file after every gate round and retention run ([hormozi-voice.md](hormozi-voice.md)) | core |
 | `studio_import.py` | offline legacy studio copy, manifests and visible references; no jobs or publication | core |
 | `conductor/` | steps, job queue (one heavy job at a time; chat answers in their own reply lane, one per episode; a chat message that arrives while a crew member runs reaches it once at its next `crewcut doing`, `say`, `chat` or `card propose`, and the chat shows when, `conductor/deliver.py`), engine runner | core |
@@ -196,6 +197,7 @@ crewcut retention units <episode> [--clips N] [--saved] [--words F --since D --u
         content unit: analytics/retention-units.json/.md, a block in library/learnings/retention-units.md
 crewcut humanize record --draft FILE --final FILE [--why "…"]       the Humanizer pass of a script, for its card
 crewcut style-gate <episode> [--file F …] [--json]               the studio's style checker on the newest scripts: 0 pass, 1 block
+crewcut graphics-gate <plan | episode> [--episode ID] [--json]    the pack's graphic system on an edit plan: 0 pass, 1 fail
 crewcut voice check <file> [--format lang|short] [--json]         voice and structure checks against the voice profile (docs/hormozi-voice.md)
 crewcut lernstand [--no-cards] [--print]                          write the learning file now (findings, units, gold candidates, rule cards)
 crewcut brand voice add <video link | recording> | list          the user's own spoken words (brand/voice/)
@@ -278,6 +280,37 @@ With a voice profile (`[style_gate] voice_profile`), the gate adds voice and str
 the same interface, and writes the learning file after every round ([hormozi-voice.md](hormozi-voice.md)).
 `crewcut style-gate <episode>` prints the verdict (`--file` checks given files, also a `work/words-vNNN.json` with real
 times).
+
+### The graphics gate
+
+The style gate checks a script; the graphics gate checks the graphics of an edit plan before the video renders. A
+style pack declares its graphic system in `edit-style.json` `graphics` (types with their templates, the four colours
+of `channel.json` `graphics.palette`, type sizes, full-screen limits, density, word sync, sounds, safe areas;
+[style-packs.md](style-packs.md)). `crewcut/graphicsgate.py` reads only the plan, its words file, the sources of the
+episode's own pieces and the pack; it renders nothing and decodes no media. Its findings are fails (they block) or
+hints, each with the rule, the insert, the measured value and the fix:
+
+| Rule | What the plan shows |
+|---|---|
+| types (G1) | every insert is one of the pack's types: a library scene by the type's template list (the HyperFrames blocks by their type), a piece made for the video or a finished graphic shown as a clip (`render/…`) by `graphic.type`, a recording from `broll/` is proof film; a keyword or card stands beside the speaker |
+| colours (G2) | the palette's four roles only (plan data, `graphic.colors`, hex values written in the piece's own source); the highlight only on keyword, number, chapter and card types, never on paper, never as a ground; 3D and proof film keep natural colours |
+| type (G3) | the pack's family and weights, no italics, no text size under `text.min_px_landscape` / `min_px_short` (sizes in data, `graphic.text_px`; sizes in a piece's source are hints) |
+| shapes, logo (G4) | background shapes only on `shapes_background.allowed_on` (and `brand.json` `motion_graphics.background.shapes_only_on`), at most `max_shapes`; a logo only on `logo.allowed_on` |
+| speaker, full screen (G5) | speaker share, full-screen graphics share (`full_screen.counts` and full-screen graphics without a type; proof film counts only against the speaker), each full screen's length, the speaker between two full screens (back to back is 0 s; `graphic.joins_previous` makes one piece) |
+| density (G6) | long videos: inserts in the first 60 s (hint) and per minute afterwards (above the band fails) |
+| word sync (G7) | fully there within `sync.arrive_tolerance_frames` of its word and `hold_after_word_s` after it; the word is `graphic.on`, a cue on a word (the template lands on it) or the shown text found in the words file; otherwise listed as not measured |
+| elements (G9) | elements per graphic, words per keyword, no whole sentences, never two overlays at once |
+| sounds (G10) | effect sounds per graphic (a chapter card its pair), a dry Short has none |
+| safe zones (G11) | `graphic.box` and keyword positions inside `safe_area` |
+| shown words (G12) | a hint when a keyword or card shows a word the speaker does not say near it |
+
+`[graphics_gate]` in `config/crewcut.toml`: `mode` warn (the default: the render log and once the chat get the
+findings, the video still renders), block (`render all` and `render cut` stop with exit 3 before anything renders, and
+one card on the edit step names every fix; the same plan with the same findings keeps that card, a passing plan
+closes it, a yes sends the list to the Editor as a job) or off. A pack without a `graphics` block skips the gate.
+`crewcut render plan` shows the gate's line, and the Editor, Designer and Critic get the gate's rules in their prompt
+for the edit step. What the plan cannot say, an insert declares in `graphic` (see "Edit plan"); the plan's own values
+win where both exist. `crewcut graphics-gate <plan>` prints the verdict.
 
 Episode folder: `brief/`, `originals/`, `work/`, `audio/`, `broll/`, `graphics/`, `edit/`, `render/`, `review/`,
 `export/`, `analytics/` (after publishing: `versions.json`, `retention-units.json`/`.md`, `retention-units-why.json`,
@@ -382,6 +415,20 @@ insert's format is an error.
 
 Scene names and their data keys are documented in `templates/2d/BLOCKS.md`, `templates/3d/README.md` and
 `templates/motion/README.md`. Skills point there instead of repeating them.
+
+Every insert may carry `graphic`: what the graphics gate cannot read from the plan (it changes no render and no cache
+key). `type` (a type key of the pack, its letter or its role: `"a"`, `"a_keyword"`, `"keyword"`), `on` (the spoken
+word, or `{"word", "after"}`), `text` (the lines shown), `colors` (roles or `#RRGGBB`), `ground` (`video`, `ink`,
+`paper`), `font`, `weights`, `italic`, `text_px` (the smallest size), `elements`, `shapes` (a count), `logo`, `sounds`,
+`box` (`[x, y, w, h]` in pixels), `read` (a full screen to read: up to `seconds_to_read_max`), `arrive` (seconds into the
+insert when it is complete), `joins_previous` (one piece with the full screen right before it), `natural` (material
+colours).
+
+```json
+{"id": "m7", "kind": "clip", "file": "render/inserts/m7-1b783c0fb3.mp4", "start": 34.3, "end": 38.0,
+ "graphic": {"type": "d", "on": "Milliarden", "text": ["2 Mrd.", "Aufrufe"], "colors": ["paper", "accent", "ink"],
+             "ground": "paper", "text_px": 64, "elements": 2}}
+```
 
 ## Style pack files
 

@@ -44,6 +44,28 @@ def _job() -> int | None:
     return int(j) if j.isdigit() else None
 
 
+def _plan_path(given: str, episode: str | None):
+    """An edit plan from a path (absolute, from here, or inside the episode) or an episode id (its newest plan)."""
+    import re
+    from pathlib import Path
+
+    from . import paths
+    p = Path(given).expanduser()
+    if p.is_file():
+        return p.resolve()
+    if episode and not p.is_absolute():
+        q = paths.inside(paths.episode_dir(episode), given)
+        if q.is_file():
+            return q
+    d = paths.episode_dir(given) / "edit"
+    if d.is_dir():
+        plans = sorted((x for x in d.glob("plan-v*.json") if re.fullmatch(r"plan-v\d+\.json", x.name)),
+                       key=lambda x: int(re.sub(r"\D", "", x.stem)))
+        if plans:
+            return plans[-1]
+    raise FileNotFoundError(f"no edit plan {given!r} (give a plan file or an episode id with edit/plan-vNNN.json)")
+
+
 def _print(obj, as_json: bool) -> None:
     if as_json:
         print(json.dumps(obj, ensure_ascii=False, indent=1, default=str))
@@ -244,6 +266,12 @@ def build_parser() -> argparse.ArgumentParser:
     sg.add_argument("--file", action="append", default=[], help="check this file instead (repeatable), e.g. "
                     "brief/SCRIPT-v009.md or work/words-v012.json")
     sg.add_argument("--json", action="store_true")
+
+    gg = sub.add_parser("graphics-gate", help="the style pack's graphic system on an edit plan (crewcut/graphicsgate.py)")
+    gg.add_argument("plan", help="an edit plan (episodes/<id>/edit/plan-vNNN.json, or edit/plan-vNNN.json with "
+                    "--episode) or an episode id (its newest plan)")
+    gg.add_argument("--episode", help="the episode the plan path is relative to")
+    gg.add_argument("--json", action="store_true")
 
     hz = sub.add_parser("humanize", help="the Humanizer pass over a script draft (blader/humanizer)")
     hzsub = hz.add_subparsers(dest="hcmd", required=True)
@@ -790,6 +818,22 @@ def _run(a) -> int:
             print(stylegate.text(v))
         if v.get("skipped"):
             print("warning: " + v["skipped"], file=sys.stderr)
+        return 0 if v["pass"] else 1
+    if a.cmd == "graphics-gate":
+        from . import graphicsgate
+        try:
+            plan = _plan_path(a.plan, a.episode or os.environ.get("CREWCUT_EPISODE"))
+        except (FileNotFoundError, ValueError) as e:
+            print(f"crewcut graphics-gate: {e}", file=sys.stderr)
+            return 2
+        v = graphicsgate.check_plan(plan)
+        v["mode"] = graphicsgate.settings()["mode"]
+        if a.json:
+            _print(v, True)
+        else:
+            print(f"Graphics gate ({v['mode']}): " + ("skipped" if v.get("skipped") else "PASS" if v["pass"] else
+                                                      "BLOCK" if v["mode"] == "block" else "FAIL"))
+            print(graphicsgate.text(v, limit=40))
         return 0 if v["pass"] else 1
     if a.cmd == "humanize":
         from . import humanize
