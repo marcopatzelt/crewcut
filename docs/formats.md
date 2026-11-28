@@ -66,7 +66,7 @@ crewcut formats [list]                     the library (studio formats replace e
 crewcut formats show <id>                  one format as JSON, with the full template paths
 crewcut formats check                      every problem of both files
 crewcut formats choose <episode> <id> [--kind K] [--topic-type T] [--input tool|link|tweet|idea]   the Scout's pick
-crewcut formats test <episode> [--wait] [--json]   test plan, test result, and whether the script waits (--wait: arm it)
+crewcut formats test <episode> [--wait] [--json]   test plan, test result, whether the script waits; --wait: the Writer starts once the result is there
 crewcut formats score [--json]             the scoreboard (below)
 ```
 

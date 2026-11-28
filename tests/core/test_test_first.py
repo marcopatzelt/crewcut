@@ -253,3 +253,20 @@ def test_starting_the_script_step_by_hand_waits_for_the_test_too(crew, calls):
     assert flow.start_step(eid, "script") is None
     assert plan.waiting(eid) and episodes.read(eid)["steps"]["script"]["status"] == "waiting"
     assert not [c for c in calls if c["identity"] == "writer"]
+
+
+def test_an_episode_whose_result_is_there_goes_to_the_writer_when_armed(crew):
+    """An episode that got its result before this rule (037): `crewcut formats test <id> --wait` hands it on."""
+    eid = planned()
+    showformats.choose(eid, "tool-test")
+    episodes.set_step(eid, "script", "working")
+    (paths.episode_dir(eid) / "brief" / "TESTPLAN-v001.md").write_text("Test 1\n")
+    (paths.episode_dir(eid) / "brief" / "MESSKARTE-v001.md").write_text("Test 1: 7 of 9.\n")
+    with db.conn() as c:
+        c.execute("UPDATE jobs SET status = 'done' WHERE episode = ?", (eid,))
+    assert plan.arm(eid) and plan.waiting(eid)
+    out = plan.tick(force=True)
+    assert out and out[0]["result"] == "MESSKARTE-v001.md"
+    assert "Read brief/MESSKARTE-v001.md first" in queue.get(out[0]["job"])["task"]
+    (paths.episode_dir(eid) / "brief" / "SCRIPT-v001.md").write_text("A script.\n")
+    assert not plan.arm(eid)   # a script exists: nothing to hand on

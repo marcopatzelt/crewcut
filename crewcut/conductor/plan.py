@@ -134,6 +134,24 @@ def wait_for_test(episode: str, card: bool = True, why: str | None = None) -> bo
     return True
 
 
+def arm(episode: str) -> bool:
+    """For an episode already in the script step: wait for its test result, or, when the result is there already and
+    no script exists yet, let the worker give the script to the Writer as soon as no job of the episode runs."""
+    from .. import stylegate
+    if showformats.test_pending(episode):
+        return wait_for_test(episode, card=False)
+    try:
+        project = episodes.read(episode)
+    except (FileNotFoundError, ValueError):
+        return False
+    if (not showformats.needs_test(episode, project) or showformats.test_result(episode) is None
+            or project.get("steps", {}).get("script", {}).get("status") in ("done", "skipped")
+            or stylegate.latest(episode)):
+        return False
+    db.kv_set(WAIT_KEY + episode, json.dumps({"since": db.now(), "result": showformats.test_result(episode).name}))
+    return True
+
+
 def propose_test_card(episode: str, plan_rel: str) -> dict | None:
     from .. import approvals
     for c in approvals.list_cards(episode, "open"):
@@ -219,5 +237,5 @@ def _clear(k: str) -> None:
         c.execute("DELETE FROM kv WHERE k = ?", (k,))
 
 
-__all__ = ["after_job", "message", "on_card", "propose_test_card", "start", "start_script", "tick", "wait_for_test",
+__all__ = ["after_job", "arm", "message", "on_card", "propose_test_card", "start", "start_script", "tick", "wait_for_test",
            "waiting"]

@@ -578,7 +578,7 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("cmd", nargs="?", default="list", choices=["list", "show", "check", "choose", "test", "score"])
     p.add_argument("args", nargs="*", help="show <id> | choose <episode> <id> | test <episode>")
     p.add_argument("--kind", help="choose: the kind of the format (its own structure, if it has one)")
-    p.add_argument("--wait", action="store_true", help="test: the script waits for the test result (conductor)")
+    p.add_argument("--wait", action="store_true", help="test: the Writer starts when the test result is there")
     p.add_argument("--length", choices=LENGTHS)
     p.add_argument("--topic-type", choices=TOPIC_TYPES)
     p.add_argument("--input", choices=INPUT_KINDS)
@@ -654,7 +654,7 @@ def _test_cli(episode: str, wait: bool, as_json: bool) -> int:
              "pending": test_pending(episode, project)}
     if wait:
         from .conductor import plan
-        state["waiting"] = plan.wait_for_test(episode, card=False)
+        state["waiting"] = plan.arm(episode)
     if as_json:
         print(json.dumps(state, ensure_ascii=False, indent=1))
     else:
@@ -663,8 +663,9 @@ def _test_cli(episode: str, wait: bool, as_json: bool) -> int:
                                                     "the script may start." if state["needs_test"] else
                                                     "no test needed."))
         if wait:
-            print("The conductor starts the Writer as soon as the test result is there and no job runs."
-                  if state.get("waiting") else "Nothing to wait for.")
+            print("The conductor starts the Writer as soon as the test result is there and no job of the episode "
+                  "runs." if state.get("waiting") else "Nothing to wait for (no test needed, a script exists, or the "
+                  "script step is done).")
     return 0
 
 
