@@ -274,6 +274,26 @@ def test_a_short_needs_a_case_a_punch_and_no_ask(tmp_path):
     assert {"STRUCTURE:case", "STRUCTURE:punch", "STRUCTURE:no-ask"} <= failed
 
 
+def test_a_short_may_end_with_the_channels_comment_ask(tmp_path, studio):
+    (studio / "brand").mkdir()
+    (studio / "brand" / "brand.json").write_text("{}")
+    (studio / "brand" / "channel.json").write_text(json.dumps({"script": {
+        "short_ask": "If you want this too, comment {WORD}."}}))
+    ok = ("I built 3 clips for 40 dollars. Here are the clocks. The cheap one won by 50 minutes. Cheap won. "
+          "If you want this too, comment CLIPS.")
+    res = voicecheck.checks(write(tmp_path, "SHORT-v001.md", ok), "short", PROFILE)
+    assert not [c for c in res if c["pass"] is False], [(c["id"], c["measured"]) for c in res if c["pass"] is False]
+    ask = next(c for c in res if c["id"] == "STRUCTURE:no-ask")
+    assert ask["measured"] == "comment ask CLIPS"
+    missing = ok.replace(" If you want this too, comment CLIPS.", "")
+    failed = {c["id"] for c in voicecheck.checks(write(tmp_path, "SHORT-v002.md", missing), "short", PROFILE)
+              if c["pass"] is False}
+    assert "STRUCTURE:no-ask" in failed
+    twice = ok.replace("Here are the clocks.", "Subscribe for more.")
+    res = voicecheck.checks(write(tmp_path, "SHORT-v003.md", twice), "short", PROFILE)
+    assert next(c for c in res if c["id"] == "STRUCTURE:no-ask")["pass"] is False
+
+
 def test_too_few_sentences_and_hint_mode_only_inform(tmp_path):
     p = write(tmp_path, "SCRIPT-v001.md", "Basically, um, the settings are kind of important for you. I tested it.")
     res = voicecheck.checks(p, "lang", PROFILE)
@@ -393,3 +413,14 @@ def test_in_hint_mode_the_command_and_the_writer_never_aim_at_a_count(tmp_path, 
     assert "never targets" in block and "Write inside the bands" not in block
     assert "Never add, cut or bend a sentence" in block
     assert "never a target" in stylegate.writer_note(None) or "crewcut voice check" not in stylegate.writer_note(None)
+
+
+def test_the_writer_of_a_short_hears_the_channels_comment_ask(profile, studio):
+    from crewcut.conductor import prompts
+    assert "comment ask" not in prompts.voice_block(short=True)
+    (studio / "brand" / "brand.json").write_text("{}")
+    (studio / "brand" / "channel.json").write_text(json.dumps({"script": {
+        "short_ask": "Wenn du das auch willst, kommentier {WORD}."}}))
+    block = prompts.voice_block(short=True)
+    assert '"Wenn du das auch willst, kommentier WORD."' in block and "only ask in the Short" in block
+    assert "comment ask" not in prompts.voice_block(short=False)

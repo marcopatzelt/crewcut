@@ -433,6 +433,24 @@ def check_settings(r: Report, up: dict, pack, now: dt.datetime | None = None):
             r.add("schedule", "ok", f"Scheduled for {at}.")
 
 
+def check_cta(r: Report, up: dict):
+    """The comment word and its link (cta_keyword, cta_url): both or neither, the word in capitals, named in the
+    description and in the pinned comment; a short link (crewcut/cta.py). Crewcut answers a comment with the word with
+    the link (crewcut/youtube/replies.py)."""
+    if not up.get("cta_keyword") and not up.get("cta_url"):
+        return
+    _brand()
+    from crewcut import cta
+    errs, warns = cta.package_problems(up)
+    for e in errs:
+        r.add("comment word", "error", e[:1].upper() + e[1:] + ".")
+    for w in warns:
+        r.add("comment word", "warn", w[:1].upper() + w[1:] + ".")
+    if not errs:
+        r.add("comment word", "ok", f"{up['cta_keyword']} → {up['cta_url']}: named in the description and the pinned "
+              "comment; Crewcut answers each comment with the word with the link.")
+
+
 def http_status(url: str) -> str:
     req = urllib.request.Request(url, headers={"User-Agent": "crewcut-package-check"})
     try:
@@ -494,6 +512,7 @@ def check_package(ep: Path, up: dict, pack, online: bool = False, now: dt.dateti
     if thumb:
         check_thumbnail(r, thumb)
     check_settings(r, up, pack, now)
+    check_cta(r, up)
     ab = up.get("ab_test") or {}
     want = int(pack.value("channel.title.variants", 3))
     if not ab.get("titles") and not ab.get("thumbnails"):

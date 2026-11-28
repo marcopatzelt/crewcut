@@ -130,7 +130,8 @@ def _require_story(episode: str | None, p: Path) -> None:
             short = False
     if short:
         return
-    errors = [f["text"] for f in spoken.story(text) if f["level"] == "error"]
+    from . import cta
+    errors = [f["text"] for f in spoken.story(text, ask_end=cta.ask_end() or None) if f["level"] == "error"]
     if errors:
         raise spoken.Unspeakable(f"{p.name} reads like a list, not one story. " + " ".join(errors)
                                  + " Have the Critic do the story pass (skills/script, step Story critic) first.")

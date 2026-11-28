@@ -327,6 +327,9 @@ def voice_block(short: bool = False) -> str:
     files = [moves / f"{n}.md" for n in names] if moves else []
     files = [f for f in files if f.is_file()]
     hint = voicecheck.settings().get("voice") != "block"
+    from .. import cta
+    ask = cta.short_ask() if short else ""
+    model = ask.replace(cta.PLACEHOLDER, "WORD")
     out = ["VOICE AND STRUCTURE OF THE REFERENCE SPEAKER (" + ("the gate shows the counts to the Critic as hints and "
                                                               "checks the build):" if hint else "the gate checks both):")]
     if prof and hint:
@@ -347,8 +350,14 @@ def voice_block(short: bool = False) -> str:
         out.append("- For every unit, model the hook and the punch line on one or two named passages (file and number, "
                    "e.g. hook.md #3, punch.md #7): copy the move, never the words, the topic or a number. The opening "
                    "follows intro.md, the transitions transition.md, the close ending.md." if not short else
-                   "- Model sentence 1 on short-first.md and the last sentence on short-end.md (one or two named "
-                   "passages each): copy the move, never the words, the topic or a number.")
+                   "- Model sentence 1 on short-first.md and the " + ("punch line right before the comment ask" if ask
+                                                                     else "last sentence")
+                   + " on short-end.md (one or two named passages each): copy the move, never the words, the topic or "
+                   "a number.")
+    if ask:
+        out.append(f'- This channel ends every Short with its comment ask, word for word: "{model}" (one word in '
+                   "capitals that fits what the viewer gets, the same word as cta_keyword in the upload package). It "
+                   "comes right after the punch line and is the only ask in the Short.")
     if guide:
         out.append(guide)
     out.append(f"- Next to every script version write brief/{companion_name()} (for example "

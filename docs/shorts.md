@@ -69,6 +69,12 @@ The crew's know-how is in [`skills/shorts/SKILL.md`](../skills/shorts/SKILL.md);
   tries again on its own, never posts it twice, and the chat says when it is there. By hand: `crewcut youtube comment
   <episode>`. YouTube's "Related video" field and pinning a comment have no API: the chat tells you to set them in
   YouTube Studio.
+- **Comment word.** When your channel ends every Short with a comment ask (`channel.json` `script.short_ask`, such as
+  "If you want this too, comment {WORD}."), the script ends on the punch line and then exactly that sentence, with one
+  word in capitals that fits what the viewer gets. The package names the word and the link (`cta_keyword`,
+  `cta_url`); the description and the pinned comment name the word and what the viewer gets. Every comment with the
+  word then gets the link as a reply, once, at most 20 an hour per Short (`docs/youtube.md`, comment word -> link
+  reply). Keep the link short and typeable: links in Shorts comments are often not clickable.
 
 ## Results
 

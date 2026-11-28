@@ -113,6 +113,14 @@ steps = ["script", "title", "upload"]
 [youtube]
 chrome_setup = true        # "Connect YouTube" lets Claude in Chrome set up the API once; uploads always use the API
 comment_wait_s = 45        # a Short's link comment waits this long for YouTube's processing, then the worker retries
+# Comment word -> link reply (crewcut/youtube/replies.py, docs/youtube.md): a Short whose upload names a comment word
+# and its link (cta_keyword, cta_url) gets a reply with the link under every comment with that word, once each.
+cta_replies = "on"                 # "on", "dry-run" (counts, sends nothing) or "off"; read on every run, no restart
+cta_replies_every_minutes = 15     # how often the worker looks at the newest comments
+cta_replies_per_video_hour = 20    # at most this many replies per video in any hour; the rest waits
+cta_replies_per_day = 100          # for the whole channel in any 24 hours: a reply costs 50 of 10,000 quota units a
+                                   # day, an upload 1,600
+cta_replies_long = false           # long videos with a comment word too (default: Shorts only)
 
 [money]
 cap_month_usd = 20.0       # real money per month (rented GPUs, paid APIs); renting stops at the cap

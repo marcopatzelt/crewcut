@@ -47,6 +47,17 @@ STAGED = {
            r"\band then came the moment\b"],
 }
 SUBSCRIBE = re.compile(r"\babonnier|\bsubscribe|\bhit the bell|\bglocke\b", re.I)
+
+
+def _is_ask(par: str, ask_end: str | None = None) -> bool:
+    """The paragraph holds the one fixed ask: a subscribe line, or a sentence that ends with the pack's fixed ask text
+    (channel.json script.craft.ask_ends_with)."""
+    if SUBSCRIBE.search(par):
+        return True
+    if not ask_end:
+        return False
+    from . import cta
+    return any(cta.ends_with(x, ask_end) for x in _sentences(par))
 # Connectors that tie a paragraph to the one before wherever they stand in its first sentence.
 STRONG = {
     "de": {"aber", "doch", "deshalb", "deswegen", "darum", "daher", "trotzdem", "stattdessen", "seitdem", "dadurch",
@@ -222,7 +233,7 @@ def bridged(prev: str, par: str, lang: str, common: set[str] | frozenset = froze
     return bool(_stems(prev, lang, common) & _stems(par, lang, common))
 
 
-def list_smell(text: str, lang: str | None = None) -> dict:
+def list_smell(text: str, lang: str | None = None, ask_end: str | None = None) -> dict:
     """Transitions between paragraphs without a bridge. `jumps` lists the paragraphs that start a new topic out of
     nowhere; `share` is their part of all transitions."""
     spoken = prompter_text(text)
@@ -233,7 +244,7 @@ def list_smell(text: str, lang: str | None = None) -> dict:
     last = len(pars) - 1 if pars and len(_words(pars[-1])) <= 6 else len(pars)
     checked = range(3, last)
     jumps = [{"paragraph": i + 1, "start": " ".join(pars[i].split()[:8])}
-             for i in checked if not SUBSCRIBE.search(pars[i]) and not SUBSCRIBE.search(pars[i - 1])
+             for i in checked if not _is_ask(pars[i], ask_end) and not _is_ask(pars[i - 1], ask_end)
              and not bridged(pars[i - 1], pars[i], lang, common)]
     n = max(1, len(checked))
     run, longest = 0, 0
@@ -269,24 +280,26 @@ def repeats(text: str, lang: str | None = None, threshold: float = 0.6) -> list[
     return out
 
 
-def subscribe_place(text: str, lang: str | None = None) -> list[str]:
-    """Where the subscribe line sits: once, after the first strong result, not at the very start or the very end, and
-    not inside a beat (the paragraph after it continues the paragraph before it)."""
+def subscribe_place(text: str, lang: str | None = None, ask_end: str | None = None) -> list[str]:
+    """Where the fixed ask sits (the subscribe line, or the sentence ending with `ask_end`): once, after the first
+    strong result, not at the very start or the very end, and not inside a beat (the paragraph after it continues the
+    paragraph before it)."""
     pars = _paragraphs(prompter_text(text))
     lang = lang or language(text)
-    at = [i for i, p in enumerate(pars) if SUBSCRIBE.search(p)]
+    at = [i for i, p in enumerate(pars) if _is_ask(p, ask_end)]
+    name = "the fixed ask" if ask_end else "the subscribe line"
     out = []
     if len(at) > 1:
-        out.append(f"{len(at)} subscribe lines; one is enough")
+        out.append(f"{len(at)} {'ask' if ask_end else 'subscribe'} lines; one is enough")
     for i in at[:1]:
         if i <= 1:
-            out.append("the subscribe line comes before anything was shown")
+            out.append(f"{name} comes before anything was shown")
         elif i >= len(pars) - 2:
-            out.append("the subscribe line sits at the end, where it sounds like a plea")
+            out.append(f"{name} sits at the end, where it sounds like a plea")
         else:
             first = _words(" ".join(_sentences(pars[i + 1])[:1]))[:3]
             if any(w in BACK.get(lang, BACK["en"]) for w in first):
-                out.append("the subscribe line cuts a beat in two: the next paragraph points back past it")
+                out.append(f"{name} cuts a beat in two: the next paragraph points back past it")
     return out
 
 
@@ -335,7 +348,7 @@ SMELL_ERROR, SMELL_WARN = 0.25, 0.2
 PLAN_MIN_WORDS = 150   # a text this long tells a story and needs its plan; a few lines do not
 
 
-def story(text: str, lang: str | None = None) -> list[dict]:
+def story(text: str, lang: str | None = None, ask_end: str | None = None) -> list[dict]:
     """Findings for the Writer and the Critic: error for a missing story plan and a strong list smell (from 6
     transitions on: SMELL_ERROR of them jump, or three paragraphs in a row start a new topic), warn or hint for the
     rest."""
@@ -347,7 +360,7 @@ def story(text: str, lang: str | None = None) -> list[dict]:
         out.append({"level": "error" if long else "hint", "area": "story",
                     "text": "story plan below --- incomplete: " + "; ".join(p["problems"]) + ". Write premise, arc and "
                             "beats before the draft (skills/script/references/story.md)."})
-    smell = list_smell(text, lang)
+    smell = list_smell(text, lang, ask_end)
     if smell["jumps"]:
         where = "; ".join(f'paragraph {j["paragraph"]} "{j["start"]}"' for j in smell["jumps"][:4])
         strong = smell["transitions"] >= 6 and (smell["share"] >= SMELL_ERROR or smell["longest_run"] >= 3)
@@ -364,7 +377,7 @@ def story(text: str, lang: str | None = None) -> list[dict]:
     if rep:
         out.append({"level": "warn", "area": "story",
                     "text": f'idea said twice: "{rep[0][0][:50]}" and "{rep[0][1][:50]}". Keep the stronger one.'})
-    for msg in subscribe_place(text, lang):
+    for msg in subscribe_place(text, lang, ask_end):
         out.append({"level": "warn", "area": "story", "text": msg + "."})
     return out
 

@@ -11,7 +11,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from .. import approvals, config, db, paths
+from .. import approvals, config, cta, db, paths
 from . import guard
 
 REQUIRED = ("video", "title", "description")
@@ -72,6 +72,7 @@ def validate(episode: str, pkg: dict) -> list[str]:
             errs.append("publish_at must be an ISO time, for example 2026-11-20T16:00:00Z")
     if pkg.get("privacy", "private") not in ("private", "unlisted", "public"):
         errs.append("privacy must be private, unlisted or public")
+    errs += cta.package_problems(pkg)[0]   # the comment word and its link (crewcut/youtube/replies.py)
     return errs
 
 
@@ -207,6 +208,9 @@ def _send(episode: str, ep: Path, yt, media, pkg: dict, body: dict, rel: str, ca
               "privacy": body["status"]["privacyStatus"], "publish_at": body["status"].get("publishAt"),
               "standing": bool((card.get("data") or {}).get("standing")), "package": rel, "version": version,
               "notes": []}
+    if pkg.get("cta_keyword") and pkg.get("cta_url"):
+        # the word viewers comment and the link they get, as the card approved them (crewcut/youtube/replies.py)
+        result.update(cta_keyword=pkg["cta_keyword"], cta_url=pkg["cta_url"])
     _write_result(ep, result)   # the video is up: its id is on disk before anything else can fail or wait
     if short:
         result.update(finish_short(yt, vid, pkg, final_status))
@@ -272,10 +276,23 @@ def finish_short(yt, vid: str, pkg: dict, final_status: dict) -> dict:
 
 # ---- the link comment under a Short ---------------------------------------------------------------------------------
 def comment_text(pkg: dict) -> str | None:
-    """The comment the publish card showed: the package's related_comment, or a default line with related_url."""
+    """The comment the publish card showed: the package's related_comment, or a default line with related_url. A
+    Short with a comment word (cta_keyword) always has its own related_comment, with or without a long video."""
+    if pkg.get("cta_keyword"):
+        return pkg.get("related_comment") or None
     if not pkg.get("related_url"):
         return None
     return pkg.get("related_comment") or f"The whole video: {pkg['related_url']}"
+
+
+def _is_own_comment(text: str, pkg: dict) -> bool:
+    """The channel's own top-level comment is this package's comment: it carries the link to the long video, or (a
+    Short with a comment word and no long video) the word or the very text."""
+    if pkg.get("related_url"):
+        return pkg["related_url"] in text
+    word, mine = pkg.get("cta_keyword"), comment_text(pkg) or ""
+    return bool(mine) and (" ".join(text.split()) == " ".join(mine.split()) or (bool(word) and cta.has_keyword(text,
+                                                                                                             word)))
 
 
 def error_text(e: Exception) -> str:
@@ -300,13 +317,14 @@ def _processing(yt, vid: str) -> tuple[str | None, str | None]:
     return (items[0].get("status") or {}).get("uploadStatus"), (items[0].get("snippet") or {}).get("channelId")
 
 
-def _existing(yt, vid: str, channel: str | None, url: str) -> str | None:
-    """The id of the channel's own top-level comment that already carries the link, so a retry never posts twice."""
+def _existing(yt, vid: str, channel: str | None, pkg: dict) -> str | None:
+    """The id of the channel's own top-level comment that is already there, so a retry never posts twice."""
     res = yt.commentThreads().list(part="snippet", videoId=vid, maxResults=100, order="time").execute()
     for thread in res.get("items") or []:
         sn = ((thread.get("snippet") or {}).get("topLevelComment") or {}).get("snippet") or {}
         author = (sn.get("authorChannelId") or {}).get("value")
-        if url in (sn.get("textOriginal") or sn.get("textDisplay") or "") and (not channel or author == channel):
+        if _is_own_comment(sn.get("textOriginal") or sn.get("textDisplay") or "", pkg) and \
+                (not channel or author == channel):
             return thread.get("id")
     return None
 
@@ -328,7 +346,7 @@ def post_comment(yt, vid: str, pkg: dict, wait_s: float = 0, sleep=time.sleep, c
             return {**out, "status": "failed", "error": f"the video is {state} on YouTube"}
         if state != "processed":
             return {**out, "status": "pending", "error": f"YouTube is still processing the video ({state or 'not found'})"}
-        found = _existing(yt, vid, channel, pkg["related_url"])
+        found = _existing(yt, vid, channel, pkg)
         if found:
             return {**out, "status": "exists", "id": found}
         res = yt.commentThreads().insert(part="snippet", body={"snippet": {"videoId": vid, "topLevelComment": {
@@ -407,7 +425,8 @@ def comment(episode: str, rel: str | None = None, youtube=None, wait_s: float = 
     rel = rel or _pending(episode).get("package") or result.get("package") or "export/upload.json"
     pkg_path, pkg = load_package(episode, rel)
     if not comment_text(pkg):
-        raise ValueError("The package has no related_url: there is no link comment to post.")
+        raise ValueError("The package has no related_url (and no related_comment with its cta_keyword): there is no "
+                         "comment to post.")
     if approved_card(episode, pkg_path) is None:
         raise PermissionError("The package differs from every accepted publish card: the comment text must be the "
                               "one the user approved. Propose a publish card for the package first.")

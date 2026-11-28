@@ -13,8 +13,9 @@ honest limit by 0:45, "try this" in every part, a number in the first sentences)
    answered in the next sentence and never with "because"; the viewer's objection said aloud; "you" at least as often
    as "I".
 4. Ending: a verdict, then at most one link sentence, in at most 25 seconds; no goodbye, no recap and no list of the
-   parts in the last 60 seconds; the one fixed ask (subscribe) stands between 15 and 60 % of the script, never in the
-   ending; the hook's open loop is resolved.
+   parts in the last 60 seconds; the one fixed ask (subscribe, or the sentence that ends with the pack's
+   `script.craft.ask_ends_with`) stands between 15 and 60 % of the script, never in the ending; the hook's open loop
+   is resolved.
 
 `check(text, lang, wpm, cfg)` measures a script (the spoken part above the first `---` line) and returns findings
 (error, warn, hint), the passed checks and the numbers. A program can only see words, so every rule here is a signal for
@@ -46,6 +47,7 @@ DEFAULTS: dict = {
     "questions_per_1000": [7.5, 20],  # 1.5 to 4 questions a minute at 200 words a minute
     "takeaways_max": 1,          # "try this" lines in the whole script
     "ask_share": [0.15, 0.6],    # the one fixed ask (subscribe) stands between these shares of the words
+    "ask_ends_with": "",         # a pack's own fixed ask: the sentence that ends with this text (else: subscribe)
     "min_words": 150,            # shorter texts get only the greeting check
     "checks": {
         "greeting": "error", "roadmap": "warn", "open_loop": "hint", "stakes": "hint", "limit": "off",
@@ -204,7 +206,7 @@ WORDS: dict[str, dict] = {
             "link": _rx(r"\blink\b", r"\bbeschreibung\b", r"\bformular\b", r"\bmeld(?:e)? dich\b", r"\bherunterladen\b",
                         r"\bhol dir\b", r"\btrag dich\b", r"\beintragen\b"),
             "subscribe": _rx(r"\babonnier", r"\bglocke\b"),
-            "comment": _rx(r"\bkommentar", r"\bschreib (?:mir|es|das) (?:in|unten)\b"),
+            "comment": _rx(r"\bkommentar", r"\bkommentier\b", r"\bschreib (?:mir|es|das) (?:in|unten)\b"),
             "next video": _rx(r"\bnächste[ns]? (?:video|folge)\b", r"\bschau dir (?:[\wäöüß]+ ){0,3}(?:video|folge)\b"),
             "like": _rx(r"\bdaumen\b", r"\blike\b"),
             "follow": _rx(r"\bfolg mir\b"),
@@ -511,13 +513,23 @@ def check(text: str, lang: str | None = None, wpm: float = 150, cfg: dict | None
             ". After the verdict comes at most one link sentence; the fixed ask stands in the middle.")
     else:
         passed.append("ending: " + ("one link sentence" if links else "no request after the verdict"))
-    subs = [k for k, s in enumerate(alls) if W["cta"]["subscribe"].search(s)]
+    # The one fixed ask: the subscribe line, or the sentence that ends with the pack's fixed text
+    # (script.craft.ask_ends_with, e.g. "der Link ist in der Videobeschreibung").
+    ask_end = str(c.get("ask_ends_with") or "").strip()
+    if ask_end:
+        from . import cta
+        subs = [k for k, s in enumerate(alls) if cta.ends_with(s, ask_end) and s not in end_s]
+        what = f'ending with "{ask_end}"'
+    else:
+        subs = [k for k, s in enumerate(alls) if W["cta"]["subscribe"].search(s)]
+        what = "(subscribe)"
     if len(subs) > 1:
-        add("subscribe_once", "ending", f"{len(subs)} subscribe lines. One, as the fixed ask in the middle.")
+        add("subscribe_once", "ending", f"{len(subs)} ask lines {what}. One, as the fixed ask in the middle."
+            if ask_end else f"{len(subs)} subscribe lines. One, as the fixed ask in the middle.")
     a_lo, a_hi = c["ask_share"]
     stats["ask_at"] = [round(starts[k] / max(1, n_words), 2) for k in subs]
     if not subs:
-        add("cta", "ending", f"no fixed ask (subscribe) between {round(a_lo * 100)} and {round(a_hi * 100)} % of the "
+        add("cta", "ending", f"no fixed ask {what} between {round(a_lo * 100)} and {round(a_hi * 100)} % of the "
             "script. One sentence, word for word the same in every video, after the first strong result.")
     elif not a_lo <= starts[subs[0]] / max(1, n_words) <= a_hi:
         add("cta", "ending", f"the fixed ask stands at {round(100 * starts[subs[0]] / max(1, n_words))} % of the script; "

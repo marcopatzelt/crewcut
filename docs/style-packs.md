@@ -275,6 +275,7 @@ sentences, no forced goodbye; see `skills/script/references/craft.md`):
 | `checks` | dash off, question_opening hint, number_window warn, title_word_sentence_1 warn, title_number warn, paragraph warn | `title_word_sentence_1`: sentence 1 carries a core word (four letters or more, no stop word) or a number of the title |
 | `craft` | see below | the script craft (`crewcut/craft.py`, `skills/script/references/craft.md`) |
 | `short_checks` | see below | the Short rules of `script_check.py --short` |
+| `short_ask` | null | the comment ask that ends every Short, with `{WORD}` for one word in capitals, e.g. `"Wenn du das auch willst, kommentier {WORD}."`: the punch line, then exactly this sentence; no other ask. Null: no ask in a Short. The word goes into the upload package as `cta_keyword` (see `docs/youtube.md`, comment word -> link reply) |
 | `style_gate` | (from `config/crewcut.toml`) | `{"mode": "block" \| "warn" \| "off", "max_rounds": 3}`: the studio's own style checker as a hard gate (`crewcut/stylegate.py`, `docs/architecture.md`) |
 
 `closing_line` (top level): a last sentence the channel always says. Empty or null (the default): no check. Nothing
@@ -297,6 +298,7 @@ of Alex Hormozi's long videos: the recap list and the goodbye at the end, "try t
 | `short_words`, `short_share` | 5, [15, 40] | percent of sentences of at most `short_words` words |
 | `takeaways_max` | 1 | "try this" lines in the whole script |
 | `ask_share` | [0.15, 0.6] | the one fixed ask (subscribe) stands between these shares of the words; the ending has at most one link sentence and no other request (`cta`) |
+| `ask_ends_with` | "" | the channel's own fixed ask instead of the subscribe line: the one sentence that ends with this text, e.g. `"der Link ist in der Videobeschreibung"` (case and punctuation do not matter); same place rules |
 | `checks` | greeting, recap, greeting_end error; roadmap, limit_before_content, part_length, takeaways, questions, answers, you_i, ending_length, cta, subscribe_once, loop_resolved warn; the rest hint; limit off | one level per rule: `error`, `warn`, `hint` or `off`. Rules: greeting, roadmap, open_loop, stakes, limit, limit_before_content, part_length, takeaways, concrete, signposts, short_share, questions, answers, objections, repeat, you_i, ending_length, cta, subscribe_once, recap, greeting_end, loop_resolved |
 
 `script.short_checks` (`script_check.py --short`): a level per rule and a few numbers.
@@ -306,8 +308,8 @@ of Alex Hormozi's long videos: the recap list and the goodbye at the end, "try t
 | `length` | error | words outside `edit-style.json` `shorts.words` (+-25 %) |
 | `i_form` | warn | fewer I-sentences than you-sentences (an error before 26 Nov 2026) |
 | `question_first`, `number_first`, `number_first_words` | error, error, 12 | sentence 1 is no question; a number in the first words |
-| `ask` | error | an ask in the Short (subscribe, link, comment, follow): it goes into the pinned comment and the description |
-| `last_sentence`, `last_sentence_words` | error, 8 | the last sentence is the punch line |
+| `ask` | error | an ask in the Short (subscribe, link, comment, follow): it goes into the pinned comment and the description. With `script.short_ask`: the last sentence must be that comment ask and it is the only ask |
+| `last_sentence`, `last_sentence_words` | error, 8 | the last sentence is the punch line (with `script.short_ask`: the sentence before the comment ask) |
 | `steps` | warn | 2 to 3 counted steps |
 | `sentence_max_words` | (`script.sentence_max_words`) | the longest sentence of a Short |
 | `turn`, `proof_number`, `time_anchor`, `phrases` | warn, warn, warn, error | as before |
@@ -323,6 +325,7 @@ of Alex Hormozi's long videos: the recap list and the goodbye at the end, "try t
 | `description_footer` | null | file in the pack folder that ends every description word for word (about the creator and the company); the check fails when it is missing or changed |
 | `publish_time`, `timezone` | null, null | the channel's fixed upload time, such as `"08:00"` and `"Europe/Berlin"` |
 | `playlist` | null | playlist every episode goes into (planned in the upload command) |
+| `cta_reply` | null | the reply under a comment with a Short's comment word, `{url}` for the link (`cta_url`), e.g. `"Hier ist der Link: {url} Viel Spaß!"`; without it: "Here is the link: {url}" |
 | `checks` | dash off | |
 
 ## voice.md: word lists

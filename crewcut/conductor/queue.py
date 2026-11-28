@@ -410,6 +410,11 @@ class Worker:
             youtube_upload.comments_tick()
         except Exception:  # noqa: BLE001 - a waiting comment must never stop the queue
             traceback.print_exc()
+        from ..youtube import replies as youtube_replies
+        try:
+            youtube_replies.tick()   # comment word -> link reply under the Shorts, every 15 minutes; no crew job
+        except Exception:  # noqa: BLE001 - the replies must never stop the queue
+            traceback.print_exc()
         from .. import second_opinion
         try:
             second_opinion.tick()

@@ -127,3 +127,19 @@ def test_description_footer(tmp_path):
     r = pc.Report()
     pc.check_description(r, body, pack)
     assert any("gone.md" in x["text"] for x in rows(r, "description", "error"))
+
+
+def test_the_comment_word_and_its_link():
+    """A Short's comment word (cta_keyword) and the link viewers get for it (cta_url): named in the description and
+    the pinned comment, the word in capitals, a short link (28 Nov 2026)."""
+    ok = {"description": "Kommentier GPU, dann bekommst du die Anleitung.", "cta_keyword": "GPU",
+          "cta_url": "striq.de/gpu", "related_comment": "Kommentier GPU für die Anleitung."}
+    r = pc.Report()
+    pc.check_cta(r, ok)
+    assert rows(r, "comment word", "ok") and not rows(r, "comment word", "error")
+    r = pc.Report()
+    pc.check_cta(r, {**ok, "description": "Nothing here.", "cta_url": "https://striq.de/" + "x" * 40})
+    assert rows(r, "comment word", "error") and "not clickable" in rows(r, "comment word", "warn")[0]["text"]
+    r = pc.Report()
+    pc.check_cta(r, {"description": "x"})
+    assert r.rows == []

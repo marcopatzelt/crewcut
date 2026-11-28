@@ -16,6 +16,9 @@ measures it after 48 hours. Before this step: the final cut is approved (`skills
 - **The upload goes through the YouTube Data API** (`crewcut youtube upload`), never through clicks in a browser. Only
   the Publisher (`may_publish: true`) uploads.
 - Posting or pinning a comment, changing channel settings, swapping a thumbnail after the upload: a card each time.
+  The one exception: the reply with the link under a comment with the Short's comment word (`cta_keyword`, `cta_url`
+  in the approved package). The person asked for this funnel; the worker sends it on its own (`youtube.cta_replies`,
+  docs/youtube.md).
 - Music or clips with unclear rights: name them on the publish card.
 
 ## The package

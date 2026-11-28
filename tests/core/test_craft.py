@@ -332,6 +332,24 @@ def test_the_fixed_ask_belongs_in_the_middle():
     assert "no fixed ask" in f["text"]
 
 
+def test_a_packs_own_fixed_ask_ends_with_its_text():
+    """Since 28 Nov 2026 a channel's one fixed ask can point to the link in the description instead of the subscribe
+    line (channel.json script.craft.ask_ends_with)."""
+    ask = "Die Vorlage dazu habe ich dir gebaut, der Link ist in der Videobeschreibung."
+    text = GOOD_DE.replace("Wenn du Tests mit echten Zahlen magst, abonnier den Kanal. Kein Anbieter bezahlt sie.", ask)
+    assert ask in text
+    cfg = {"ask_ends_with": "der Link ist in der Videobeschreibung"}
+    r = craft.check(text, "de", 150, cfg)
+    assert not [f for f in r["findings"] if f["rule"] in ("cta", "subscribe_once")], r["findings"]
+    assert len(r["stats"]["ask_at"]) == 1 and 0.15 <= r["stats"]["ask_at"][0] <= 0.6
+    # without the key the same script has no fixed ask (subscribe)
+    assert any("no fixed ask (subscribe)" in f["text"] for f in craft.check(text, "de", 150)["findings"]
+               if f["rule"] == "cta")
+    gone = text.replace(ask, "")
+    assert any('no fixed ask ending with "der Link ist in der Videobeschreibung"' in f["text"]
+               for f in craft.check(gone, "de", 150, cfg)["findings"] if f["rule"] == "cta")
+
+
 def test_levels_and_limits_come_from_the_pack():
     r = craft.check(BAD_EN, "en", 150, {"checks": {"greeting": "off", "roadmap": "error", "questions": "hint"}})
     assert "greeting" not in rules(r)

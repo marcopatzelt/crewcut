@@ -46,6 +46,8 @@ change after the card needs a new card.
 | `endscreen_video` | the own video for the end screen (set by hand in Studio; no API) |
 | `names` | names that must be spelled exactly in title, tags and captions |
 | `ab_test` | the variants for "Test & compare" (started by the user in Studio; no API) |
+| `related_url`, `related_comment` | Shorts: the long video, and the comment the upload posts (pin it in Studio) |
+| `cta_keyword`, `cta_url` | a Short's comment word (one word in capitals) and the link a commenter gets as a reply; both or neither; the description and `related_comment` name the word and what viewers get; keep the link short (Shorts comments seldom make links clickable). See docs/youtube.md, comment word -> link reply |
 
 ## Description template (neutral)
 

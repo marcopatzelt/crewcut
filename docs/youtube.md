@@ -63,6 +63,7 @@ The token is stored in `studio/.crewcut/youtube-token.json` (owner-only permissi
 | Thumbnail | `thumbnails.set` | the thumbnail card before |
 | Captions (SRT) | `captions.insert` | part of the publish card |
 | A Short's link comment to the long video (`crewcut youtube comment`), after YouTube has processed it | `commentThreads.insert` (`youtube.force-ssl`) | part of the publish card; pinning has no API |
+| A reply with the link under every comment with a Short's comment word (`crewcut youtube replies`, every 15 minutes) | `commentThreads.list`, `comments.insert` (`youtube.force-ssl`) | the publish card approves the word and the link; the replies themselves need no card (see below) |
 | "Altered or synthetic content" answer | `status.containsSyntheticMedia` | shown on the publish card with a reason |
 | Retention around the motion moments (`crewcut youtube retention <episode>`) | YouTube Analytics API, read-only | none (unproven: see below) |
 | Video results for a calendar-day period (`crewcut youtube results`) | YouTube Analytics API, read-only | none |
@@ -97,6 +98,45 @@ When YouTube cannot be asked, nothing goes up (exit 6). A yes on a second publis
 already, or whose upload is queued or running, starts no job; the chat says why. A second video of an episode next to
 the first one (another video file) is for the person at the terminal only: `crewcut youtube upload --new-video`. The
 same file never goes up twice.
+
+## Comment word -> link reply
+
+A Short can end with a comment ask ("If you want this too, comment GPU."; the channel sets the sentence in
+`channel.json` `script.short_ask`). The viewer comments the word and gets the link as a reply under the comment: the
+"send me the link" funnel that other platforms run through direct messages, which YouTube does not have. Code:
+`crewcut/youtube/replies.py`.
+
+- **What it needs.** The upload package names the word and the link: `cta_keyword` (one word in capitals, such as
+  `GPU`) and `cta_url` (such as `example.com/gpu`). The package check requires the word in the description and in
+  the pinned comment (`related_comment`, which says what the viewer gets for it); a Short with a word gets its comment
+  even without a long video to link. The publish card shows both, and the upload records them in
+  `export/upload-result.json`: the reply only ever carries a link the person approved. Pinning the comment has no
+  API: pin it in YouTube Studio.
+- **How it answers.** The worker looks every `youtube.cta_replies_every_minutes` (15) at the newest top-level comments
+  of each public Short with a word (`commentThreads.list`, newest first, until it reaches the comments it handled
+  before). Every comment that contains the word, in any case and as a whole word ("gpu!" yes, "GPUs" no), gets one
+  reply through `comments.insert`: the channel's line `channel.json` `upload.cta_reply` with `{url}` filled in (without
+  it: "Here is the link: {url}"). Whoever asked first is answered first.
+- **Once, and never to itself.** Answered comments are kept in the `cta_replies` table; a thread that already holds a
+  reply from the channel counts as answered too. The channel's own comments are never answered, nor comments that do
+  not allow replies.
+- **Limits.** At most `youtube.cta_replies_per_video_hour` (20) replies per video in any hour and
+  `youtube.cta_replies_per_day` (100) for the whole channel in any 24 hours; a comment over the limit waits for the
+  next run. A reply costs 50 quota units and reading a page of comments 1 (Google's default project quota is 10,000
+  units a day, an upload 1,600; check your project's quotas): the daily cap keeps room for uploads.
+- **Problems.** When YouTube refuses (comments off, no permission), that video stops for this run and the chat says so
+  once; a quota error stops the whole run. Network and server errors: the next run tries again.
+- **Privacy.** The chat, the log and `export/cta-replies.json` (counts, last run, last error per episode) hold counts
+  and ids only, never a commenter's name or words.
+- **Links in Shorts comments are often not clickable** (YouTube turns many links in Shorts comments into plain text).
+  Keep `cta_url` short and typeable; the check warns from 40 characters.
+- **Switch.** `youtube.cta_replies` in `config/crewcut.toml`: `"on"` (default; only Shorts with a word in their
+  upload), `"dry-run"` (counts what it would send, sends and stores nothing) or `"off"`. The setting is read on every
+  run, no restart needed. Long videos too: `youtube.cta_replies_long = true`. By hand: `crewcut youtube replies`
+  (`--dry-run`, `--episode`, `--status`).
+- **Why it needs no card.** It is the one automatic post: the person asked for exactly this funnel, for comments with
+  the word under their own videos, with the link they approved on the publish card. Every other post still needs a
+  card.
 
 ## Video results
 

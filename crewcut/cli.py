@@ -358,6 +358,11 @@ def build_parser() -> argparse.ArgumentParser:
     ycm.add_argument("--package", help="upload package JSON, default: the one of the upload")
     ycm.add_argument("--wait", type=float, default=0, help="seconds to wait for YouTube's processing")
     ysub.add_parser("status")
+    yrp = ysub.add_parser("replies", help="answer comments with a Short's comment word (cta_keyword) with its link, "
+                          "once each (the worker does this every 15 minutes; youtube.cta_replies in config)")
+    yrp.add_argument("--episode", help="only this episode (also a long video)")
+    yrp.add_argument("--dry-run", action="store_true", help="count what would be sent; send and store nothing")
+    yrp.add_argument("--status", action="store_true", help="show the switch, the limits and each video's counts")
     yv = ysub.add_parser("verify", help="compare uploaded metadata with the package (read-only)")
     yv.add_argument("episode")
     yv.add_argument("--package", default="export/upload.json")

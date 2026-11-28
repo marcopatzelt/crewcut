@@ -85,6 +85,13 @@ CREATE TABLE IF NOT EXISTS uploads (            -- every YouTube video of an epi
   at TEXT NOT NULL, checked TEXT,
   UNIQUE (episode, video_id)
 );
+CREATE TABLE IF NOT EXISTS cta_replies (        -- keyword comments answered with the link (crewcut/youtube/replies.py)
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  episode TEXT NOT NULL, video_id TEXT NOT NULL, comment_id TEXT NOT NULL,
+  reply_id TEXT, status TEXT NOT NULL,          -- sent | found (the channel had answered the comment already)
+  at REAL NOT NULL,                             -- unix time; the rate limits count "sent" rows
+  UNIQUE (video_id, comment_id)
+);
 CREATE TABLE IF NOT EXISTS upload_locks (       -- one upload of an episode at a time
   episode TEXT PRIMARY KEY, token TEXT NOT NULL, job INTEGER, pid INTEGER, host TEXT, pid_start TEXT,
   since TEXT NOT NULL, beat REAL NOT NULL, what TEXT
