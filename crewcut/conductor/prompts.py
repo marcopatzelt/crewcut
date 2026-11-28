@@ -157,6 +157,11 @@ def system_prompt(identity: dict, episode: str | None, step: str | None, with_id
         from .. import stylegate
         note = stylegate.writer_note(episode).strip()   # the studio's style checker decides (crewcut/stylegate.py)
         step_line += (note + "\n") if note else ""
+    if episode and step == "edit" and (identity.get("id") in ("editor", "critic", "designer")
+                                       or worker in ("editor", "critic", "designer")):
+        from .. import graphicsgate
+        note = graphicsgate.editor_note().strip()   # the pack's graphic system decides (crewcut/graphicsgate.py)
+        step_line += (note + "\n") if note else ""
     if episode and identity.get("id") == "critic":
         step_line += ("End every review report (review/critic-<version>.md) with two lines: `Verdict: back` (it goes "
                       "back to the builder) or `Verdict: show` (the user may see it), and `Round: N of M`. The conductor "

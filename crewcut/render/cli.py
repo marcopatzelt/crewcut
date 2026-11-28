@@ -319,6 +319,13 @@ def run(a: argparse.Namespace, out: dict) -> int:
         s["notes"] = workbench.motion_notes(plan)
         if any(workbench.needs_style_frame(x) for x in plan.inserts) or plan.of_kind("motion"):
             s["notes"] += [f"waits: {x}" for x in workbench.insert_gates(plan)]
+        from .. import graphicsgate
+        gg = graphicsgate.settings()
+        if gg["mode"] != "off":
+            v = graphicsgate.check_plan(plan.path, pack=plan.pack, episode_dir=plan.episode_dir)
+            if not v.get("skipped"):
+                s["notes"].append(f"graphics gate ({gg['mode']}): {graphicsgate.short_line(v)}"
+                                  + ("" if v["pass"] else " `crewcut graphics-gate <plan>` lists every point."))
         out.update(s)
         if not a.json:
             _print_plan(s)

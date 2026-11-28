@@ -42,7 +42,12 @@ Scene names and their data keys: `templates/2d/BLOCKS.md`, `templates/3d/README.
    Never type seconds by hand. Schema: `docs/architecture.md`, "Edit plan". Values left `null` come from the pack.
    Motion rows of the approved motion plan become `"kind": "motion"` entries with their `beat` and `column`.
 6. `crewcut render plan edit/plan-vNNN.json`: lists every insert with frames and cues. Read it. An insert of half a
-   second is a wrong anchor.
+   second is a wrong anchor. When the pack has a graphic system (`edit-style.json` `graphics`), run
+   `crewcut graphics-gate edit/plan-vNNN.json` too and fix every fail: types, colours, type sizes, shapes, the
+   speaker's and the full-screen share, density, word sync, elements, sounds, safe zones. A piece made for this video
+   or a finished graphic shown as a clip names its type in `"graphic": {"type": …}`, with what the plan cannot say
+   (`on`, `text`, `colors`, `text_px`, `elements`, `box`; `docs/architecture.md`, "Edit plan"). `render all` and
+   `render cut` run the same gate first; in block mode a failing plan does not render.
 7. `crewcut render 2d edit/plan-vNNN.json`: 2D inserts, locally.
 8. 3D: `crewcut render probe edit/plan-vNNN.json <id>` gives one still frame at half size. Look at it next to the
    reference before anything else (skill `3d-scene`). Then the cost estimate and the card (section "Rented GPU or

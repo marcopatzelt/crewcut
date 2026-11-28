@@ -227,6 +227,9 @@ def on_card_decided(card: dict) -> None:
     from .. import stylegate
     if stylegate.on_limit_card(card):   # the style check still failed after the last round; the user decides
         return
+    from .. import graphicsgate
+    if graphicsgate.on_card(card):   # the graphics check stopped a render; a yes sends the fixes to the Editor
+        return
     tl = (card.get("data") or {}).get("time_limit")
     if tl:   # a run hit the time limit twice
         if accepted:

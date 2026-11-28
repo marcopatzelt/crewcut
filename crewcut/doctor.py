@@ -152,6 +152,20 @@ def checks(ci: bool = False, probe: bool = False) -> list[dict]:
         f"{gate['mode']}, but the studio has no {gate['skill']} skill with {gate['checker']}: skipped",
         "" if tool or gate["mode"] == "off" else
         "Only for a studio with its own style checker (docs/own-skills.md, \"A skill with a checker\").")
+    from . import graphicsgate
+    gg = graphicsgate.settings()
+    try:
+        gl = graphicsgate.limits(brand.load()) if gg["mode"] != "off" else None
+    except Exception:  # noqa: BLE001 - a broken pack is reported elsewhere
+        gl = None
+    add(OK if gg["mode"] == "off" or gl else NOTE, "graphics gate",
+        "off" if gg["mode"] == "off" else
+        f"{gg['mode']}, {len(gl['types'])} graphic types, speaker at least "
+        + (f"{gl['speaker_share_min']:.0%}" if gl["speaker_share_min"] is not None else "-") + ", full-screen graphics at most "
+        + (f"{gl['share_max']:.0%}" if gl["share_max"] is not None else "-") + " (edit-style.json graphics)" if gl else
+        f"{gg['mode']}, but the style pack has no graphic system (edit-style.json graphics): skipped",
+        "" if gl or gg["mode"] == "off" else
+        "Only for a style pack with a graphic system (docs/style-packs.md, \"graphics\").")
     if tool and gate["mode"] != "off":
         from . import second_opinion
         why = second_opinion.why_not()
