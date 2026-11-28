@@ -146,11 +146,12 @@ pair a section `## Pair A …` or `## Paar A …` with its `- Title:` or `- Tite
     - Test: reverses, <why>          German: - Test: dreht um, <warum>
 
 A pair reverses when its title or image says the opposite of what was measured, or when its formula's condition is
-not met; it is dropped or rebuilt in the measured direction. The title step's Critic gets the test result with this as
+not met; it is dropped or rebuilt in the measured direction (a dropped pair stays in the file with its line). The title step's Critic gets the test result with this as
 a hard question. `crewcut card propose --kind title` is refused while the newest packaging is older than the test
-result or leaves a pair unchecked, and an option that is the title of a reversed pair is refused; the thumbnail step
-never builds the image of a reversed pair. An episode without a show format, a test result or a packaging file with
-pairs is not checked.
+result, leaves a pair unchecked or has no pair in this shape (a table is not read), and an option that is the title of a reversed pair (in any packaging version written
+after the result) is refused; the thumbnail step
+never builds the image of a reversed pair. An episode without a show format, a test result or a packaging file is not
+checked.
 
 The system prompt of every job in such an episode carries the format block: structure, rules, formulas, template
 paths and, when the studio has it, `brand/references/HORMOZI-NIE-OHNE-CONTENT.md` (where topics come from). With a

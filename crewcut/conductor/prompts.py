@@ -286,7 +286,8 @@ def step_task(step: str, episode: str, seed: str = "") -> str:
                 "measured, for example 'not as current as you think' when the test found it more current) is dropped "
                 "or rebuilt in the measured direction, and so is a pair whose formula has a condition the result does "
                 "not meet (for example a title that says Claude wins, when the test does not show Claude ahead). Write "
-                f"the next brief/PACKAGING-vNNN.md with one line per pair, {titlepairs.MARKS}, and give the Critic the "
+                f"the next brief/PACKAGING-vNNN.md, {titlepairs.SHAPE} (a dropped pair stays in the file with its "
+                "line), and give the Critic the "
                 "test result with the pairs. The title card is refused while a pair is unchecked or when an option is "
                 "a reversed pair. " if res else "")) + t
     if step == "thumbnail" and project.get("show_format"):

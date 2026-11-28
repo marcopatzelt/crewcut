@@ -44,8 +44,23 @@ def test_pairs_and_their_verdicts_are_read_from_the_packaging():
     assert [p["test"] for p in titlepairs.pairs(PLAN_PACKAGING)] == [None, None, None]
     for text, want in (("dreht um: normales Claude fand mehr", "reverses"), ("trägt nicht", "reverses"),
                        ("does not hold", "reverses"), ("widerspricht dem Test", "reverses"), ("trägt", "carries"),
-                       ("carries, 72 against 61", "carries"), ("offen", None)):
+                       ("carries, 72 against 61", "carries"), ("offen", None), ("stimmt nicht", "reverses"),
+                       ("not supported", "reverses"), ("carries (not reversed)", "carries"),
+                       ("trägt, widerspricht nicht", "carries"), ("trägt, das Gegenteil wurde nicht gemessen", "carries"),
+                       ("carries (rebuilt; v001 contradicted the result)", "carries"), ("**dreht um**", "reverses")):
         assert titlepairs.verdict(text) == want, text
+
+
+def test_bold_labels_notes_and_ordinary_headings():
+    text = ("## Paar A: situation\n- **Titel:** **Claude gewinnt** (50 Zeichen, an der Grenze; im Titel-Schritt kürzen)\n"
+            "- **Test:** dreht um, gemessen 2 von 9\n\n"
+            "## Paar mit dem besten Wert\n- Titel: kein Paar\n\n"
+            "## Pair 2: flip\n- Title: Claude wins on price (44 characters) · formula: flip\n- Test: carries\n")
+    ps = titlepairs.pairs(text)
+    assert [(p["pair"], p["title"], p["test"]) for p in ps] == [("A", "Claude gewinnt", "reverses"),
+                                                               ("2", "Claude wins on price", "carries")]
+    assert titlepairs._same("A) Claude gewinnt!", "Claude gewinnt")
+    assert not titlepairs._same("Claude gewinnt nicht immer", "Claude gewinnt")   # rebuilt in the measured direction
 
 
 def format_episode(crew, result=True):
@@ -77,11 +92,16 @@ def test_the_title_card_waits_for_the_check_and_refuses_a_reversed_pair(crew):
                 "Your Claude is NOT as current as you think! (42 characters)")
     card = propose(eid, "Before you pay for research, let Claude search", "Claude is more current than you think")
     assert card["kind"] == "title" and card["status"] == "open"
+    # a later version that dropped the reversed pair does not set it free
+    (brief / "PACKAGING-v003.md").write_text(checked().split("## Pair B")[0] + "## Pair C: case\n"
+                                             "- Title: Claude reads Reddit for your app idea\n- Test: carries\n")
+    with pytest.raises(titlepairs.Unchecked, match=r"is pair B, .*brief/PACKAGING-v002.md"):
+        propose(eid, "Your Claude is not as current as you think")
     # a newer test result needs a new check
     (brief / "MESSKARTE-v002.md").write_text("Test 1 again.\n")
     os.utime(brief / "MESSKARTE-v002.md", (4_000_000_000, 4_000_000_000))
     assert titlepairs.problems(eid, ["Claude reads Reddit for your app idea"])[0].startswith(
-        "brief/PACKAGING-v002.md is older than the test result brief/MESSKARTE-v002.md")
+        "brief/PACKAGING-v003.md is older than the test result brief/MESSKARTE-v002.md")
 
 
 def test_no_check_without_a_format_a_result_or_pairs(crew):
@@ -91,9 +111,11 @@ def test_no_check_without_a_format_a_result_or_pairs(crew):
     (paths.episode_dir(plain) / "brief" / "PACKAGING-v001.md").write_text(PLAN_PACKAGING)
     (paths.episode_dir(plain) / "brief" / "MESSKARTE-v001.md").write_text("Test.\n")
     assert titlepairs.problems(plain, ["Your Claude is not as current as you think"]) == []
+    # with a result, the packaging must list its pairs in a shape the check reads
     (brief / "MESSKARTE-v001.md").write_text("Test.\n")
-    (brief / "PACKAGING-v001.md").write_text("# Packaging\nTitles without pair sections.\n")
-    assert titlepairs.problems(eid, ["anything"]) == []
+    (brief / "PACKAGING-v001.md").write_text("# Packaging\n| Stelle | Titel |\n| --- | --- |\n| 1 | A title |\n")
+    assert "has no title and thumbnail pair the check can read (a table is not read)" in \
+        titlepairs.problems(eid, ["anything"])[0]
 
 
 def test_the_cli_refuses_the_card_with_the_reason(crew, monkeypatch, capsys):
