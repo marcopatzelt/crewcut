@@ -30,7 +30,8 @@ Settings (`[style_gate]` in config/crewcut.toml or `script.style_gate` in the st
 a profile exists), hint (every finding is a hint) or off; `voice_profile`, the profile's path inside the studio.
 
 Command: `crewcut voice check <file> [--format lang|short] [--json] [--profile FILE]` (the Writer runs it before the
-gate; exit 1 when an error-severity check fails).
+gate; exit 1 when an error-severity check fails). `crewcut voice reading <file>` checks the reading version of a script
+(crewcut/delivery.py).
 """
 
 from __future__ import annotations
@@ -597,11 +598,16 @@ def _parser() -> argparse.ArgumentParser:
     c.add_argument("--format", choices=["lang", "short"])
     c.add_argument("--profile", help="the profile file (default: [style_gate] voice_profile)")
     c.add_argument("--json", action="store_true")
+    from . import delivery
+    delivery.add_parser(sub)
     return ap
 
 
 def main(argv: list[str] | None = None) -> int:
     a = _parser().parse_args(argv)
+    if a.cmd == "reading":
+        from . import delivery
+        return delivery.cli(a.file, a.script, a.json)
     p = Path(a.profile) if a.profile else profile_path()
     if p is None or not p.is_file():
         print("No voice profile: set [style_gate] voice_profile or pass --profile.", file=sys.stderr)

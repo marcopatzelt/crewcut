@@ -110,7 +110,7 @@ A skill never hard-codes a colour, font, logo, loudness or mix limit. It reads t
 | `ideas.py`, `scoreboard.py` | idea cards from `inbox/ideas/` (start, dismiss); results per show format | core |
 | `stylegate.py` | the studio's own style checker as a hard gate for scripts: rounds with the Writer, card and advance refusals | core |
 | `graphicsgate.py` | the style pack's graphic system checked on the edit plan before `render all` and `render cut`: a card names every fix, its yes goes to the Editor | core |
-| `voicemetrics.py`, `voicecheck.py`, `lernstand.py` | a reference speaker's measured voice, the voice and structure checks the gate adds, the learning file after every gate round and retention run ([hormozi-voice.md](hormozi-voice.md)) | core |
+| `voicemetrics.py`, `voicecheck.py`, `lernstand.py`, `delivery.py` | a reference speaker's measured voice, the voice and structure checks the gate adds, the learning file after every gate round and retention run, the delivery guide and the reading version of a passing script ([hormozi-voice.md](hormozi-voice.md)) | core |
 | `studio_import.py` | offline legacy studio copy, manifests and visible references; no jobs or publication | core |
 | `conductor/` | steps, job queue (one heavy job at a time; chat answers in their own reply lane, one per episode; a chat message that arrives while a crew member runs reaches it once at its next `crewcut doing`, `say`, `chat` or `card propose`, and the chat shows when, `conductor/deliver.py`), engine runner | core |
 | `engines/` | one interface (`base.py`: Task, Event, RunResult; start, stream, stop, resume), two engines on the user's own subscription (`claude_code.py` default, `codex.py` beta) and the version manager (`versions.py`: newest version, smoke test, way back); see [engine.md](engine.md) | core |
@@ -199,6 +199,7 @@ crewcut humanize record --draft FILE --final FILE [--why "…"]       the Humani
 crewcut style-gate <episode> [--file F …] [--json]               the studio's style checker on the newest scripts: 0 pass, 1 block
 crewcut graphics-gate <plan | episode> [--episode ID] [--json]    the pack's graphic system on an edit plan: 0 pass, 1 fail
 crewcut voice check <file> [--format lang|short] [--json]         voice and structure checks against the voice profile (docs/hormozi-voice.md)
+crewcut voice reading <file> [--script FILE] [--json]             the reading version: same words as the script, delivery marks a speaker can follow
 crewcut lernstand [--no-cards] [--print]                          write the learning file now (findings, units, gold candidates, rule cards)
 crewcut brand voice add <video link | recording> | list          the user's own spoken words (brand/voice/)
 crewcut skills status | update [<name>]                           skills from other projects (Humanizer), newest

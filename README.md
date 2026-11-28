@@ -145,7 +145,9 @@ saved links wait as cards; a scoreboard shows which formats win. See [docs/forma
 **A voice to learn from.** Measure a reference speaker from transcripts on your computer: sentence length, numbers,
 "you" against "I", the first number, unit length. The style gate checks every script against your target bands and
 the speaker's structure, the Writer models hooks and punch lines on real passages, and a learning file collects what
-the critics found and which units held viewers, so the next script starts there. See
+the critics found and which units held viewers, so the next script starts there. A delivery guide tells the crew how
+the speaker stresses, pauses and lands a punch line, and once a script passes, the Writer adds a reading version with
+the stressed words in capitals and the pauses marked, for you to read once before you record. See
 [docs/hormozi-voice.md](docs/hormozi-voice.md).
 
 Every correction is one sentence, typed or spoken ("keep the part where I laugh", "no captions"). A correction that should
