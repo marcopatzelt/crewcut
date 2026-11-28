@@ -13,7 +13,8 @@ write reports with a `window`. Per episode:
 - subscribers gained per 1,000 views, and the median drop per minute of the units (`analytics/retention-units.json`).
 
 Without window reports the newest `review/results-*.json` (or, for Shorts, `studio/shorts.tsv`) gives total views,
-compared with the channel median and marked as unfair to new videos.
+compared with the channel median of the same length (Shorts against Shorts, long against long) and marked as unfair to
+new videos. Subscribers per 1,000 views are compared within the same length too.
 
 Verdict per format: too little data under 2 measured episodes; with 2 or 3 a stop when the first two are both under
 0.5 and both weak on click and view share, else watch; from 4 on (the last 4): more of this at a median of at least
@@ -200,9 +201,9 @@ def build() -> dict:
     lib = showformats.load()
     rows = episode_rows()
     measured = [r for r in rows if r["views"] is not None]
-    channel = {"median_views": _median([r["views"] for r in measured]),
-               "median_avg_view_pct": _median([r["avg_view_pct"] for r in measured]),
-               "subs_per_1000": _median([r["subs_per_1000"] for r in measured]), "episodes": len(measured)}
+    channel = _medians(measured)
+    by_length = {ln: _medians([r for r in measured if r["length"] == ln]) for ln in ("long", "short")}
+    channel["by_length"] = by_length
     groups: dict[str, list[dict]] = {}
     for r in rows:
         groups.setdefault(r["format"], []).append(r)
@@ -216,11 +217,14 @@ def build() -> dict:
         fair = sorted((r for r in rs if r.get("x") is not None), key=lambda r: r.get("published") or "")
         if fair:
             basis, xs = "first days", [r["x"] for r in fair]
-        else:   # total views only: unfair to young videos, marked as such
+        else:   # total views only: unfair to young videos, marked as such; Shorts against Shorts, long against long
             basis = "total views"
-            fair = [r for r in m if channel["median_views"]]
-            xs = [r["views"] / channel["median_views"] for r in fair]
-        verdict, median_x = decide(fair, xs, mine["subs_per_1000"], channel["subs_per_1000"])
+            fair = [r for r in m if by_length[r["length"]]["median_views"]]
+            xs = [r["views"] / by_length[r["length"]]["median_views"] for r in fair]
+        lengths = [r["length"] for r in rs]
+        length = max(("long", "short"), key=lengths.count)   # the format's episodes are judged within their length
+        verdict, median_x = decide(fair, xs, mine["subs_per_1000"],
+                                   by_length.get(length, channel)["subs_per_1000"])
         if basis == "total views" and any(r["traffic_type"] == "search" and r.get("x_7d") is not None for r in rs):
             basis, verdict, median_x = "search: judged on the first 28 days", "watch", None
         traffic = sorted({r["traffic_type"] for r in rs})
@@ -237,6 +241,12 @@ def build() -> dict:
     order = {"more": 0, "change": 1, "watch": 2, "thin": 3, "stop": 4, "drop": 5}
     out.sort(key=lambda f: (order[f["verdict"]], -(f["median_views"] or 0), f["format"]))
     return {"channel": channel, "formats": out}
+
+
+def _medians(rows: list[dict]) -> dict:
+    return {"median_views": _median([r["views"] for r in rows]),
+            "median_avg_view_pct": _median([r["avg_view_pct"] for r in rows]),
+            "subs_per_1000": _median([r["subs_per_1000"] for r in rows]), "episodes": len(rows)}
 
 
 def decide(fair: list[dict], xs: list[float], subs: float | None, channel_subs: float | None) -> tuple[str, float | None]:
@@ -300,6 +310,11 @@ def cli(as_json: bool = False) -> int:
     c = board["channel"]
     print(f"Channel ({c['episodes']} measured): median {_fmt(c['median_views'])} views, "
           f"{_fmt(c['median_avg_view_pct'], ' %')} watched, {_fmt(c['subs_per_1000'])} subs/1000 views")
+    for ln, name in (("long", "Long videos"), ("short", "Shorts")):
+        b = (c.get("by_length") or {}).get(ln) or {}
+        if b.get("episodes"):
+            print(f"  {name} ({b['episodes']} measured): median {_fmt(b['median_views'])} views, "
+                  f"{_fmt(b['median_avg_view_pct'], ' %')} watched, {_fmt(b['subs_per_1000'])} subs/1000 views")
     for f in board["formats"]:
         print("  " + line(f))
     return 0

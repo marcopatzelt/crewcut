@@ -21,6 +21,11 @@ acts on them: `points` (the open findings, each with `text`), `instructions` (a 
 check, for example a sentence-by-sentence review) and `second_opinion: true` with `answer_file` (the gate asks a
 second model on the host computer once everything else passes; crewcut/second_opinion.py).
 
+A script with a placeholder that only a test can fill (`[ZAHL nach Test]`, `[ERGEBNIS: …]`, showformats.placeholders)
+fails at once with the check PLACEHOLDER, before the checker and before any Critic round: no review is spent on a
+guess. While the episode's test result is still missing, the gate holds the script and the conductor waits for the
+result (crewcut/conductor/plan.py); with the result there, the Writer fills the gaps from it.
+
 Rounds (`loop`): "rounds" sends the Writer back at most `max_rounds` times, then a card asks the user. "until_pass"
 goes on while each round changes what is open, and stops with a card "Not approved: <point>" ("Nicht freigegeben" in a
 German studio) as soon as the same open point stays unchanged for two rounds in a row, or after `safety_rounds`. A
@@ -303,13 +308,55 @@ def check(episode: str, file: str | Path | None = None, files: list[Path] | None
         return verdict
     for p in todo:
         fmt = fmt_of(episode, p)
-        r = run(p, fmt, _title(episode, p, fmt), cfg, tool)
+        r = placeholder_result(p, fmt) or run(p, fmt, _title(episode, p, fmt), cfg, tool)
         r["file"] = _rel(episode, p)
         if r.get("kritik"):
             r["kritik"] = _rel(episode, Path(r["kritik"]))
         verdict["results"].append(r)
     verdict["pass"] = all(r["pass"] for r in verdict["results"])
     return verdict
+
+
+def placeholder_result(p: Path, fmt: str) -> dict | None:
+    """A script with placeholders fails before the checker runs (no Critic round on a guess). None without any."""
+    from . import showformats
+    if p.suffix.lower() not in (".md", ".txt"):
+        return None
+    try:
+        text = p.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    found = showformats.placeholders(text)
+    if not found:
+        return None
+    lines = showformats.placeholder_lines(text)
+    pts = [{"text": ln.strip()[:240], "why": "a gap only the test can fill", "wo": f"Z{i}"} for i, ln in lines[:20]]
+    fix = ("Fill every placeholder with the measured value from the test result (brief/TESTERGEBNIS-vNNN.md), or cut "
+           "the sentence, or say plainly what was not measured. No Critic reviews a script with a placeholder.")
+    check = {"id": "PLACEHOLDER", "rule": "F2", "kind": "auto", "titel": "placeholder in the spoken text",
+             "measured": f"{len(found)} placeholder(s): " + ", ".join(found[:6]), "target": "0 placeholders",
+             "line": pts[0]["wo"] if pts else None, "fix": fix, "points": pts, "pass": False}
+    return {"file": str(p), "format": fmt, "pass": False, "auto_pass": False, "failed": [check], "open": [],
+            "error": None, "exit": None, "kritik": None, "placeholders": len(found), "fresh": [], "second_opinion": [],
+            "instructions": [], "hints": 0, "notes": [], "voice": []}
+
+
+def has_placeholders(verdict: dict) -> bool:
+    return any(r.get("placeholders") for r in verdict.get("results", []))
+
+
+def hold_for_test(episode: str, verdict: dict) -> dict:
+    """The newest script has placeholders and the test result is missing: no Writer round, no Critic round; the script
+    step waits for the test result (the conductor starts the Writer when it is there)."""
+    from .conductor import plan
+    n = sum(int(r.get("placeholders") or 0) for r in verdict.get("results", []))
+    why = (f"Das Skript hat {n} Platzhalter und der Test ist noch nicht gelaufen. Kein Critic prüft es. "
+           if _german() else
+           f"The script has {n} placeholder(s) and the test has not run. No Critic reviews it. ")
+    if not plan.wait_for_test(episode, why=why):
+        from .conductor import flow
+        flow.post(episode, why, step="script")
+    return {"action": "wait_test", "placeholders": n}
 
 
 def failed_ids(verdict: dict) -> list[str]:
@@ -741,7 +788,13 @@ def _learn() -> None:
 
 def route(episode: str, v: dict, job: dict | None = None, why: str = "") -> dict:
     """What a failing verdict needs next: the Writer (a finding), the Critic (its review is missing or out of date),
-    or the second opinion (everything else passes)."""
+    or the second opinion (everything else passes). A script with placeholders waits for its test result."""
+    if has_placeholders(v):
+        from . import showformats
+        if showformats.test_pending(episode):
+            return hold_for_test(episode, v)
+        why = (why + "The script still has placeholders; the test result is there now: fill every one from it. "
+               if showformats.test_result(episode) else why)
     if any(r["failed"] or r.get("error") for r in v["results"]) or v.get("error"):
         return writer_round(episode, v, job, why=why)
     if any(_open_for_critic(r) for r in v["results"]):
@@ -870,7 +923,9 @@ def writer_note(episode: str | None) -> str:
             " and the script does not go to recording; the conductor sends the failed checks back ("
             + (f"at most {cfg['max_rounds']} rounds)" if cfg["loop"] == "rounds" else "rounds go on until the checker and the "
                "Critic pass; a point that stays the same for two rounds goes to the user as not approved)")
-            + ". " + _voice_note() + "The checker's rules win over the generic craft where they differ. When the studio writes cue sheets "
+            + ". A script with a placeholder ([ZAHL …], [ERGEBNIS …]) fails at once, before any Critic round; in a "
+            "show-format episode with a test plan the script is written only after the test result is there. "
+            + _voice_note() + "The checker's rules win over the generic craft where they differ. When the studio writes cue sheets "
             "(brief/CUES-vNNN.md or DREHZETTEL-vNNN.md, see docs/cue-sheets.md), the long script is a cue sheet: fixed "
             "opening, per unit a fixed hook and punch line, bullets in between, and the checker says so if a full text "
             "is not allowed.")
@@ -878,6 +933,7 @@ def writer_note(episode: str | None) -> str:
 
 __all__ = ["Blocked", "DEFAULTS", "LOOPS", "MODES", "after_critic", "after_second_opinion", "after_transcript",
            "after_transcript_review", "after_writer", "check", "checker", "critic_round", "failed_ids", "guard_advance",
+           "has_placeholders", "hold_for_test", "placeholder_result",
            "latest", "limit_card", "needs_gate", "on_limit_card", "plan_of", "points", "require", "route", "run",
            "second_opinion_round", "settings", "short_line", "stuck", "stuck_card", "subjects", "summary", "text",
            "writer_note", "writer_round"]

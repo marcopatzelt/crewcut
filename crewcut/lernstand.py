@@ -10,7 +10,12 @@ Writer reads before every script (docs/hormozi-voice.md).
    `review/critic-*.md` (rule ids in their lines). Grouped by question or rule id, counted, with one example and the
    best fix that worked (a later review marked the finding done, and how).
 2. **Best and worst units** from `analytics/retention-units.json` of every episode (the newest measurement): units
-   ranked by their drop per minute against the median unit of the same video, with the hook sentence.
+   ranked by their drop per minute against the median unit of the same video, with the hook sentence. A unit is a
+   model to copy only when its hook group has the status "lesson" (it holds in at least 3 episodes and loses in at
+   most one, the rule of crewcut/youtube/units.py); every other unit is listed as "watch", never as a model.
+
+Findings on a script that still had placeholders (`[ZAHL nach Test]`, showformats.placeholders) are not counted: they
+come from gaps, not from mistakes.
 3. **Gold candidates**: when the gate says ready, every passing script is copied into the gold folder
    (`[style_gate] gold_dir`) as `CANDIDATE-NNN-<episode>-<file>` (German studios: `KANDIDAT-…`) with a score file.
 4. **Rule cards**: a finding group that reaches `rule_after` (default 3) findings gets one rule card through the
@@ -121,9 +126,12 @@ def findings(root: Path | None = None, ignore: list[str] | None = None) -> tuple
         if not brief.is_dir():
             continue
         with_json = set()
+        gaps = _placeholder_scripts(brief)
         for p in sorted(brief.glob("*.kritik.json")):
             stem = p.name[: -len(".kritik.json")]
             with_json.add(_version(stem))
+            if stem in gaps:
+                continue   # a review of a script with placeholders learns from gaps, not from mistakes
             d = _read_json(p)
             base = {"episode": ep.name, "file": f"brief/{stem}.md", "mtime": p.stat().st_mtime}
             for key, src in (("hormozi_kritik", "critic"), ("hormozi_kritik_frisch", "fresh critic"),
@@ -164,8 +172,10 @@ def findings(root: Path | None = None, ignore: list[str] | None = None) -> tuple
                                 "why": (v.get("grund") or v.get("why") or "") if isinstance(v, dict) else "",
                                 "fix": None})
         for p in sorted(brief.glob("*.zweitmeinung.json")) + sorted(brief.glob("*.second-opinion.json")):
-            d = _read_json(p)
             stem = p.name.split(".")[0]
+            if stem in gaps:
+                continue
+            d = _read_json(p)
             for pt in d.get("points") or []:
                 if isinstance(pt, dict) and pt.get("text"):
                     kind = ("second opinion: wrong or misleading" if WRONG.search(str(pt.get("why") or ""))
@@ -177,6 +187,8 @@ def findings(root: Path | None = None, ignore: list[str] | None = None) -> tuple
         for p in sorted(review.glob("critic-*.md")) if review.is_dir() else []:
             m = re.search(r"(SCRIPT|SHORT|CUES|DREHZETTEL)-v(\d+)", p.name, re.I)
             if not m or (m.group(1).upper(), int(m.group(2))) in with_json:
+                continue
+            if any(_version(g) == (m.group(1).upper(), int(m.group(2))) for g in gaps):
                 continue
             try:
                 lines = p.read_text(encoding="utf-8").splitlines()
@@ -192,7 +204,27 @@ def findings(root: Path | None = None, ignore: list[str] | None = None) -> tuple
                         out.append({"episode": ep.name, "file": f"review/{p.name}", "mtime": p.stat().st_mtime,
                                     "source": "critic report", "category": code, "text": ln.strip(" -*")[:240],
                                     "why": "", "fix": None})
+    out = [f for f in out if not _has_placeholder(f.get("text")) and not _has_placeholder(f.get("fix"))]
     return out, done
+
+
+def _has_placeholder(text) -> bool:
+    from . import showformats
+    return bool(text) and bool(showformats.placeholders(str(text)))
+
+
+def _placeholder_scripts(brief: Path) -> set[str]:
+    """Stems of the scripts and cue sheets in brief/ that still have placeholders in their spoken part."""
+    from . import showformats
+    out = set()
+    for p in brief.iterdir():
+        if p.suffix == ".md" and SCRIPT_NAME.match(p.stem):
+            try:
+                if showformats.placeholders(p.read_text(encoding="utf-8")):
+                    out.add(p.stem)
+            except OSError:
+                continue
+    return out
 
 
 def labels(files: list[str]) -> dict[str, str]:
@@ -278,7 +310,32 @@ def units(root: Path | None = None) -> list[dict]:
                         "drop_per_min": u["drop_per_min"], "relative": round(u["drop_per_min"] - med, 1),
                         "seconds": u.get("seconds"), "verdict": u.get("verdict"),
                         "views": (m.get("sample") or {}).get("views")})
+    status = hook_status(out)
+    for u in out:
+        u["status"] = status.get(u.get("hook_type") or "", "watch")
     return sorted(out, key=lambda u: u["relative"])
+
+
+REPEATS = 3   # the same rule as crewcut/youtube/units.py: a pattern is a lesson when it repeats in 3 episodes
+
+
+def hook_status(us: list[dict]) -> dict[str, str]:
+    """Per hook type: "lesson: holds", "lesson: loses" or "watch" (holds in at least REPEATS episodes and loses in at
+    most one, or the other way round)."""
+    hold: dict[str, set] = {}
+    lose: dict[str, set] = {}
+    for u in us:
+        t = u.get("hook_type") or ""
+        if u.get("verdict") == "holds":
+            hold.setdefault(t, set()).add(u["episode"])
+        elif u.get("verdict") == "loses":
+            lose.setdefault(t, set()).add(u["episode"])
+    out = {}
+    for t in {u.get("hook_type") or "" for u in us}:
+        h, ls = len(hold.get(t, ())), len(lose.get(t, ()))
+        out[t] = ("lesson: holds" if h >= REPEATS and ls <= 1 else "lesson: loses" if ls >= REPEATS and h <= 1
+                  else "watch")
+    return out
 
 
 # ---- gold candidates -----------------------------------------------------------------------------------------------
@@ -354,10 +411,13 @@ def render(top: list[dict], us: list[dict], gold: list[dict], names: dict[str, s
              "", MARK, "",
              T(f"Stand {now}. Automatisch geschrieben von Crewcut (crewcut/lernstand.py) nach jeder Runde des "
                "Stil-Gates und jeder Retention-Messung; nicht von Hand ändern. Der Writer liest den Kopf vor jedem "
-               "Skript: vermeide die häufigsten Funde, kopiere den Bau der besten Einheiten.",
+               "Skript: vermeide die häufigsten Funde. Als Vorbild zum Kopieren gelten nur Einheiten mit Status "
+               "„lesson“; alles mit „watch“ wird beobachtet, nie kopiert. Funde an Skripten mit Platzhaltern zählen "
+               "nicht.",
                f"As of {now}. Written by Crewcut (crewcut/lernstand.py) after every style gate round and every "
                "retention run; do not edit by hand. The Writer reads the top before every script: avoid the most "
-               "frequent findings, copy how the best units are built."), "",
+               "frequent findings. Only units with status \"lesson\" are models to copy; \"watch\" units are "
+               "watched, never copied. Findings on scripts with placeholders do not count."), "",
              f"## 1. {T('Die häufigsten Funde (Critic, frischer Critic, Zweitmeinung)', 'Most frequent findings (Critic, fresh Critic, second opinion)')}",
              ""]
     if not top:
@@ -380,14 +440,27 @@ def render(top: list[dict], us: list[dict], gold: list[dict], names: dict[str, s
     if not us:
         lines.append(T("Noch keine gemessenen Einheiten.", "No measured units yet."))
     else:
-        hdr = T("| | Folge | Einheit | Hook | Typ | Verlust/min | relativ |",
-                "| | Episode | Unit | Hook | Type | Drop/min | relative |")
-        lines += [f"**{T('Beste', 'Best')}**", "", hdr, "| --- | --- | --- | --- | --- | --- | --- |"]
-        lines += [f"| {i} | {u['episode']} | {u['index']} | {u['hook'][:90]} | {u['hook_type']} | {u['drop_per_min']} | "
-                  f"{u['relative']:+} |" for i, u in enumerate(us[:5], 1)]
-        lines += ["", f"**{T('Schwächste', 'Worst')}**", "", hdr, "| --- | --- | --- | --- | --- | --- | --- |"]
-        lines += [f"| {i} | {u['episode']} | {u['index']} | {u['hook'][:90]} | {u['hook_type']} | {u['drop_per_min']} | "
-                  f"{u['relative']:+} |" for i, u in enumerate(list(reversed(us))[:5], 1)]
+        hdr = T("| | Folge | Einheit | Hook | Typ | Verlust/min | relativ | Status |",
+                "| | Episode | Unit | Hook | Type | Drop/min | relative | Status |")
+        sep = "| --- | --- | --- | --- | --- | --- | --- | --- |"
+
+        def rows(xs):
+            return [f"| {i} | {u['episode']} | {u['index']} | {u['hook'][:90]} | {u['hook_type']} | "
+                    f"{u['drop_per_min']} | {u['relative']:+} | {u.get('status', 'watch')} |" for i, u in enumerate(xs, 1)]
+        models = [u for u in us if u.get("status") == "lesson: holds"][:5]
+        watch_best = [u for u in us if u.get("status") != "lesson: holds" and u["relative"] < 0][:5]
+        avoid = [u for u in reversed(us) if u.get("status") == "lesson: loses"][:5]
+        watch_worst = [u for u in reversed(us) if u.get("status") != "lesson: loses" and u["relative"] > 0][:5]
+        lines += [f"**{T('Vorbilder (Status lesson: hält in mindestens 3 Folgen)', 'Models (status lesson: holds in at least 3 episodes)')}**", ""]
+        lines += ([hdr, sep] + rows(models)) if models else [T(
+            "Noch keine. Keine Hook-Art hält in mindestens 3 Folgen. Kopiere keine Einheit aus den Listen unten.",
+            "None yet. No hook type holds in at least 3 episodes. Copy no unit from the lists below.")]
+        lines += ["", f"**{T('Gut gehalten, aber nur watch (beobachten, nicht kopieren)', 'Held well, but only watch (watch, do not copy)')}**", ""]
+        lines += ([hdr, sep] + rows(watch_best)) if watch_best else [T("Keine.", "None.")]
+        lines += ["", f"**{T('Meiden (Status lesson: verliert in mindestens 3 Folgen)', 'Avoid (status lesson: loses in at least 3 episodes)')}**", ""]
+        lines += ([hdr, sep] + rows(avoid)) if avoid else [T("Noch keine.", "None yet.")]
+        lines += ["", f"**{T('Schwach, aber nur watch', 'Weak, but only watch')}**", ""]
+        lines += ([hdr, sep] + rows(watch_worst)) if watch_worst else [T("Keine.", "None.")]
     lines += ["", f"## 3. {T('Gold-Kandidaten (Skripte, die das Gate bestanden haben)', 'Gold candidates (scripts that passed the gate)')}", ""]
     if not gold:
         lines.append(T("Noch keiner. Jedes Skript, das das Gate besteht, kommt nummeriert in den Gold-Ordner.",
@@ -503,7 +576,8 @@ def prompt_top(max_lines: int = 40) -> str:
                 break
         keep.append(ln)
     keep = keep[:max_lines]
-    return (f"LEARNING FILE ({p}, written by the learning loop; avoid these findings, build units like the best ones):\n"
+    return (f"LEARNING FILE ({p}, written by the learning loop; avoid these findings; copy only units marked "
+            "\"lesson\", never units marked \"watch\"):\n"
             + "\n".join(keep) + "\n")
 
 

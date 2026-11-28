@@ -213,6 +213,7 @@ class Res:
 
 def test_after_the_plan_the_writer_writes_the_full_script(crew, calls):
     eid = flow.new_episode("A free tool against a paid one")["id"]
+    (paths.episode_dir(eid) / "brief" / "TESTERGEBNIS-v001.md").write_text("Test 1: 7 of 9.\n")   # the test ran
     (paths.episode_dir(eid) / "brief" / "FORMAT-v001.md").write_text(
         "format: tool-test\nlength: long\ntopic_type: manufactured\ninput: tool\nreason: A measurable claim.\n"
         "runner_up: claim-check: shorter.\n")
@@ -224,7 +225,8 @@ def test_after_the_plan_the_writer_writes_the_full_script(crew, calls):
     w = calls[-1]
     assert (w["identity"], w["step"], w["data"]) == ("writer", "script", {"format_script": 1})
     assert "brief/SCRIPT-v001.md" in w["task"] and "tool-test.script.md" in w["task"]
-    assert "[ZAHL nach Test]" in w["task"] and "about 30 seconds" in w["task"]
+    assert "never carries a placeholder" in w["task"] and "about 30 seconds" in w["task"]
+    assert "Read brief/TESTERGEBNIS-v001.md first" in w["task"]
     texts = [m["text"] for m in flow.messages(eid)]
     assert any(t.startswith("Format: Tool test (tool-test, long, manufactured). A measurable claim.") for t in texts)
     assert not plan.after_job({**job, "data": {}}, Res())

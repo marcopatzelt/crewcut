@@ -2,8 +2,9 @@
 
 How to use this template: copy the frame below into brief/SCRIPT-vNNN.md and replace every <…> with the episode's
 material. Each unit is about 30 seconds and works on its own like a Short: a hook that opens a question, the part
-that keeps the viewer (retain), and a reward that closes it. Numbers come early. A number that the test has not
-produced yet stays a placeholder such as [NUMBER after test]; never invent one. No greeting, no recap, no goodbye.
+that keeps the viewer (retain), and a reward that closes it. Numbers come early. Write it after the test ran, from
+brief/TEST-RESULT-vNNN.md: a script with a placeholder such as [NUMBER after test] fails the style gate before any
+review; never invent a number. Tell what the test found, also when the tool held. No greeting, no recap, no goodbye.
 
 ## Opening (0:00 to 0:30)
 <Sentence 1: the surprising result with its number, in first person. Example shape: "The free tool beat my paid one
@@ -18,7 +19,7 @@ Retain: <What you did, what is on screen, the one example. Short sentences, one 
 Reward: <The punch line: what this test proves, in one short sentence.>
 
 ## Unit 2 (about 30 s): <second test, higher stakes>
-Hook: <"Test two." Where it breaks, or the surprise.>
+Hook: <"Test two." Where it broke, if it broke; else the surprise the test found.>
 Retain: <The visible proof: the screen, the log, the clock. One example, not three.>
 Reward: <The punch line.>
 
@@ -35,5 +36,5 @@ Reward: <The punch line that leads straight into the verdict.>
 
 # Notes (not spoken)
 - format: tool-test, kind: <kind id>
-- Every number with its source (test log, file, screenshot), or [NUMBER after test].
+- Every number with its source in the test result (test log, file, screenshot).
 - Title and thumbnail pair this script keeps: <from brief/PACKAGING-vNNN.md>

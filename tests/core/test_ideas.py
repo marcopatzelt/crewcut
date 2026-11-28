@@ -201,3 +201,39 @@ def test_the_exporter_carries_the_audience_score_and_the_format(tmp_path, studio
     ideas.load()
     got = ideas.get("scout-gh-example-a")
     assert got["suggested_format"] == "tool-test" and got["suggestion"] == "exporter"
+
+
+def test_the_exporter_turns_your_own_week_into_ideas(tmp_path, studio):
+    """Abnahme Hormozi round 2: what you did last week is a source ("look at your calendar for the last week")."""
+    import os
+    import subprocess
+    import time
+    ex = exporter()
+    ep = studio / "episodes" / "041-recent"
+    (ep / "review").mkdir(parents=True)
+    (ep / "project.json").write_text(json.dumps({"id": "041-recent", "title": "Claude rents a GPU",
+                                                 "steps": {"idea": {"status": "done"}}, "show_format": "agent-akte"}))
+    (ep / "review" / "results-1.json").write_text(json.dumps({"metrics": {"views": 120, "subscribersGained": 3}}))
+    old = studio / "episodes" / "001-old"
+    old.mkdir(parents=True)
+    (old / "project.json").write_text(json.dumps({"id": "001-old", "title": "Old"}))
+    t = time.time() - 30 * 86400
+    os.utime(old / "project.json", (t, t))
+    repo = tmp_path / "my-tool"
+    repo.mkdir()
+    env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com", "GIT_COMMITTER_NAME": "t",
+           "GIT_COMMITTER_EMAIL": "t@example.com"}
+    subprocess.run(["git", "init", "-q", str(repo)], check=True, env=env)
+    (repo / "a.txt").write_text("a")
+    subprocess.run(["git", "-C", str(repo), "add", "a.txt"], check=True, env=env)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "rent a GPU with a hard cap"], check=True, env=env)
+    assert ex.main(["--studio", str(studio), "--recent-episodes", "--recent-git", str(repo), "--days", "7"]) == 0
+    files = sorted(p.name for p in (studio / "inbox" / "ideas").glob("*.json"))
+    assert "recent-episode-041-recent.json" in files and "recent-episode-001-old.json" not in files
+    card = json.loads((studio / "inbox" / "ideas" / "recent-episode-041-recent.json").read_text())
+    assert card["topic_type"] == "recent_past" and card["source"] == "recent work"
+    assert card["signals"]["results"]["views"] == 120
+    g = json.loads(next((studio / "inbox" / "ideas").glob("recent-git-my-tool-*.json")).read_text())
+    assert "rent a GPU with a hard cap" in g["summary"] and g["topic_type"] == "recent_past"
+    with pytest.raises(SystemExit):
+        ex.main(["--recent-episodes"])

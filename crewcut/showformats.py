@@ -19,7 +19,15 @@ paths are relative to the folder of the formats.json that names them. `[formats]
        "thumbnail_formats": ["house-face-result"], "checker_format": "lang", "gate_on": "script", "cadence": "weekly",
        "strong": "…"}]}
 
-`crewcut formats [list|show <id>|check|choose <episode> <id>|score]`.
+A kind (`kinds`) may carry its own `structure` (and its own templates): a format with several kinds is one question
+asked in several ways, and each way has its own skeleton. The episode keeps its kind in `format_kind`.
+
+A format with a test plan runs its test before the script: the plan writes brief/TESTPLAN-vNNN.md, the test writes
+brief/TESTERGEBNIS-vNNN.md (also accepted: MESSKARTE-vNNN.md, TEST-RESULT-vNNN.md), and only then does the Writer start
+(crewcut/conductor/plan.py). A script with a placeholder such as `[ZAHL nach Test]` or `[ERGEBNIS: …]` fails the style
+gate before any Critic round (`placeholders`).
+
+`crewcut formats [list|show <id>|check|choose <episode> <id> [--kind K]|test <episode> [--wait]|score]`.
 """
 
 from __future__ import annotations
@@ -48,6 +56,15 @@ ID = re.compile(r"^[a-z0-9][a-z0-9-]{1,60}$")
 TEMPLATE_KEYS = ("script_template", "cue_template", "testplan_template")
 STUDIO_REFERENCE = "references/HORMOZI-NIE-OHNE-CONTENT.md"   # read when a studio has it (where ideas come from)
 FORMAT_FILE = re.compile(r"^FORMAT-v(\d{3,})\.md$")
+TESTPLAN_FILE = re.compile(r"^TESTPLAN-v(\d{3,})[^/]*\.md$", re.I)
+# the test result the crew writes after the test ran: German studios call it TESTERGEBNIS or MESSKARTE
+RESULT_FILE = re.compile(r"^(?:TESTERGEBNIS|MESSKARTE|TEST-?RESULT)-v(\d{3,})[^/]*\.md$", re.I)
+# a gap that only a test can fill; a script with one is not ready for any review. Upper-case words as the templates
+# write them ([ZAHL nach Test], [ERGEBNIS: …], [NUMBER after test]), the bare word ([Zahl]), or any bracket that says
+# "after the test"; a picture cue such as [result side by side] is not a placeholder.
+PLACEHOLDERS = (re.compile(r"\[\s*(?:ZAHL|ERGEBNIS|PREIS|MESSWERT|NUMBER|RESULT|PRICE)\b[^\]\n]*\]"),
+                re.compile(r"\[\s*(?:Zahl|Ergebnis|Preis)\s*(?:[:…][^\]\n]*)?\]"),
+                re.compile(r"\[[^\]\n]*\b(?:nach (?:dem )?(?:test|prüfung)|after (?:the )?test)\b[^\]\n]*\]", re.I))
 
 
 def settings() -> dict:
@@ -93,9 +110,7 @@ def problems_of(f: Any, folder: Path | None = None) -> list[str]:
     if not isinstance(st, list) or not st:
         out.append(f"{name} needs structure (the ordered units, each with name and purpose)")
     else:
-        for i, u in enumerate(st, 1):
-            if not isinstance(u, dict) or not str(u.get("name") or "").strip() or not str(u.get("purpose") or "").strip():
-                out.append(f"{name}: structure unit {i} needs name and purpose")
+        out += _unit_problems(name, st)
     kinds = f.get("kinds", [])
     if not isinstance(kinds, list):
         out.append(f"{name}: kinds must be a list")
@@ -103,6 +118,14 @@ def problems_of(f: Any, folder: Path | None = None) -> list[str]:
         for i, k in enumerate(kinds, 1):
             if not isinstance(k, dict) or not all(str(k.get(x) or "").strip() for x in ("id", "name", "when")):
                 out.append(f"{name}: kind {i} needs id, name and when")
+                continue
+            kname = f"{name} kind {k['id']!r}"
+            if "structure" in k:
+                if not isinstance(k["structure"], list) or not k["structure"]:
+                    out.append(f"{kname}: structure must be a list of units")
+                else:
+                    out += _unit_problems(kname, k["structure"])
+            out += _template_problems(kname, k, folder)
     for key in ("packaging_rules", "title_formulas", "thumbnail_formats", "keywords"):
         if key in f and not (_str_list(f[key]) or f[key] == []):
             out.append(f"{name}: {key} must be a list of texts")
@@ -126,6 +149,17 @@ def problems_of(f: Any, folder: Path | None = None) -> list[str]:
     for key in ("cadence", "strong"):
         if key in f and f[key] is not None and not isinstance(f[key], str):
             out.append(f"{name}: {key} must be a text")
+    out += _template_problems(name, f, folder)
+    return out
+
+
+def _unit_problems(name: str, units: list) -> list[str]:
+    return [f"{name}: structure unit {i} needs name and purpose" for i, u in enumerate(units, 1)
+            if not isinstance(u, dict) or not str(u.get("name") or "").strip() or not str(u.get("purpose") or "").strip()]
+
+
+def _template_problems(name: str, f: dict, folder: Path | None) -> list[str]:
+    out = []
     for key in TEMPLATE_KEYS:
         rel = f.get(key)
         if rel is None or (key != "script_template" and rel == ""):
@@ -186,8 +220,21 @@ def get(fid: str | None) -> dict | None:
     return load().get(fid) if fid else None
 
 
-def template(f: dict, key: str) -> Path | None:
-    rel = f.get(key)
+def kind_of(f: dict | None, kid: str | None) -> dict | None:
+    """One kind of a format by id, or None."""
+    return next((k for k in (f or {}).get("kinds") or [] if k.get("id") == kid), None) if kid else None
+
+
+def structure_of(f: dict, kid: str | None = None) -> list[dict]:
+    """The units of a format, or of one of its kinds when that kind has its own structure."""
+    k = kind_of(f, kid)
+    return (k or {}).get("structure") or f["structure"]
+
+
+def template(f: dict, key: str, kind: str | None = None) -> Path | None:
+    """A template of the format; a kind's own template wins."""
+    k = kind_of(f, kind)
+    rel = (k or {}).get(key) or f.get(key)
     if not rel:
         return None
     p = Path(f["dir"]) / rel
@@ -301,9 +348,9 @@ def _started(project: dict) -> bool:
 
 
 def choose(episode: str, fid: str, length: str | None = None, topic_type: str | None = None,
-           input_kind: str | None = None) -> dict:
-    """Write the pick into project.json: show_format, form, length, topic_type. A short format turns an episode into
-    an original Short (and back) while no later step has started."""
+           input_kind: str | None = None, kind: str | None = None) -> dict:
+    """Write the pick into project.json: show_format, form, length, topic_type, format_kind. A short format turns an
+    episode into an original Short (and back) while no later step has started."""
     from . import episodes
     f = get(fid)
     if f is None:
@@ -316,6 +363,9 @@ def choose(episode: str, fid: str, length: str | None = None, topic_type: str | 
         raise ValueError(f"topic type must be one of {', '.join(TOPIC_TYPES)}")
     if input_kind is not None and input_kind not in INPUT_KINDS:
         raise ValueError(f"input must be one of {', '.join(INPUT_KINDS)}")
+    if kind is not None and kind_of(f, kind) is None:
+        have = ", ".join(k["id"] for k in f.get("kinds") or []) or "none"
+        raise ValueError(f"format {fid} has no kind {kind!r} (kinds: {have})")
     p = episodes.read(episode)
     if p.get("kind") == "short" and p.get("mode") == "clip":
         raise ValueError("a clip Short is cut from a finished episode; it has no show format")
@@ -325,7 +375,11 @@ def choose(episode: str, fid: str, length: str | None = None, topic_type: str | 
         if _started(p):
             raise ValueError(f"{episode} has started later steps; it stays a {'Short' if is_short else 'long video'}")
         _to_short(p) if want_short else _to_long(p)
+    if p.get("show_format") != fid:
+        p.pop("format_kind", None)
     p.update(show_format=fid, form=fid, length=f["length"])
+    if kind:
+        p["format_kind"] = kind
     if topic_type:
         p["topic_type"] = topic_type
     if input_kind:
@@ -354,7 +408,7 @@ def choice_file(episode: str) -> Path | None:
 
 
 def read_choice(episode: str) -> dict | None:
-    """The newest brief/FORMAT-vNNN.md: {format, name, length, topic_type, input, reason, runner_up, file}."""
+    """The newest brief/FORMAT-vNNN.md: {format, name, length, topic_type, input, kind, reason, runner_up, file}."""
     p = choice_file(episode)
     if p is None:
         return None
@@ -370,9 +424,79 @@ def read_choice(episode: str) -> dict | None:
             "length": _section(text, "length", "Länge").split(" ")[0].strip("`*,.") or (f or {}).get("length"),
             "topic_type": _section(text, "topic_type", "topic type", "Themenart").split(" ")[0].strip("`*,.") or None,
             "input": _section(text, "input", "Eingabe").split(" ")[0].strip("`*,.") or None,
+            "kind": _section(text, "kind", "Art", "Folgen-Art").split(" ")[0].strip("`*,.") or None,
             "reason": _section(text, "reason", "why", "Warum", "Begründung"),
             "runner_up": _section(text, "runner_up", "runner-up", "Runner-up", "Zweitbeste Wahl", "Zweitbeste"),
             "file": f"brief/{p.name}"}
+
+
+def recent_kinds(fid: str, exclude: str | None = None, n: int = 4) -> list[tuple[str, str]]:
+    """(episode, kind) of the newest episodes of this format that recorded a kind, newest first."""
+    from . import episodes
+    out = []
+    root = paths.episodes_dir()
+    for eid in episodes.list_ids() if root.is_dir() else []:
+        try:
+            p = episodes.read(eid)
+        except (FileNotFoundError, ValueError):
+            continue
+        if eid != exclude and p.get("show_format") == fid and p.get("format_kind"):
+            out.append((str(p.get("created") or ""), eid, p["format_kind"]))
+    out.sort(reverse=True)
+    return [(e, k) for _, e, k in out[:n]]
+
+
+# ---- the test before the script (F2: "Do stuff, then talk about what you did") ---------------------------------------
+def _newest(episode: str, rx: re.Pattern) -> Path | None:
+    brief = paths.episode_dir(episode) / "brief"
+    files = [p for p in brief.iterdir() if p.is_file() and rx.match(p.name)] if brief.is_dir() else []
+    return max(files, key=lambda p: (int(rx.match(p.name).group(1)), p.stat().st_mtime)) if files else None
+
+
+def test_plan(episode: str) -> Path | None:
+    """The newest brief/TESTPLAN-vNNN.md."""
+    return _newest(episode, TESTPLAN_FILE)
+
+
+def test_result(episode: str) -> Path | None:
+    """The newest test result: brief/TESTERGEBNIS-vNNN.md (or MESSKARTE-vNNN.md, TEST-RESULT-vNNN.md)."""
+    return _newest(episode, RESULT_FILE)
+
+
+def needs_test(episode: str, project: dict | None = None) -> bool:
+    """A show-format episode whose format (or kind) has a test plan template, or that has a test plan."""
+    from . import episodes
+    try:
+        project = project or episodes.read(episode)
+    except (FileNotFoundError, ValueError):
+        return False
+    f = get(project.get("show_format"))
+    if f is None:
+        return False
+    return template(f, "testplan_template", project.get("format_kind")) is not None or test_plan(episode) is not None
+
+
+def test_pending(episode: str, project: dict | None = None) -> bool:
+    """The script has to wait: the episode needs a test and no test result is there yet."""
+    return needs_test(episode, project) and test_result(episode) is None
+
+
+def spoken(text: str) -> str:
+    """The part of a script or cue sheet that is spoken: everything above the first line `---`."""
+    return re.split(r"(?m)^---\s*$", text, maxsplit=1)[0]
+
+
+def placeholders(text: str) -> list[str]:
+    """The placeholders in the spoken part of a script, in order (each once)."""
+    body = spoken(text or "")
+    found = sorted({(m.start(), m.group(0)) for rx in PLACEHOLDERS for m in rx.finditer(body)})
+    return list(dict.fromkeys(g for _, g in found))
+
+
+def placeholder_lines(text: str) -> list[tuple[int, str]]:
+    """(line number, line) of every spoken line with a placeholder."""
+    return [(i, ln) for i, ln in enumerate(spoken(text or "").splitlines(), 1)
+            if any(rx.search(ln) for rx in PLACEHOLDERS)]
 
 
 def prompt_block(episode: str | None) -> str:
@@ -393,20 +517,34 @@ def prompt_block(episode: str | None) -> str:
              f"When it fits: {f['when']}"]
     if p.get("topic_type"):
         lines.append(f"Topic type: {TOPIC_NAMES.get(p['topic_type'], p['topic_type'])}")
-    if f.get("kinds"):
+    kid = p.get("format_kind")
+    kind = kind_of(f, kid)
+    if kind:
+        lines.append(f"Kind of this episode: {kind['id']} ({kind['name']}): {kind['when']}")
+    elif f.get("kinds"):
         lines.append("Kinds: " + "; ".join(f"{k['id']} ({k['name']}): {k['when']}" for k in f["kinds"]))
-    lines.append("Structure, in this order:")
-    lines += [f"  {i}. {u['name']}: {u['purpose']}" + (f" (about {u['seconds']} s)" if u.get("seconds") else "")
-              for i, u in enumerate(f["structure"], 1)]
+    lines.append("Structure" + (f" of the kind {kind['id']}" if kind and kind.get("structure") else "")
+                 + ", in this order:")
+    lines += _units(structure_of(f, kid))
+    if not kind:
+        for k in f.get("kinds") or []:
+            if k.get("structure"):
+                lines.append(f"Structure of the kind {k['id']}: " + " | ".join(
+                    f"{u['name']}: {u['purpose']}" for u in k["structure"]))
     for key, label in (("packaging_rules", "Packaging rules"), ("title_formulas", "Title formulas"),
                        ("thumbnail_formats", "Thumbnail formats (crewcut thumbnail formats show <id>)")):
         if f.get(key):
             lines.append(f"{label}: " + "; ".join(f[key]))
     for key, label in (("script_template", "Full-script template"), ("cue_template", "Cue sheet template"),
                        ("testplan_template", "Test plan template")):
-        t = template(f, key)
+        t = template(f, key, kid)
         if t:
             lines.append(f"{label}: {t}")
+    if needs_test(episode, p):
+        res = test_result(episode)
+        lines.append("Test result: " + (f"brief/{res.name} (every number and every result of the script comes from "
+                                         "it)" if res else "not there yet: the script waits for brief/TESTERGEBNIS-"
+                                         "v001.md (or MESSKARTE-v001.md); no script, no Critic review before it"))
     lines.append(f"Style checker format: {f['checker_format']}; the gate checks the "
                  + ("cue sheet derived from the full script." if f["gate_on"] == "cues" else "full script first."))
     if f.get("strong"):
@@ -417,12 +555,18 @@ def prompt_block(episode: str | None) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _units(units: list[dict]) -> list[str]:
+    return [f"  {i}. {u['name']}: {u['purpose']}" + (f" (about {u['seconds']} s)" if u.get("seconds") else "")
+            for i, u in enumerate(units, 1)]
+
+
 def catalogue(lib: dict[str, dict] | None = None) -> str:
     """The short list of all formats for the plan task."""
     lib = load() if lib is None else lib
     out = []
     for f in sorted(lib.values(), key=lambda f: (f["length"], f["id"])):
-        kinds = f" Kinds: {', '.join(k['id'] for k in f.get('kinds') or [])}." if f.get("kinds") else ""
+        kinds = (" Kinds: " + ", ".join(k["id"] + (" (own structure)" if k.get("structure") else "")
+                                        for k in f.get("kinds") or []) + ".") if f.get("kinds") else ""
         out.append(f"- {f['id']} ({f['length']}, {f['name']}; topic types {', '.join(f['topic_types'])}): "
                    f"{f['when']}{kinds}" + (f" Evidence: {f['strong']}" if f.get("strong") else ""))
     return "\n".join(out)
@@ -431,8 +575,10 @@ def catalogue(lib: dict[str, dict] | None = None) -> str:
 # ---- command line ---------------------------------------------------------------------------------------------------
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="crewcut formats", description="Show formats: the library new episodes use.")
-    p.add_argument("cmd", nargs="?", default="list", choices=["list", "show", "check", "choose", "score"])
-    p.add_argument("args", nargs="*", help="show <id> | choose <episode> <id>")
+    p.add_argument("cmd", nargs="?", default="list", choices=["list", "show", "check", "choose", "test", "score"])
+    p.add_argument("args", nargs="*", help="show <id> | choose <episode> <id> | test <episode>")
+    p.add_argument("--kind", help="choose: the kind of the format (its own structure, if it has one)")
+    p.add_argument("--wait", action="store_true", help="test: the Writer starts when the test result is there")
     p.add_argument("--length", choices=LENGTHS)
     p.add_argument("--topic-type", choices=TOPIC_TYPES)
     p.add_argument("--input", choices=INPUT_KINDS)
@@ -466,13 +612,20 @@ def main(argv: list[str] | None = None) -> int:
             print("crewcut formats choose <episode> <format-id> [--length] [--topic-type] [--input]", file=sys.stderr)
             return 2
         try:
-            p = choose(a.args[0], a.args[1], length=a.length, topic_type=a.topic_type, input_kind=a.input)
+            p = choose(a.args[0], a.args[1], length=a.length, topic_type=a.topic_type, input_kind=a.input,
+                       kind=a.kind)
         except (ValueError, FileNotFoundError) as e:
             print(f"crewcut formats choose: {e}", file=sys.stderr)
             return 1
         print(f"{p['id']}: format {p['show_format']} ({p['length']}, kind {p.get('kind')}"
+              + (f", format kind {p['format_kind']}" if p.get("format_kind") else "")
               + (f", topic type {p['topic_type']}" if p.get("topic_type") else "") + ")")
         return 0
+    if a.cmd == "test":
+        if len(a.args) != 1:
+            print("crewcut formats test <episode> [--wait]", file=sys.stderr)
+            return 2
+        return _test_cli(a.args[0], a.wait, a.json)
     if a.json:
         print(json.dumps([public(f) for f in lib.values()], indent=1, ensure_ascii=False))
         return 0
@@ -487,6 +640,36 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _test_cli(episode: str, wait: bool, as_json: bool) -> int:
+    from . import episodes
+    try:
+        project = episodes.read(episode)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"crewcut formats test: {e}", file=sys.stderr)
+        return 1
+    plan_file, result = test_plan(episode), test_result(episode)
+    state = {"episode": episode, "format": project.get("show_format"), "needs_test": needs_test(episode, project),
+             "test_plan": f"brief/{plan_file.name}" if plan_file else None,
+             "test_result": f"brief/{result.name}" if result else None,
+             "pending": test_pending(episode, project)}
+    if wait:
+        from .conductor import plan
+        state["waiting"] = plan.arm(episode)
+    if as_json:
+        print(json.dumps(state, ensure_ascii=False, indent=1))
+    else:
+        print(f"{episode}: format {state['format'] or '-'}, test plan {state['test_plan'] or '-'}, test result "
+              f"{state['test_result'] or '-'}; " + ("the script waits for the test result." if state["pending"] else
+                                                    "the script may start." if state["needs_test"] else
+                                                    "no test needed."))
+        if wait:
+            print("The conductor starts the Writer as soon as the test result is there and no job of the episode "
+                  "runs." if state.get("waiting") else "Nothing to wait for (no test needed, a script exists, or the "
+                  "script step is done).")
+    return 0
+
+
 __all__ = ["CHOICES", "INPUT_KINDS", "LENGTHS", "TOPIC_TYPES", "catalogue", "choice_file", "choose", "enabled", "get",
-           "guess_topic_type", "library_dirs", "load", "main", "problems_of", "prompt_block", "public", "read_choice",
-           "report", "settings", "studio_reference", "suggest", "template"]
+           "guess_topic_type", "kind_of", "library_dirs", "load", "main", "needs_test", "placeholder_lines", "placeholders",
+           "problems_of", "prompt_block", "public", "read_choice", "recent_kinds", "report", "settings", "spoken",
+           "structure_of", "studio_reference", "suggest", "template", "test_pending", "test_plan", "test_result"]
