@@ -39,7 +39,9 @@ the Writer's quick signal and the app's generic check.
 
 --short checks a Short's script with the reel rules instead (see check_short): word range from edit-style.json
 "shorts.words", sentence 1 is no question, a number in the first 12 words, no ask (subscribe, link, comment, follow),
-a last sentence of at most 8 words, 2 to 3 counted steps, more I-sentences than you-sentences, a turn (expectation,
+a last sentence of at most 8 words (with channel.json "script.short_ask", e.g. "Wenn du das auch willst, kommentier
+{WORD}.": the punch line of at most 8 words, then exactly this comment ask as the last sentence and no other ask; the
+word in capitals is in stats "cta_keyword"), 2 to 3 counted steps, more I-sentences than you-sentences, a turn (expectation,
 then the break), an uneven real number or a visible proof, a time anchor or a number in a series, and the phrase list
 of the language (references/phrases-<language>.txt: phrases that sound written or like filler, "not X but Y" patterns,
 dashes). Levels and limits: channel.json "script.short_checks".
@@ -109,10 +111,11 @@ def speak_check(text: str, add, passed: list[str]) -> None:
         passed.append("speak: no colon, semicolon, bracket, slash or notes section in the spoken text")
 
 
-def story_check(text: str, add, passed: list[str], lang: str | None = None) -> None:
+def story_check(text: str, add, passed: list[str], lang: str | None = None, pack=None) -> None:
     """The story plan below --- and the reading help for the Critic: list smell, staged run-ups, repeats, the place
-    of the subscribe line (crewcut.spoken.story)."""
-    found = _spoken().story(text, lang)
+    of the fixed ask (crewcut.spoken.story; the pack's script.craft.ask_ends_with, else the subscribe line)."""
+    ask_end = _cta().ask_end(pack)            # pack None: the active style pack
+    found = _spoken().story(text, lang, ask_end or None)
     for f in found:
         add(f["level"], f["area"], f["text"])
     if not any(f["level"] == "error" for f in found):
@@ -123,6 +126,12 @@ def _craft():
     _brand()
     from crewcut import craft
     return craft
+
+
+def _cta():
+    _brand()
+    from crewcut import cta
+    return cta
 
 
 def craft_check(text: str, pack, add, passed: list[str], stats: dict, lang: str | None = None) -> dict:
@@ -408,7 +417,7 @@ def check_script(text: str, pack, title: str | None = None, names: list[str] | t
     # 1. Teleprompter form: only words the user says, every mark readable aloud, told as one story.
     clean = form_check(raw, level(pack, "dash"), add, passed)
     speak_check(text, add, passed)
-    story_check(text, add, passed)
+    story_check(text, add, passed, pack=pack)
 
     bl = blocks("\n".join(clean))
     if not bl:
@@ -736,22 +745,40 @@ def check_short(text: str, pack, lang: str | None = None, proof: str | None = No
         add(short_level(pack, "number_first", "error"), "opening",
             f"no number in the first {n_first} words. The case starts with its number.")
 
-    # No ask in a Short: the ask goes into the pinned comment and the description.
+    # The ask. Without channel.json script.short_ask: none in a Short (it goes into the pinned comment and the
+    # description). With it: the punch line, then exactly this comment ask as the last sentence, and no other ask.
     cta = _craft().WORDS.get(lists, _craft().WORDS["en"])["cta"]
-    asks = [x for x in all_s if any(rx.search(x) for rx in cta.values())]
-    if asks:
+    ask_t = _cta().short_ask(pack)
+    word = _cta().ask_word(all_s[-1], ask_t) if ask_t and all_s else None
+    told = all_s[:-1] if word else all_s           # the Short without its closing comment ask
+    if word:
+        stats["cta_keyword"] = word
+    asks = [x for x in told if any(rx.search(x) for rx in cta.values()) or (ask_t and _cta().mentions_ask(x, ask_t))]
+    if ask_t:
+        model = ask_t.replace(_cta().PLACEHOLDER, "WORT" if lists == "de" else "WORD")
+        if asks:
+            add(short_level(pack, "ask", "error"), "ask", f'another ask in the Short ("{asks[0][:60]}"). The only ask '
+                f'is the last sentence: "{model}"')
+        if not word:
+            add(short_level(pack, "ask", "error"), "ask", f'the Short ends with the comment ask, word for word: "{model}" '
+                "(one word in capitals that fits what the viewer gets). The punch line comes right before it.")
+        if word and not asks:
+            passed.append(f"ask: the comment ask at the end ({word})")
+    elif asks:
         add(short_level(pack, "ask", "error"), "ask", f'an ask in the Short ("{asks[0][:60]}"). Subscribe, link and '
             "sign-up go into the pinned comment and the description.")
     else:
         passed.append("ask: none in the Short")
 
-    # A hard last line: the punch line, short.
+    # A hard last line: the punch line, short (before the comment ask when the channel has one).
     n_last = int(pack.value("channel.script.short_checks.last_sentence_words", 8) or 8)
-    if all_s and len(words(all_s[-1])) > n_last:
+    punch = told[-1] if told else None
+    if punch and len(words(punch)) > n_last:
         add(short_level(pack, "last_sentence", "error"), "ending",
-            f"the last sentence has {len(words(all_s[-1]))} words; at most {n_last}. End on the punch line.")
-    elif all_s:
-        passed.append(f"ending: last sentence of {len(words(all_s[-1]))} words")
+            f"the {'punch line before the comment ask' if word else 'last sentence'} has {len(words(punch))} words; "
+            f"at most {n_last}. End on the punch line.")
+    elif punch:
+        passed.append(f"ending: {'punch line' if word else 'last sentence'} of {len(words(punch))} words")
 
     # Two to three counted steps carry the chain.
     signpost = _craft().WORDS.get(lists, _craft().WORDS["en"])["signpost"]
@@ -767,8 +794,8 @@ def check_short(text: str, pack, lang: str | None = None, proof: str | None = No
     # I-sentences against you-sentences.
     def has(sentence: str, group: set[str]) -> bool:
         return any(w.lower().replace("’", "'") in group for w in words(sentence))
-    i_n = sum(1 for x in all_s if has(x, FIRST_PERSON[lists]))
-    you_n = sum(1 for x in all_s if has(x, SECOND_PERSON[lists]))
+    i_n = sum(1 for x in told if has(x, FIRST_PERSON[lists]))
+    you_n = sum(1 for x in told if has(x, SECOND_PERSON[lists]))
     stats["i_sentences"], stats["you_sentences"] = i_n, you_n
     if i_n > you_n:
         passed.append(f"I-form: {i_n} I-sentences, {you_n} you-sentences")

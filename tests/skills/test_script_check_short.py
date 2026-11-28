@@ -125,3 +125,43 @@ def test_a_short_has_no_question_first_no_ask_and_a_short_last_line(neutral):
     pack = type(neutral)(**{**neutral.__dict__, "channel": soft})
     r = sc.check_short(bad, pack)
     assert "ask" not in kinds(r) and "ending" in kinds(r, "hint")
+
+
+def _with_ask(pack):
+    """The pack with a closing comment ask (channel.json script.short_ask), as a channel sets it (28 Nov 2026)."""
+    import copy
+    import dataclasses
+    channel = copy.deepcopy(pack.channel)
+    channel.setdefault("script", {})["short_ask"] = "Wenn du das auch willst, kommentier {WORD}."
+    return dataclasses.replace(pack, channel=channel)
+
+
+ASK_SHORT = ("Ich habe 37 Minuten Rohmaterial an einen Agenten gegeben. Erstens hat er das Transkript gelesen. "
+             "Zweitens hat er jeden doppelten Anfang geschnitten. Ich dachte, er übersieht die Atmer. "
+             "Aber er fand alle 14. Ein Job blieb meiner. Das letzte Anhören.\n"
+             "Wenn du das auch willst, kommentier SCHNITT.\n")
+
+
+def test_with_the_channels_comment_ask_the_short_ends_on_it(neutral):
+    pack = _with_ask(neutral)
+    r = sc.check_short(ASK_SHORT, pack, lang="de")
+    assert not [f for f in r["findings"] if f["area"] in ("ask", "ending")], r["findings"]
+    assert r["stats"]["cta_keyword"] == "SCHNITT"
+    assert "ask: the comment ask at the end (SCHNITT)" in r["passed"]
+    assert any(p.startswith("ending: punch line of 3 words") for p in r["passed"])
+    # without the channel key the same Short has an ask too many (today's rule)
+    assert "ask" in kinds(sc.check_short(ASK_SHORT, neutral, lang="de"), "error")
+
+
+def test_the_comment_ask_is_the_last_sentence_word_for_word_and_the_only_ask(neutral):
+    pack = _with_ask(neutral)
+    missing = ASK_SHORT.replace("Wenn du das auch willst, kommentier SCHNITT.\n", "")
+    msg = [f["text"] for f in sc.check_short(missing, pack, lang="de")["findings"] if f["area"] == "ask"]
+    assert msg and "kommentier WORT" in msg[0]
+    lower = ASK_SHORT.replace("SCHNITT", "schnitt")
+    assert "ask" in kinds(sc.check_short(lower, pack, lang="de"), "error")      # the word in capitals
+    twice = ASK_SHORT.replace("Ein Job blieb meiner.", "Abonnier den Kanal.")
+    assert any("another ask" in f["text"] for f in sc.check_short(twice, pack, lang="de")["findings"])
+    long_punch = ASK_SHORT.replace("Das letzte Anhören.", "Das letzte Anhören bleibt bei mir und meinen Kopfhörern.")
+    assert any("punch line before the comment ask" in f["text"]
+               for f in sc.check_short(long_punch, pack, lang="de")["findings"] if f["area"] == "ending")

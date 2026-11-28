@@ -146,6 +146,20 @@ def test_an_upload_carries_the_marker_and_is_recorded(ep):
         assert c.execute("SELECT COUNT(*) FROM upload_locks").fetchone()[0] == 0
 
 
+def test_the_upload_records_the_comment_word_and_its_link_as_approved(ep):
+    """The comment -> link replies (crewcut/youtube/replies.py) take the word and the link from the upload result: the
+    package the publish card approved."""
+    eid, root = ep
+    write_package(root, description="A test. Kommentier GPU für die Anleitung.", cta_keyword="GPU",
+                  cta_url="striq.de/gpu", related_comment="Kommentier GPU für die Anleitung.")
+    approve(eid)
+    upload.upload(eid, youtube=FakeYT(), media=media)
+    assert (result(root)["cta_keyword"], result(root)["cta_url"]) == ("GPU", "striq.de/gpu")
+    errs = upload.validate(eid, {"video": "export/video.mp4", "title": TITLE, "description": "A test.",
+                                 "cta_keyword": "gpu", "cta_url": "striq.de/gpu"})
+    assert any("capitals" in e for e in errs)
+
+
 def test_a_second_upload_of_a_recorded_video_reports_it_and_uploads_nothing(ep):
     eid, root = ep
     approve(eid)

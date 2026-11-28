@@ -60,7 +60,10 @@ Two forms. Use the **test form** for a tool or a claim; use the **story form** w
 3. **What it does**, in pictures, only what the viewer does not know yet.
 4. **The own test**, with real numbers, rounded the way people speak. Only tests of what the tool is built for.
 5. **One fixed ask**, the same sentence in every video, right after the first strong result, between 15 and 60 % of
-   the script. Never at the start, never inside a unit, never at the end.
+   the script. Never at the start, never inside a unit, never at the end. A channel can set its own ask in
+   `channel.json` `script.craft.ask_ends_with` (e.g. a lead magnet that ends ", der Link ist in der
+   Videobeschreibung."); then that sentence is the fixed ask instead of the subscribe line. A Short has no ask, unless
+   the channel sets `script.short_ask`: then it ends on the punch line and exactly that comment ask (skills/shorts).
 6. **Counted units with rising stakes** (`references/craft.md`, group 2): 3 to 5 units of 45 to 75 seconds, each a
    step of the test with its own evidence; from unit to unit the stakes rise (more data, more money, a harder test).
    Before every lesson a test or a story from this video; every technical word gets one plain sentence the first time;

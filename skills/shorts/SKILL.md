@@ -84,6 +84,13 @@ Clip first when material exists. New Short: `crewcut episode new "<title>" --sho
   `added` or `exists` (done), `pending` (Crewcut tries again on its own; `crewcut youtube comment <episode>` tries now),
   `failed` (the note has YouTube's reason: tell the user). "Related video" and pinning have no API: tell the user in one
   line to set them in YouTube Studio.
+- **Comment word (when the channel sets `script.short_ask`):** the Short ends on the punch line, then exactly the
+  channel's comment ask with one word in capitals that fits what the viewer gets ("Wenn du das auch willst, kommentier
+  GPU."); it is the only ask, and `script_check.py --short` checks both (the punch line is the sentence before the
+  ask). The package gets `cta_keyword` (the word) and `cta_url` (a short, typeable link: links in Shorts comments are
+  often not clickable); the description and the pinned comment (`related_comment`) name the word and what the viewer
+  gets. After the upload Crewcut answers every comment with the word with the link, once each (`crewcut youtube
+  replies --status`; docs/youtube.md). Without `script.short_ask`: no ask in the Short.
 
 ## Publishing
 

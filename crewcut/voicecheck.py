@@ -21,7 +21,8 @@ Two families of checks:
   or the promise starts before 0:20 (times estimated from the word position at the speaker's words per minute); every
   unit has a hook, a retain part and a reward; a reward at least every `reward_gap_s` seconds (default 45); no recap and
   no goodbye at the end; each new unit's hook opens a loop (a number, a question or a contrast). Short: sentence 1 is a
-  case with a number and no question, proof by 0:15, a punch line of at most 8 words, no ask.
+  case with a number and no question, proof by 0:15, a punch line of at most 8 words, no ask; with the channel's
+  comment ask (channel.json `script.short_ask`) the punch line, then exactly that ask as the last sentence.
 
 A cue sheet (crewcut/cuesheet.py) is read as it will be spoken: the fixed lines are sentences, every bullet takes
 `bullet_seconds` of free speech and its numbers count. A full script is read above its line `---`.
@@ -519,12 +520,18 @@ def _rewards(sp: Spoken, units: list[dict], lex: dict) -> list[float]:
     return ev
 
 
-def structure_short(sp: Spoken, profile: dict, prefix: str) -> list[dict]:
+def structure_short(sp: Spoken, profile: dict, prefix: str, short_ask: str = "") -> list[dict]:
+    """A Short: the own case with a number, the proof by 0:15, the punch line, no ask. With the channel's comment ask
+    (channel.json script.short_ask, crewcut/cta.py) the punch line comes right before that ask, which is the last
+    sentence and the only ask."""
+    from . import cta
     lex = _lex(profile)
     S = sp.sentences
     if not S:
         return []
-    s1, last = S[0], S[-1]
+    word = cta.ask_word(S[-1].text, short_ask) if short_ask and len(S) > 1 else None
+    told = S[:-1] if word else S
+    s1, last = S[0], told[-1]
     out = []
     ok = bool(vm.numbers_in(s1.text, lex)) and not s1.question
     out.append(_check(prefix, "case", "sentence 1: the own case with a number", ok,
@@ -543,10 +550,21 @@ def structure_short(sp: Spoken, profile: dict, prefix: str) -> list[dict]:
                       f"{len(last.words)} words" + (", a question" if last.question else ""), "at most 8 words",
                       [point(last.text, "end with a short punch line: the result in a few words", None, last)],
                       "End with a punch line of at most 8 words, no question."))
-    asks = [s for s in S if _has("ask", s.text, lex)]
-    out.append(_check(prefix, "no-ask", "no ask in a Short", not asks, len(asks), "0 asks",
-                      [point(s.text, "cut the ask: a Short gives, it does not ask", None, s) for s in asks],
-                      "No subscribe, no link, no comment request in a Short."))
+    asks = [s for s in told if _has("ask", s.text, lex) or (short_ask and cta.mentions_ask(s.text, short_ask))]
+    if not short_ask:
+        out.append(_check(prefix, "no-ask", "no ask in a Short", not asks, len(asks), "0 asks",
+                          [point(s.text, "cut the ask: a Short gives, it does not ask", None, s) for s in asks],
+                          "No subscribe, no link, no comment request in a Short."))
+        return out
+    model = short_ask.replace(cta.PLACEHOLDER, "WORD")
+    pts = [point(s.text, "cut this ask: the only ask is the comment ask at the end", None, s) for s in asks]
+    if not word:
+        pts.append(point(S[-1].text, f'end with the comment ask, word for word: "{model}" (one word in capitals)',
+                         None, S[-1]))
+    out.append(_check(prefix, "no-ask", "one ask in a Short: the comment ask as the last sentence",
+                      bool(word) and not asks, (f"comment ask {word}" if word else "no comment ask at the end")
+                      + (f", {len(asks)} other ask(s)" if asks else ""), f'last sentence "{model}", 0 other asks',
+                      pts, f'The punch line, then exactly "{model}" as the last sentence; no other ask.'))
     return out
 
 
@@ -563,8 +581,11 @@ def checks(path: Path, fmt: str, profile: dict, mode: str = "block", voice_hard=
     names = {**NAMES, **(profile.get("check_names") or {})}
     sp = read(path, profile)
     out = voice_checks(sp, fmt, profile, names["voice"])
-    out += structure_short(sp, profile, names["structure"]) if fmt == "short" else \
-        structure_long(sp, profile, names["structure"])
+    if fmt == "short":
+        from . import cta
+        out += structure_short(sp, profile, names["structure"], cta.short_ask())
+    else:
+        out += structure_long(sp, profile, names["structure"])
     if mode == "hint":
         hard = set(VOICE_HARD if voice_hard is None else voice_hard)
         soft = set(STRUCTURE_SOFT if structure_soft is None else structure_soft)

@@ -1,4 +1,4 @@
-"""`crewcut youtube connect | auth | upload | comment | status | verify | results | retention`.
+"""`crewcut youtube connect | auth | upload | comment | replies | status | verify | results | retention`.
 
 `upload` exits 0 when the video is up (also when it was up already: "status": "exists"), 3 without an accepted card,
 5 while another upload of the episode runs, 6 when YouTube cannot be asked whether the video is there already."""
@@ -59,6 +59,26 @@ def main(a) -> int:
             return 1
         print(json.dumps(result, indent=1, ensure_ascii=False))
         return 0 if result["matches"] else 1
+    if a.ycmd == "replies":
+        from . import replies
+        if a.status:
+            print(json.dumps(replies.status(a.episode), indent=1, ensure_ascii=False))
+            return 0
+        if replies.settings()["mode"] == "off" and not a.dry_run:
+            print("Comment replies are off (youtube.cta_replies = \"off\" in config/crewcut.toml). --dry-run still "
+                  "shows what would be sent.")
+            return 0
+        if not a.dry_run and not auth.connected():
+            print("YouTube is not connected.")
+            return 4
+        try:
+            res = replies.run(a.episode, dry_run=True if a.dry_run else None)
+        except ImportError:
+            print("The YouTube libraries are missing in this image (pip extra 'youtube').")
+            return 1
+        print(json.dumps(res, indent=1, ensure_ascii=False) if res else "No published video with a comment word "
+              "(cta_keyword and cta_url in its upload) to look at.")
+        return 1 if any(r.get("error") for r in res) else 0
     if a.ycmd == "comment":
         from . import upload
         try:
