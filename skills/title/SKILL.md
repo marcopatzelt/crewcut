@@ -79,8 +79,12 @@ Do not defer the first visual concept until the edit is done. The later thumbnai
    `crewcut card wait`.
 9. **Hand over.** To the script (and to the proof step, when the studio switched it on): the promise, the tool and
    the number to measure. To the Designer: title, thumbnail text, verdict, the three variants.
-10. **After the test, check again.** Does the number still hold? If not, write a new version and a new card
-   before the script starts.
+10. **After the test, check again.** Does the number still hold, and does the test carry each pair's claim? A pair
+   whose claim the result reverses (the title or the image says the opposite of what was measured) is dropped or
+   rebuilt in the measured direction. In a show-format episode write the next `brief/PACKAGING-vNNN.md` with one line
+   per pair, `- Test: carries` or `- Test: reverses` (German `- Test: trägt` or `- Test: dreht um`); the title card is
+   refused while a pair is unchecked or when an option is a reversed pair (docs/formats.md). Then a new version and a
+   new card before the script starts.
 
 A title change after the upload needs a card and goes through `skills/upload/`.
 

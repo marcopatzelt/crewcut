@@ -135,7 +135,22 @@ Then the style gate runs on the newest script. When it passes and the format has
 the cue sheet (`DREHZETTEL-vNNN.md` in a German studio, else `CUES-vNNN.md`; the bullets come from the material and the
 test result, not from shortening the full text), the gate checks it too, and only then comes the script card. After
 the script card the episode goes on with its normal steps; the title step starts from `PACKAGING-v001.md`, fills its
-`[ERGEBNIS: …]` from the test result and drops a pair whose formula's condition the result does not meet.
+`[ERGEBNIS: …]` from the test result and checks every pair against it.
+
+**A pair the test reverses never reaches the title card** (`crewcut/titlepairs.py`). Packaging is written before the
+test, so a pair can promise a direction the test turns around ("not as current as you think", and the test found it
+more current). After the test the title step writes the next `brief/PACKAGING-vNNN.md` with one line per pair (each
+pair a section `## Pair A …` or `## Paar A …` with its `- Title:` or `- Titel:` line):
+
+    - Test: carries                  German: - Test: trägt
+    - Test: reverses, <why>          German: - Test: dreht um, <warum>
+
+A pair reverses when its title or image says the opposite of what was measured, or when its formula's condition is
+not met; it is dropped or rebuilt in the measured direction. The title step's Critic gets the test result with this as
+a hard question. `crewcut card propose --kind title` is refused while the newest packaging is older than the test
+result or leaves a pair unchecked, and an option that is the title of a reversed pair is refused; the thumbnail step
+never builds the image of a reversed pair. An episode without a show format, a test result or a packaging file with
+pairs is not checked.
 
 The system prompt of every job in such an episode carries the format block: structure, rules, formulas, template
 paths and, when the studio has it, `brand/references/HORMOZI-NIE-OHNE-CONTENT.md` (where topics come from). With a

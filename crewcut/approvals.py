@@ -68,6 +68,9 @@ def propose(episode: str | None, step: str | None, kind: str, title: str, body: 
     if kind in ("preview", "final") and p is not None and episode and episode != "_onboarding":
         from .cut import tilt
         tilt.gate(paths.episode_dir(episode), p)   # raises tilt.Tilted: the declared roll correction is not in it
+    if kind == "title" and episode and not episode.startswith("_"):
+        from . import titlepairs
+        titlepairs.require(episode, options)   # raises titlepairs.Unchecked: a pair the test reverses, or unchecked
     if kind == "script" and p is not None and p.suffix.lower() in (".md", ".txt"):
         _require_story(episode, p)  # raises spoken.Unspeakable: marks that do not read aloud, no story plan, a list
     if kind == "script" and episode and not episode.startswith("_"):

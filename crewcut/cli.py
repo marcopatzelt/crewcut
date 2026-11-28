@@ -716,12 +716,12 @@ def _run(a) -> int:
                 print("Motion cards come from their commands: crewcut motion plan --card, style-frame, promote, report.",
                       file=sys.stderr)
                 return 2
-            from . import humanize, spoken, stylegate
+            from . import humanize, spoken, stylegate, titlepairs
             from .cut import tilt
             try:
                 card = approvals.propose(_env_episode(a), a.step, a.kind, a.title, body=a.body, file=a.file,
                                          options=a.option or None, data=data, identity=_identity(), preview=a.preview)
-            except (humanize.Missing, spoken.Unspeakable, tilt.Tilted, stylegate.Blocked) as e:
+            except (humanize.Missing, spoken.Unspeakable, tilt.Tilted, stylegate.Blocked, titlepairs.Unchecked) as e:
                 print(str(e), file=sys.stderr)
                 return 4
             _print(card if a.json else f"card #{card['id']} is open: {card['title']}", a.json)

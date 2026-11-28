@@ -107,6 +107,7 @@ A skill never hard-codes a colour, font, logo, loudness or mix limit. It reads t
 | `ledger.py` | cost book: add, totals for today / episode / month, cap | core |
 | `episodes.py` | create and read episodes, `project.json`, the ten steps | core |
 | `showformats.py` | the show format library (neutral examples + `brand/show-formats/`), the episode's pick, the format block of the prompt; `conductor/plan.py` runs the plan job ([formats.md](formats.md)) | core |
+| `titlepairs.py` | title and thumbnail pairs against the test result: a title card is refused while a pair is unchecked or when an option is a pair the test reverses ([formats.md](formats.md)) | core |
 | `ideas.py`, `scoreboard.py` | idea cards from `inbox/ideas/` (start, dismiss); results per show format | core |
 | `stylegate.py` | the studio's own style checker as a hard gate for scripts: rounds with the Writer, card and advance refusals | core |
 | `graphicsgate.py` | the style pack's graphic system checked on the edit plan before `render all` and `render cut`: a card names every fix, its yes goes to the Editor | core |
