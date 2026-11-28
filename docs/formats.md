@@ -157,8 +157,8 @@ python3 host/ideas-export.py --studio ~/Crewcut --braindump path/to/links --proj
 - An idea that exists is left alone (dedupe by id); `--refresh` rewrites open ones. A started or dismissed idea is never
   rewritten: Crewcut writes the decision back into the file.
 
-Your own week is a source too: `--recent-episodes` makes one card per studio episode whose files changed in the last
-`--days` days (default 7), `--recent-git DIR` one card per own repository with its commit subjects of those days, and
+Your own week is a source too: `--recent-episodes` makes one card per studio episode that was published or measured
+in the last `--days` days (default 7; episodes still in production are already topics), `--recent-git DIR` one card per own repository with its commit subjects of those days, and
 `--braindump DIR --days 7` only the links saved in that time. Their topic type is recent past: "Look at your calendar
 for the last week" (Hormozi, *$100M Leads*, part 4).
 
