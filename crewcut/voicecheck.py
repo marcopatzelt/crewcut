@@ -65,7 +65,8 @@ def settings() -> dict:
     from . import stylegate
     cfg = stylegate.settings()
     mode = str(cfg.get("voice") or "block").lower()
-    return {"voice": mode if mode in MODES else "block", "voice_profile": cfg.get("voice_profile")}
+    return {"voice": mode if mode in MODES else "block", "voice_profile": cfg.get("voice_profile"),
+            "voice_hard": cfg.get("voice_hard"), "structure_soft": cfg.get("structure_soft")}
 
 
 def profile_path(cfg: dict | None = None) -> Path | None:
@@ -549,8 +550,14 @@ def structure_short(sp: Spoken, profile: dict, prefix: str) -> list[dict]:
     return out
 
 
-def checks(path: Path, fmt: str, profile: dict, mode: str = "block") -> list[dict]:
-    """The voice and structure checks of one file, in the checker interface (version 1)."""
+VOICE_HARD = ("fillers_per_100",)           # in hint mode these voice counts stay hard: filler words have no place
+STRUCTURE_SOFT = ("window", "rewards", "punch")   # in hint mode these structure checks count seconds or words: hints
+
+
+def checks(path: Path, fmt: str, profile: dict, mode: str = "block", voice_hard=None, structure_soft=None) -> list[dict]:
+    """The voice and structure checks of one file, in the checker interface (version 1). In hint mode the counts are
+    hints (every voice check but `voice_hard`, and the structure checks that count seconds or words); the build checks
+    (proof, promise, plan; hook, retain, reward; no recap or goodbye; a Short's own case and proof, no ask) stay hard."""
     if mode == "off":
         return []
     names = {**NAMES, **(profile.get("check_names") or {})}
@@ -559,8 +566,12 @@ def checks(path: Path, fmt: str, profile: dict, mode: str = "block") -> list[dic
     out += structure_short(sp, profile, names["structure"]) if fmt == "short" else \
         structure_long(sp, profile, names["structure"])
     if mode == "hint":
+        hard = set(VOICE_HARD if voice_hard is None else voice_hard)
+        soft = set(STRUCTURE_SOFT if structure_soft is None else structure_soft)
         for c in out:
-            if c["kind"] == "auto":
+            group, _, rid = str(c["id"]).partition(":")
+            counts = (group == names["voice"] and rid not in hard) or (group == names["structure"] and rid in soft)
+            if c["kind"] == "auto" and counts:
                 c.update({"kind": "hinweis", "frage": c.get("fix") or c.get("titel"), "pass": None, "fix": None})
     return out
 
@@ -574,7 +585,9 @@ def for_gate(path: Path, fmt: str, cfg: dict | None = None) -> list[dict]:
         p = profile_path(cfg)
         if p is None:
             return []
-        return checks(path, fmt, load_profile(p), cfg.get("voice") or "block")
+        full = settings()
+        return checks(path, fmt, load_profile(p), cfg.get("voice") or "block", full.get("voice_hard"),
+                      full.get("structure_soft"))
     except Exception as e:  # noqa: BLE001 - the voice check must never stop the studio's own gate
         return [{"id": "VOICE:profile", "rule": "VOICE", "kind": "hinweis", "titel": "voice profile",
                  "measured": f"not usable: {e}"[:300], "target": "a readable profile", "pass": None, "line": None,
@@ -589,7 +602,9 @@ def prompt_lines() -> str:
     if settings()["voice"] != "block":
         return (f"Voice profile: {p} (the reference speaker's measured voice). In this studio its counts are hints for "
                 "the Critic, never a target and never a failure: do not add, cut or bend a sentence to hit a number "
-                "(sentence length, short sentences, numbers per minute, 'you' per 100 words).")
+                "(sentence length, short sentences, numbers per minute, 'you' per 100 words). The build checks stay "
+                "hard: proof, promise and plan in the opening, hook, retain and reward in every unit, no recap or "
+                "goodbye; `crewcut voice check <file>` shows them.")
     return (f"Voice profile: {p} (the reference speaker's measured voice and the target bands for this channel). "
             "Run `crewcut voice check <script>` before you end a draft: its voice and structure checks are part of "
             "the style gate and every failing line comes back to you.")
@@ -624,8 +639,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     prof = load_profile(p)
     fmt = a.format or ("short" if re.match(r"(?i)^short", path.name) else "lang")
-    mode = a.mode or ("hint" if settings()["voice"] == "hint" else "block")
-    res = checks(path, fmt, prof, mode)
+    cfg = settings()
+    mode = a.mode or ("hint" if cfg["voice"] == "hint" else "block")
+    res = checks(path, fmt, prof, mode, cfg.get("voice_hard"), cfg.get("structure_soft"))
     failed = [x for x in res if x["pass"] is False]
     if a.json:
         print(json.dumps({"version": 1, "file": str(path), "format": fmt, "profile": str(p), "mode": mode,
@@ -637,8 +653,8 @@ def main(argv: list[str] | None = None) -> int:
             for pt in (x.get("points") or [])[:6] if x["pass"] is not True else []:
                 print(f"        {pt.get('wo') or ''} \"{pt['text'][:110]}\" : {pt['why']}"
                       + (f"\n          -> {pt['rewrite']}" if pt.get("rewrite") else ""))
-        print(f"{len(failed)} failed." + (" Mode hint: every count is a hint for the Critic, never a target."
-                                          if mode == "hint" else ""))
+        print(f"{len(failed)} failed." + (" Mode hint: every count is a hint for the Critic, never a target; the "
+                                          "build checks stay hard." if mode == "hint" else ""))
     return 1 if failed else 0
 
 

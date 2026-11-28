@@ -16,7 +16,8 @@ Without window reports the newest `review/results-*.json` (or, for Shorts, `stud
 compared with the channel median of the same length (Shorts against Shorts, long against long) and marked as unfair to
 new videos. Subscribers per 1,000 views are compared within the same length too.
 
-Verdict per format: too little data under 2 measured episodes; with 2 or 3 a stop when the first two are both under
+Per format, the same verdict per kind (`format_kind`) too, so a winning kind is made again. Verdict per format: too
+little data under 2 measured episodes; with 2 or 3 a stop when the first two are both under
 0.5 and both weak on click and view share, else watch; from 4 on (the last 4): more of this at a median of at least
 1.2 (1.0 for a format that already runs, more than 4 episodes) or with more subscribers per 1,000 views than the
 channel, drop under 0.8 without that, else change after the diagnosis and measure 2 more. A hint, not a rule.
@@ -142,6 +143,7 @@ def episode_rows() -> list[dict]:
             or (lib.get(fid) or {}).get("traffic_type") or "browse"
         published = ((main or {}).get("window") or {}).get("published") or published_day(ep)
         rows.append({"episode": ep.name, "title": project.get("title"), "format": fid, "kind": project.get("kind"),
+                     "format_kind": project.get("format_kind"),
                      "length": "short" if project.get("kind") == "short" else "long", "published": published,
                      "views": views, "avg_view_pct": pct, "subs": subs,
                      "subs_per_1000": round(subs / views * 1000, 2) if subs is not None and views else None,
@@ -214,19 +216,21 @@ def build() -> dict:
                 "median_avg_view_pct": _median([r["avg_view_pct"] for r in m]),
                 "subs_per_1000": _median([r["subs_per_1000"] for r in m])}
         ctrs = [r["ctr"]["ctr"] for r in rs if r.get("ctr")]
-        fair = sorted((r for r in rs if r.get("x") is not None), key=lambda r: r.get("published") or "")
-        if fair:
-            basis, xs = "first days", [r["x"] for r in fair]
-        else:   # total views only: unfair to young videos, marked as such; Shorts against Shorts, long against long
-            basis = "total views"
-            fair = [r for r in m if by_length[r["length"]]["median_views"]]
-            xs = [r["views"] / by_length[r["length"]]["median_views"] for r in fair]
+        basis, fair, xs = _judged(rs, by_length)
         lengths = [r["length"] for r in rs]
         length = max(("long", "short"), key=lengths.count)   # the format's episodes are judged within their length
         verdict, median_x = decide(fair, xs, mine["subs_per_1000"],
                                    by_length.get(length, channel)["subs_per_1000"])
         if basis == "total views" and any(r["traffic_type"] == "search" and r.get("x_7d") is not None for r in rs):
             basis, verdict, median_x = "search: judged on the first 28 days", "watch", None
+        kinds = {}
+        for kid in sorted({r.get("format_kind") for r in rs if r.get("format_kind")}):
+            kr = [r for r in rs if r.get("format_kind") == kid]
+            _, kfair, kxs = _judged(kr, by_length)
+            kv, kx = decide(kfair, kxs, _median([r["subs_per_1000"] for r in kr]),
+                            by_length.get(length, channel)["subs_per_1000"])
+            kinds[kid] = {"episodes": len(kr), "measured": len([r for r in kr if r["views"] is not None]),
+                          "verdict": kv, "verdict_text": VERDICTS[kv], "median_x": kx}
         traffic = sorted({r["traffic_type"] for r in rs})
         out.append({"format": fid, "name": (lib.get(fid) or {}).get("name") or fid,
                     "length": (lib.get(fid) or {}).get("length"), "episodes": len(rs), "measured": len(m), **mine,
@@ -236,11 +240,21 @@ def build() -> dict:
                     "traffic_type": traffic[0] if len(traffic) == 1 else "mixed",
                     "ctr_rel": _median([r["ctr_rel"] for r in fair]), "avp_rel": _median([r["avp_rel"] for r in fair]),
                     "diagnosis": next((r["diagnosis"] for r in reversed(fair) if r.get("diagnosis")), None),
-                    "coview_mixed": any(r.get("coview_mixed") for r in fair),
+                    "coview_mixed": any(r.get("coview_mixed") for r in fair), "kinds": kinds,
                     "episode_ids": [r["episode"] for r in rs]})
     order = {"more": 0, "change": 1, "watch": 2, "thin": 3, "stop": 4, "drop": 5}
     out.sort(key=lambda f: (order[f["verdict"]], -(f["median_views"] or 0), f["format"]))
     return {"channel": channel, "formats": out}
+
+
+def _judged(rs: list[dict], by_length: dict) -> tuple[str, list[dict], list[float]]:
+    """(basis, judged rows oldest first, their ratios): first days when there are window reports, else total views
+    against the median of the same length (Shorts against Shorts), marked as unfair to young videos."""
+    fair = sorted((r for r in rs if r.get("x") is not None), key=lambda r: r.get("published") or "")
+    if fair:
+        return "first days", fair, [r["x"] for r in fair]
+    fair = [r for r in rs if r["views"] is not None and by_length[r["length"]]["median_views"]]
+    return "total views", fair, [r["views"] / by_length[r["length"]]["median_views"] for r in fair]
 
 
 def _medians(rows: list[dict]) -> dict:

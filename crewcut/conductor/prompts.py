@@ -314,13 +314,15 @@ def voice_block(short: bool = False) -> str:
     files = [moves / f"{n}.md" for n in names] if moves else []
     files = [f for f in files if f.is_file()]
     hint = voicecheck.settings().get("voice") != "block"
-    out = ["VOICE AND STRUCTURE OF THE REFERENCE SPEAKER (" + ("the gate shows the counts to the Critic as hints):"
-                                                              if hint else "the gate checks both):")]
+    out = ["VOICE AND STRUCTURE OF THE REFERENCE SPEAKER (" + ("the gate shows the counts to the Critic as hints and "
+                                                              "checks the build):" if hint else "the gate checks both):")]
     if prof and hint:
         out.append(f"- {prof} is the speaker's measured voice (reference). In this studio its counts are hints for "
                    "the Critic, never targets: sentence length, short sentences, numbers per minute, 'you' per 100 "
                    "words and the rest. Never add, cut or bend a sentence (or a 'you') to hit a number; say what the "
-                   "material and the test give in as few words as it takes (value per second).")
+                   "material and the test give in as few words as it takes (value per second). The build stays a hard "
+                   "check: proof, promise and plan in the opening, hook, retain and reward in every unit, no recap and "
+                   "no goodbye at the end, no filler words.")
     elif prof:
         out.append(f"- Read {prof}: the speaker's measured voice (reference) and this channel's target bands "
                    f"(targets.{'short' if short else 'long'}): sentence length, short sentences, numbers per minute and "
@@ -423,8 +425,22 @@ def _recent_kinds_line(lib: dict, given: str | None, episode: str) -> str:
             parts.append(f"{fid}: " + ", ".join(k for _, k in recent))
     if not parts:
         return ""
+    winners = _winning_kinds(lib)
     return (" The last episodes used these kinds, newest first (" + "; ".join(parts) + "): take a different kind "
-            "than the newest one unless the input fits only that one, and say why in the reason.")
+            "than the newest one unless the input fits only that one or the kind wins on the scoreboard, and say why "
+            "in the reason." + (" Winning kinds (scoreboard: more of this), keep making them: " + ", ".join(winners)
+                                + "." if winners else ""))
+
+
+def _winning_kinds(lib: dict) -> list[str]:
+    """format/kind pairs whose kind has the scoreboard verdict "more of this" (Hormozi: remake the hits)."""
+    try:
+        from .. import scoreboard
+        board = scoreboard.build()
+    except Exception:  # noqa: BLE001 - the plan task must not fail on a broken measurement
+        return []
+    return [f"{f['format']}/{k}" for f in board.get("formats", []) if f["format"] in lib
+            for k, v in (f.get("kinds") or {}).items() if v.get("verdict") == "more"]
 
 
 def format_script_task(episode: str) -> str:
