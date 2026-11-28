@@ -50,7 +50,9 @@ DEFAULTS = {"mode": "block", "max_rounds": 3, "skill": "deutscher-hormozi", "che
             # the voice profile and the learning loop (crewcut/voicecheck.py, crewcut/lernstand.py,
             # docs/hormozi-voice.md); paths inside the studio, None = not used
             "voice": "block", "voice_profile": None, "reference_moves": None, "learning_file": None,
-            "gold_dir": None}
+            "gold_dir": None,
+            # the delivery guide and the reading version (crewcut/delivery.py); None = not used
+            "delivery_guide": None, "reading_prefix": None, "reading_max_stress": 2}
 LOOPS = ("rounds", "until_pass")
 INTERFACE = 1
 NAME = re.compile(r"^(?P<kind>SCRIPT|SHORT|CUES|DREHZETTEL)-v(?P<n>\d+)(?P<rest>[^/]*)\.(?:md|txt)$", re.I)
@@ -622,18 +624,21 @@ def second_opinion_round(episode: str, verdict: dict) -> dict:
 
 def ready(episode: str, verdict: dict, why: str) -> dict:
     """The checker passes: the Writer proposes the card with exactly this version."""
-    from . import lernstand
+    from . import delivery, lernstand
     from .conductor import flow, prompts, queue
     lernstand.after_ready(episode, verdict)   # passing scripts become gold candidates; the learning file is rewritten
+    reading = delivery.writer_task(episode)   # the reading version of the passing full script, when the studio has one
     derive = prompts.cue_sheet_task(episode)   # a show format with a cue template: the cue sheet first, then the card
     if derive:
-        jid = queue.add(episode, "writer", "script", derive, data={"format_cues": 1})
+        jid = queue.add(episode, "writer", "script", derive + (" Before you end your turn, also " + reading
+                                                               if reading else ""), data={"format_cues": 1})
         flow.post(episode, short_line(verdict) + " The Writer derives the cue sheet from the script; the gate checks "
                   "it too.", step="script")
         return {"action": "cue_sheet", "job": jid}
     notes = [s for r in verdict.get("results", []) for s in r.get("notes", [])]
-    jid = queue.add(episode, "writer", "script", f"{why} The style check passes now ({short_line(verdict)}). Propose "
-                    "your script card with exactly the version that was checked" + (", and put this in its body: "
+    jid = queue.add(episode, "writer", "script", f"{why} The style check passes now ({short_line(verdict)})."
+                    + (" First " + reading + " Then propose" if reading else " Propose")
+                    + " your script card with exactly the version that was checked" + (", and put this in its body: "
                     + "; ".join(notes) if notes else "") + ".")
     flow.post(episode, short_line(verdict) + " The Writer proposes the card.", step="script")
     return {"action": "ready", "job": jid}

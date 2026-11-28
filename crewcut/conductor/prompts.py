@@ -297,12 +297,13 @@ def companion_name(script: str = "SCRIPT-vNNN.md") -> str:
 
 
 def voice_block(short: bool = False) -> str:
-    """What the Writer reads and writes for the voice: the profile, the reference moves, the learning companion.
-    "" when the studio has neither a voice profile nor reference moves."""
-    from .. import voicecheck
+    """What the Writer reads and writes for the voice: the profile, the reference moves, the delivery guide, the
+    learning companion. "" when the studio has none of the first three."""
+    from .. import delivery, voicecheck
     prof = voicecheck.profile_path()
     moves = _moves_dir()
-    if prof is None and moves is None:
+    guide = delivery.guide_line()
+    if prof is None and moves is None and not guide:
         return ""
     names = SHORT_MOVES if short else LONG_MOVES
     files = [moves / f"{n}.md" for n in names] if moves else []
@@ -321,6 +322,8 @@ def voice_block(short: bool = False) -> str:
                    "follows intro.md, the transitions transition.md, the close ending.md." if not short else
                    "- Model sentence 1 on short-first.md and the last sentence on short-end.md (one or two named "
                    "passages each): copy the move, never the words, the topic or a number.")
+    if guide:
+        out.append(guide)
     out.append(f"- Next to every script version write brief/{companion_name()} (for example "
                f"brief/{companion_name('SCRIPT-v002.md')}): per unit (and the opening and the close) three lines "
                "Hook / Retain / Reward with the line from the script, which reference passage it copies (file#number "

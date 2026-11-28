@@ -20,13 +20,17 @@ Runs on the host, next to the transcripts; standard library only; the database i
 2. `render`: a person (or an agent) picks passages from the candidates and writes, per passage, a transfer line in the
    target language and the pattern in one line, in a JSON file:
 
-     {"hook": {"title": "…", "intro": "…", "pick": [{"id": "<candidate id>", "pattern": "…", "transfer": "…"}]}, …}
+     {"hook": {"title": "…", "intro": "…", "pick": [{"id": "<candidate id>", "pattern": "…", "transfer": "…",
+                                                    "spoken": "…"}]}, …}
+
+   `spoken` is optional: how the passage is delivered when spoken (where the stress and the pause go), for example the
+   transfer line as a reading version with the stressed word in capitals and "/" for a pause (crewcut/delivery.py).
 
    python3 host/reference-moves.py render --candidates cand.json --picks picks.json --dir <studio>/…/vorbilder
 
    Each move becomes <dir>/<move>.md: per passage the quote in straight double quotes with a source number [n], the
-   pattern, the transfer line in „…“, and the source line `[n] <link>`. That layout is what a quote checker reads
-   (every quote must stand word for word in the chunk its link points to).
+   pattern, the transfer line in „…“, the spoken line when there is one, and the source line `[n] <link>`. That
+   layout is what a quote checker reads (every quote must stand word for word in the chunk its link points to).
 
 Quotes are short passages for study with credit and link; the files belong in a private studio, not in a repository.
 """
@@ -230,7 +234,10 @@ def cmd_render(a) -> int:
             lines += [f"## {n}. {german_quotes(c['title'])} ({score}, {c['published']})", "",
                       f"\"{c['quote']}\" [{n}]", "",
                       f"- {a.pattern_label}: {german_quotes(p['pattern'])}",
-                      f"- {a.transfer_label}: „{p['transfer']}“", ""]
+                      f"- {a.transfer_label}: „{p['transfer']}“"]
+            if p.get("spoken"):
+                lines.append(f"- {a.spoken_label}: {german_quotes(p['spoken'])}")
+            lines.append("")
             refs.append(f"[{n}] {c['link']}")
             total += 1
         lines += [f"## {a.sources_label}", "", *refs, ""]
@@ -259,6 +266,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--pattern-label", default="Pattern")
     r.add_argument("--transfer-label", default="Transfer")
     r.add_argument("--sources-label", default="Sources")
+    r.add_argument("--spoken-label", default="Spoken")
     a = ap.parse_args(argv)
     return cmd_candidates(a) if a.cmd == "candidates" else cmd_render(a)
 

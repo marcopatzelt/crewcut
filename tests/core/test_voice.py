@@ -205,12 +205,14 @@ def test_reference_moves_are_word_for_word_with_links(tmp_path):
     h = c["hook"][0]
     assert h["quote"].startswith("I made 10 million dollars") and h["link"].endswith("v=long7&t=0s")
     picks = write(tmp_path, "picks.json", json.dumps({"hook": {"title": "Hook", "intro": "Say \"why\".", "pick": [
-        {"id": h["id"], "pattern": "Result with a \"number\" first.", "transfer": "Ich habe 3 Spots gebaut."}]}}))
+        {"id": h["id"], "pattern": "Result with a \"number\" first.", "transfer": "Ich habe 3 Spots gebaut.",
+         "spoken": "Ich habe DREI / Spots gebaut, \"slow\"."}]}}))
     out = tmp_path / "moves"
     assert rm.main(["render", "--candidates", str(cand), "--picks", str(picks), "--dir", str(out)]) == 0
     md = (out / "hook.md").read_text()
     assert f"\"{h['quote']}\" [1]" in md and "[1] https://www.youtube.com/watch?v=long7&t=0s" in md
     assert "„number“" in md and "„why“" in md and "„Ich habe 3 Spots gebaut.“" in md   # only the passage is in "…"
+    assert "- Spoken: Ich habe DREI / Spots gebaut, „slow“." in md
 
 
 # ---- the checks ----------------------------------------------------------------------------------------------------

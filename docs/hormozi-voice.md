@@ -1,7 +1,7 @@
-# Voice profile, reference moves and the learning loop
+# Voice profile, reference moves, the learning loop and the reading version
 
 A channel that writes in the manner of a reference speaker (in the studio this was built for: Alex Hormozi's way of
-speaking and his structure, carried into German) needs three things the style gate alone does not give:
+speaking and his structure, carried into German) needs things the style gate alone does not give:
 
 1. **A voice profile**: how the reference speaker actually speaks, measured from his transcripts, and target bands for
    the channel's own scripts, each with its reason.
@@ -10,10 +10,14 @@ speaking and his structure, carried into German) needs three things the style ga
    language. The Writer models every hook and punch line on named passages.
 3. **A learning loop**: after every gate round and every retention measurement, one file collects what the critics
    found most often, which units held viewers and which scripts passed. The Writer reads its head before every script.
+4. **A delivery guide and a reading version** (optional): how the speaker delivers a script, in the studio's own
+   words, with the sentence shapes that force that delivery; and, once a script passes, the same script with the
+   stressed words and the pauses marked, for the speaker to read once before he records.
 
 Code: `crewcut/voicemetrics.py` (the metrics), `crewcut/voicecheck.py` (the checks in the gate), `crewcut/lernstand.py`
 (the learning loop), `host/voice-profile.py` and `host/reference-moves.py` (run on the host, next to the transcripts),
-`crewcut/conductor/prompts.py` (what the Writer is told). The idea of a video as units of hook, retain and reward is
+`crewcut/conductor/prompts.py` (what the Writer is told), `crewcut/delivery.py` (the delivery guide and the reading
+version). The idea of a video as units of hook, retain and reward is
 Alex Hormozi's (*$100M Leads*, part 4 "Post Free Content", read on his podcast *The Game*, 2023; our summary).
 
 ## Settings
@@ -33,6 +37,9 @@ inside the studio.
 | `rule_after` | `3` | a finding group with this many findings gets one rule card; 0 = never |
 | `rules_per_run` | `2` | at most this many new rule cards per run; the rest follow at the next runs |
 | `companion_prefix` | `LEARN-` | the learning companion of `brief/SCRIPT-v002.md` is `brief/LEARN-SCRIPT-v002.md` |
+| `delivery_guide` | none | the delivery guide (part 6); the voice block names it |
+| `reading_prefix` | none | the reading version of `brief/SCRIPT-v002.md` is `brief/<prefix>SCRIPT-v002.md`; none = no reading version |
+| `reading_max_stress` | `2` | stressed words per sentence in the reading version, at most |
 
 The companion has the prefix in front, so no tool that looks for `SCRIPT-v*.md`, `CUES-v*.md` or `SHORT-v*.md`
 mistakes it for a script.
@@ -129,6 +136,37 @@ units after every run (`crewcut retention units`).
    (`approvals.propose_rule`, step script); a yes writes it into `brand/rules/script.md`. The state is in the learning
    file's `.json` next to it, so each group is proposed once.
 
+## 6. The delivery guide and the reading version
+
+Words alone do not make a script sound like the reference speaker: where he stresses, pauses, speeds up and slows
+down carries as much. The speaker himself describes it as a tone guide for a script: capitals for emphasis, a pause
+mark for a short pause, and two things that vary while loudness, speed and clear words stay constant, namely where
+you pause and where your voice goes up or down (Alex Hormozi, *The Ultimate Sales Training for 2026*, 2025, from
+56:17, and *How to Speak So Well People Give You Money*, 2025, from 6:19, both on his YouTube channel; our summary).
+
+- **The guide** (`delivery_guide`): a Markdown file of the studio. It says how the speaker delivers (stress, pauses,
+  tempo, numbers, contrasts, punch lines) and which sentence shapes in the text force that delivery: a short punch line
+  right after a long setup, the stressed word at the end of its sentence, a contrast pair with the turn word in the
+  middle, the reveal in its own short sentence. While it is set, the voice block of the Writer, the Critic and the
+  Showrunner names it; the Writer builds hooks, proofs and punch lines in those shapes and the Critic checks the
+  shapes the guide marks as checkable. The script and the cue sheet stay plain speaking text.
+- **The reading version** (`reading_prefix`): when the gate passes a script, the Writer's next task (the card, or the
+  cue sheet in a show format) starts with writing `brief/<prefix>SCRIPT-vNNN.md`: the same words as the full script,
+  with three marks.
+
+  | Mark | Meaning |
+  |---|---|
+  | `WORD` in capitals | the stressed word: usually the number, the contrast word, the last word of a punch line |
+  | ` / ` | a short pause: a beat that draws attention to what follows |
+  | ` // ` | a long pause: before the reveal or after the punch line, at most one per paragraph |
+
+  `crewcut voice reading <file>` checks it: the same words as the script (the marks and the capitals aside, words in
+  capitals in the script itself are not stresses), marks only between words and never inside a `[picture cue]`, no
+  two marks in a row, at most `reading_max_stress` stressed words per sentence and at least one mark. The Writer names
+  the file in the card body, so the speaker opens it from the card. The prefix keeps it out of every script glob: the
+  gate, the Critic and the teleprompter's default never take it for the script. To read it on the teleprompter,
+  select it (`crewcut prompter select`).
+
 ## Limits
 
 - Every count comes from word lists: numbers, commands, fillers and transitions are found, not understood. The bands
@@ -137,3 +175,5 @@ units after every run (`crewcut retention units`).
 - The structure checks find the form (a count word, a short last line), not whether the line is good: that stays the
   Critic's work.
 - The learning file is a hint. One episode with many review rounds can fill the top findings alone.
+- The reading version's marks are the Writer's reading of the text, not a measurement of the speaker. The check
+  sees whether the words are the script's and the marks are usable, not whether the stress sits on the right word.
