@@ -17,8 +17,9 @@ Sources:
 - `--braindump DIR`: saved links, one folder per link with `eintrag.json` and its result `ergebnis` (`titel`, `was`,
   `warum`, `projekte: [{"id", "idee", "wo"}]`, `tags`, `prioritaet`). Only links whose projects contain `--project`.
 
-- `--recent-episodes`: what you made in the studio in the last `--days` days (default 7): every episode whose files
-  changed in that time, with its title, its steps and, when it has them, its measured results. Topic type recent_past.
+- `--recent-episodes`: what happened in the studio in the last `--days` days (default 7): every episode that was
+  published (export/upload-result.json) or got measured results (review/results-*.json) in that time, with its title
+  and its numbers. Episodes still in production are not ideas. Topic type recent_past.
 - `--recent-git DIR` (repeatable): what you built in your own projects in the last `--days` days: one card per
   repository with its commit subjects (git log, read only). Topic type recent_past.
 - `--braindump DIR --days N`: only links saved in the last N days.
@@ -152,14 +153,16 @@ def _week(days: int) -> str:
 
 
 def from_recent_episodes(studio: Path, days: int) -> list[dict]:
-    """Episodes of the studio whose files changed in the last `days` days: what you made, as recent_past ideas."""
+    """Episodes published or measured in the last `days` days: what happened, as recent_past ideas. Episodes that are
+    still in production are left out (they are already topics)."""
     root = studio / "episodes"
     since = _since(days)
     out = []
     for proj in sorted(root.glob("*/project.json")) if root.is_dir() else []:
         ep = proj.parent
+        events = [ep / "export" / "upload-result.json", *sorted((ep / "review").glob("results-*.json"))]
         try:
-            newest = max((f.stat().st_mtime for f in ep.rglob("*") if f.is_file()), default=0)
+            newest = max((f.stat().st_mtime for f in events if f.is_file()), default=0)
         except OSError:
             continue
         if newest < since:
@@ -180,9 +183,12 @@ def from_recent_episodes(studio: Path, days: int) -> list[dict]:
             except (OSError, ValueError, AttributeError):
                 measured = None
         title = str(p.get("title") or ep.name)
-        summary = (f"Your own episode {ep.name} changed in the last {days} days (steps done: "
-                   f"{', '.join(done) or 'none'}). What happened while you made it, what broke, what you learned: a "
-                   "topic from your own week.")
+        published = (ep / "export" / "upload-result.json").is_file()
+        summary = (f"Your own episode {ep.name} was " + ("published" if published else "measured")
+                   + f" in the last {days} days" + (f" ({measured.get('views')} views so far)" if measured and
+                                                    measured.get("views") is not None else "")
+                   + ". What happened while you made it, what the numbers say, what broke, what you learned: a topic "
+                   "from your own week.")
         signals = {k: v for k, v in {"episode": ep.name, "show_format": p.get("show_format"), "kind": p.get("kind"),
                                      "steps_done": done or None, "results": measured,
                                      "changed": iso(newest)}.items() if v not in (None, [], {}, "")}

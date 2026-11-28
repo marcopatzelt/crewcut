@@ -211,14 +211,18 @@ def test_the_exporter_turns_your_own_week_into_ideas(tmp_path, studio):
     ex = exporter()
     ep = studio / "episodes" / "041-recent"
     (ep / "review").mkdir(parents=True)
+    busy = studio / "episodes" / "043-in-production"   # still being made: already a topic, not an idea
+    busy.mkdir(parents=True)
+    (busy / "project.json").write_text(json.dumps({"id": "043-in-production", "title": "Busy"}))
     (ep / "project.json").write_text(json.dumps({"id": "041-recent", "title": "Claude rents a GPU",
                                                  "steps": {"idea": {"status": "done"}}, "show_format": "agent-akte"}))
     (ep / "review" / "results-1.json").write_text(json.dumps({"metrics": {"views": 120, "subscribersGained": 3}}))
     old = studio / "episodes" / "001-old"
-    old.mkdir(parents=True)
+    (old / "export").mkdir(parents=True)
     (old / "project.json").write_text(json.dumps({"id": "001-old", "title": "Old"}))
+    (old / "export" / "upload-result.json").write_text("{}")
     t = time.time() - 30 * 86400
-    os.utime(old / "project.json", (t, t))
+    os.utime(old / "export" / "upload-result.json", (t, t))
     repo = tmp_path / "my-tool"
     repo.mkdir()
     env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com", "GIT_COMMITTER_NAME": "t",
@@ -230,6 +234,7 @@ def test_the_exporter_turns_your_own_week_into_ideas(tmp_path, studio):
     assert ex.main(["--studio", str(studio), "--recent-episodes", "--recent-git", str(repo), "--days", "7"]) == 0
     files = sorted(p.name for p in (studio / "inbox" / "ideas").glob("*.json"))
     assert "recent-episode-041-recent.json" in files and "recent-episode-001-old.json" not in files
+    assert "recent-episode-043-in-production.json" not in files
     card = json.loads((studio / "inbox" / "ideas" / "recent-episode-041-recent.json").read_text())
     assert card["topic_type"] == "recent_past" and card["source"] == "recent work"
     assert card["signals"]["results"]["views"] == 120
