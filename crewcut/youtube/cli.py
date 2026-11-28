@@ -44,7 +44,7 @@ def main(a) -> int:
     if a.ycmd == "results":
         from .results import results
         try:
-            result = results(a.episode, a.start, a.end, a.video)
+            result = results(a.episode, a.start, a.end, a.video, first_days=a.first)
         except (FileNotFoundError, ValueError, LookupError, PermissionError) as error:
             print(str(error))
             return 1

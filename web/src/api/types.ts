@@ -138,8 +138,13 @@ export interface FormatScore {
   subs_per_1000: number | null;
   retention_drop_per_min: number | null;
   ctr: number | null;
-  verdict: "more" | "watch" | "thin";
+  verdict: "more" | "watch" | "thin" | "stop" | "drop" | "change";
   verdict_text: string;
+  /** "first days" (fair: the first 7 or 28 days against the last 10 videos) or "total views" */
+  basis?: string;
+  median_x?: number | null;
+  traffic_type?: "browse" | "search" | "mixed";
+  diagnosis?: string | null;
 }
 
 export interface Scoreboard {

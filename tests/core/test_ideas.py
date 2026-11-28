@@ -184,3 +184,20 @@ def test_the_same_link_from_two_sources_is_one_card(tmp_path, studio):
     exporter().main(["--studio", str(studio), "--scout", str(sf), "--braindump", str(links)])
     files = sorted(p.name for p in (studio / "inbox" / "ideas").glob("*.json"))
     assert files == ["braindump-2030-01-01-a.json"]
+
+
+def test_the_exporter_carries_the_audience_score_and_the_format(tmp_path, studio):
+    p = tmp_path / "scout.json"
+    p.write_text(json.dumps({"date": "2030-01-02", "ranked": [
+        {"key": "gh:example/a", "name": "example/a", "url": "https://example.com/a", "total": 4,
+         "score": {"masse": 4}, "gruppe": "Builder"},
+        {"key": "gh:example/b", "name": "example/b", "url": "https://example.com/b", "total": 3, "format": "claim-check",
+         "score": {"audience": 0}}]}))
+    rows = exporter().from_scout(p, 5, None, "tool-test")
+    assert rows[0]["signals"]["audience"] == 4 and rows[0]["signals"]["audience_group"] == "Builder"
+    assert rows[0]["suggested_format"] == "tool-test" and "tool-test" in rows[0]["reason"]
+    assert rows[1]["suggested_format"] == "claim-check" and rows[1]["signals"]["audience"] == 0
+    exporter().write(rows, studio / "inbox" / "ideas", refresh=False, dry=False)
+    ideas.load()
+    got = ideas.get("scout-gh-example-a")
+    assert got["suggested_format"] == "tool-test" and got["suggestion"] == "exporter"

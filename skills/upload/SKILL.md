@@ -78,7 +78,8 @@ measures it after 48 hours. Before this step: the final cut is approved (`skills
 2. The early signal after 3 days: `python3 skills/idea/scripts/idea.py channel <own channel>` lists the own outliers
    with `x last 5` (views against the average of the five uploads before). Above 1 is a good sign.
 3. Run `crewcut youtube results <id> --start YYYY-MM-DD --end YYYY-MM-DD` for views, watch time, average view
-   duration/percentage and engagement. The report names its calendar-day period; never label it an exact rolling
+   duration/percentage and engagement. After 7 and after 28 days also run `crewcut youtube results <id> --first 7`
+   and `--first 28`: the scoreboard compares these windows with the last 10 videos (`crewcut formats score`). The report names its calendar-day period; never label it an exact rolling
    48-hour window. Missing data stays missing, not zero. Impressions, click rate and unique viewers require separate
    YouTube Studio evidence, not invented API fields. Views per unique viewer only makes sense for matching periods.
 4. A finished A/B test: the user drops a screenshot of the result into the chat; the agent reads it. The user never
