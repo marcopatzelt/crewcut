@@ -71,9 +71,6 @@ PLACEHOLDERS = (re.compile(r"\[\s*(?:ZAHL|ERGEBNIS|PREIS|MESSWERT|NUMBER|RESULT|
                            r"Daten|Tat|Quelle|Minuten|n|amount|task|tool|app|result)\s*[.…]?\s*\]"),
                 re.compile(r"\[\s*(?:Pointe|Kurz|Höchstens|Link-Satz|Punch line|Short punch)\b[^\]\n]*\]", re.I),
                 re.compile(r"\[[^\]\n]*\bmit Zahl\b[^\]\n]*\]"),
-                # a slot that says the test decides what goes here
-                re.compile(r"\[[^\]\n]*\b(?:so wie gemessen|wie gemessen|nur wenn der test|as measured|only if the test)\b"
-                           r"[^\]\n]*\]", re.I),
                 re.compile(r"<(?!!)[A-Za-zÄÖÜäöü][^<>\n]{1,160}>"))
 # a template that waits for a test: its format needs a test plan, or the Writer starts before the test
 TEST_SLOTS = (PLACEHOLDERS[2], re.compile(r"\[\s*ERGEBNIS\b"), re.compile(r"\[\s*(?:NUMBER|RESULT)\b"))
@@ -87,6 +84,8 @@ CUE_LABEL = re.compile(r"^\s*(?:Bild|Picture|Image|Screen|Bildschirm|Szene|Scene
                        r"Graphic|Einblendung|Insert|Bauchbinde|Schnitt|Cut|Ton|Sound|Musik|Music)\b[^:\]]{0,24}:", re.I)
 CUE_BULLET = re.compile(r"^\s*[•*-]\s*[^:\[\]\n]{1,40}:\s*$")
 CITATION = re.compile(r"^\s*\d+(?:\s*[,–-]\s*\d+)*\s*$")
+# a slot that says the test decides what goes here ([Die Zahl, so wie gemessen.]); not inside a picture cue
+MEASURED = re.compile(r"\b(?:so wie gemessen|wie gemessen|nur wenn der test|as measured|only if the test)\b", re.I)
 
 
 def settings() -> dict:
@@ -574,17 +573,22 @@ def _stat(p: Path) -> tuple | None:
 
 
 def _template_files() -> tuple[Path, ...]:
-    """The script and cue templates of every format and kind in the library (cached while formats.json is unchanged)."""
+    """The script and cue templates every format and kind in the library names, also of a format that is not usable
+    yet (its template may appear later); cached while formats.json is unchanged."""
     key = tuple((str(d), _stat(d / "formats.json")) for _, d in library_dirs())
     if _STATE.get("files", (None,))[0] != key:
         out: list[Path] = []
-        for f in load().values():
-            for h in [f, *[k for k in f.get("kinds") or [] if isinstance(k, dict)]]:
-                for name in ("script_template", "cue_template"):
-                    rel = h.get(name)
-                    p = Path(f["dir"]) / rel if isinstance(rel, str) and rel else None
-                    if p is not None and p not in out and p.is_file():
-                        out.append(p)
+        for _, folder in library_dirs():
+            for f in _read(folder)[0]:
+                if not isinstance(f, dict):
+                    continue
+                for h in [f, *[k for k in f.get("kinds") or [] if isinstance(k, dict)]]:
+                    for name in ("script_template", "cue_template"):
+                        rel = h.get(name)
+                        if isinstance(rel, str) and rel and not Path(rel).is_absolute() and ".." not in Path(rel).parts:
+                            p = folder / rel
+                            if p not in out:
+                                out.append(p)
         _STATE["files"] = (key, tuple(out))
     return _STATE["files"][1]
 
@@ -610,8 +614,15 @@ def template_slots() -> frozenset[str]:
 
 def _found(body: str, slots) -> list[tuple[int, str]]:
     hits = {(m.start(), m.group(0)) for rx in PLACEHOLDERS for m in rx.finditer(body)}
-    if slots:
-        hits |= {(m.start(), m.group(0)) for m in BRACKET.finditer(body) if _slot_key(m.group(1)) in slots}
+    start = 0
+    for line in body.splitlines(keepends=True):
+        for m in BRACKET.finditer(line):
+            inner = m.group(1)
+            if CUE_LABEL.match(inner) or CUE_BULLET.match(line[:m.start()]):
+                continue   # a picture cue, or the picture of a cue-sheet bullet
+            if MEASURED.search(inner) or (slots and _slot_key(inner) in slots):
+                hits.add((start + m.start(), m.group(0)))
+        start += len(line)
     return sorted(hits)
 
 

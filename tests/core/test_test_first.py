@@ -332,6 +332,18 @@ def test_every_gap_of_the_studio_templates_is_a_placeholder(studio):
     assert showformats.placeholders(filled) == []
     (d / "s.md").write_text(SLOT_SCRIPT.replace("[Aufgabe]", "[Gesicht]"))
     assert showformats.placeholders(filled) == ["[Gesicht]"]
+    # the picture of a cue-sheet bullet and a picture cue stay cues, even with a slot's words in them
+    cues = "• Beleg: [Werkzeug] Startseite · 61\n[Bild: Messkarte, so wie gemessen] [Picture: Werkzeug]\n---\n"
+    assert showformats.placeholders(cues) == []
+
+
+def test_a_template_that_appears_later_counts_at_once(studio):
+    """The slots are cached; a format whose template file is still missing is picked up as soon as the file is there."""
+    d = slot_library(studio)
+    (d / "c.md").unlink()
+    assert "stichworte" not in showformats.template_slots()
+    (d / "c.md").write_text(SLOT_CUES)
+    assert "stichworte" in showformats.template_slots()
 
 
 def test_a_template_gap_fails_the_gate_before_any_review(studio):
